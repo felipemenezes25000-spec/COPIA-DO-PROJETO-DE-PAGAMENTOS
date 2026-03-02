@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -59,6 +60,24 @@ public class RequestService(
             "blue" => PrescriptionType.Blue,
             _ => throw new ArgumentException($"Tipo de receita inválido: '{value}'. Use: simples, controlado ou azul.", nameof(value))
         };
+    }
+
+    /// <summary>Retorna a data/hora atual em horário de Brasília (America/Sao_Paulo), com fallback para UTC.</summary>
+    private static DateTime GetBrazilNow()
+    {
+        try
+        {
+            var timeZoneId = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                ? "E. South America Standard Time"
+                : "America/Sao_Paulo";
+
+            var tz = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
+        }
+        catch
+        {
+            return DateTime.UtcNow;
+        }
     }
 
     /// <summary>Monta o endereço do paciente para o PDF (rua, número, complemento - bairro, cidade - UF).</summary>
@@ -1025,7 +1044,7 @@ public class RequestService(
                             DoctorSpecialty: doctorProfile.Specialty,
                             Medications: medications,
                             PrescriptionType: PrescriptionTypeToDisplay(request.PrescriptionType) ?? "simples",
-                            EmissionDate: DateTime.UtcNow,
+                            EmissionDate: GetBrazilNow(),
                             AccessCode: request.AccessCode,
                             PrescriptionKind: kind,
                             PatientGender: patientUser?.Gender,
@@ -1061,7 +1080,7 @@ public class RequestService(
                             DoctorSpecialty: doctorProfile.Specialty,
                             Exams: exams,
                             Notes: request.Notes,
-                            EmissionDate: DateTime.UtcNow,
+                            EmissionDate: GetBrazilNow(),
                             AccessCode: request.AccessCode,
                             PatientBirthDate: patientUser?.BirthDate,
                             PatientPhone: patientUser?.Phone?.Value,

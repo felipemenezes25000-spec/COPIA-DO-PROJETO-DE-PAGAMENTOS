@@ -312,7 +312,8 @@ builder.Services.AddCors(options =>
             policy.WithOrigins(
                     "https://renovejasaude.com.br",
                     "https://www.renovejasaude.com.br",
-                    "https://app.renovejasaude.com.br"
+                    "https://app.renovejasaude.com.br",
+                    "https://validar.iti.gov.br"
                 )
                 .AllowAnyMethod()
                 .AllowAnyHeader()
