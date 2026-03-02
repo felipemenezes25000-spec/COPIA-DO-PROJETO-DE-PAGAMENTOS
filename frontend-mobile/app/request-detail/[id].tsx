@@ -16,7 +16,7 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { colors, spacing, borderRadius, shadows } from '../../lib/themeDoctor';
 import { fetchRequestById, markRequestDelivered, cancelRequest, getDocumentDownloadUrl } from '../../lib/api';

@@ -15,7 +15,7 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useListBottomPadding } from '../../lib/ui/responsive';
 import * as Clipboard from 'expo-clipboard';
 import * as WebBrowser from 'expo-web-browser';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography, doctorDS } from '../../lib/themeDoctor';
