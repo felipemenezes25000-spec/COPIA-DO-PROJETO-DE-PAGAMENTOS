@@ -300,29 +300,43 @@ builder.Services.AddSignalR();
 // Add CORS - configurado por ambiente
 builder.Services.AddCors(options =>
 {
+    // Origens permitidas (fallback quando Cors:AllowedOrigins não está definido)
+    var defaultOrigins = new[]
+    {
+        "https://renovejasaude.com.br",
+        "https://www.renovejasaude.com.br",
+        "https://app.renovejasaude.com.br",
+        "https://validar.iti.gov.br",
+        "https://lovable.app",
+        "https://www.lovable.app"
+    };
+
+    // Permite qualquer subdomínio de lovable.app (previews: https://xxx.lovable.app)
+    static bool IsAllowedOrigin(string? origin, IReadOnlyCollection<string> explicitOrigins)
+    {
+        if (string.IsNullOrEmpty(origin)) return false;
+        try
+        {
+            var uri = new Uri(origin);
+            var host = uri.Host;
+            if (explicitOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase)) return true;
+            if (host.Equals("lovable.app", StringComparison.OrdinalIgnoreCase) || host.EndsWith(".lovable.app", StringComparison.OrdinalIgnoreCase))
+                return true;
+            return false;
+        }
+        catch { return false; }
+    }
+
     // Policy restritiva para produção (default)
     options.AddDefaultPolicy(policy =>
     {
         var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
-        if (allowedOrigins != null && allowedOrigins.Length > 0)
-        {
-            policy.WithOrigins(allowedOrigins)
-                  .AllowAnyMethod()
-                  .AllowAnyHeader()
-                  .AllowCredentials();
-        }
-        else
-        {
-            policy.WithOrigins(
-                    "https://renovejasaude.com.br",
-                    "https://www.renovejasaude.com.br",
-                    "https://app.renovejasaude.com.br",
-                    "https://validar.iti.gov.br"
-                )
-                .AllowAnyMethod()
-                .AllowAnyHeader()
-                .AllowCredentials();
-        }
+        var origins = (allowedOrigins != null && allowedOrigins.Length > 0) ? allowedOrigins : defaultOrigins;
+
+        policy.SetIsOriginAllowed(origin => IsAllowedOrigin(origin, origins))
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
     });
 
     // Policy para desenvolvimento: origens explícitas para permitir credentials e preflight (web + Expo)

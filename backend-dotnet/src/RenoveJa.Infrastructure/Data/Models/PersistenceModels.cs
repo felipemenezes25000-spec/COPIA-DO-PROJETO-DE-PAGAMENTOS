@@ -49,6 +49,8 @@ public class DoctorProfileModel
     public Guid? ActiveCertificateId { get; set; }
     public bool CrmValidated { get; set; }
     public DateTime? CrmValidatedAt { get; set; }
+    [JsonPropertyName("approval_status")]
+    public string ApprovalStatus { get; set; } = "pending";
     public DateTime CreatedAt { get; set; }
 
     public static DoctorProfileModel FromDomain(RenoveJa.Domain.Entities.DoctorProfile profile)
@@ -69,15 +71,24 @@ public class DoctorProfileModel
             ActiveCertificateId = profile.ActiveCertificateId,
             CrmValidated = profile.CrmValidated,
             CrmValidatedAt = profile.CrmValidatedAt,
-            CreatedAt = profile.CreatedAt
+            CreatedAt = profile.CreatedAt,
+            ApprovalStatus = profile.ApprovalStatus.ToString().ToLowerInvariant()
         };
     }
 
     public RenoveJa.Domain.Entities.DoctorProfile ToDomain()
     {
+        var status = ApprovalStatus?.ToLowerInvariant() switch
+        {
+            "approved" => RenoveJa.Domain.Enums.DoctorApprovalStatus.Approved,
+            "rejected" => RenoveJa.Domain.Enums.DoctorApprovalStatus.Rejected,
+            _ => RenoveJa.Domain.Enums.DoctorApprovalStatus.Pending
+        };
+
         return RenoveJa.Domain.Entities.DoctorProfile.Reconstitute(
             Id, UserId, Crm, CrmState, Specialty, Bio,
             Rating, TotalConsultations, Available,
+            status,
             ActiveCertificateId, CrmValidated, CrmValidatedAt, CreatedAt,
             ProfessionalAddress, ProfessionalPhone);
     }

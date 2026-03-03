@@ -1,4 +1,5 @@
 using RenoveJa.Domain.Entities;
+using RenoveJa.Domain.Enums;
 using RenoveJa.Domain.Interfaces;
 using RenoveJa.Infrastructure.Data.Models;
 using RenoveJa.Infrastructure.Data.Supabase;
@@ -56,7 +57,7 @@ public class DoctorRepository(SupabaseClient supabase) : IDoctorRepository
 
     public async Task<List<DoctorProfile>> GetAvailableAsync(string? specialty = null, CancellationToken cancellationToken = default)
     {
-        var filter = "available=eq.true";
+        var filter = "available=eq.true&approval_status=eq.approved";
         if (!string.IsNullOrWhiteSpace(specialty))
             filter += $"&specialty=eq.{specialty}";
 
@@ -73,7 +74,7 @@ public class DoctorRepository(SupabaseClient supabase) : IDoctorRepository
         string? filter = null;
         if (available == true)
         {
-            filter = "available=eq.true";
+            filter = "available=eq.true&approval_status=eq.approved";
             if (!string.IsNullOrWhiteSpace(specialty))
                 filter += $"&specialty=eq.{specialty}";
         }
@@ -127,6 +128,13 @@ public class DoctorRepository(SupabaseClient supabase) : IDoctorRepository
 
     private static DoctorProfile MapToDomain(DoctorProfileModel model)
     {
+        var approvalStatus = model.ApprovalStatus?.ToLowerInvariant() switch
+        {
+            "approved" => DoctorApprovalStatus.Approved,
+            "rejected" => DoctorApprovalStatus.Rejected,
+            _ => DoctorApprovalStatus.Pending
+        };
+
         return DoctorProfile.Reconstitute(
             model.Id,
             model.UserId,
@@ -137,6 +145,7 @@ public class DoctorRepository(SupabaseClient supabase) : IDoctorRepository
             model.Rating,
             model.TotalConsultations,
             model.Available,
+            approvalStatus,
             model.ActiveCertificateId,
             model.CrmValidated,
             model.CrmValidatedAt,

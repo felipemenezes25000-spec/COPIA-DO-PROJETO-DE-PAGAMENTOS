@@ -12,7 +12,8 @@ public record DoctorListResponseDto(
     string? Bio,
     decimal Rating,
     int TotalConsultations,
-    bool Available
+    bool Available,
+    string ApprovalStatus
 );
 
 public record UpdateDoctorAvailabilityDto(

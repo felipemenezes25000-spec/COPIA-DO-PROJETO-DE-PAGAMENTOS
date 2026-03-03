@@ -77,7 +77,8 @@ public class DoctorService(
                     profile.Bio,
                     profile.Rating,
                     profile.TotalConsultations,
-                    profile.Available));
+                    profile.Available,
+                    profile.ApprovalStatus.ToString().ToLowerInvariant()));
             }
         }
 
@@ -121,7 +122,8 @@ public class DoctorService(
                     profile.Bio,
                     profile.Rating,
                     profile.TotalConsultations,
-                    profile.Available));
+                    profile.Available,
+                    profile.ApprovalStatus.ToString().ToLowerInvariant()));
             }
         }
 
@@ -155,7 +157,8 @@ public class DoctorService(
             profile.Bio,
             profile.Rating,
             profile.TotalConsultations,
-            profile.Available);
+            profile.Available,
+            profile.ApprovalStatus.ToString().ToLowerInvariant());
     }
 
     /// <summary>

@@ -190,7 +190,20 @@ public class AuthService(
         {
             var profile = await doctorRepository.GetByUserIdAsync(user.Id, cancellationToken);
             if (profile != null)
+            {
+                // Regra de aprovação: médicos pendentes ou reprovados não podem logar no app.
+                if (profile.ApprovalStatus == Domain.Enums.DoctorApprovalStatus.Pending)
+                {
+                    throw new UnauthorizedAccessException("Seu cadastro de médico está em análise. Aguarde a aprovação do administrador.");
+                }
+
+                if (profile.ApprovalStatus == Domain.Enums.DoctorApprovalStatus.Rejected)
+                {
+                    throw new UnauthorizedAccessException("Seu cadastro de médico foi reprovado. Entre em contato com o suporte.");
+                }
+
                 doctorProfile = MapDoctorProfileToDto(profile);
+            }
         }
 
         return new AuthResponseDto(

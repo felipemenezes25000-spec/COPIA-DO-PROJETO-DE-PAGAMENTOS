@@ -1,3 +1,4 @@
+using RenoveJa.Domain.Enums;
 using RenoveJa.Domain.Exceptions;
 
 namespace RenoveJa.Domain.Entities;
@@ -14,6 +15,7 @@ public class DoctorProfile : Entity
     public decimal Rating { get; private set; }
     public int TotalConsultations { get; private set; }
     public bool Available { get; private set; }
+    public DoctorApprovalStatus ApprovalStatus { get; private set; } = DoctorApprovalStatus.Pending;
 
     // Referência ao certificado digital ativo
     public Guid? ActiveCertificateId { get; private set; }
@@ -39,6 +41,7 @@ public class DoctorProfile : Entity
         decimal rating,
         int totalConsultations,
         bool available,
+        DoctorApprovalStatus approvalStatus,
         DateTime? createdAt = null)
         : base(id, createdAt ?? DateTime.UtcNow)
     {
@@ -50,6 +53,7 @@ public class DoctorProfile : Entity
         Rating = rating;
         TotalConsultations = totalConsultations;
         Available = available;
+        ApprovalStatus = approvalStatus;
     }
 
     private const int CrmMaxLength = 20;
@@ -96,7 +100,8 @@ public class DoctorProfile : Entity
             bio,
             5.0m,
             0,
-            false);
+            false,
+            DoctorApprovalStatus.Pending);
     }
 
     public void UpdateProfile(string? bio = null, string? specialty = null, string? professionalAddress = null, string? professionalPhone = null)
@@ -124,6 +129,18 @@ public class DoctorProfile : Entity
     public void SetAvailability(bool available)
     {
         Available = available;
+    }
+
+    public void Approve()
+    {
+        ApprovalStatus = DoctorApprovalStatus.Approved;
+        Available = true;
+    }
+
+    public void Reject()
+    {
+        ApprovalStatus = DoctorApprovalStatus.Rejected;
+        Available = false;
     }
 
     public void IncrementConsultations()
@@ -165,6 +182,7 @@ public class DoctorProfile : Entity
         decimal rating,
         int totalConsultations,
         bool available,
+        DoctorApprovalStatus approvalStatus,
         Guid? activeCertificateId,
         bool crmValidated,
         DateTime? crmValidatedAt,
@@ -182,6 +200,7 @@ public class DoctorProfile : Entity
             rating,
             totalConsultations,
             available,
+            approvalStatus,
             createdAt)
         {
             ActiveCertificateId = activeCertificateId,

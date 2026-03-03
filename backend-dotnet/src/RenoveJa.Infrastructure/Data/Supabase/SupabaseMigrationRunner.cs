@@ -361,6 +361,12 @@ public static class SupabaseMigrationRunner
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_saved_cards_mp_card ON public.saved_cards(mp_card_id)"
     };
 
+    private static readonly string[] DoctorApprovalStatusMigrations =
+    {
+        "ALTER TABLE public.doctor_profiles ADD COLUMN IF NOT EXISTS approval_status TEXT NOT NULL DEFAULT 'approved'",
+        "UPDATE public.doctor_profiles SET approval_status = 'approved' WHERE approval_status IS NULL OR approval_status = ''"
+    };
+
     /// <summary>
     /// Executa todas as migrations. Só roda se Supabase:DatabaseUrl estiver definida.
     /// </summary>
@@ -395,7 +401,8 @@ public static class SupabaseMigrationRunner
             ("product_prices", ProductPricesMigrations),
             ("payment_attempts", PaymentAttemptsMigrations),
             ("webhook_events", WebhookEventsMigrations),
-            ("saved_cards", SavedCardsMigrations)
+            ("saved_cards", SavedCardsMigrations),
+            ("doctor_approval_status", DoctorApprovalStatusMigrations)
         };
 
         foreach (var (name, sqls) in allMigrations)

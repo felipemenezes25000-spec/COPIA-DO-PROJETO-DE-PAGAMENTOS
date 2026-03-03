@@ -64,6 +64,7 @@ public class PrescriptionFlowSmokeTests
             5.0m,
             0,
             true,
+            DoctorApprovalStatus.Approved,
             null,
             false,
             null,
