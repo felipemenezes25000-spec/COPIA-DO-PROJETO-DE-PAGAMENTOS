@@ -60,10 +60,40 @@ Plataforma para **renovação de receitas**, **pedidos de exame** e **consultas 
 
 ---
 
+## Escopo, objetivos e ganhos
+
+**Para que serve:**  
+O RenoveJá+ automatiza e organiza o fluxo de **renovação de receitas**, **pedidos de exame** e **consultas online**, conectando paciente, médico e farmácia em um único lugar, com **assinatura digital ICP-Brasil** e **verificação pública via QR Code**.
+
+**Escopo principal do produto:**
+
+- **Paciente**
+  - Solicitar renovação de receitas (controladas e não controladas)
+  - Pedir exames e consultas online
+  - Enviar documentos/fotos para apoio à avaliação médica
+  - Pagar via **PIX** e acompanhar o status em tempo real
+  - Baixar o PDF assinado da receita/pedido de exame
+- **Médico**
+  - Receber fila de solicitações com apoio de **IA clínica** (resumo e riscos)
+  - Aprovar/rejeitar solicitações com justificativa
+  - Assinar digitalmente (certificado ICP-Brasil) receitas e pedidos
+  - Atender consultas por vídeo, com geração de anamnese assistida por IA
+- **Terceiros (farmácia / auditoria / pacientes finais)**
+  - Verificar autenticidade do documento via QR Code + código de 6 dígitos
+  - Acessar 2ª via do PDF diretamente, sem precisar de login
+
+**Ganhos para o negócio:**
+
+- Redução de retrabalho administrativo (menos ligações/WhatsApp para renovar receitas)
+- Aumento de conversão e ticket médio com fluxo de pagamento PIX integrado
+- Redução de risco jurídico com trilha de auditoria (logs, Verify v2, ICP-Brasil)
+- Melhor experiência para paciente e médico (fluxo 100% digital, mobile-first)
+- Base técnica preparada para novos serviços de telemedicina e integrações futuras
+
 ## Estrutura do projeto
 
 ```
-ola-jamal/
+renovejatac/
 ├── backend-dotnet/         # API .NET 8 (Clean Architecture)
 │   ├── src/                # RenoveJa.Api, Application, Domain, Infrastructure
 │   ├── tests/
