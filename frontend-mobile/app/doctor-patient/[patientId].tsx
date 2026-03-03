@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,8 @@ import { getPatientRequests } from '../../lib/api';
 import { RequestResponseDto } from '../../types/database';
 import { StatusBadge } from '../../components/StatusBadge';
 import { DoctorHeader } from '../../components/ui/DoctorHeader';
+import { AssistantBanner } from '../../components/triage';
+import { useTriageEval } from '../../hooks/useTriageEval';
 
 const TYPE_LABELS: Record<string, string> = {
   prescription: 'Receita',
@@ -80,6 +82,42 @@ export default function DoctorPatientProntuario() {
   const patientName = requests[0]?.patientName ?? 'Paciente';
   const headerPaddingTop = insets.top + 8;
 
+  // Estatísticas de uso do app pelo paciente (para Dra. Renova médico)
+  const totalRequests = requests.length;
+  const last6Months = useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - 6);
+    return requests.filter(r => new Date(r.createdAt) >= cutoff);
+  }, [requests]);
+  const recentPrescriptionCount = useMemo(
+    () => last6Months.filter(r => r.requestType === 'prescription').length,
+    [last6Months]
+  );
+  const recentExamCount = useMemo(
+    () => last6Months.filter(r => r.requestType === 'exam').length,
+    [last6Months]
+  );
+  const lastConsultationDays = useMemo(() => {
+    const cons = requests.filter(r => r.requestType === 'consultation');
+    if (cons.length === 0) return undefined;
+    const latest = cons.reduce((acc, cur) =>
+      new Date(cur.createdAt) > new Date(acc.createdAt) ? cur : acc
+    );
+    return Math.floor(
+      (Date.now() - new Date(latest.createdAt).getTime()) / (24 * 60 * 60 * 1000)
+    );
+  }, [requests]);
+
+  useTriageEval({
+    context: 'doctor_prontuario',
+    step: 'idle',
+    role: 'doctor',
+    totalRequests,
+    recentPrescriptionCount,
+    recentExamCount,
+    lastConsultationDays,
+  });
+
   if (loading) {
     return (
       <View style={styles.loadingWrap}>
@@ -107,6 +145,9 @@ export default function DoctorPatientProntuario() {
         }
         showsVerticalScrollIndicator={false}
       >
+        <View style={{ marginBottom: spacing.md }}>
+          <AssistantBanner />
+        </View>
         {/* Resumo */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>

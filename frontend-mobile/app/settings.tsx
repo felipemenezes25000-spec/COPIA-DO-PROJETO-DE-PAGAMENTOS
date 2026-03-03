@@ -34,6 +34,7 @@ export default function SettingsScreen() {
 
   const handleResetMuted = async () => {
     await unmuteAll();
+    // Após reset completo da triagem, o contador zera e as mensagens podem voltar em todas as telas.
     setMutedCount(0);
   };
 

@@ -17,6 +17,9 @@ import { getDisplayPrice } from '../../../lib/config/pricing';
 import { formatBRL } from '../../../lib/utils/format';
 import { getApiErrorMessage } from '../../../lib/api-client';
 import type { RequestResponseDto } from '../../../types/database';
+import { AssistantBanner } from '../../../components/triage';
+import { useTriageEval } from '../../../hooks/useTriageEval';
+import { useRequestUpdated } from '../../../hooks/useRequestUpdated';
 
 export default function PaymentRequestScreen() {
   const { requestId } = useLocalSearchParams<{ requestId: string }>();
@@ -27,11 +30,24 @@ export default function PaymentRequestScreen() {
   const [pixLoading, setPixLoading] = useState(false);
   const pixInFlightRef = useRef(false);
 
+  const loadRequest = React.useCallback(async () => {
+    if (!rid) return;
+    try {
+      const data = await fetchRequestById(rid);
+      setRequest(data);
+    } catch (e: unknown) {
+      Alert.alert('Erro', (e as Error)?.message || String(e) || 'Erro ao carregar solicitação');
+    } finally {
+      setLoading(false);
+    }
+  }, [rid]);
+
   useEffect(() => {
     if (!rid) {
       setLoading(false);
       return;
     }
+    setLoading(true);
     let cancelled = false;
     (async () => {
       try {
@@ -47,6 +63,17 @@ export default function PaymentRequestScreen() {
     })();
     return () => { cancelled = true; };
   }, [rid]);
+
+  useRequestUpdated(rid ?? undefined, loadRequest);
+
+  // Dra. Renova: mensagem antes do pagamento, explicando o que esperar.
+  useTriageEval({
+    context: 'detail',
+    step: 'entry',
+    role: 'patient',
+    status: request?.status ?? undefined,
+    requestType: request?.requestType as any,
+  });
 
   const handleSelectPix = async () => {
     if (!rid || pixInFlightRef.current) return;
@@ -109,6 +136,9 @@ export default function PaymentRequestScreen() {
         <View style={{ width: 40 }} />
       </View>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <View style={{ marginBottom: spacing.md }}>
+          <AssistantBanner />
+        </View>
         <View style={styles.selectionCard}>
           <View style={styles.selectionIcon}>
             <Ionicons name="qr-code" size={40} color={colors.primary} />

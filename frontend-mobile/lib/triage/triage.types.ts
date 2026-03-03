@@ -13,7 +13,10 @@ export type TriageContext =
   | 'exam'
   | 'consultation'
   | 'detail'
-  | 'doctor_editor';
+  | 'doctor_editor'
+  | 'doctor_dashboard'
+  | 'doctor_detail'
+  | 'doctor_prontuario';
 
 export type TriageStep =
   | 'idle'
@@ -97,6 +100,12 @@ export interface TriageInput {
   recentPrescriptionCount?: number;
   recentExamCount?: number;
   lastConsultationDays?: number;
+
+  // Doctor workflow stats (uso do sistema, não clínico)
+  doctorPendingCount?: number;
+  doctorToSignCount?: number;
+  doctorInConsultationCount?: number;
+  doctorHasCertificate?: boolean;
 }
 
 // ── Persisted state ─────────────────────────────────────────

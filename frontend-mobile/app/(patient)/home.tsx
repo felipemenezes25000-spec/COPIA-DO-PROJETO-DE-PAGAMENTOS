@@ -121,28 +121,26 @@ export default function PatientHome() {
     lastConsultationDays,
   });
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <SkeletonList count={4} />
-      </View>
-    );
-  }
-
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={[styles.content, { paddingBottom: listPadding }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          colors={[colors.primary]}
-          tintColor={colors.primary}
-        />
-      }
-    >
+    <View style={styles.container}>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <SkeletonList count={4} />
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={[styles.content, { paddingBottom: listPadding }]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
+        >
       {/* Header: só saudação + avatar (igual ao web) */}
       <LinearGradient
         colors={[...gradients.patientHeader]}
@@ -192,16 +190,8 @@ export default function PatientHome() {
         />
       </View>
 
-      {/* ─── Dra. Renova (assistente de triagem) ─── */}
+      {/* ─── InfoCard da triagem (explicação) ─── */}
       <View style={styles.aiBannerWrap}>
-        <AssistantBanner
-          onAction={(action) => {
-            if (action === 'teleconsulta') router.push('/new-request/consultation');
-            if (action === 'ver_servicos') {
-              // scroll to actions is below; user already sees them
-            }
-          }}
-        />
         {showInfoCard && (
           <InfoCard
             icon="sparkles-outline"
@@ -292,7 +282,23 @@ export default function PatientHome() {
           />
         </View>
       )}
-    </ScrollView>
+          {/* Espaço extra para não colar na tab bar */}
+          <View style={{ height: uiTokens.cardGap * 3 }} />
+        </ScrollView>
+      )}
+
+      {/* Dra. Renova fixa acima da tab bar */}
+      <View style={styles.aiBannerSticky}>
+        <AssistantBanner
+          onAction={(action) => {
+            if (action === 'teleconsulta') router.push('/new-request/consultation');
+            if (action === 'ver_servicos') {
+              router.push('/(patient)/requests');
+            }
+          }}
+        />
+      </View>
+    </View>
   );
 }
 
@@ -307,6 +313,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: uiTokens.screenPaddingHorizontal,
     paddingTop: 80,
     backgroundColor: colors.background,
+  },
+  aiBannerSticky: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: uiTokens.cardGap * 2,
   },
 
   // ─── Header ───

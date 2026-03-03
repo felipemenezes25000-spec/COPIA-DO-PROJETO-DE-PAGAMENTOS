@@ -273,7 +273,7 @@ export default function Login() {
         title="Continuar com Google"
         onPress={handleGooglePress}
         loading={googleLoading}
-        disabled={!request || !hasGoogleConfig}
+        disabled={!request}
         variant="outline"
         fullWidth
         icon="logo-google"

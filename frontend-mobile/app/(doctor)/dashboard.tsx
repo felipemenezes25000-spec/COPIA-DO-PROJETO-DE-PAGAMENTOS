@@ -32,6 +32,8 @@ import {
   getRequestUiState,
   UI_STATUS_COLORS,
 } from '../../lib/domain/getRequestUiState';
+import { AssistantBanner } from '../../components/triage';
+import { useTriageEval } from '../../hooks/useTriageEval';
 
 const TYPE_LABELS: Record<string, string> = {
   prescription: 'Receita',
@@ -116,15 +118,25 @@ export default function DoctorDashboard() {
   const firstName = user?.name?.split(' ')[0] || 'Médico';
   const greeting = new Date().getHours() < 12 ? 'Bom dia' : new Date().getHours() < 18 ? 'Boa tarde' : 'Boa noite';
 
+  // Dra. Renova — fluxo do médico (uso da plataforma)
+  useTriageEval({
+    context: 'doctor_dashboard',
+    step: 'idle',
+    role: 'doctor',
+    doctorPendingCount: pendentesCount,
+    doctorHasCertificate: hasCertificate === false ? false : hasCertificate === true ? true : undefined,
+  });
+
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={[styles.content, { paddingBottom: listPadding }]}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
-      }
-      showsVerticalScrollIndicator={false}
-    >
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={[styles.content, { paddingBottom: listPadding }]}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
       <LinearGradient
         colors={[...gradients.doctorHeader]}
         start={{ x: 0, y: 0 }}
@@ -236,7 +248,13 @@ export default function DoctorDashboard() {
           />
         )}
       </View>
-    </ScrollView>
+      </ScrollView>
+
+      {/* Dra. Renova fixa acima da tab bar (médico) */}
+      <View style={styles.aiBannerSticky}>
+        <AssistantBanner />
+      </View>
+    </View>
   );
 }
 
@@ -350,6 +368,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
     marginBottom: 2,
+  },
+  aiBannerSticky: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: spacing.lg * 2,
   },
   pendingCardSummary: {
     fontSize: 13,

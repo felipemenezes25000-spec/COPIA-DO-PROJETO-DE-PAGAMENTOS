@@ -464,6 +464,7 @@ public class RequestServiceFullTests
     private readonly Mock<IDocumentTokenService> _documentTokenServiceMock = new();
     private readonly Mock<IConsultationTimeBankRepository> _consultationTimeBankRepoMock = new();
     private readonly Mock<IAiConductSuggestionService> _aiConductSuggestionServiceMock = new();
+    private readonly Mock<IRequestEventsPublisher> _requestEventsPublisherMock = new();
     private readonly Mock<ILogger<RequestService>> _loggerMock = new();
     private readonly RequestService _sut;
 
@@ -481,6 +482,7 @@ public class RequestServiceFullTests
             _httpClientFactoryMock.Object, _apiConfigMock.Object,
             _documentTokenServiceMock.Object, _consultationTimeBankRepoMock.Object,
             _aiConductSuggestionServiceMock.Object,
+            _requestEventsPublisherMock.Object,
             _loggerMock.Object);
     }
 
@@ -945,6 +947,7 @@ public class PaymentServiceFullTests
     private readonly Mock<IUserRepository> _userRepoMock = new();
     private readonly Mock<IPaymentAttemptRepository> _paymentAttemptRepoMock = new();
     private readonly Mock<ISavedCardRepository> _savedCardRepoMock = new();
+    private readonly Mock<IRequestEventsPublisher> _requestEventsPublisherMock = new();
     private readonly Mock<ILogger<PaymentService>> _loggerMock = new();
     private readonly PaymentService _sut;
 
@@ -956,7 +959,7 @@ public class PaymentServiceFullTests
             _notifRepoMock.Object, _pushSenderMock.Object,
             _mercadoPagoMock.Object, _userRepoMock.Object,
             _paymentAttemptRepoMock.Object, _savedCardRepoMock.Object,
-            mpConfig, _loggerMock.Object);
+            mpConfig, _requestEventsPublisherMock.Object, _loggerMock.Object);
     }
 
     private void SetupNotifications()
@@ -1083,12 +1086,13 @@ public class PaymentServiceFullTests
     public void ValidateWebhookSignature_ShouldReturnFalse_WhenNoSecret()
     {
         var noSecretConfig = Options.Create(new MercadoPagoConfig());
+        var eventsPublisherMock = new Mock<IRequestEventsPublisher>();
         var svc = new PaymentService(
             _paymentRepoMock.Object, _requestRepoMock.Object,
             _notifRepoMock.Object, _pushSenderMock.Object,
             _mercadoPagoMock.Object, _userRepoMock.Object,
             _paymentAttemptRepoMock.Object, _savedCardRepoMock.Object,
-            noSecretConfig, _loggerMock.Object);
+            noSecretConfig, eventsPublisherMock.Object, _loggerMock.Object);
 
         svc.ValidateWebhookSignature("ts=123,v1=abc", "req-1", "data-1").Should().BeFalse();
     }

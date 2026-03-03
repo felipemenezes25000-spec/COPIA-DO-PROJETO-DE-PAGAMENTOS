@@ -6,8 +6,8 @@
  * Nunca cobre CTA, tab bar, ou botões. Max 2 linhas.
  */
 
-import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, Platform, Modal } from 'react-native';
 import Animated, { FadeInDown, FadeOutUp } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, colors } from '../../lib/theme';
@@ -41,6 +41,7 @@ interface AssistantBannerProps {
 
 export function AssistantBanner({ onAction, containerStyle }: AssistantBannerProps) {
   const { current, dismiss, muteCurrent } = useTriageAssistant();
+  const [expanded, setExpanded] = useState(false);
 
   const handleCTA = useCallback(() => {
     if (current?.cta) {
@@ -74,6 +75,7 @@ export function AssistantBanner({ onAction, containerStyle }: AssistantBannerPro
 
       <Pressable
         style={styles.inner}
+        onPress={() => setExpanded(true)}
         onLongPress={handleLongPress}
         delayLongPress={800}
         accessibilityHint={current.canMute ? 'Segure para silenciar esta mensagem' : undefined}
@@ -134,6 +136,43 @@ export function AssistantBanner({ onAction, containerStyle }: AssistantBannerPro
           Orientação geral · Não substitui avaliação médica · Decisão final é sempre do médico
         </Text>
       </View>
+
+      {/* Modal expandido para leitura completa */}
+      <Modal
+        visible={expanded}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setExpanded(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setExpanded(false)} />
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View style={[styles.avatar, { backgroundColor: av.bg, borderColor: av.border }]}>
+                <Ionicons name={av.icon} size={18} color={av.iconColor} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalLabel}>Dra. Renova</Text>
+                {current.isPersonalized && (
+                  <Text style={styles.modalBadge}>Texto personalizado por IA · Médico sempre decide</Text>
+                )}
+              </View>
+              <Pressable
+                onPress={() => setExpanded(false)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="close" size={20} color={theme.colors.text.secondary} />
+              </Pressable>
+            </View>
+
+            <Text style={styles.modalMessage}>{current.text}</Text>
+
+            <Text style={styles.modalDisclaimer}>
+              Orientação geral. Não substitui avaliação médica. A decisão final é sempre do médico.
+            </Text>
+          </View>
+        </View>
+      </Modal>
     </Animated.View>
   );
 }
@@ -251,5 +290,48 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: theme.colors.text.disabled,
     fontStyle: 'italic',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  modalCard: {
+    backgroundColor: theme.colors.background.paper,
+    borderTopLeftRadius: theme.borderRadius.lg,
+    borderTopRightRadius: theme.borderRadius.lg,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  modalLabel: {
+    fontSize: 13,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: theme.colors.text.primary,
+  },
+  modalBadge: {
+    fontSize: 10,
+    color: theme.colors.text.disabled,
+    marginTop: 2,
+  },
+  modalMessage: {
+    fontSize: 15,
+    lineHeight: 22,
+    fontFamily: 'PlusJakartaSans_400Regular',
+    color: theme.colors.text.primary,
+    marginBottom: 12,
+  },
+  modalDisclaimer: {
+    fontSize: 11,
+    color: theme.colors.text.disabled,
   },
 });

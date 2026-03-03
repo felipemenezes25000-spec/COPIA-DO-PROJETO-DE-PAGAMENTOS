@@ -43,9 +43,19 @@ public class RequestService(
     IDocumentTokenService documentTokenService,
     IConsultationTimeBankRepository consultationTimeBankRepository,
     IAiConductSuggestionService aiConductSuggestionService,
+    IRequestEventsPublisher requestEventsPublisher,
     ILogger<RequestService> logger) : IRequestService
 {
     private readonly string _apiBaseUrl = (apiConfig?.Value?.BaseUrl ?? "").Trim();
+
+    private Task PublishRequestUpdatedAsync(MedicalRequest request, string? message = null, CancellationToken cancellationToken = default)
+        => requestEventsPublisher.NotifyRequestUpdatedAsync(
+            request.Id,
+            request.PatientId,
+            request.DoctorId,
+            EnumHelper.ToSnakeCase(request.Status),
+            message,
+            cancellationToken);
 
     /// <summary>Converte string da API (simples, controlado, azul ou simple, controlled, blue) para enum.</summary>
     private static PrescriptionType ParsePrescriptionType(string? value)
@@ -601,6 +611,7 @@ public class RequestService(
             cancellationToken,
             new Dictionary<string, object> { ["requestId"] = request.Id.ToString() });
 
+        await PublishRequestUpdatedAsync(request, "Status atualizado", cancellationToken);
         return MapRequestToDto(request);
     }
 
@@ -643,6 +654,7 @@ public class RequestService(
                 catch (Exception ex) { logger.LogWarning(ex, "AI conduct suggestion failed for {RequestId}", request.Id); }
             }, cancellationToken);
 
+            await PublishRequestUpdatedAsync(request, "Solicitação aprovada", cancellationToken);
             await CreateNotificationAsync(
                 request.PatientId,
                 "Solicitação Aprovada",
@@ -783,6 +795,7 @@ public class RequestService(
         var videoRoom = VideoRoom.Create(request.Id, roomName);
         videoRoom = await videoRoomRepository.CreateAsync(videoRoom, cancellationToken);
 
+        await PublishRequestUpdatedAsync(request, "Consulta pronta", cancellationToken);
         await CreateNotificationAsync(
             request.PatientId,
             "Consulta Pronta",
@@ -830,6 +843,7 @@ public class RequestService(
             await videoRoomRepository.UpdateAsync(videoRoom, cancellationToken);
         }
 
+        await PublishRequestUpdatedAsync(request, "Médico na sala", cancellationToken);
         await CreateNotificationAsync(
             request.PatientId,
             "Médico na sala",
@@ -974,6 +988,7 @@ public class RequestService(
             }
         }
 
+        await PublishRequestUpdatedAsync(request, "Consulta finalizada", cancellationToken);
         await CreateNotificationAsync(
             request.PatientId,
             "Consulta Finalizada",
@@ -1203,7 +1218,7 @@ public class RequestService(
                                     $"Sua {docTipo} foi assinada digitalmente e está disponível para download.",
                                     cancellationToken,
                                     new Dictionary<string, object> { ["requestId"] = request.Id.ToString() });
-
+                                await PublishRequestUpdatedAsync(request, "Documento assinado", cancellationToken);
                                 return MapRequestToDto(request);
                             }
 
@@ -1234,7 +1249,7 @@ public class RequestService(
             "Sua solicitação foi assinada digitalmente e está disponível para download.",
             cancellationToken,
             new Dictionary<string, object> { ["requestId"] = request.Id.ToString() });
-
+        await PublishRequestUpdatedAsync(request, "Documento assinado", cancellationToken);
         return MapRequestToDto(request);
     }
 
@@ -1597,6 +1612,7 @@ public class RequestService(
         request.Deliver();
         request = await requestRepository.UpdateAsync(request, cancellationToken);
 
+        await PublishRequestUpdatedAsync(request, "Documento recebido", cancellationToken);
         // Notifica o médico que o paciente recebeu/baixou o documento
         if (request.DoctorId.HasValue)
         {
@@ -1642,6 +1658,7 @@ public class RequestService(
         request.Cancel();
         request = await requestRepository.UpdateAsync(request, cancellationToken);
 
+        await PublishRequestUpdatedAsync(request, "Pedido cancelado", cancellationToken);
         if (request.DoctorId.HasValue)
         {
             await CreateNotificationAsync(

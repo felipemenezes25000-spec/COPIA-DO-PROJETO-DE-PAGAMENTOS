@@ -24,6 +24,7 @@ using RenoveJa.Infrastructure.Video;
 using RenoveJa.Api.Middleware;
 using RenoveJa.Api.Authentication;
 using RenoveJa.Api.Hubs;
+using RenoveJa.Api.Services;
 using RenoveJa.Api.Swagger;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.OpenApi.Models;
@@ -263,6 +264,7 @@ builder.Services.AddScoped<IVideoService, VideoService>();
 builder.Services.AddScoped<IDoctorService, DoctorService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IVerificationService, RenoveJa.Application.Services.Verification.VerificationService>();
+builder.Services.AddSingleton<IRequestEventsPublisher, RequestEventsPublisher>();
 
 // Register Infrastructure Services
 builder.Services.AddScoped<IStorageService, SupabaseStorageService>();
@@ -470,6 +472,7 @@ app.UseMiddleware<AuditMiddleware>();
 
 app.MapControllers();
 app.MapHub<VideoSignalingHub>("/hubs/video");
+app.MapHub<RequestsHub>("/hubs/requests");
 
 // Log para debug: IP da máquina (dispositivo físico precisa disso em vez de localhost)
 try

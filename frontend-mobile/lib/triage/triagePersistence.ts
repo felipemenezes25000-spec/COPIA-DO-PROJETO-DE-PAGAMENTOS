@@ -163,6 +163,10 @@ export async function shouldShowHomeInfoCard(): Promise<boolean> {
 /** Reativa todas as mensagens mutadas (settings). */
 export async function unmuteAll(): Promise<void> {
   const state = await load();
+  // Ao reativar, limpamos mutes e também cooldowns / contagem de sessão
+  // para a Dra. Renova realmente "voltar a falar" em todas as telas.
   state.mutedKeys = [];
+  state.cooldowns = {};
+  state.sessionCounts = {};
   scheduleSave();
 }

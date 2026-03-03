@@ -17,6 +17,9 @@ interface ToastConfig {
     message: string;
     type?: ToastType;
     duration?: number;
+    /** Ex.: "Ver pedido" — mostra botão que chama onAction e fecha o toast. */
+    actionLabel?: string;
+    onAction?: () => void;
 }
 
 const TYPE_CONFIG: Record<ToastType, { bg: string; icon: keyof typeof Ionicons.glyphMap; iconColor: string }> = {
@@ -102,7 +105,20 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                         <Text style={styles.toastText} numberOfLines={2}>
                             {config.message}
                         </Text>
-                        <Ionicons name="close" size={18} color={colors.textMuted} />
+                        {config.actionLabel && config.onAction ? (
+                            <TouchableOpacity
+                                onPress={() => {
+                                    config.onAction?.();
+                                    dismiss();
+                                }}
+                                style={styles.actionBtn}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={styles.actionBtnText}>{config.actionLabel}</Text>
+                            </TouchableOpacity>
+                        ) : (
+                            <Ionicons name="close" size={18} color={colors.textMuted} />
+                        )}
                     </TouchableOpacity>
                 </Animated.View>
             )}
@@ -136,5 +152,17 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         color: colors.text,
         lineHeight: 20,
+    },
+    actionBtn: {
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: borderRadius.sm,
+        backgroundColor: 'rgba(0,0,0,0.06)',
+    },
+    actionBtnText: {
+        fontSize: 13,
+        fontFamily: typography.fontFamily.semiBold,
+        fontWeight: '600',
+        color: colors.primary,
     },
 });

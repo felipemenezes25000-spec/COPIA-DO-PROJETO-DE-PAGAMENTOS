@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useState } from 'react';
-import { Platform } from 'react-native';
+import { Platform, View, StyleSheet } from 'react-native';
 import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import Constants from 'expo-constants';
@@ -13,7 +13,10 @@ import {
 } from '@expo-google-fonts/plus-jakarta-sans';
 import { AuthProvider } from '../contexts/AuthContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
+import { RequestsEventsProvider } from '../contexts/RequestsEventsContext';
 import { TriageAssistantProvider } from '../contexts/TriageAssistantProvider';
+import { GlobalRequestUpdatedToast } from '../components/GlobalRequestUpdatedToast';
+import { RequestUpdateBanner } from '../components/RequestUpdateBanner';
 import { ToastProvider } from '../components/ui/Toast';
 import * as SplashScreen from 'expo-splash-screen';
 
@@ -72,9 +75,13 @@ export default function RootLayout() {
       <AuthProvider>
         <PushNotificationProvider>
           <NotificationProvider>
+            <RequestsEventsProvider>
+            <GlobalRequestUpdatedToast />
             <TriageAssistantProvider>
             <ToastProvider>
-              <Stack screenOptions={{ headerShown: false }}>
+              <View style={styles.layoutContent}>
+                <RequestUpdateBanner />
+                <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="index" />
                 <Stack.Screen name="(auth)" />
                 <Stack.Screen name="(patient)" />
@@ -95,12 +102,18 @@ export default function RootLayout() {
                 <Stack.Screen name="terms" />
                 <Stack.Screen name="about" />
                 <Stack.Screen name="help-faq" />
-              </Stack>
+                </Stack>
+              </View>
             </ToastProvider>
             </TriageAssistantProvider>
+            </RequestsEventsProvider>
           </NotificationProvider>
         </PushNotificationProvider>
       </AuthProvider>
     </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  layoutContent: { flex: 1 },
+});

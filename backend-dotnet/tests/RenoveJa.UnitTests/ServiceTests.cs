@@ -31,6 +31,7 @@ public class PaymentServiceTests
     private readonly Mock<IUserRepository> _userRepoMock = new();
     private readonly Mock<IPaymentAttemptRepository> _paymentAttemptRepoMock = new();
     private readonly Mock<ISavedCardRepository> _savedCardRepoMock = new();
+    private readonly Mock<IRequestEventsPublisher> _requestEventsPublisherMock = new();
     private readonly Mock<ILogger<PaymentService>> _loggerMock = new();
     private readonly PaymentService _sut;
 
@@ -47,6 +48,7 @@ public class PaymentServiceTests
             _paymentAttemptRepoMock.Object,
             _savedCardRepoMock.Object,
             mpConfig,
+            _requestEventsPublisherMock.Object,
             _loggerMock.Object);
     }
 
@@ -477,6 +479,7 @@ public class ExtendedRequestServiceTests
     private readonly Mock<IDocumentTokenService> _documentTokenServiceMock = new();
     private readonly Mock<IConsultationTimeBankRepository> _consultationTimeBankRepoMock = new();
     private readonly Mock<IAiConductSuggestionService> _aiConductSuggestionServiceMock = new();
+    private readonly Mock<IRequestEventsPublisher> _requestEventsPublisherMock = new();
     private readonly Mock<ILogger<global::RenoveJa.Application.Services.Requests.RequestService>> _loggerMock = new();
     private readonly global::RenoveJa.Application.Services.Requests.RequestService _sut;
 
@@ -494,6 +497,7 @@ public class ExtendedRequestServiceTests
             _httpClientFactoryMock.Object, _apiConfigMock.Object,
             _documentTokenServiceMock.Object, _consultationTimeBankRepoMock.Object,
             _aiConductSuggestionServiceMock.Object,
+            _requestEventsPublisherMock.Object,
             _loggerMock.Object);
     }
 

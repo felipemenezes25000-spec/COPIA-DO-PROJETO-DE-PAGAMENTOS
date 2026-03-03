@@ -25,8 +25,11 @@ public class PaymentService(
     IPaymentAttemptRepository paymentAttemptRepository,
     ISavedCardRepository savedCardRepository,
     IOptions<MercadoPagoConfig> mercadoPagoConfig,
+    IRequestEventsPublisher requestEventsPublisher,
     ILogger<PaymentService> logger) : IPaymentService
 {
+    private Task PublishRequestPaidAsync(Domain.Entities.MedicalRequest request, CancellationToken cancellationToken)
+        => requestEventsPublisher.NotifyRequestUpdatedAsync(request.Id, request.PatientId, request.DoctorId, "paid", "Pagamento confirmado", cancellationToken);
     /// <summary>
     /// Paciente inicia o pagamento para uma solicitação aprovada. Suporta PIX ou cartão (crédito/débito).
     /// O valor é obtido da solicitação (não é enviado pelo cliente, por segurança).
@@ -102,6 +105,7 @@ public class PaymentService(
                     {
                         request.MarkAsPaid();
                         await requestRepository.UpdateAsync(request, cancellationToken);
+                        await PublishRequestPaidAsync(request, cancellationToken);
                         logger.LogInformation("[PAYMENT-PIX] Pagamento {PaymentId} já aprovado no MP; request {RequestId} atualizada para paid.", existingPayment.Id, requestId);
                     }
                     throw new InvalidOperationException("Este pagamento já foi aprovado. Atualize a tela do pedido (puxe para atualizar) para ver o status.");
@@ -297,6 +301,7 @@ public class PaymentService(
             {
                 medicalRequest.MarkAsPaid();
                 await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
+                await PublishRequestPaidAsync(medicalRequest, cancellationToken);
             }
         }
         else if (statusLower is "rejected" or "cancelled")
@@ -381,6 +386,7 @@ public class PaymentService(
         {
             request.MarkAsPaid();
             await requestRepository.UpdateAsync(request, cancellationToken);
+            await PublishRequestPaidAsync(request, cancellationToken);
 
             await CreateNotificationAsync(
                 payment.UserId,
@@ -559,6 +565,7 @@ public class PaymentService(
             {
                 request.MarkAsPaid();
                 await requestRepository.UpdateAsync(request, cancellationToken);
+                await PublishRequestPaidAsync(request, cancellationToken);
 
                 await CreateNotificationAsync(
                     payment.UserId,
@@ -634,6 +641,7 @@ public class PaymentService(
             {
                 request.MarkAsPaid();
                 await requestRepository.UpdateAsync(request, cancellationToken);
+                await PublishRequestPaidAsync(request, cancellationToken);
 
                 await CreateNotificationAsync(
                     payment.UserId,
@@ -742,6 +750,7 @@ public class PaymentService(
             payment.Approve();
             medicalRequest.MarkAsPaid();
             await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
+            await PublishRequestPaidAsync(medicalRequest, cancellationToken);
         }
         else if (statusLower is "rejected" or "cancelled")
         {

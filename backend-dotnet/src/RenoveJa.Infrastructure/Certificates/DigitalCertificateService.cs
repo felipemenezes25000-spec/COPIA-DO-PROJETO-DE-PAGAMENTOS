@@ -272,9 +272,21 @@ public class DigitalCertificateService : IDigitalCertificateService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao assinar PDF com certificado {CertificateId}", certificateId);
-            var msg = ex.Message.Contains("MAC", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase)
-                ? "Senha do certificado inválida. Use a mesma senha configurada no upload do certificado."
-                : $"Erro ao assinar: {ex.Message}";
+            string msg;
+            if (ex.Message.Contains("MAC", StringComparison.OrdinalIgnoreCase) ||
+                ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase))
+            {
+                msg = "Senha do certificado inválida. Use a mesma senha configurada no upload do certificado.";
+            }
+            else if (ex.Message.Contains("pre closed", StringComparison.OrdinalIgnoreCase) ||
+                     ex.Message.Contains("Document has been already", StringComparison.OrdinalIgnoreCase))
+            {
+                msg = "Falha interna ao assinar o PDF. Tente novamente em instantes; se o problema persistir, contate o suporte.";
+            }
+            else
+            {
+                msg = $"Erro ao assinar: {ex.Message}";
+            }
             return new DigitalSignatureResult(false, msg, null, null, null);
         }
     }
@@ -377,7 +389,9 @@ public class DigitalCertificateService : IDigitalCertificateService
         using var outputStream = new MemoryStream();
 
         var reader = new PdfReader(inputStream);
-        var signer = new PdfSigner(reader, outputStream, new StampingProperties());
+        // Usa append mode para permitir novas assinaturas e evitar erros de "document pre-closed"
+        var stampingProps = new StampingProperties().UseAppendMode();
+        var signer = new PdfSigner(reader, outputStream, stampingProps);
 
         // Configure signature metadata via PdfSigner (iText 8.x API)
         var doctorName = certificate.ExtractDoctorName() ?? "Médico";
@@ -440,7 +454,9 @@ public class DigitalCertificateService : IDigitalCertificateService
         using var inputStream = new MemoryStream(pdfBytes);
         using var outputStream = new MemoryStream();
         using var reader = new PdfReader(inputStream);
-        var signer = new PdfSigner(reader, outputStream, new StampingProperties());
+        // Usa append mode aqui também para manter consistência e evitar erros em PDFs já modificados
+        var stampingProps = new StampingProperties().UseAppendMode();
+        var signer = new PdfSigner(reader, outputStream, stampingProps);
 
         signer.SetReason($"Receita digital assinada conforme ICP-Brasil (MP 2.200-2/2001) - CRM {certificate.CrmNumber ?? "N/A"}");
         signer.SetLocation("RenoveJá Saúde - Sistema de Receitas Digitais");

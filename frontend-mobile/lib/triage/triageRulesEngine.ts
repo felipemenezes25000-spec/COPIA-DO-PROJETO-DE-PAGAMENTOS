@@ -48,8 +48,9 @@ function hasComplexExams(exams: string[]): boolean {
 // ── Main entry point ────────────────────────────────────────
 
 export function evaluateTriageRules(input: TriageInput): TriageMessage | null {
-  // 1. Doctor nunca recebe mensagens de triagem (tem sua própria UI)
-  if (input.role === 'doctor') return null;
+  // 1. Doctor só recebe mensagens em contextos próprios (fluxo do médico)
+  const isDoctorContext = input.context === 'doctor_dashboard' || input.context === 'doctor_detail' || input.context === 'doctor_prontuario';
+  if (input.role === 'doctor' && !isDoctorContext) return null;
 
   // 2. Bloqueia em momentos críticos
   if (BLOCKED_STEPS.has(input.step)) return null;
@@ -61,6 +62,9 @@ export function evaluateTriageRules(input: TriageInput): TriageMessage | null {
     case 'exam':         return rulesExam(input);
     case 'consultation': return rulesConsultation(input);
     case 'detail':       return rulesDetail(input);
+    case 'doctor_dashboard':  return rulesDoctorDashboard(input);
+    case 'doctor_detail':     return rulesDoctorDetail(input);
+    case 'doctor_prontuario': return rulesDoctorProntuario(input);
     default:             return null;
   }
 }
@@ -301,6 +305,31 @@ function rulesConsultation(i: TriageInput): TriageMessage | null {
 // ── REQUEST DETAIL ──────────────────────────────────────────
 
 function rulesDetail(i: TriageInput): TriageMessage | null {
+  // Antes do pagamento: pedido aprovado aguardando pagamento
+  if (
+    i.step === 'entry' &&
+    i.status &&
+    ['approved_pending_payment', 'pending_payment', 'consultation_ready'].includes(i.status)
+  ) {
+    const kind = i.requestType ?? 'generic';
+    if (kind === 'consultation') {
+      return {
+        key: 'detail:pay_consultation',
+        text: 'Na próxima tela você escolhe como pagar a consulta. Após a aprovação, liberamos o acesso para entrar na videochamada.',
+        severity: 'info', avatarState: 'neutral', cta: null,
+        cooldownMs: MS.STEP,
+        canMute: true,
+      };
+    }
+    return {
+      key: kind === 'exam' ? 'detail:pay_exam' : 'detail:pay_prescription',
+      text: 'Na próxima tela você escolhe como pagar. Assim que o pagamento for aprovado, o documento fica disponível neste pedido.',
+      severity: 'info', avatarState: 'neutral', cta: null,
+      cooldownMs: MS.STEP,
+      canMute: true,
+    };
+  }
+
   // Has doctor conduct → highlight
   if (i.doctorConductNotes) {
     return {
@@ -318,6 +347,127 @@ function rulesDetail(i: TriageInput): TriageMessage | null {
       text: 'Tudo certo! Documento pronto. Lembre de manter o retorno ao seu médico — o acompanhamento contínuo faz toda a diferença.',
       severity: 'positive', avatarState: 'positive', cta: null,
       cooldownMs: MS.INSIGHT,
+    };
+  }
+
+  return null;
+}
+
+// ── DOCTOR DASHBOARD (uso da plataforma) ────────────────────
+
+function rulesDoctorDashboard(i: TriageInput): TriageMessage | null {
+  // Sem certificado digital → bloqueia assinatura
+  if (i.doctorHasCertificate === false) {
+    return {
+      key: 'doctor:dashboard:no_certificate',
+      text: 'Você ainda não fez upload do certificado digital. Sem ele, não é possível assinar receitas e exames neste painel.',
+      severity: 'attention',
+      avatarState: 'alert',
+      cta: null,
+      cooldownMs: MS.INSIGHT,
+      canMute: true,
+    };
+  }
+
+  // Muitos documentos pagos aguardando assinatura
+  if (i.doctorToSignCount && i.doctorToSignCount > 0) {
+    return {
+      key: 'doctor:dashboard:to_sign',
+      text: `Há ${i.doctorToSignCount} documento(s) pagos aguardando assinatura digital. Abra a lista para concluir e liberar para os pacientes.`,
+      severity: 'info',
+      avatarState: 'neutral',
+      cta: null,
+      cooldownMs: MS.INSIGHT,
+      canMute: true,
+    };
+  }
+
+  // Fila com atendimentos pendentes
+  if (i.doctorPendingCount && i.doctorPendingCount > 0) {
+    return {
+      key: 'doctor:dashboard:pending',
+      text: `Você tem ${i.doctorPendingCount} atendimento(s) pendente(s) na fila. Priorize os mais antigos na aba Painel.`,
+      severity: 'info',
+      avatarState: 'neutral',
+      cta: null,
+      cooldownMs: MS.PROACTIVE,
+      canMute: true,
+    };
+  }
+
+  return null;
+}
+
+// ── DOCTOR DETAIL (pedido específico) ───────────────────────
+
+function rulesDoctorDetail(i: TriageInput): TriageMessage | null {
+  // Pedido já pago, aguardando ação do médico
+  if (i.status === 'paid' && i.requestType && i.requestType !== 'consultation') {
+    return {
+      key: `doctor:detail:paid:${i.requestType}`,
+      text: 'Este pedido já está pago. Revise as imagens e o resumo e, se estiver de acordo, assine o documento para liberar ao paciente.',
+      severity: 'info',
+      avatarState: 'neutral',
+      cta: null,
+      cooldownMs: MS.INSIGHT,
+      canMute: true,
+    };
+  }
+
+  // Consulta pronta para iniciar
+  if (i.requestType === 'consultation' && i.status === 'consultation_ready') {
+    return {
+      key: 'doctor:detail:consultation_ready',
+      text: 'Consulta pronta para iniciar. Ao terminar, lembre-se de registrar a conduta e o resumo no prontuário.',
+      severity: 'info',
+      avatarState: 'neutral',
+      cta: null,
+      cooldownMs: MS.INSIGHT,
+      canMute: true,
+    };
+  }
+
+  // Pedido sem leitura IA ainda (útil, mas opcional)
+  if (!i.aiSummaryForDoctor) {
+    return {
+      key: 'doctor:detail:no_ai_summary',
+      text: 'Este pedido ainda não passou pela leitura da IA. Se achar útil, use o botão “Reanalisar com IA” como apoio à sua revisão.',
+      severity: 'info',
+      avatarState: 'thinking',
+      cta: null,
+      cooldownMs: MS.PROACTIVE,
+      canMute: true,
+    };
+  }
+
+  return null;
+}
+
+// ── DOCTOR PRONTUÁRIO (histórico do paciente) ───────────────
+
+function rulesDoctorProntuario(i: TriageInput): TriageMessage | null {
+  // Fatos de uso do app pelo paciente, para orientar a conversa
+  if (i.recentPrescriptionCount && i.recentPrescriptionCount >= 3) {
+    return {
+      key: 'doctor:prontuario:many_renewals',
+      text: `Este paciente renovou receitas ${i.recentPrescriptionCount} vez(es) nos últimos meses nesta plataforma.`,
+      severity: 'info',
+      avatarState: 'neutral',
+      cta: null,
+      cooldownMs: MS.INSIGHT,
+      canMute: true,
+    };
+  }
+
+  if (i.recentExamCount && i.recentExamCount >= 2 && i.lastConsultationDays && i.lastConsultationDays > 180) {
+    return {
+      key: 'doctor:prontuario:exams_no_consult',
+      text: `Fez exames recentemente, mas não há consulta registrada aqui há ${i.lastConsultationDays} dia(s). Use essa informação para aprofundar o histórico.`,
+      severity: 'info',
+      avatarState: 'neutral',
+      cta: null,
+      cooldownMs: MS.INSIGHT,
+      canMute: true,
     };
   }
 
