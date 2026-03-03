@@ -52,7 +52,9 @@ public class PaymentService(
         var existingPayment = await paymentRepository.GetByRequestIdAsync(request.RequestId, cancellationToken);
         if (existingPayment != null && existingPayment.Status == PaymentStatus.Approved)
         {
+#pragma warning disable CS0618 // Status legado: aceitar PendingPayment para dados antigos
             if (medicalRequest.Status == RequestStatus.ConsultationReady || medicalRequest.Status == RequestStatus.ApprovedPendingPayment || medicalRequest.Status == RequestStatus.PendingPayment)
+#pragma warning restore CS0618
             {
                 medicalRequest.MarkAsPaid();
                 await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
@@ -94,7 +96,9 @@ public class PaymentService(
                     existingPayment.Approve();
                     await paymentRepository.UpdateAsync(existingPayment, cancellationToken);
                     var request = await requestRepository.GetByIdAsync(requestId, cancellationToken);
+#pragma warning disable CS0618 // Status legado: aceitar PendingPayment para dados antigos
                     if (request != null && (request.Status == RequestStatus.ConsultationReady || request.Status == RequestStatus.ApprovedPendingPayment || request.Status == RequestStatus.PendingPayment))
+#pragma warning restore CS0618
                     {
                         request.MarkAsPaid();
                         await requestRepository.UpdateAsync(request, cancellationToken);

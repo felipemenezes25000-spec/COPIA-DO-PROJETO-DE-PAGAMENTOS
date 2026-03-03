@@ -1615,7 +1615,9 @@ public class RequestService(
         RequestStatus.Submitted,
         RequestStatus.InReview,
         RequestStatus.ApprovedPendingPayment,
+#pragma warning disable CS0618 // Status legado: permitir cancelamento de pedidos antigos
         RequestStatus.PendingPayment,
+#pragma warning restore CS0618
         RequestStatus.SearchingDoctor,
         RequestStatus.ConsultationReady
     ];

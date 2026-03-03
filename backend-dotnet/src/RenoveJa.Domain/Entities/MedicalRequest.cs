@@ -419,10 +419,12 @@ public class MedicalRequest : AggregateRoot
 
     public void MarkAsPaid()
     {
+#pragma warning disable CS0618 // Status legado: aceitar PendingPayment para dados antigos
         if (Status != RequestStatus.ApprovedPendingPayment &&
             Status != RequestStatus.PendingPayment &&
             Status != RequestStatus.ConsultationReady)
             throw new DomainException("Request must be in pending payment status");
+#pragma warning restore CS0618
 
         Status = RequestStatus.Paid;
         UpdatedAt = DateTime.UtcNow;
