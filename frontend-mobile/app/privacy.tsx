@@ -64,7 +64,7 @@ function Section({
   last,
 }: {
   title: string;
-  children: string;
+  children: React.ReactNode;
   last?: boolean;
 }) {
   return (

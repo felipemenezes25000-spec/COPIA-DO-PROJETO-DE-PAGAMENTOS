@@ -11,12 +11,7 @@ import { View, Text, StyleSheet, Pressable, Platform, Modal } from 'react-native
 import Reanimated, {
   FadeInDown,
   FadeOutUp,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  useAnimatedGestureHandler,
 } from 'react-native-reanimated';
-import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, colors } from '../../lib/theme';
 import { uiTokens } from '../../lib/ui/tokens';
@@ -51,50 +46,6 @@ export function AssistantBanner({ onAction, containerStyle }: AssistantBannerPro
   const { current, dismiss, muteCurrent } = useTriageAssistant();
   const [expanded, setExpanded] = useState(false);
 
-  // Posição arrastável na tela (relativa à posição fixa padrão)
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-
-  type DragContext = { startX: number; startY: number };
-
-  const onGestureEvent = useAnimatedGestureHandler<
-    PanGestureHandlerGestureEvent,
-    DragContext
-  >({
-    onStart: (_, ctx) => {
-      ctx.startX = translateX.value;
-      ctx.startY = translateY.value;
-    },
-    onActive: (event, ctx) => {
-      'worklet';
-      const rawX = ctx.startX + event.translationX;
-      const rawY = ctx.startY + event.translationY;
-
-      // Limites para evitar que o banner suma para fora da tela.
-      // Horizontais bem pequenos (o banner já ocupa quase toda a largura).
-      const minX = -40;
-      const maxX = 40;
-      const minY = -200;
-      const maxY = 40; // não deixa descer demais abaixo da posição padrão
-
-      translateX.value = Math.max(minX, Math.min(maxX, rawX));
-      translateY.value = Math.max(minY, Math.min(maxY, rawY));
-    },
-    onEnd: () => {
-      'worklet';
-      // Pequeno amortecimento para sensação mais natural dentro dos limites já aplicados
-      translateX.value = withSpring(translateX.value, { damping: 15, stiffness: 150 });
-      translateY.value = withSpring(translateY.value, { damping: 15, stiffness: 150 });
-    },
-  });
-
-  const dragStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-    ],
-  }));
-
   const handleCTA = useCallback(() => {
     if (current?.cta) {
       onAction?.(current.cta);
@@ -115,11 +66,10 @@ export function AssistantBanner({ onAction, containerStyle }: AssistantBannerPro
   const accent = ACCENT[current.severity];
 
   return (
-    <PanGestureHandler onGestureEvent={onGestureEvent}>
       <Reanimated.View
         entering={FadeInDown.duration(350).springify().damping(18).stiffness(140)}
         exiting={FadeOutUp.duration(200)}
-        style={[styles.container, containerStyle, dragStyle]}
+        style={[styles.container, containerStyle]}
         accessibilityRole="alert"
         accessibilityLabel={`Assistente de triagem: ${current.text}`}
       >
@@ -227,7 +177,6 @@ export function AssistantBanner({ onAction, containerStyle }: AssistantBannerPro
         </View>
       </Modal>
       </Reanimated.View>
-    </PanGestureHandler>
   );
 }
 

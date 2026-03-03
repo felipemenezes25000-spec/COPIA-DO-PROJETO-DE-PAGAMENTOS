@@ -12,6 +12,9 @@ import {
   PushTokenDto,
   CertificateInfoDto,
   UploadCertificateResponseDto,
+  PatientSummaryDto,
+  EncounterSummaryDto,
+  MedicalDocumentSummaryDto,
 } from '../types/database';
 
 // ============================================
@@ -599,7 +602,7 @@ export async function getMercadoPagoPublicKey(): Promise<{ publicKey: string }> 
   return apiClient.get('/api/integrations/mercadopago-public-key');
 }
 
-export async function getIntegrationStatus(): Promise<any> {
+export async function getIntegrationStatus(): Promise<Record<string, unknown>> {
   return apiClient.get('/api/integrations/status');
 }
 
@@ -625,7 +628,8 @@ export async function fetchDoctorStats(): Promise<DoctorStats> {
       completedCount: res.completedCount ?? 0,
       totalEarnings: res.totalEarnings ?? 0,
     };
-  } catch {
+  } catch (e) {
+    console.warn('Failed to fetch doctor stats:', e);
     return { pendingCount: 0, inReviewCount: 0, completedCount: 0, totalEarnings: 0 };
   }
 }
@@ -641,6 +645,28 @@ export async function fetchVideoRoomByRequest(requestId: string): Promise<VideoR
     if (error.status === 404) return null;
     throw error;
   }
+}
+
+// ============================================
+// CLINICAL / FHIR-LITE (prontuário)
+// ============================================
+
+export async function fetchMyPatientSummary(): Promise<PatientSummaryDto> {
+  return apiClient.get('/api/fhir-lite/patient-summary');
+}
+
+export async function fetchMyEncounters(
+  limit = 50,
+  offset = 0
+): Promise<EncounterSummaryDto[]> {
+  return apiClient.get('/api/fhir-lite/encounters', { limit, offset });
+}
+
+export async function fetchMyDocuments(
+  limit = 50,
+  offset = 0
+): Promise<MedicalDocumentSummaryDto[]> {
+  return apiClient.get('/api/fhir-lite/documents', { limit, offset });
 }
 
 // ============================================

@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,6 +16,7 @@ import { getPatientRequests, sortRequestsByNewestFirst } from '../../lib/api';
 import { RequestResponseDto } from '../../types/database';
 import { StatusBadge } from '../../components/StatusBadge';
 import { DoctorHeader } from '../../components/ui/DoctorHeader';
+import { SkeletonList } from '../../components/ui/SkeletonLoader';
 import { AssistantBanner } from '../../components/triage';
 import { useTriageEval } from '../../hooks/useTriageEval';
 
@@ -54,16 +54,19 @@ export default function DoctorPatientProntuario() {
   const [requests, setRequests] = useState<RequestResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const id = Array.isArray(patientId) ? patientId[0] : patientId ?? '';
 
   const loadData = useCallback(async () => {
     if (!id) return;
     try {
+      setLoadError(false);
       const data = await getPatientRequests(id);
       setRequests(data);
     } catch (e) {
       console.error(e);
+      setLoadError(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -169,7 +172,29 @@ export default function DoctorPatientProntuario() {
   if (loading) {
     return (
       <View style={styles.loadingWrap}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <DoctorHeader title="Prontuário" onBack={() => router.back()} />
+        <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
+          <SkeletonList count={5} />
+        </View>
+      </View>
+    );
+  }
+
+  if (loadError && requests.length === 0) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <DoctorHeader title="Prontuário" onBack={() => router.back()} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Ionicons name="alert-circle-outline" size={56} color={colors.error} />
+          <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text, marginTop: 16 }}>Erro ao carregar</Text>
+          <Text style={{ fontSize: 14, color: colors.textMuted, marginTop: 6, textAlign: 'center' }}>Verifique sua conexão e tente novamente</Text>
+          <TouchableOpacity
+            onPress={loadData}
+            style={{ marginTop: 20, paddingVertical: 12, paddingHorizontal: 28, backgroundColor: colors.primary, borderRadius: 26 }}
+          >
+            <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Tentar novamente</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -408,6 +433,33 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: spacing.md,
     textTransform: 'uppercase',
+  },
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: borderRadius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  filterChipActive: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
+  },
+  filterChipText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  filterChipTextActive: {
+    color: colors.primary,
+    fontWeight: '700',
   },
   timelineCard: {
     flexDirection: 'row',

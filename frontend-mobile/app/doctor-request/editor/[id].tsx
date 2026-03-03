@@ -263,8 +263,8 @@ export default function PrescriptionEditorScreen() {
     validatePrescription(requestId)
       .then((v) => {
         if (cancelled) return;
-        const needs = (v.missingFields ?? []).some(
-          (f) => f.includes('médico.endereço') || f.includes('médico.telefone')
+        const needs = !v.valid && (v.missingFields ?? []).some(
+          (f: string) => f.includes('médico.endereço') || f.includes('médico.telefone')
         );
         setSignFormDoctorProfileBlocked(!v.valid && needs);
       })
@@ -500,7 +500,7 @@ export default function PrescriptionEditorScreen() {
   const bottomBarPadding = Platform.OS === 'android' ? Math.max(insets.bottom, 56) : Math.max(insets.bottom, 16);
 
   /** Botão "Assinar Digitalmente" só aparece após aprovação e pagamento (status paid). */
-  const canSign = request?.status === 'paid' && request?.requestType !== 'consultation';
+  const canSign = request?.status === 'paid';
 
   return (
     <SafeAreaView style={st.container} edges={['top']}>

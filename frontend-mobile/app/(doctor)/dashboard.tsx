@@ -21,6 +21,7 @@ import { cacheRequest } from '../doctor-request/[id]';
 import { StatsCard } from '../../components/StatsCard';
 import { EmptyState } from '../../components/EmptyState';
 import { SkeletonList } from '../../components/ui/SkeletonLoader';
+import { FadeIn } from '../../components/ui/FadeIn';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { DoctorCard } from '../../components/ui/DoctorCard';
 import {
@@ -129,6 +130,7 @@ export default function DoctorDashboard() {
 
   return (
     <View style={styles.container}>
+      <FadeIn visible={!loading} duration={300}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={[styles.content, { paddingBottom: listPadding }]}
@@ -249,6 +251,7 @@ export default function DoctorDashboard() {
         )}
       </View>
       </ScrollView>
+      </FadeIn>
 
       {/* Dra. Renova fixa acima da tab bar (médico) */}
       <View style={styles.aiBannerSticky}>

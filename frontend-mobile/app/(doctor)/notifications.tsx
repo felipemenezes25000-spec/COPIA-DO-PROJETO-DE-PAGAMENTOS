@@ -75,6 +75,9 @@ const ALERT_CATEGORY_LABELS: Record<AlertCategory, string> = {
   other: 'Outros',
 };
 
+const ListSeparator = () => <View style={{ height: 8 }} />;
+const SectionGap = () => <View style={{ height: 4 }} />;
+
 export default function DoctorNotifications() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -115,7 +118,7 @@ export default function DoctorNotifications() {
       if (requestId) {
         router.push(`/doctor-request/${requestId}`);
       }
-    } catch { }
+    } catch (e) { console.warn('Failed to mark notification as read:', e); }
   };
 
   const handleMarkAllRead = async () => {
@@ -123,7 +126,7 @@ export default function DoctorNotifications() {
       await markAllNotificationsRead();
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       refreshUnreadCount();
-    } catch { }
+    } catch (e) { console.warn('Failed to mark all notifications as read:', e); }
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -230,8 +233,8 @@ export default function DoctorNotifications() {
             <Text style={styles.groupLabel}>{title}</Text>
           )}
           contentContainerStyle={[styles.listContent, { paddingBottom: listPadding }]}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          SectionSeparatorComponent={() => <View style={styles.sectionGap} />}
+          ItemSeparatorComponent={ListSeparator}
+          SectionSeparatorComponent={SectionGap}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={

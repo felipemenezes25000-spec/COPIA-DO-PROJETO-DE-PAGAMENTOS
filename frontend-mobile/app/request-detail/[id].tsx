@@ -15,7 +15,7 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
-import { colors, spacing, borderRadius, shadows } from '../../lib/themeDoctor';
+import { colors, spacing, borderRadius, shadows } from '../../lib/theme';
 import { fetchRequestById, markRequestDelivered, cancelRequest, getDocumentDownloadUrl } from '../../lib/api';
 import { apiClient } from '../../lib/api-client';
 import { getDisplayPrice } from '../../lib/config/pricing';
@@ -523,7 +523,7 @@ export default function RequestDetailScreen() {
           {canDownload && (
             <>
               <PrimaryButton
-                label="Baixar Receita"
+                label={request.requestType === 'exam' ? 'Baixar Pedido de Exame' : request.requestType === 'consultation' ? 'Baixar Documento' : 'Baixar Receita'}
                 icon="download"
                 onPress={handleDownload}
               />

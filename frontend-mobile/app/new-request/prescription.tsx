@@ -177,7 +177,7 @@ export default function NewPrescription() {
               key={type.key}
               selected={isSelectable && selectedType === type.key}
               onPress={isSelectable ? () => setSelectedType(type.key) : undefined}
-              style={[styles.typeCard, isComingSoon && styles.typeCardDisabled]}
+              style={StyleSheet.flatten(isComingSoon ? [styles.typeCard, styles.typeCardDisabled] : styles.typeCard)}
             >
               <View style={styles.typeContent}>
                 <View style={styles.typeTextContainer}>

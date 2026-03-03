@@ -44,6 +44,7 @@ public class RequestService(
     IConsultationTimeBankRepository consultationTimeBankRepository,
     IAiConductSuggestionService aiConductSuggestionService,
     IRequestEventsPublisher requestEventsPublisher,
+    ISignedRequestClinicalSyncService signedRequestClinicalSync,
     ILogger<RequestService> logger) : IRequestService
 {
     private readonly string _apiBaseUrl = (apiConfig?.Value?.BaseUrl ?? "").Trim();
@@ -1220,6 +1221,16 @@ public class RequestService(
                                     cancellationToken,
                                     new Dictionary<string, object> { ["requestId"] = request.Id.ToString() });
                                 await PublishRequestUpdatedAsync(request, "Documento assinado", cancellationToken);
+
+                                await signedRequestClinicalSync.SyncSignedRequestAsync(
+                                    request,
+                                    signResult.SignedDocumentUrl!,
+                                    signResult.SignatureId!,
+                                    signResult.SignedAt ?? DateTime.UtcNow,
+                                    certInfo.Id,
+                                    certInfo.SubjectName,
+                                    cancellationToken);
+
                                 return MapRequestToDto(request);
                             }
 

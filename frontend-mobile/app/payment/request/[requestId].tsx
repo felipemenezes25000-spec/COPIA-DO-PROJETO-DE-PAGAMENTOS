@@ -17,6 +17,7 @@ import { getDisplayPrice } from '../../../lib/config/pricing';
 import { formatBRL } from '../../../lib/utils/format';
 import { getApiErrorMessage } from '../../../lib/api-client';
 import type { RequestResponseDto } from '../../../types/database';
+import { SkeletonList } from '../../../components/ui/SkeletonLoader';
 import { AssistantBanner } from '../../../components/triage';
 import { useTriageEval } from '../../../hooks/useTriageEval';
 import { useRequestUpdated } from '../../../hooks/useRequestUpdated';
@@ -82,7 +83,7 @@ export default function PaymentRequestScreen() {
     try {
       const payment = await createPayment({ requestId: rid, paymentMethod: 'pix' });
       const targetUrl = `/payment/${payment.id}`;
-      router.replace(targetUrl);
+      router.replace(targetUrl as any);
     } catch (error: unknown) {
       const msg = getApiErrorMessage(error);
       if (msg?.toLowerCase().includes('já possui pagamento aprovado')) {
@@ -92,7 +93,7 @@ export default function PaymentRequestScreen() {
           [
             {
               text: 'Ver pedido',
-              onPress: () => router.replace(`/request-detail/${rid}`),
+              onPress: () => router.replace(`/request-detail/${rid}` as any),
             },
           ]
         );
@@ -115,8 +116,15 @@ export default function PaymentRequestScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color={colors.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Pagamento</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
+          <SkeletonList count={3} />
         </View>
       </SafeAreaView>
     );

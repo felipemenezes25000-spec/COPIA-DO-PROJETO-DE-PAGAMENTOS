@@ -91,9 +91,11 @@ export default function DoctorRequestDetail() {
   const [conductNotes, setConductNotes] = useState('');
   const [includeConductInPdf, setIncludeConductInPdf] = useState(true);
   const [savingConduct, setSavingConduct] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const loadData = useCallback(async () => {
     if (!requestId) return;
     try {
+      setLoadError(false);
       const fresh = await getRequestById(requestId);
       if (__DEV__) {
         console.log('[DOCTOR_DETAIL] prescriptionImages:', JSON.stringify(fresh.prescriptionImages));
@@ -101,7 +103,10 @@ export default function DoctorRequestDetail() {
       }
       setRequest(fresh);
       _requestCache.set(requestId, fresh);
-    } catch { console.error('Error loading request'); }
+    } catch {
+      console.error('Error loading request');
+      if (!request) setLoadError(true);
+    }
     finally { setLoading(false); }
   }, [requestId]);
 
@@ -281,6 +286,25 @@ export default function DoctorRequestDetail() {
       <View style={{ padding: spacing.md }}><SkeletonList count={4} /></View>
     </View>
   );
+
+  if (loadError && !request) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <DoctorHeader title="Detalhe do Pedido" onBack={() => router.back()} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Ionicons name="alert-circle-outline" size={56} color={colors.destructive} />
+          <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text, marginTop: 16 }}>Erro ao carregar</Text>
+          <Text style={{ fontSize: 14, color: colors.textMuted, marginTop: 6, textAlign: 'center' }}>Verifique sua conexão e tente novamente</Text>
+          <TouchableOpacity
+            onPress={loadData}
+            style={{ marginTop: 20, paddingVertical: 12, paddingHorizontal: 28, backgroundColor: colors.primary, borderRadius: 26 }}
+          >
+            <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Tentar novamente</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   if (!request) return (
     <View style={s.center}>
@@ -1009,6 +1033,12 @@ const s = StyleSheet.create({
 
   // Section headers with icon
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text,
+    letterSpacing: 0.5,
+  },
   sectionIconWrap: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   sectionLabel: { fontSize: 11, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', flex: 1, marginBottom: 2 },
   sectionCountBadge: { backgroundColor: colors.primarySoft, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
