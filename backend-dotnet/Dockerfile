@@ -8,6 +8,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS restore
 WORKDIR /src
 COPY backend-dotnet/*.sln .
+COPY backend-dotnet/Directory.Build.props .
 COPY backend-dotnet/src/RenoveJa.Domain/*.csproj src/RenoveJa.Domain/
 COPY backend-dotnet/src/RenoveJa.Application/*.csproj src/RenoveJa.Application/
 COPY backend-dotnet/src/RenoveJa.Infrastructure/*.csproj src/RenoveJa.Infrastructure/
@@ -18,7 +19,7 @@ RUN dotnet restore
 # Stage 2: Build
 FROM restore AS build
 COPY backend-dotnet/. .
-RUN dotnet build -c Release --no-restore
+RUN dotnet build -c Release --no-restore --no-incremental
 
 # Stage 3: Publish
 FROM build AS publish
