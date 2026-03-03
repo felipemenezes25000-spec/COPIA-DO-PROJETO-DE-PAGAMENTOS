@@ -53,57 +53,69 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SET search_path = public, pg_temp;
 
--- Adicionar coluna updated_at onde não existe e trigger
+-- Adicionar coluna updated_at onde não existe e trigger (apenas em tabelas existentes)
 DO $$
 DECLARE
   tbl TEXT;
 BEGIN
   FOR tbl IN SELECT unnest(ARRAY[
     'patients', 'encounters', 'medical_documents', 
-    'consent_records', 'practitioners'
+    'consent_records'
   ]) LOOP
-    EXECUTE format(
-      'ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now()',
-      tbl
-    );
-    EXECUTE format(
-      'DROP TRIGGER IF EXISTS set_updated_at ON public.%I',
-      tbl
-    );
-    EXECUTE format(
-      'CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()',
-      tbl
-    );
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = tbl) THEN
+      EXECUTE format(
+        'ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now()',
+        tbl
+      );
+      EXECUTE format(
+        'DROP TRIGGER IF EXISTS set_updated_at ON public.%I',
+        tbl
+      );
+      EXECUTE format(
+        'CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()',
+        tbl
+      );
+    END IF;
   END LOOP;
 END $$;
 
--- 4. Policies para subtabelas clínicas UPDATE/DELETE
+-- 4. Policies para subtabelas clínicas UPDATE/DELETE (apenas em tabelas existentes)
 DO $$
 DECLARE
   tbl TEXT;
 BEGIN
   FOR tbl IN SELECT unnest(ARRAY[
     'patient_allergies', 'patient_conditions', 'patient_medications',
-    'patient_procedures', 'patient_family_history', 'patient_social_history',
-    'patient_vital_signs', 'encounter_diagnoses', 'encounter_prescriptions',
-    'encounter_procedures_performed', 'encounter_notes'
+    'patient_clinical_events', 'patient_procedures', 'patient_family_history',
+    'patient_social_history', 'patient_vital_signs', 'encounter_diagnoses',
+    'encounter_prescriptions', 'encounter_procedures_performed', 'encounter_notes'
   ]) LOOP
-    EXECUTE format(
-      'CREATE POLICY IF NOT EXISTS %I_update_doctor ON public.%I FOR UPDATE USING (
-        EXISTS (
-          SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND u.role = ''doctor''
-        )
-      )',
-      tbl, tbl
-    );
-    EXECUTE format(
-      'CREATE POLICY IF NOT EXISTS %I_delete_doctor ON public.%I FOR DELETE USING (
-        EXISTS (
-          SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND u.role = ''doctor''
-        )
-      )',
-      tbl, tbl
-    );
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = tbl) THEN
+      EXECUTE format(
+        'DROP POLICY IF EXISTS %I ON public.%I',
+        tbl || '_update_doctor', tbl
+      );
+      EXECUTE format(
+        'CREATE POLICY %I ON public.%I FOR UPDATE USING (
+          EXISTS (
+            SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND u.role = ''doctor''
+          )
+        )',
+        tbl || '_update_doctor', tbl
+      );
+      EXECUTE format(
+        'DROP POLICY IF EXISTS %I ON public.%I',
+        tbl || '_delete_doctor', tbl
+      );
+      EXECUTE format(
+        'CREATE POLICY %I ON public.%I FOR DELETE USING (
+          EXISTS (
+            SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND u.role = ''doctor''
+          )
+        )',
+        tbl || '_delete_doctor', tbl
+      );
+    END IF;
   END LOOP;
 END $$;
 
