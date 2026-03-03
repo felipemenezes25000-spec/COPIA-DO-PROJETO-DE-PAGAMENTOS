@@ -136,17 +136,6 @@ CREATE POLICY audit_events_insert_own ON public.audit_events
 DO $$
 DECLARE
   tbl TEXT;
-  policy_sql TEXT := '
-    DROP POLICY IF EXISTS %I ON public.%I;
-    CREATE POLICY %I ON public.%I
-      FOR SELECT USING (
-        patient_id IN (
-          SELECT p.id FROM public.patients p
-          JOIN public.encounters e ON e.patient_id = p.id
-          WHERE e.practitioner_id = auth.uid()
-        )
-      );
-  ';
 BEGIN
   FOREACH tbl IN ARRAY ARRAY['patient_allergies', 'patient_conditions', 'patient_medications', 'patient_clinical_events']
   LOOP
