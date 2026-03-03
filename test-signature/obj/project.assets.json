@@ -4741,19 +4741,19 @@
     ]
   },
   "packageFolders": {
-    "/home/renato/.nuget/packages/": {}
+    "C:\\Users\\anabe\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/home/renato/ola-jamal/test-signature/TestSignature.csproj",
+      "projectUniqueName": "C:\\Users\\anabe\\Downloads\\renovejatac\\test-signature\\TestSignature.csproj",
       "projectName": "TestSignature",
-      "projectPath": "/home/renato/ola-jamal/test-signature/TestSignature.csproj",
-      "packagesPath": "/home/renato/.nuget/packages/",
-      "outputPath": "/home/renato/ola-jamal/test-signature/obj/",
+      "projectPath": "C:\\Users\\anabe\\Downloads\\renovejatac\\test-signature\\TestSignature.csproj",
+      "packagesPath": "C:\\Users\\anabe\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\anabe\\Downloads\\renovejatac\\test-signature\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/home/renato/.nuget/NuGet/NuGet.Config"
+        "C:\\Users\\anabe\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net8.0"
@@ -4771,6 +4771,11 @@
         "warnAsError": [
           "NU1605"
         ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
       }
     },
     "frameworks": {
@@ -4806,7 +4811,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/8.0.123/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.418/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

@@ -423,7 +423,9 @@ public class DigitalCertificateService : IDigitalCertificateService
             crlClient,
             tsaClient);
 
-        const int EstimatedSize = 32768;
+        // Espaço estimado bem generoso para acomodar assinatura (PKCS#7 + cadeia + OCSP/CRL + TSA).
+        // Valores muito baixos podem causar IOException "Not enough space".
+        const int EstimatedSize = 4194304; // 4 MB
         try
         {
             signer.SignExternalContainer(container, EstimatedSize);
@@ -484,20 +486,45 @@ public class DigitalCertificateService : IDigitalCertificateService
         if (certifyDocument)
             signer.SetCertificationLevel(PdfSigner.CERTIFIED_FORM_FILLING);
 
-        const int EstimatedSize = 131072;
+        // Espaço estimado generoso para assinatura detached com possíveis atributos extras.
+        const int EstimatedSize = 4194304; // 4 MB
         try
         {
             var crlList = new List<ICrlClient> { new CrlClientOnline(certArray) };
             var ocspClient = new OcspClientBouncyCastle();
             signer.SignDetached(pks, certArray, crlList, ocspClient, tsaClient, EstimatedSize, PdfSigner.CryptoStandard.CMS);
+            return outputStream.ToArray();
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "OCSP/CRL indisponível. Assinando sem revogação.");
-            signer.SignDetached(pks, certArray, null, null, tsaClient, EstimatedSize, PdfSigner.CryptoStandard.CMS);
-        }
+            // Se o problema for realmente falta de espaço reservado, não tentamos reutilizar o mesmo signer,
+            // pois o documento já terá sido "pre-closed" e o erro deve subir para tratamento de nível superior.
+            if (IsNotEnoughSpaceError(ex))
+            {
+                throw;
+            }
 
-        return outputStream.ToArray();
+            _logger.LogWarning(ex, "OCSP/CRL indisponível. Assinando sem revogação.");
+
+            // Recria reader/signer para evitar "Document has been already pre closed" ao tentar assinar novamente.
+            using var inputStreamNoRevocation = new MemoryStream(pdfBytes);
+            using var outputStreamNoRevocation = new MemoryStream();
+            using var readerNoRevocation = new PdfReader(inputStreamNoRevocation);
+            var stampingPropsNoRevocation = useAppendMode
+                ? new StampingProperties().UseAppendMode()
+                : new StampingProperties();
+            var signerNoRevocation = new PdfSigner(readerNoRevocation, outputStreamNoRevocation, stampingPropsNoRevocation);
+
+            signerNoRevocation.SetReason($"Receita digital assinada conforme ICP-Brasil (MP 2.200-2/2001) - CRM {certificate.CrmNumber ?? "N/A"}");
+            signerNoRevocation.SetLocation("RenoveJá Saúde - Sistema de Receitas Digitais");
+            signerNoRevocation.SetContact(certificate.ExtractDoctorName() ?? "Médico");
+            signerNoRevocation.SetFieldName($"sig_{Guid.NewGuid():N}");
+            if (certifyDocument)
+                signerNoRevocation.SetCertificationLevel(PdfSigner.CERTIFIED_FORM_FILLING);
+
+            signerNoRevocation.SignDetached(pks, certArray, null, null, tsaClient, EstimatedSize, PdfSigner.CryptoStandard.CMS);
+            return outputStreamNoRevocation.ToArray();
+        }
     }
 
     private static bool IsPreClosedOrAlreadySignedError(Exception ex)
@@ -507,6 +534,13 @@ public class DigitalCertificateService : IDigitalCertificateService
             || message.Contains("Document has been already", StringComparison.OrdinalIgnoreCase)
             || message.Contains("already signed", StringComparison.OrdinalIgnoreCase)
             || message.Contains("certification", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsNotEnoughSpaceError(Exception ex)
+    {
+        var message = ex.ToString();
+        return message.Contains("Not enough space", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("no space left", StringComparison.OrdinalIgnoreCase);
     }
 
     private static ITSAClient? CreateTsaClient()

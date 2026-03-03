@@ -25,6 +25,7 @@ import {
   acceptConsultation,
   getDocumentDownloadUrl,
   updateConduct,
+  validatePrescription,
 } from '../../lib/api';
 import { apiClient } from '../../lib/api-client';
 import { getDisplayPrice } from '../../lib/config/pricing';
@@ -172,16 +173,73 @@ export default function DoctorRequestDetail() {
   };
 
   const handleSign = async () => {
-    if (!certPassword.trim()) { showToast({ message: 'Digite a senha do certificado.', type: 'warning' }); return; }
-    if (!requestId) return;
+    if (!certPassword.trim()) {
+      showToast({ message: 'Digite a senha do certificado.', type: 'warning' });
+      return;
+    }
+    if (!requestId || !request) return;
     setActionLoading(true);
     try {
+      // Valida campos obrigatórios (paciente/médico) antes de tentar assinar
+      const validation = await validatePrescription(requestId);
+      if (!validation.valid) {
+        const needsPatientProfile = (validation.missingFields ?? []).some(
+          (f) =>
+            f.includes('paciente.sexo') ||
+            f.includes('paciente.data_nascimento') ||
+            f.includes('paciente.endereço')
+        );
+        const needsDoctorProfile = (validation.missingFields ?? []).some(
+          (f) => f.includes('médico.endereço') || f.includes('médico.telefone')
+        );
+        const checklist = (validation.messages ?? []).join('\n• ');
+        const action = needsPatientProfile
+          ? 'O paciente precisa completar sexo, data de nascimento ou endereço no perfil.'
+          : needsDoctorProfile
+          ? 'Para assinar, é obrigatório preencher endereço e telefone profissional no seu perfil de médico.'
+          : 'Corrija os campos indicados antes de assinar.';
+
+        Alert.alert(
+          'Receita incompleta',
+          `${action}\n\n• ${checklist}`,
+          needsDoctorProfile
+            ? [
+                { text: 'IR AO MEU PERFIL', onPress: () => router.push('/(doctor)/profile' as any) },
+                { text: 'OK', style: 'cancel' },
+              ]
+            : [{ text: 'OK' }]
+        );
+        setActionLoading(false);
+        return;
+      }
+
       await signRequest(requestId, { pfxPassword: certPassword });
-      loadData(); setShowSignForm(false); setCertPassword('');
-      showToast({ message: 'Documento assinado digitalmente!', type: 'success' });
-    } catch (e: unknown) {
+      await loadData();
+      setShowSignForm(false);
       setCertPassword('');
-      showToast({ message: (e as Error)?.message || 'Senha incorreta ou erro na assinatura.', type: 'error' });
+      showToast({ message: 'Documento assinado digitalmente!', type: 'success' });
+    } catch (e: any) {
+      setCertPassword('');
+      if (e?.missingFields?.length || e?.messages?.length) {
+        const checklist = (e.messages ?? [e.message]).join('\n• ');
+        const needsDoctorProfile = (e.missingFields ?? []).some(
+          (f: string) => f.includes('médico.endereço') || f.includes('médico.telefone')
+        );
+        Alert.alert(
+          'Receita incompleta',
+          needsDoctorProfile
+            ? `Para assinar, preencha endereço e telefone profissional no seu perfil de médico.\n\n• ${checklist}`
+            : `Verifique os campos obrigatórios:\n\n• ${checklist}`,
+          needsDoctorProfile
+            ? [
+                { text: 'IR AO MEU PERFIL', onPress: () => router.push('/(doctor)/profile' as any) },
+                { text: 'OK', style: 'cancel' },
+              ]
+            : [{ text: 'OK' }]
+        );
+      } else {
+        showToast({ message: e?.message || 'Senha incorreta ou erro na assinatura.', type: 'error' });
+      }
     } finally {
       setActionLoading(false);
     }

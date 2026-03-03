@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../../lib/themeDoctor';
-import { getPatientRequests } from '../../lib/api';
+import { getPatientRequests, sortRequestsByNewestFirst } from '../../lib/api';
 import { RequestResponseDto } from '../../types/database';
 import { StatusBadge } from '../../components/StatusBadge';
 import { DoctorHeader } from '../../components/ui/DoctorHeader';
@@ -79,8 +79,56 @@ export default function DoctorPatientProntuario() {
     loadData();
   };
 
-  const patientName = requests[0]?.patientName ?? 'Paciente';
+  const sortedRequests = useMemo(() => sortRequestsByNewestFirst(requests), [requests]);
+
+  const patientName = sortedRequests[0]?.patientName ?? 'Paciente';
   const headerPaddingTop = insets.top + 8;
+
+  const [typeFilter, setTypeFilter] = useState<'all' | 'prescription' | 'exam' | 'consultation'>('all');
+
+  const filteredRequests = useMemo(
+    () =>
+      sortedRequests.filter((r) =>
+        typeFilter === 'all' ? true : r.requestType === typeFilter
+      ),
+    [sortedRequests, typeFilter]
+  );
+
+  function buildMiniSummary(req: RequestResponseDto): string | null {
+    if (req.requestType === 'consultation') {
+      if (req.symptoms && req.symptoms.trim().length > 0) {
+        return req.symptoms.trim();
+      }
+      if (req.doctorConductNotes && req.doctorConductNotes.trim().length > 0) {
+        return req.doctorConductNotes.trim();
+      }
+      if (req.aiSummaryForDoctor && req.aiSummaryForDoctor.trim().length > 0) {
+        return req.aiSummaryForDoctor.trim();
+      }
+      return null;
+    }
+    if (req.requestType === 'prescription') {
+      const meds = req.medications ?? [];
+      if (!meds.length) return null;
+      const first = meds[0];
+      const extra = meds.length > 1 ? ` (+${meds.length - 1} med.)` : '';
+      const kind =
+        req.prescriptionKind === 'antimicrobial'
+          ? ' · Antimicrobiana'
+          : req.prescriptionKind === 'controlled_special'
+          ? ' · Controle especial'
+          : '';
+      return `${first}${extra}${kind}`;
+    }
+    if (req.requestType === 'exam') {
+      const exams = req.exams ?? [];
+      if (!exams.length) return null;
+      const first = exams[0];
+      const extra = exams.length > 1 ? ` (+${exams.length - 1} exames)` : '';
+      return `${first}${extra}`;
+    }
+    return null;
+  }
 
   // Estatísticas de uso do app pelo paciente (para Dra. Renova médico)
   const totalRequests = requests.length;
@@ -159,7 +207,7 @@ export default function DoctorPatientProntuario() {
             </View>
             {requests.length > 0 && (
               <Text style={styles.lastRequest}>
-              Último: {fmtDate(requests[0].createdAt)}
+              Último: {fmtDate(sortedRequests[0].createdAt)}
             </Text>
           )}
           {requests.length > 0 && (
@@ -177,6 +225,38 @@ export default function DoctorPatientProntuario() {
 
           {/* Timeline */}
           <Text style={styles.sectionTitle}>Pedidos</Text>
+
+          {/* Filtros rápidos por tipo */}
+          {requests.length > 0 && (
+            <View style={styles.filterRow}>
+              {([
+                { key: 'all', label: 'Todos' },
+                { key: 'consultation', label: 'Consultas' },
+                { key: 'prescription', label: 'Receitas' },
+                { key: 'exam', label: 'Exames' },
+              ] as const).map((opt) => (
+                <TouchableOpacity
+                  key={opt.key}
+                  style={[
+                    styles.filterChip,
+                    typeFilter === opt.key && styles.filterChipActive,
+                  ]}
+                  onPress={() => setTypeFilter(opt.key)}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      typeFilter === opt.key && styles.filterChipTextActive,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
           {requests.length === 0 ? (
             <View style={styles.empty}>
               <View style={styles.emptyIconWrap}>
@@ -187,8 +267,18 @@ export default function DoctorPatientProntuario() {
                 Este paciente ainda não possui histórico de pedidos
               </Text>
             </View>
+          ) : filteredRequests.length === 0 ? (
+            <View style={styles.empty}>
+              <View style={styles.emptyIconWrap}>
+                <Ionicons name="filter" size={40} color={colors.textMuted} />
+              </View>
+              <Text style={styles.emptyTitle}>Nada para o filtro atual</Text>
+              <Text style={styles.emptySubtitle}>
+                Tente mudar o tipo selecionado acima para ver outros registros.
+              </Text>
+            </View>
           ) : (
-            requests.map((req) => {
+            filteredRequests.map((req) => {
               const icon = TYPE_ICONS[req.requestType] || 'document';
               const color = TYPE_COLORS[req.requestType] || colors.primary;
               return (
@@ -215,9 +305,9 @@ export default function DoctorPatientProntuario() {
                         <Text style={styles.transcriptBadgeText}>Transcrição e anamnese disponíveis</Text>
                       </View>
                     )}
-                    {req.aiSummaryForDoctor && (
+                    {buildMiniSummary(req) && (
                       <Text style={styles.timelineSummary} numberOfLines={2}>
-                        {req.aiSummaryForDoctor}
+                        {buildMiniSummary(req)}
                       </Text>
                     )}
                   </View>

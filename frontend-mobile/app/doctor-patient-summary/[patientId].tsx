@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../../lib/themeDoctor';
-import { getPatientRequests } from '../../lib/api';
+import { getPatientRequests, sortRequestsByNewestFirst } from '../../lib/api';
 import type { RequestResponseDto } from '../../types/database';
 import { DoctorHeader } from '../../components/ui/DoctorHeader';
 
@@ -48,15 +48,52 @@ export default function DoctorPatientClinicalSummary() {
     loadData();
   };
 
+  const sortedRequests = useMemo(() => sortRequestsByNewestFirst(requests), [requests]);
+
   const consultations = useMemo(
     () =>
-      requests
+      sortedRequests
         .filter(r => r.requestType === 'consultation')
         .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
-    [requests]
+    [sortedRequests]
   );
 
-  const patientName = requests[0]?.patientName ?? 'Paciente';
+  const patientName = sortedRequests[0]?.patientName ?? 'Paciente';
+
+  function extractCidFromAnamnesis(json: string | null | undefined): string | null {
+    if (!json) return null;
+    try {
+      const obj = JSON.parse(json);
+      if (!obj) return null;
+      const cid = obj.cid_sugerido || obj.cid || obj.cidPrincipal;
+      if (typeof cid === 'string' && cid.trim().length > 0) return cid.trim();
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  function extractMainMedsForConsultation(all: RequestResponseDto[], consultationId: string): string | null {
+    const relatedPrescription = all
+      .filter(r => r.requestType === 'prescription' && r.consultationType === consultationId)
+      [0];
+    const meds = relatedPrescription?.medications ?? [];
+    if (!meds.length) return null;
+    const first = meds[0];
+    const extra = meds.length > 1 ? ` (+${meds.length - 1} med.)` : '';
+    return `${first}${extra}`;
+  }
+
+  function extractMainExamsForConsultation(all: RequestResponseDto[], consultationId: string): string | null {
+    const relatedExam = all
+      .filter(r => r.requestType === 'exam' && r.consultationType === consultationId)
+      [0];
+    const exams = relatedExam?.exams ?? [];
+    if (!exams.length) return null;
+    const first = exams[0];
+    const extra = exams.length > 1 ? ` (+${exams.length - 1} exames)` : '';
+    return `${first}${extra}`;
+  }
 
   if (loading) {
     return (
@@ -109,6 +146,9 @@ export default function DoctorPatientClinicalSummary() {
         {consultations.map((c, idx) => {
           let conduct = c.doctorConductNotes || '';
           const aiHint = c.aiConductSuggestion;
+          const cid = extractCidFromAnamnesis(c.consultationAnamnesis);
+          const medsSummary = extractMainMedsForConsultation(sortedRequests, c.id);
+          const examsSummary = extractMainExamsForConsultation(sortedRequests, c.id);
 
           return (
             <View key={c.id} style={styles.entryCard}>
@@ -126,6 +166,27 @@ export default function DoctorPatientClinicalSummary() {
                 <View style={styles.fieldBlock}>
                   <Text style={styles.fieldLabel}>Queixa e duração (paciente)</Text>
                   <Text style={styles.fieldValue}>{c.symptoms}</Text>
+                </View>
+              )}
+
+              {cid && (
+                <View style={styles.fieldBlock}>
+                  <Text style={styles.fieldLabel}>Hipótese diagnóstica (CID)</Text>
+                  <Text style={styles.fieldValue}>{cid}</Text>
+                </View>
+              )}
+
+              {medsSummary && (
+                <View style={styles.fieldBlock}>
+                  <Text style={styles.fieldLabel}>Principais medicamentos</Text>
+                  <Text style={styles.fieldValue}>{medsSummary}</Text>
+                </View>
+              )}
+
+              {examsSummary && (
+                <View style={styles.fieldBlock}>
+                  <Text style={styles.fieldLabel}>Exames relacionados</Text>
+                  <Text style={styles.fieldValue}>{examsSummary}</Text>
                 </View>
               )}
 

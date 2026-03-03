@@ -42,7 +42,7 @@ export default function TermsScreen() {
           </Section>
 
           <Section title="5. Uso de inteligência artificial">
-            A plataforma utiliza recursos de inteligência artificial para triagem pré-atendimento, auxílio na leitura de receitas e exames, geração de sugestões de conduta médica, e interação proativa com o paciente por meio de assistente virtual. As decisões clínicas finais permanecem sob responsabilidade exclusiva do médico. O usuário está ciente e concorda com o uso dessas ferramentas nos termos da Política de Privacidade.
+            A plataforma utiliza recursos de inteligência artificial para triagem pré-atendimento, auxílio na leitura de receitas e exames, geração de sugestões de conduta médica, e interação proativa com o paciente por meio de assistente virtual. As decisões clínicas finais permanecem sob responsabilidade exclusiva do médico. O usuário está ciente e concorda com o uso dessas ferramentas nos termos da Política de Privacidade. Alguns desses recursos podem ser operados por provedores externos de computação em nuvem, contratados pela plataforma, os quais assumem obrigações de confidencialidade e proteção de dados equivalentes às adotadas pela {COMPANY.name}.
           </Section>
 
           <Section title="5.1. Assistente virtual de triagem">
