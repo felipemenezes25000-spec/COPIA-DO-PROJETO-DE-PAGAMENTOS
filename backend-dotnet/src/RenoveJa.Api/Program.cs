@@ -109,6 +109,10 @@ Log.Logger = new LoggerConfiguration()
 
 var builder = WebApplication.CreateBuilder(args);
 
+// AllowedHosts = "*" em não-Production (ngrok, IP da LAN) — em Production usa appsettings.Production.json
+if (!builder.Environment.IsProduction())
+    builder.Configuration["AllowedHosts"] = "*";
+
 // Escutar em todas as interfaces (0.0.0.0) para acesso via IP na rede (ex: 192.168.15.69:5000)
 // Se ASPNETCORE_URLS já estiver definido (ex: em produção), não sobrescreve.
 // Em plataformas como Railway, a variável PORT é injetada (ex.: 8080) e precisa ser respeitada.
@@ -348,28 +352,27 @@ builder.Services.AddCors(options =>
               .AllowCredentials();
     });
 
-    // Policy para desenvolvimento: origens explícitas para permitir credentials e preflight (web + Expo)
+    // Policy para desenvolvimento: permite localhost, Expo (exp://), ngrok, IP da LAN
     options.AddPolicy("Development", policy =>
     {
-        var devOrigins = new[]
+        static bool IsDevOrigin(string? origin)
         {
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-            "http://localhost:8080",
-            "http://127.0.0.1:8080",
-            "http://localhost:8081",
-            "http://127.0.0.1:8081",
-            "http://localhost:8082",
-            "http://127.0.0.1:8082",
-            "http://localhost:19006",
-            "http://127.0.0.1:19006",
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-        };
-        var configOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
-        var origins = devOrigins.Concat(configOrigins).Distinct().ToArray();
+            if (string.IsNullOrEmpty(origin)) return true; // mobile apps muitas vezes não enviam Origin
+            try
+            {
+                var uri = new Uri(origin);
+                var host = uri.Host;
+                var scheme = uri.Scheme;
+                if (host is "localhost" or "127.0.0.1") return true;
+                if (scheme == "exp") return true; // Expo Go: exp://192.168.x.x:8081
+                if (host.StartsWith("192.168.") || host.StartsWith("10.")) return true; // LAN
+                if (host.Contains("ngrok", StringComparison.OrdinalIgnoreCase)) return true;
+                return false;
+            }
+            catch { return false; }
+        }
 
-        policy.WithOrigins(origins)
+        policy.SetIsOriginAllowed(IsDevOrigin)
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
