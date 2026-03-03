@@ -3,22 +3,15 @@
 # ============================================================
 
 # Stage 1: Restore dependencies
-# IMPORTANTE: o contexto de build no Railway é a raiz do repositório,
-# então todos os caminhos de COPY precisam ser prefixados com "backend-dotnet/".
+# IMPORTANTE: o contexto de build no Railway/Render é a raiz do repositório.
+# Um único COPY evita race condition do BuildKit (erro "unexpected commit digest").
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS restore
 WORKDIR /src
-COPY backend-dotnet/*.sln .
-COPY backend-dotnet/Directory.Build.props .
-COPY backend-dotnet/src/RenoveJa.Domain/*.csproj src/RenoveJa.Domain/
-COPY backend-dotnet/src/RenoveJa.Application/*.csproj src/RenoveJa.Application/
-COPY backend-dotnet/src/RenoveJa.Infrastructure/*.csproj src/RenoveJa.Infrastructure/
-COPY backend-dotnet/src/RenoveJa.Api/*.csproj src/RenoveJa.Api/
-COPY backend-dotnet/tests/RenoveJa.UnitTests/*.csproj tests/RenoveJa.UnitTests/
+COPY backend-dotnet/ .
 RUN dotnet restore
 
 # Stage 2: Build
 FROM restore AS build
-COPY backend-dotnet/. .
 RUN dotnet build -c Release --no-restore --no-incremental
 
 # Stage 3: Publish
