@@ -123,6 +123,8 @@ export default function PatientNotifications() {
         style={[styles.card, !item.read && styles.cardUnread]}
         onPress={() => handleMarkRead(item.id, item)}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={`Notificação: ${item.title}`}
       >
         <View style={[styles.iconContainer, { backgroundColor: icon.color + '15' }]}>
           <Ionicons name={icon.name} size={22} color={icon.color} />
@@ -160,7 +162,12 @@ export default function PatientNotifications() {
       >
         <Text style={styles.title}>Notificações</Text>
         {notifications.some(n => !n.read) && (
-          <TouchableOpacity onPress={handleMarkAllRead} style={styles.markAllBtn}>
+          <TouchableOpacity
+            onPress={handleMarkAllRead}
+            style={styles.markAllBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Marcar todas notificações como lidas"
+          >
             <Text style={styles.markAll}>Marcar lidas</Text>
           </TouchableOpacity>
         )}

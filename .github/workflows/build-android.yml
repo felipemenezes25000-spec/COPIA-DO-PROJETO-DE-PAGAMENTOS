@@ -1,4 +1,9 @@
 name: Build Android APK
+# Para signing release, configure os seguintes secrets no repositório:
+# - ANDROID_KEYSTORE_BASE64: keystore em base64 (keytool -genkey ...)
+# - ANDROID_KEYSTORE_PASSWORD: senha do keystore
+# - ANDROID_KEY_ALIAS: alias da chave
+# - ANDROID_KEY_PASSWORD: senha da chave
 
 on:
   workflow_dispatch:
@@ -78,6 +83,23 @@ jobs:
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew
+
+      - name: Setup Android signing
+        if: inputs.build_type == 'release'
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "⚠ ANDROID_KEYSTORE_BASE64 não configurado. Build release usará debug signing."
+          else
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release-keystore.jks
+            echo "" >> android/gradle.properties
+            echo "RELEASE_STORE_FILE=release-keystore.jks" >> android/gradle.properties
+            echo "RELEASE_STORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> android/gradle.properties
+            echo "RELEASE_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}" >> android/gradle.properties
+            echo "RELEASE_KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}" >> android/gradle.properties
+            echo "✓ Keystore configurado para signing release"
+          fi
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
       - name: Build APK
         run: |

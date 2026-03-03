@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,26 +11,15 @@ import {
   Modal,
   KeyboardAvoidingView,
 } from 'react-native';
-import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useListBottomPadding } from '../../lib/ui/responsive';
 import * as Clipboard from 'expo-clipboard';
 import * as WebBrowser from 'expo-web-browser';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography, doctorDS } from '../../lib/themeDoctor';
-import {
-  getRequestById,
-  approveRequest,
-  rejectRequest,
-  signRequest,
-  acceptConsultation,
-  getDocumentDownloadUrl,
-  updateConduct,
-  validatePrescription,
-} from '../../lib/api';
-import { apiClient } from '../../lib/api-client';
+import { getDocumentDownloadUrl } from '../../lib/api';
 import { getDisplayPrice } from '../../lib/config/pricing';
 import { formatBRL } from '../../lib/utils/format';
-import { RequestResponseDto } from '../../types/database';
 import StatusTracker from '../../components/StatusTracker';
 import { StatusBadge } from '../../components/StatusBadge';
 import { DoctorHeader } from '../../components/ui/DoctorHeader';
@@ -43,11 +32,9 @@ import { showToast } from '../../components/ui/Toast';
 import { parseAiSummary } from '../../components/FormattedAiSummary';
 import { AssistantBanner } from '../../components/triage';
 import { useTriageEval } from '../../hooks/useTriageEval';
-import { useRequestUpdated } from '../../hooks/useRequestUpdated';
+import { useDoctorRequest } from '../../hooks/useDoctorRequest';
 
-/* ---- In-memory cache for instant display ---- */
-const _requestCache = new Map<string, RequestResponseDto>();
-export function cacheRequest(r: RequestResponseDto) { _requestCache.set(r.id, r); }
+export { cacheRequest } from '../../hooks/useDoctorRequest';
 
 const TYPE_LABELS: Record<string, string> = { prescription: 'RECEITA', exam: 'EXAME', consultation: 'CONSULTA' };
 const RISK_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
@@ -74,203 +61,50 @@ function hasUsefulAiContent(aiSummary: string | null | undefined, aiRisk?: strin
 
 
 export default function DoctorRequestDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const listPadding = useListBottomPadding();
-  const requestId = (Array.isArray(id) ? id[0] : id) ?? '';
-  const cached = _requestCache.get(requestId);
-  const [request, setRequest] = useState<RequestResponseDto | null>(cached ?? null);
-  const [loading, setLoading] = useState(!cached);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [showRejectForm, setShowRejectForm] = useState(false);
-  const [certPassword, setCertPassword] = useState('');
-  const [showSignForm, setShowSignForm] = useState(false);
+
+  const {
+    request,
+    loading,
+    loadError,
+    actionLoading,
+    rejectionReason,
+    setRejectionReason,
+    showRejectForm,
+    setShowRejectForm,
+    certPassword,
+    setCertPassword,
+    showSignForm,
+    setShowSignForm,
+    conductNotes,
+    setConductNotes,
+    includeConductInPdf,
+    setIncludeConductInPdf,
+    savingConduct,
+    loadData,
+    handleSaveConduct,
+    handleApprove,
+    handleReject,
+    handleSign,
+    handleAcceptConsultation,
+    canApprove,
+    canReject,
+    canSign,
+    canAccept,
+    canVideo,
+    isInQueue,
+    requestId,
+  } = useDoctorRequest();
+
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
   const [aiSummaryExpanded, setAiSummaryExpanded] = useState(false);
-  const [conductNotes, setConductNotes] = useState('');
-  const [includeConductInPdf, setIncludeConductInPdf] = useState(true);
-  const [savingConduct, setSavingConduct] = useState(false);
-  const [loadError, setLoadError] = useState(false);
-  const loadData = useCallback(async () => {
-    if (!requestId) return;
-    try {
-      setLoadError(false);
-      const fresh = await getRequestById(requestId);
-      if (__DEV__) {
-        console.log('[DOCTOR_DETAIL] prescriptionImages:', JSON.stringify(fresh.prescriptionImages));
-        console.log('[DOCTOR_DETAIL] examImages:', JSON.stringify(fresh.examImages));
-      }
-      setRequest(fresh);
-      _requestCache.set(requestId, fresh);
-    } catch {
-      console.error('Error loading request');
-      if (!request) setLoadError(true);
-    }
-    finally { setLoading(false); }
-  }, [requestId]);
-
-  // Single load on focus (covers mount + re-focus). No separate useEffect.
-  useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
-
-  useRequestUpdated(requestId || undefined, loadData);
-
-  // Sincroniza campos de conduta quando o request é carregado/atualizado
-  useEffect(() => {
-    if (!request) return;
-    setConductNotes(request.doctorConductNotes || '');
-    setIncludeConductInPdf(request.includeConductInPdf ?? true);
-  }, [request?.id, request?.doctorConductNotes, request?.includeConductInPdf]);
-
-  const handleSaveConduct = async () => {
-    if (!requestId || !request) return;
-    setSavingConduct(true);
-    try {
-      const updated = await updateConduct(request.id, {
-        conductNotes: conductNotes.trim() ? conductNotes.trim() : null,
-        includeConductInPdf,
-      });
-      setRequest(updated);
-      _requestCache.set(requestId, updated);
-      showToast({ message: 'Conduta salva no prontuário.', type: 'success' });
-    } catch (e: any) {
-      showToast({
-        message: e?.message || 'Falha ao salvar conduta. Tente novamente.',
-        type: 'error',
-      });
-    } finally {
-      setSavingConduct(false);
-    }
-  };
-
-  const executeApprove = async () => {
-    if (!requestId) return;
-    setActionLoading(true);
-    try {
-      await approveRequest(requestId);
-      await loadData();
-      showToast({ message: 'Solicitação aprovada com sucesso!', type: 'success' });
-    } catch (e: unknown) {
-      showToast({ message: (e as Error)?.message || 'Falha ao aprovar.', type: 'error' });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleApprove = () => {
-    if (Platform.OS === 'web') {
-      if (window.confirm('Confirma a aprovação?')) executeApprove();
-    } else {
-      Alert.alert('Aprovar', 'Confirma a aprovação?', [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Aprovar', onPress: executeApprove },
-      ]);
-    }
-  };
-
-  const handleReject = async () => {
-    if (!rejectionReason.trim()) { showToast({ message: 'Informe o motivo da rejeição.', type: 'warning' }); return; }
-    if (!requestId) return;
-    setActionLoading(true);
-    try { await rejectRequest(requestId, rejectionReason.trim()); loadData(); setShowRejectForm(false); showToast({ message: 'Pedido rejeitado.', type: 'info' }); }
-    catch (e: unknown) { showToast({ message: (e as Error)?.message || 'Falha ao rejeitar.', type: 'error' }); }
-    finally { setActionLoading(false); }
-  };
-
-  const handleSign = async () => {
-    if (!certPassword.trim()) {
-      showToast({ message: 'Digite a senha do certificado.', type: 'warning' });
-      return;
-    }
-    if (!requestId || !request) return;
-    setActionLoading(true);
-    try {
-      // Valida campos obrigatórios (paciente/médico) antes de tentar assinar
-      const validation = await validatePrescription(requestId);
-      if (!validation.valid) {
-        const needsPatientProfile = (validation.missingFields ?? []).some(
-          (f) =>
-            f.includes('paciente.sexo') ||
-            f.includes('paciente.data_nascimento') ||
-            f.includes('paciente.endereço')
-        );
-        const needsDoctorProfile = (validation.missingFields ?? []).some(
-          (f) => f.includes('médico.endereço') || f.includes('médico.telefone')
-        );
-        const checklist = (validation.messages ?? []).join('\n• ');
-        const action = needsPatientProfile
-          ? 'O paciente precisa completar sexo, data de nascimento ou endereço no perfil.'
-          : needsDoctorProfile
-          ? 'Para assinar, é obrigatório preencher endereço e telefone profissional no seu perfil de médico.'
-          : 'Corrija os campos indicados antes de assinar.';
-
-        Alert.alert(
-          'Receita incompleta',
-          `${action}\n\n• ${checklist}`,
-          needsDoctorProfile
-            ? [
-                { text: 'IR AO MEU PERFIL', onPress: () => router.push('/(doctor)/profile' as any) },
-                { text: 'OK', style: 'cancel' },
-              ]
-            : [{ text: 'OK' }]
-        );
-        setActionLoading(false);
-        return;
-      }
-
-      await signRequest(requestId, { pfxPassword: certPassword });
-      await loadData();
-      setShowSignForm(false);
-      setCertPassword('');
-      showToast({ message: 'Documento assinado digitalmente!', type: 'success' });
-    } catch (e: any) {
-      setCertPassword('');
-      if (e?.missingFields?.length || e?.messages?.length) {
-        const checklist = (e.messages ?? [e.message]).join('\n• ');
-        const needsDoctorProfile = (e.missingFields ?? []).some(
-          (f: string) => f.includes('médico.endereço') || f.includes('médico.telefone')
-        );
-        Alert.alert(
-          'Receita incompleta',
-          needsDoctorProfile
-            ? `Para assinar, preencha endereço e telefone profissional no seu perfil de médico.\n\n• ${checklist}`
-            : `Verifique os campos obrigatórios:\n\n• ${checklist}`,
-          needsDoctorProfile
-            ? [
-                { text: 'IR AO MEU PERFIL', onPress: () => router.push('/(doctor)/profile' as any) },
-                { text: 'OK', style: 'cancel' },
-              ]
-            : [{ text: 'OK' }]
-        );
-      } else {
-        showToast({ message: e?.message || 'Senha incorreta ou erro na assinatura.', type: 'error' });
-      }
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleAcceptConsultation = async () => {
-    if (!requestId) return;
-    setActionLoading(true);
-    try { await acceptConsultation(requestId); loadData(); showToast({ message: 'Consulta aceita!', type: 'success' }); }
-    catch (e: unknown) { showToast({ message: (e as Error)?.message || 'Falha ao aceitar.', type: 'error' }); }
-    finally { setActionLoading(false); }
-  };
 
   const fmt = (d: string) => {
     const dt = new Date(d);
     return `${dt.toLocaleDateString('pt-BR')} ${dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
   };
 
-  const canApprove = request && (request.status === 'submitted' || request.status === 'in_review') && request.requestType !== 'consultation';
-  const canReject = request && (request.status === 'submitted' || request.status === 'in_review');
-  const canSign = request && request.status === 'paid' && request.requestType !== 'consultation';
-  const canAccept = request && request.status === 'searching_doctor' && request.requestType === 'consultation';
-  const canVideo = request && ['paid', 'in_consultation'].includes(request.status) && request.requestType === 'consultation';
-  const isInQueue = request && request.status === 'submitted' && !request.doctorId;
-
-  // Dra. Renova — fluxo do médico no detalhe do pedido (uso da plataforma)
   useTriageEval({
     context: 'doctor_detail',
     step: 'idle',

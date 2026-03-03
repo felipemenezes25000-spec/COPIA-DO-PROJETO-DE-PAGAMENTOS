@@ -161,6 +161,8 @@ export default function DoctorNotifications() {
         style={[styles.card, !item.read && styles.cardUnread]}
         onPress={() => handleMarkRead(item.id, item)}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={`Notificação: ${item.title}`}
       >
         <View style={[styles.iconWrap, { backgroundColor: iconColor + '18' }]}>
           <Ionicons name={getNotificationIcon(item.notificationType)} size={22} color={iconColor} />
@@ -193,7 +195,12 @@ export default function DoctorNotifications() {
             <Text style={styles.subtitle}>Notificações e atualizações</Text>
           </View>
           {unreadCount > 0 && (
-            <TouchableOpacity onPress={handleMarkAllRead} style={styles.markAllBtn}>
+            <TouchableOpacity
+              onPress={handleMarkAllRead}
+              style={styles.markAllBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Marcar todas como lidas"
+            >
               <Text style={styles.markAllText}>MARCAR LIDAS</Text>
             </TouchableOpacity>
           )}

@@ -128,6 +128,7 @@ export default function PatientProfile() {
                 style={({ pressed }) => [styles.menuItemCard, pressed && styles.menuItemPressed]}
                 onPress={item.onPress}
                 accessibilityRole="button"
+                accessibilityLabel={item.label}
               >
                 <View style={styles.menuIconWrap}>
                   <Ionicons name={item.icon} size={20} color={colors.primary} />

@@ -158,6 +158,8 @@ export default function PatientHome() {
           <Pressable
             style={({ pressed }) => [styles.avatarBtn, pressed && { opacity: 0.8 }]}
             onPress={() => router.push('/(patient)/profile')}
+            accessibilityRole="button"
+            accessibilityLabel="Abrir perfil"
           >
             <Text style={styles.avatarInitial}>{initial}</Text>
           </Pressable>
@@ -226,6 +228,7 @@ export default function PatientHome() {
             description="Solicitar renovação de receita médica"
             variant="primary"
             onPress={() => router.push('/new-request/prescription')}
+            accessibilityLabel="Solicitar renovação de receita médica"
           />
           <LargeActionCard
             icon={
@@ -237,6 +240,7 @@ export default function PatientHome() {
             description="Solicitar exames e laudos"
             variant="exam"
             onPress={() => router.push('/new-request/exam')}
+            accessibilityLabel="Solicitar pedido de exame"
           />
           <LargeActionCard
             icon={
@@ -248,6 +252,7 @@ export default function PatientHome() {
             description="Atendimento por vídeo com o médico"
             variant="consultation"
             onPress={() => router.push('/new-request/consultation')}
+            accessibilityLabel="Agendar consulta por vídeo"
           />
         </View>
       </View>
@@ -257,6 +262,8 @@ export default function PatientHome() {
         <Pressable
           style={({ pressed }) => [styles.recordCard, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}
           onPress={() => router.push('/(patient)/record')}
+          accessibilityRole="button"
+          accessibilityLabel="Abrir meu prontuário médico"
         >
           <View style={styles.recordIconWrap}>
             <Ionicons name="folder-open" size={24} color={colors.primary} />
@@ -277,6 +284,8 @@ export default function PatientHome() {
             <Pressable
               onPress={() => router.push('/(patient)/requests')}
               style={({ pressed }) => [styles.seeAllBtn, pressed && { opacity: 0.7 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Ver todos os pedidos"
             >
               <Text style={styles.seeAllText}>Ver todos</Text>
               <Ionicons name="chevron-forward" size={14} color={colors.primary} />

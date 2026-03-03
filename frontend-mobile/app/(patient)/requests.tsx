@@ -23,6 +23,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { RequestTypeFilter } from '../../components/RequestTypeFilter';
 import { SkeletonList } from '../../components/ui/SkeletonLoader';
 import { FadeIn } from '../../components/ui/FadeIn';
+import { useDebounce } from '../../hooks/useDebounce';
 
 const LOG_QUEUE = __DEV__ && false;
 const ListSeparator = () => <View style={styles.separator} />;
@@ -45,6 +46,7 @@ export default function PatientRequests() {
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
 
   const requestIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
@@ -95,8 +97,8 @@ export default function PatientRequests() {
     if (filterConfig?.type) {
       result = result.filter((r) => r.requestType === filterConfig.type);
     }
-    if (search.trim()) {
-      const q = search.toLowerCase();
+    if (debouncedSearch.trim()) {
+      const q = debouncedSearch.toLowerCase();
       result = result.filter(
         (r) =>
           r.doctorName?.toLowerCase().includes(q) ||
@@ -106,7 +108,7 @@ export default function PatientRequests() {
       );
     }
     setFilteredRequests(sortRequestsByNewestFirst(result));
-  }, [requests, filterConfig?.type, search]);
+  }, [requests, filterConfig?.type, debouncedSearch]);
 
   const onRefresh = useCallback(() => {
     setIsRefreshing(true);
@@ -147,6 +149,7 @@ export default function PatientRequests() {
           value={search}
           onChangeText={setSearch}
           editable={!loading}
+          accessibilityLabel="Buscar pedidos"
         />
       </View>
 
@@ -167,7 +170,7 @@ export default function PatientRequests() {
           <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
           <Text style={styles.errorTitle}>Não foi possível carregar</Text>
           <Text style={styles.errorMsg}>{error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={handleRetry}>
+          <TouchableOpacity style={styles.retryBtn} onPress={handleRetry} accessibilityRole="button" accessibilityLabel="Tentar novamente">
             <Text style={styles.retryText}>Tentar novamente</Text>
           </TouchableOpacity>
         </View>
