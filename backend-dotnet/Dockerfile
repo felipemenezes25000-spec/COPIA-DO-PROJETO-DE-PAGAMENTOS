@@ -33,8 +33,10 @@ USER appuser
 
 COPY --from=publish /app/publish .
 
-EXPOSE 8080
-ENV ASPNETCORE_URLS=http://+:8080
+# Render usa PORT=10000 por padrão; ASP.NET Core precisa de ASPNETCORE_URLS
+ENV PORT=10000
 ENV ASPNETCORE_ENVIRONMENT=Production
+EXPOSE 10000
 
-ENTRYPOINT ["dotnet", "RenoveJa.Api.dll"]
+# Usa PORT da env em runtime (Render injeta PORT=10000)
+ENTRYPOINT ["sh", "-c", "export ASPNETCORE_URLS=http://+:${PORT:-10000} && exec dotnet RenoveJa.Api.dll"]
