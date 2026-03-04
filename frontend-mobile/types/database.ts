@@ -140,7 +140,7 @@ export interface RequestResponseDto {
 // PAYMENT TYPES (matches Payments/PaymentDtos.cs)
 // ============================================
 
-export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded' | 'cancelled';
+export type PaymentStatus = 'pending' | 'paid' | 'approved' | 'failed' | 'refunded' | 'cancelled';
 
 export interface PaymentResponseDto {
   id: string;

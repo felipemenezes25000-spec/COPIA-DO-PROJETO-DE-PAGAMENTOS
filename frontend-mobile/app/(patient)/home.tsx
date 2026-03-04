@@ -304,7 +304,6 @@ export default function PatientHome() {
         <View style={styles.section}>
           <EmptyState
             icon="document-text-outline"
-            emoji="📋"
             title="Nenhum pedido ainda"
             subtitle="Crie sua primeira solicitação usando as opções acima"
           />

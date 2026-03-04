@@ -471,7 +471,8 @@ function ConductSection({ request, conductNotes, setConductNotes, includeConduct
             style={s.aiSummaryActionBtn}
             onPress={() => {
               const suggestion = request.aiConductSuggestion || '';
-              setConductNotes(prev => prev && prev.trim().length > 0 ? `${prev.trim()}\n\n${suggestion}` : suggestion);
+              const next = conductNotes && conductNotes.trim().length > 0 ? `${conductNotes.trim()}\n\n${suggestion}` : suggestion;
+              setConductNotes(next);
             }}
           >
             <Ionicons name="document-text" size={14} color={colors.primary} />
