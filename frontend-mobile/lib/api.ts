@@ -18,6 +18,7 @@ import {
   PatientSummaryDto,
   EncounterSummaryDto,
   MedicalDocumentSummaryDto,
+  PatientProfileForDoctorDto,
 } from '../types/database';
 
 // ============================================
@@ -327,6 +328,18 @@ export async function transcribeAudioChunk(
   // React Native FormData accepts { uri, name, type } objects for file uploads
   formData.append('file', audioBlob as unknown as Blob);
   return apiClient.post('/api/consultation/transcribe', formData, true);
+}
+
+/**
+ * Testa transcrição sem consulta ativa (apenas backend em Development).
+ * Útil para validar Whisper + OpenAI:ApiKey.
+ */
+export async function transcribeTestAudio(
+  audioBlob: Blob | { uri: string; name: string; type: string }
+): Promise<{ transcribed: boolean; text?: string; fileSize?: number; fileName?: string }> {
+  const formData = new FormData();
+  formData.append('file', audioBlob as unknown as Blob);
+  return apiClient.post('/api/consultation/transcribe-test', formData, true);
 }
 
 // ============================================
@@ -677,6 +690,39 @@ export async function fetchMyDocuments(
 export async function getPatientRequests(patientId: string): Promise<RequestResponseDto[]> {
   const data = await apiClient.get<RequestResponseDto[]>(`/api/requests/by-patient/${patientId}`);
   return Array.isArray(data) ? data : [];
+}
+
+/** Médico obtém perfil do paciente (dados cadastrais) para identificação. */
+export async function getPatientProfileForDoctor(
+  patientId: string
+): Promise<PatientProfileForDoctorDto | null> {
+  try {
+    return await apiClient.get<PatientProfileForDoctorDto>(
+      `/api/requests/by-patient/${patientId}/profile`
+    );
+  } catch {
+    return null;
+  }
+}
+
+/** Resposta do resumo clínico (IA ou fallback). */
+export interface PatientClinicalSummaryResponse {
+  summary: string | null;
+  fallback: string | null;
+}
+
+/** Médico obtém resumo narrativo completo do prontuário (IA). Consolida tudo em um texto único. */
+export async function getPatientClinicalSummary(
+  patientId: string
+): Promise<PatientClinicalSummaryResponse> {
+  try {
+    const data = await apiClient.get<PatientClinicalSummaryResponse>(
+      `/api/requests/by-patient/${patientId}/summary`
+    );
+    return data ?? { summary: null, fallback: null };
+  } catch {
+    return { summary: null, fallback: null };
+  }
 }
 
 // ALIASES (for convenience in screens)

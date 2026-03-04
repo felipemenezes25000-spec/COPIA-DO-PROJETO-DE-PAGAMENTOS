@@ -18,6 +18,7 @@ public class RequestsController(
     IStorageService storageService,
     IPrescriptionPdfService pdfService,
     IAuditEventService auditEventService,
+    IClinicalSummaryService clinicalSummaryService,
     ILogger<RequestsController> logger) : ControllerBase
 {
     private static readonly string[] AllowedImageContentTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"];
@@ -279,6 +280,214 @@ public class RequestsController(
         var requests = await requestService.GetPatientRequestsAsync(doctorId, patientId, cancellationToken);
         _ = auditEventService.LogReadAsync(doctorId, "PatientRequests", patientId, "api", HttpContext.Connection.RemoteIpAddress?.ToString(), HttpContext.Request.Headers.UserAgent.ToString(), cancellationToken: cancellationToken);
         return Ok(requests);
+    }
+
+    /// <summary>
+    /// Médico obtém perfil do paciente (dados cadastrais) para identificação. Somente quando tem acesso ao prontuário.
+    /// </summary>
+    [HttpGet("by-patient/{patientId}/profile")]
+    [Authorize(Roles = "doctor")]
+    public async Task<IActionResult> GetPatientProfile(
+        Guid patientId,
+        CancellationToken cancellationToken)
+    {
+        var doctorId = GetUserId();
+        var profile = await requestService.GetPatientProfileForDoctorAsync(doctorId, patientId, cancellationToken);
+        if (profile == null)
+            return NotFound(new { error = "Paciente não encontrado ou sem acesso." });
+        _ = auditEventService.LogReadAsync(doctorId, "PatientProfile", patientId, "api", HttpContext.Connection.RemoteIpAddress?.ToString(), HttpContext.Request.Headers.UserAgent.ToString(), cancellationToken: cancellationToken);
+        return Ok(profile);
+    }
+
+    /// <summary>
+    /// Médico obtém resumo narrativo completo do prontuário (IA). Consolida consultas, receitas e exames em um texto único.
+    /// </summary>
+    [HttpGet("by-patient/{patientId}/summary")]
+    [Authorize(Roles = "doctor")]
+    public async Task<IActionResult> GetPatientClinicalSummary(
+        Guid patientId,
+        CancellationToken cancellationToken)
+    {
+        var doctorId = GetUserId();
+        var requests = await requestService.GetPatientRequestsAsync(doctorId, patientId, cancellationToken);
+        var profile = await requestService.GetPatientProfileForDoctorAsync(doctorId, patientId, cancellationToken);
+
+        if (requests.Count == 0)
+            return Ok(new { summary = (string?)null, fallback = (string?)null });
+
+        var patientName = profile?.Name ?? requests[0].PatientName ?? "Paciente";
+
+        var allergies = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var r in requests.Where(x => x.RequestType == "consultation" && !string.IsNullOrWhiteSpace(x.ConsultationAnamnesis)))
+        {
+            try
+            {
+                var doc = JsonDocument.Parse(r.ConsultationAnamnesis!);
+                if (doc.RootElement.TryGetProperty("alergias", out var a))
+                {
+                    if (a.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var item in a.EnumerateArray())
+                        {
+                            var v = item.GetString()?.Trim();
+                            if (!string.IsNullOrEmpty(v)) allergies.Add(v);
+                        }
+                    }
+                    else if (a.ValueKind == JsonValueKind.String)
+                    {
+                        var v = a.GetString()?.Trim();
+                        if (!string.IsNullOrEmpty(v)) allergies.Add(v);
+                    }
+                }
+            }
+            catch { /* ignore */ }
+        }
+
+        var consultations = requests
+            .Where(r => r.RequestType == "consultation")
+            .OrderBy(r => r.CreatedAt)
+            .Select(r =>
+            {
+                string? anamSnippet = null;
+                if (!string.IsNullOrWhiteSpace(r.ConsultationAnamnesis))
+                {
+                    try
+                    {
+                        var doc = JsonDocument.Parse(r.ConsultationAnamnesis!);
+                        var parts = new List<string>();
+                        foreach (var key in new[] { "queixa_principal", "historia_doenca_atual", "medicamentos_em_uso" })
+                        {
+                            if (doc.RootElement.TryGetProperty(key, out var p) && p.ValueKind == JsonValueKind.String)
+                            {
+                                var v = p.GetString()?.Trim();
+                                if (!string.IsNullOrEmpty(v)) parts.Add(v);
+                            }
+                        }
+                        if (parts.Count > 0) anamSnippet = string.Join("; ", parts);
+                    }
+                    catch { /* ignore */ }
+                }
+                var cid = ExtractCid(r.ConsultationAnamnesis);
+                return new ClinicalSummaryConsultation(
+                    r.CreatedAt,
+                    r.Symptoms,
+                    cid,
+                    r.DoctorConductNotes ?? r.AiConductSuggestion,
+                    anamSnippet);
+            })
+            .ToList();
+
+        var prescriptions = requests
+            .Where(r => r.RequestType == "prescription")
+            .OrderBy(r => r.CreatedAt)
+            .Select(r => new ClinicalSummaryPrescription(
+                r.CreatedAt,
+                r.PrescriptionType ?? "simples",
+                r.Medications ?? new List<string>(),
+                r.Notes))
+            .ToList();
+
+        var exams = requests
+            .Where(r => r.RequestType == "exam")
+            .OrderBy(r => r.CreatedAt)
+            .Select(r => new ClinicalSummaryExam(
+                r.CreatedAt,
+                r.ExamType,
+                r.Exams ?? new List<string>(),
+                r.Symptoms,
+                r.Notes))
+            .ToList();
+
+        var input = new ClinicalSummaryInput(
+            patientName,
+            profile?.BirthDate,
+            profile?.Gender,
+            allergies.ToList(),
+            consultations,
+            prescriptions,
+            exams);
+
+        var summary = await clinicalSummaryService.GenerateAsync(input, cancellationToken);
+
+        string? fallback = null;
+        if (string.IsNullOrWhiteSpace(summary))
+        {
+            fallback = BuildFallbackSummary(patientName, profile?.BirthDate, allergies, consultations, prescriptions, exams);
+        }
+
+        _ = auditEventService.LogReadAsync(doctorId, "PatientClinicalSummary", patientId, "api", HttpContext.Connection.RemoteIpAddress?.ToString(), HttpContext.Request.Headers.UserAgent.ToString(), cancellationToken: cancellationToken);
+
+        return Ok(new { summary = summary ?? fallback, fallback });
+    }
+
+    private static string BuildFallbackSummary(
+        string patientName,
+        DateTime? birthDate,
+        HashSet<string> allergies,
+        List<ClinicalSummaryConsultation> consultations,
+        List<ClinicalSummaryPrescription> prescriptions,
+        List<ClinicalSummaryExam> exams)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"Resumo do prontuário — {patientName}");
+        if (birthDate.HasValue)
+        {
+            var age = DateTime.Today.Year - birthDate.Value.Year;
+            if (DateTime.Today < birthDate.Value.AddYears(age)) age--;
+            sb.AppendLine($"Idade: {age} anos");
+        }
+        if (allergies.Count > 0)
+            sb.AppendLine($"Alergias: {string.Join(", ", allergies)}");
+        sb.AppendLine();
+
+        if (consultations.Count > 0)
+        {
+            sb.AppendLine("Consultas:");
+            foreach (var c in consultations)
+            {
+                sb.AppendLine($"• {c.Date:dd/MM/yyyy}: {c.Symptoms ?? "—"}");
+                if (!string.IsNullOrWhiteSpace(c.Cid)) sb.AppendLine($"  CID: {c.Cid}");
+                if (!string.IsNullOrWhiteSpace(c.Conduct)) sb.AppendLine($"  Conduta: {c.Conduct}");
+            }
+            sb.AppendLine();
+        }
+
+        if (prescriptions.Count > 0)
+        {
+            sb.AppendLine("Receitas:");
+            foreach (var p in prescriptions)
+                sb.AppendLine($"• {p.Date:dd/MM/yyyy} ({p.Type}): {string.Join(", ", p.Medications)}");
+            sb.AppendLine();
+        }
+
+        if (exams.Count > 0)
+        {
+            sb.AppendLine("Exames:");
+            foreach (var e in exams)
+                sb.AppendLine($"• {e.Date:dd/MM/yyyy}: {string.Join(", ", e.Exams)}");
+        }
+
+        return sb.ToString().Trim();
+    }
+
+    private static string? ExtractCid(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            foreach (var key in new[] { "cid_sugerido", "cid", "cidPrincipal" })
+            {
+                if (root.TryGetProperty(key, out var p) && p.ValueKind == JsonValueKind.String)
+                {
+                    var v = p.GetString()?.Trim();
+                    if (!string.IsNullOrEmpty(v)) return v;
+                }
+            }
+        }
+        catch { /* ignore */ }
+        return null;
     }
 
     /// <summary>
@@ -588,6 +797,38 @@ public class RequestsController(
             return NotFound(new { error = "Documento assinado não disponível ou você não tem permissão para acessá-lo." });
         _ = auditEventService.LogReadAsync(null, "SignedDocument", id, "api", HttpContext.Connection.RemoteIpAddress?.ToString(), HttpContext.Request.Headers.UserAgent.ToString(), cancellationToken: cancellationToken);
         return File(bytes, "application/pdf", $"documento-{id}.pdf");
+    }
+
+    /// <summary>
+    /// Proxy para imagens de receita. Bucket prescription-images é privado; este endpoint serve as imagens com autenticação.
+    /// Aceita Bearer ou ?token= (para Image component que não envia headers).
+    /// </summary>
+    [HttpGet("{id}/prescription-image/{index:int}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetPrescriptionImage(Guid id, int index, [FromQuery] string? token, CancellationToken cancellationToken)
+    {
+        Guid? userId = null;
+        try { userId = GetUserId(); } catch { /* AllowAnonymous */ }
+        var bytes = await requestService.GetRequestImageAsync(id, token, userId, "prescription", index, cancellationToken);
+        if (bytes == null || bytes.Length == 0)
+            return NotFound(new { error = "Imagem não encontrada ou sem permissão." });
+        return File(bytes, "image/jpeg", $"receita-{id}-{index}.jpg");
+    }
+
+    /// <summary>
+    /// Proxy para imagens de exame. Bucket prescription-images é privado; este endpoint serve as imagens com autenticação.
+    /// Aceita Bearer ou ?token= (para Image component que não envia headers).
+    /// </summary>
+    [HttpGet("{id}/exam-image/{index:int}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetExamImage(Guid id, int index, [FromQuery] string? token, CancellationToken cancellationToken)
+    {
+        Guid? userId = null;
+        try { userId = GetUserId(); } catch { /* AllowAnonymous */ }
+        var bytes = await requestService.GetRequestImageAsync(id, token, userId, "exam", index, cancellationToken);
+        if (bytes == null || bytes.Length == 0)
+            return NotFound(new { error = "Imagem não encontrada ou sem permissão." });
+        return File(bytes, "image/jpeg", $"exame-{id}-{index}.jpg");
     }
 
     /// <summary>

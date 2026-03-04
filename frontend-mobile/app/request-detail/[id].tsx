@@ -11,12 +11,13 @@ import {
   Modal,
   useWindowDimensions,
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { colors, spacing, borderRadius, shadows } from '../../lib/theme';
-import { fetchRequestById, markRequestDelivered, cancelRequest, getDocumentDownloadUrl } from '../../lib/api';
+import { fetchRequestById, markRequestDelivered, cancelRequest } from '../../lib/api';
 import { apiClient } from '../../lib/api-client';
 import { getDisplayPrice } from '../../lib/config/pricing';
 import { formatBRL, formatDateBR } from '../../lib/utils/format';
@@ -27,7 +28,7 @@ import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { ZoomableImage } from '../../components/ZoomableImage';
 import { CompatibleImage } from '../../components/CompatibleImage';
 import { FormattedAiSummary } from '../../components/FormattedAiSummary';
-import { ObservationCard, AssistantBanner } from '../../components/triage';
+import { ObservationCard, DraggableAssistantBanner } from '../../components/triage';
 import { useTriageEval } from '../../hooks/useTriageEval';
 
 function getTypeLabel(type: string): string {
@@ -195,10 +196,8 @@ export default function RequestDetailScreen() {
     if (!request?.signedDocumentUrl) return;
     try {
       await markAsDeliveredIfSigned();
-      const downloadUrl = await getDocumentDownloadUrl(request.id);
-
-      // Abre no navegador do sistema (exibe PDF ou permite download)
-      await WebBrowser.openBrowserAsync(downloadUrl);
+      // signedDocumentUrl já vem do backend com o document token correto (não usar auth token)
+      await WebBrowser.openBrowserAsync(request.signedDocumentUrl);
     } catch (e: unknown) {
       Alert.alert('Erro', (e as Error)?.message || String(e) || 'Não foi possível abrir o documento');
     }
@@ -208,8 +207,8 @@ export default function RequestDetailScreen() {
     if (!request?.signedDocumentUrl) return;
     try {
       await markAsDeliveredIfSigned();
-      const downloadUrl = await getDocumentDownloadUrl(request.id);
-      await WebBrowser.openBrowserAsync(downloadUrl);
+      // signedDocumentUrl já vem do backend com o document token correto (não usar auth token)
+      await WebBrowser.openBrowserAsync(request.signedDocumentUrl);
     } catch (e: unknown) {
       Alert.alert('Erro', (e as Error)?.message || String(e) || 'Não foi possível abrir o documento.');
     }
@@ -341,13 +340,6 @@ export default function RequestDetailScreen() {
               text={request.doctorConductNotes}
               doctorName={request.doctorName}
             />
-          </View>
-        )}
-
-        {/* Dra. Renova — só quando não tem conduta visível (evita redundância) */}
-        {!request.doctorConductNotes && (
-          <View style={{ marginBottom: 8 }}>
-            <AssistantBanner />
           </View>
         )}
 
@@ -560,10 +552,10 @@ export default function RequestDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Dra. Renova fixa acima dos botões / tab bar */}
+      {/* Dra. Renova — fixa ou arrastável */}
       {!request.doctorConductNotes && (
         <View style={styles.aiBannerSticky}>
-          <AssistantBanner
+          <DraggableAssistantBanner
             onAction={(action) => {
               if (action === 'teleconsulta' || action === 'consulta_breve' || action === 'agendar_retorno') {
                 router.push('/new-request/consultation');
@@ -584,20 +576,22 @@ export default function RequestDetailScreen() {
         onRequestClose={() => setSelectedImageUri(null)}
         statusBarTranslucent
       >
-        <View style={styles.modalContainer}>
-          <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setSelectedImageUri(null)} activeOpacity={0.7}>
-            <Ionicons name="close" size={32} color="#fff" />
-          </TouchableOpacity>
-          {selectedImageUri && (
-            Platform.OS === 'web' && /\.(heic|heif)$/i.test(selectedImageUri) ? (
-              <View style={{ flex: 1, padding: 20, alignItems: 'center', justifyContent: 'center' }}>
-                <CompatibleImage uri={selectedImageUri} style={{ width: '100%', height: '100%', maxHeight: windowHeight * 0.8 }} resizeMode="contain" />
-              </View>
-            ) : (
-              <ZoomableImage uri={selectedImageUri} onClose={() => setSelectedImageUri(null)} />
-            )
-          )}
-        </View>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <View style={styles.modalContainer}>
+            <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setSelectedImageUri(null)} activeOpacity={0.7}>
+              <Ionicons name="close" size={32} color="#fff" />
+            </TouchableOpacity>
+            {selectedImageUri && (
+              Platform.OS === 'web' && /\.(heic|heif)$/i.test(selectedImageUri) ? (
+                <View style={{ flex: 1, padding: 20, alignItems: 'center', justifyContent: 'center' }}>
+                  <CompatibleImage uri={selectedImageUri} style={{ width: '100%', height: '100%', maxHeight: windowHeight * 0.8 }} resizeMode="contain" />
+                </View>
+              ) : (
+                <ZoomableImage uri={selectedImageUri} onClose={() => setSelectedImageUri(null)} />
+              )
+            )}
+          </View>
+        </GestureHandlerRootView>
       </Modal>
     </SafeAreaView>
   );

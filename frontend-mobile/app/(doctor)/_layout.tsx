@@ -112,6 +112,13 @@ export default function DoctorLayout() {
             ),
           }}
         />
+        <Tabs.Screen
+          name="transcription-test"
+          options={{
+            href: null,
+            title: 'Teste Transcrição',
+          }}
+        />
       </Tabs>
     </>
   );

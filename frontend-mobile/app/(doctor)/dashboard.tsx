@@ -34,7 +34,7 @@ import {
   getRequestUiState,
   UI_STATUS_COLORS,
 } from '../../lib/domain/getRequestUiState';
-import { AssistantBanner } from '../../components/triage';
+import { DraggableAssistantBanner } from '../../components/triage';
 import { useTriageEval } from '../../hooks/useTriageEval';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -264,9 +264,9 @@ export default function DoctorDashboard() {
       </ScrollView>
       </FadeIn>
 
-      {/* Dra. Renova fixa acima da tab bar (médico) */}
+      {/* Dra. Renova — fixa ou arrastável (médico) */}
       <View style={styles.aiBannerSticky}>
-        <AssistantBanner />
+        <DraggableAssistantBanner />
       </View>
     </View>
   );

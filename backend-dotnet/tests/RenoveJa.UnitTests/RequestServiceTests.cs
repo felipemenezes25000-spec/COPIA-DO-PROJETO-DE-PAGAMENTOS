@@ -56,8 +56,10 @@ public class RequestServiceTests
         var apiConfigMock = new Mock<IOptions<ApiConfig>>();
         apiConfigMock.Setup(x => x.Value).Returns(new ApiConfig { BaseUrl = "" });
         var documentTokenServiceMock = new Mock<IDocumentTokenService>();
+        var storageServiceMock = new Mock<IStorageService>();
         var requestEventsPublisherMock = new Mock<IRequestEventsPublisher>();
         var signedRequestClinicalSyncMock = new Mock<ISignedRequestClinicalSyncService>();
+        var whatsAppServiceMock = new Mock<IWhatsAppService>();
 
         _sut = new RequestService(
             _requestRepoMock.Object,
@@ -77,10 +79,12 @@ public class RequestServiceTests
             httpClientFactoryMock.Object,
             apiConfigMock.Object,
             documentTokenServiceMock.Object,
+            storageServiceMock.Object,
             _consultationTimeBankRepoMock.Object,
             _aiConductSuggestionServiceMock.Object,
             requestEventsPublisherMock.Object,
             signedRequestClinicalSyncMock.Object,
+            whatsAppServiceMock.Object,
             _loggerMock.Object);
     }
 

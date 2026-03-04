@@ -15,6 +15,8 @@ Este documento descreve as variáveis de ambiente necessárias para o backend e 
 | `OpenAI__ApiKey` | `OpenAI:ApiKey` | Chave da API OpenAI (formato `sk-proj-...`) | Análise de receitas e exames por IA |
 | `Verification__BaseUrl` | `Verification:BaseUrl` | URL base do endpoint da API (codificada no QR Code). Ex: `https://sua-api.onrender.com/api/verify` | Integração validar.iti.gov.br |
 | `Verification__FrontendUrl` | `Verification:FrontendUrl` | URL base do frontend de verificação (redirect + texto do PDF). Ex: `https://renovejasaude.com.br/verify` | Redirect de browsers |
+| `Api__BaseUrl` | `Api:BaseUrl` | URL pública da API (ex: `https://ola-jamal.onrender.com`). Usada para links de documento e **imagens de receita/exame** (proxy). | Documento assinado, imagens para médico |
+| `Api__DocumentTokenSecret` | `Api:DocumentTokenSecret` | Chave secreta para tokens temporários de acesso (documento e imagens). String aleatória de 32+ caracteres. | Documento assinado, imagens para médico |
 | `ASPNETCORE_ENVIRONMENT` | - | `Development` para mais logs e CORS aberto | Ambiente |
 
 ### Formato da Supabase:ServiceKey
@@ -93,6 +95,19 @@ dotnet run
 
 ---
 
+### Problema 3: Médico não consegue visualizar imagens de receita/exame ("Erro ao carregar imagem")
+
+**Causa:** O bucket `prescription-images` no Supabase foi tornado **privado** (migration de hardening). As URLs diretas do Supabase retornam 403. O app precisa usar o proxy da API.
+
+**Solução:** Configure `Api:BaseUrl` e `Api:DocumentTokenSecret` no backend (ou variáveis `Api__BaseUrl` e `Api__DocumentTokenSecret`):
+
+- `Api:BaseUrl`: URL pública da API (ex: `https://ola-jamal.onrender.com` no Render)
+- `Api:DocumentTokenSecret`: String aleatória de 32+ caracteres (ex: `openssl rand -hex 32`)
+
+Com isso, a API passa a retornar URLs de proxy (`/api/requests/{id}/prescription-image/0?token=...`) em vez das URLs do Supabase, e o médico consegue visualizar as imagens.
+
+---
+
 ## 4. Fluxo Resumido
 
 ```
@@ -121,6 +136,26 @@ Expo (celular)                    Backend
 - [ ] `ASPNETCORE_ENVIRONMENT=Development` ao rodar o backend
 - [ ] No Swagger: ao testar login, **não** ter token em Authorize
 - [ ] Frontend `.env` com `EXPO_PUBLIC_API_URL` apontando para o IP correto (ex: `http://192.168.15.69:5000`)
+
+---
+
+### Problema 4: Transcrição da consulta não funciona (0 transcrições)
+
+**Possíveis causas:**
+
+| Causa | Verificação | Solução |
+|-------|-------------|---------|
+| `OpenAI:ApiKey` ausente | Log: `Whisper: OpenAI:ApiKey não configurada` | Definir `OpenAI__ApiKey` em appsettings ou variáveis |
+| Mic do médico mutado | Banner "Gravando · 0 transcrições" após 10s+ | Desmutar o microfone durante a consulta |
+| Chunk muito pequeno (silêncio) | Log: `Chunk ignorado: arquivo muito pequeno` | Falar durante a gravação; os primeiros 10s são enviados após o ciclo |
+| Request não em `InConsultation` | API retorna 400 | Iniciar a consulta com o botão "Iniciar Consulta" antes de falar |
+| API inacessível do celular | App mostra "X falhas" no indicador | Verificar `EXPO_PUBLIC_API_URL` apontando para IP/URL acessível |
+
+**Como testar:**
+
+1. **Teste isolado (backend local em Development):** No app, Perfil → "Testar transcrição IA". Grava 8s e envia para `/api/consultation/transcribe-test`. Valida Whisper + OpenAI. Rode o backend com `ASPNETCORE_ENVIRONMENT=Development`.
+
+2. **Durante a consulta:** Após "Iniciar Consulta", aguarde o primeiro ciclo de 10s. Fale claramente. O indicador mostra "Gravando · N transcrições" (N aumenta a cada chunk enviado). Se aparecer "X falhas", verifique logs do backend e conectividade.
 
 ---
 

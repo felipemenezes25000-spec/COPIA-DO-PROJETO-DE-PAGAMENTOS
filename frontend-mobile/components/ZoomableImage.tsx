@@ -10,7 +10,7 @@ interface ZoomableImageProps {
   showHint?: boolean;
 }
 
-export function ZoomableImage({ uri }: ZoomableImageProps) {
+export function ZoomableImage({ uri, showHint = true }: ZoomableImageProps) {
   const { width: screenW, height: screenH } = useWindowDimensions();
   const [hasError, setHasError] = useState(false);
   const scale = useSharedValue(1);
@@ -105,16 +105,23 @@ export function ZoomableImage({ uri }: ZoomableImageProps) {
   }
 
   const content = (
-    <GestureDetector gesture={composed}>
-      <Animated.View style={[styles.container, { width: screenW, height: imgH }, animatedStyle]}>
-        <Image
-          source={{ uri }}
-          style={{ width: screenW, height: imgH }}
-          resizeMode="contain"
-          onError={() => setHasError(true)}
-        />
-      </Animated.View>
-    </GestureDetector>
+    <View style={styles.contentWrap}>
+      <GestureDetector gesture={composed}>
+        <Animated.View style={[styles.container, { width: screenW, height: imgH }, animatedStyle]}>
+          <Image
+            source={{ uri }}
+            style={{ width: screenW, height: imgH }}
+            resizeMode="contain"
+            onError={() => setHasError(true)}
+          />
+        </Animated.View>
+      </GestureDetector>
+      {showHint && Platform.OS !== 'web' && (
+        <View style={styles.hintBar}>
+          <Text style={styles.hintText}>Pinça para zoom • Toque duplo para ampliar</Text>
+        </View>
+      )}
+    </View>
   );
 
   if (Platform.OS === 'web') {
@@ -163,5 +170,26 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
     fontSize: 13,
     textAlign: 'center',
+  },
+  contentWrap: {
+    flex: 1,
+    width: '100%',
+    position: 'relative',
+  },
+  hintBar: {
+    position: 'absolute',
+    bottom: 24,
+    left: 16,
+    right: 16,
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  hintText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 12,
   },
 });

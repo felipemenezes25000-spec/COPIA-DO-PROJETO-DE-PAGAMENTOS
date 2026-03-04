@@ -27,7 +27,7 @@ import { HeaderInfo } from '../../components/ui/HeaderInfo';
 import { EmptyState } from '../../components/EmptyState';
 import { SkeletonList } from '../../components/ui/SkeletonLoader';
 import { FadeIn } from '../../components/ui/FadeIn';
-import { AssistantBanner } from '../../components/triage';
+import { DraggableAssistantBanner } from '../../components/triage';
 import { useTriageEval } from '../../hooks/useTriageEval';
 import {
   shouldShowHomeInfoCard,
@@ -315,9 +315,9 @@ export default function PatientHome() {
         </FadeIn>
       )}
 
-      {/* Dra. Renova fixa acima da tab bar */}
+      {/* Dra. Renova — fixa ou arrastável */}
       <View style={styles.aiBannerSticky}>
-        <AssistantBanner
+        <DraggableAssistantBanner
           onAction={(action) => {
             if (action === 'teleconsulta' || action === 'consulta_breve' || action === 'agendar_retorno') {
               router.push('/new-request/consultation');

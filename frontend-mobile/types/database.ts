@@ -318,6 +318,24 @@ export interface MedicalDocumentSummaryDto {
   encounterId: string | null;
 }
 
+/** Perfil do paciente para visualização pelo médico (identificação). */
+export interface PatientProfileForDoctorDto {
+  name: string;
+  email: string | null;
+  phone: string | null;
+  birthDate: string | null;
+  cpfMasked: string | null;
+  gender: string | null;
+  street: string | null;
+  number: string | null;
+  neighborhood: string | null;
+  complement: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  avatarUrl: string | null;
+}
+
 // ============================================
 // LEGACY COMPATIBILITY
 // ============================================

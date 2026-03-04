@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Platform } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../../lib/themeDoctor';
 import { DoctorCard } from '../ui/DoctorCard';
@@ -52,20 +53,22 @@ export function PrescriptionImageGallery({ images, label, iconBackgroundColor, s
         onRequestClose={() => setSelectedImageUri(null)}
         statusBarTranslucent
       >
-        <View style={s.modalContainer}>
-          <TouchableOpacity style={s.modalCloseButton} onPress={() => setSelectedImageUri(null)} activeOpacity={0.7}>
-            <Ionicons name="close" size={32} color="#fff" />
-          </TouchableOpacity>
-          {selectedImageUri && (
-            <View style={s.modalImageWrapper}>
-              {Platform.OS === 'web' && /\.(heic|heif)$/i.test(selectedImageUri) ? (
-                <CompatibleImage uri={selectedImageUri} style={s.modalImageFull} resizeMode="contain" />
-              ) : (
-                <ZoomableImage uri={selectedImageUri} onClose={() => setSelectedImageUri(null)} />
-              )}
-            </View>
-          )}
-        </View>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <View style={s.modalContainer}>
+            <TouchableOpacity style={s.modalCloseButton} onPress={() => setSelectedImageUri(null)} activeOpacity={0.7}>
+              <Ionicons name="close" size={32} color="#fff" />
+            </TouchableOpacity>
+            {selectedImageUri && (
+              <View style={s.modalImageWrapper}>
+                {Platform.OS === 'web' && /\.(heic|heif)$/i.test(selectedImageUri) ? (
+                  <CompatibleImage uri={selectedImageUri} style={s.modalImageFull} resizeMode="contain" />
+                ) : (
+                  <ZoomableImage uri={selectedImageUri} onClose={() => setSelectedImageUri(null)} />
+                )}
+              </View>
+            )}
+          </View>
+        </GestureHandlerRootView>
       </Modal>
     </>
   );

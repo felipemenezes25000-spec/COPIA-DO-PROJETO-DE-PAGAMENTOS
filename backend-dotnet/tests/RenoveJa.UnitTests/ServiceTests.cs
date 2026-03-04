@@ -487,6 +487,8 @@ public class ExtendedRequestServiceTests
     public ExtendedRequestServiceTests()
     {
         _apiConfigMock.Setup(x => x.Value).Returns(new ApiConfig { BaseUrl = "" });
+        var storageServiceMock = new Mock<IStorageService>();
+        var whatsAppServiceMock = new Mock<IWhatsAppService>();
         _sut = new global::RenoveJa.Application.Services.Requests.RequestService(
             _requestRepoMock.Object, _productPriceRepoMock.Object,
             _userRepoMock.Object, _doctorRepoMock.Object,
@@ -496,10 +498,11 @@ public class ExtendedRequestServiceTests
             _pdfServiceMock.Object, _certServiceMock.Object,
             _prescriptionVerifyRepoMock.Object,
             _httpClientFactoryMock.Object, _apiConfigMock.Object,
-            _documentTokenServiceMock.Object, _consultationTimeBankRepoMock.Object,
+            _documentTokenServiceMock.Object, storageServiceMock.Object, _consultationTimeBankRepoMock.Object,
             _aiConductSuggestionServiceMock.Object,
             _requestEventsPublisherMock.Object,
             _signedRequestClinicalSyncMock.Object,
+            whatsAppServiceMock.Object,
             _loggerMock.Object);
     }
 

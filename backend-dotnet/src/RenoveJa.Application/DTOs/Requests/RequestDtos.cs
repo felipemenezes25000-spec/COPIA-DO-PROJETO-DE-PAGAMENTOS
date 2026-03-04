@@ -130,3 +130,21 @@ public record AcceptConsultationResponseDto(
     RequestResponseDto Request,
     [property: JsonPropertyName("video_room")] VideoRoomResponseDto VideoRoom
 );
+
+/// <summary>Perfil do paciente para visualização pelo médico (identificação do paciente).</summary>
+public record PatientProfileForDoctorDto(
+    string Name,
+    string? Email,
+    string? Phone,
+    DateTime? BirthDate,
+    string? CpfMasked,
+    string? Gender,
+    string? Street,
+    string? Number,
+    string? Neighborhood,
+    string? Complement,
+    string? City,
+    string? State,
+    string? PostalCode,
+    string? AvatarUrl
+);

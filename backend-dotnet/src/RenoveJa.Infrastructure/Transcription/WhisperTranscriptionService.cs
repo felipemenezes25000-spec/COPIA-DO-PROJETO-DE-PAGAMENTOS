@@ -36,12 +36,17 @@ public class WhisperTranscriptionService : ITranscriptionService
         var apiKey = _config.Value?.ApiKey?.Trim();
         if (string.IsNullOrEmpty(apiKey))
         {
-            _logger.LogDebug("Whisper: OpenAI:ApiKey não configurada. Transcrição ignorada.");
+            _logger.LogWarning("[Whisper] OpenAI:ApiKey não configurada. Transcrição ignorada. Configure em appsettings.Development.json ou variável OpenAI__ApiKey.");
             return null;
         }
 
         if (audioBytes == null || audioBytes.Length == 0)
+        {
+            _logger.LogWarning("[Whisper] Áudio vazio ou nulo recebido.");
             return null;
+        }
+
+        _logger.LogInformation("[Whisper] Transcrevendo áudio: {Bytes} bytes, arquivo: {FileName}", audioBytes.Length, fileName ?? "(sem nome)");
 
         var extension = string.IsNullOrEmpty(fileName)
             ? "webm"
@@ -56,13 +61,13 @@ public class WhisperTranscriptionService : ITranscriptionService
         };
         var name = string.IsNullOrEmpty(fileName) ? $"chunk.{extension}" : fileName;
 
+        // Whisper API: file deve vir primeiro; não alterar ContentType (boundary é essencial)
         using var content = new MultipartFormDataContent();
+        var fileStreamContent = new StreamContent(new MemoryStream(audioBytes));
+        fileStreamContent.Headers.ContentType = new MediaTypeHeaderValue(mime);
+        content.Add(fileStreamContent, "file", name);
         content.Add(new StringContent(Model), "model");
-        content.Add(new StringContent("pt"), "language"); // Português brasileiro — melhora precisão e velocidade
-        content.Add(new StreamContent(new MemoryStream(audioBytes)), "file", name);
-        content.Headers.ContentType!.Parameters.Clear();
-        var filePart = content.First(p => p.Headers.ContentDisposition?.Name == "\"file\"");
-        filePart.Headers.ContentType = new MediaTypeHeaderValue(mime);
+        content.Add(new StringContent("pt"), "language");
 
         using var request = new HttpRequestMessage(HttpMethod.Post, ApiUrl);
         request.Content = content;
@@ -76,7 +81,7 @@ public class WhisperTranscriptionService : ITranscriptionService
         if (!response.IsSuccessStatusCode)
         {
             var err = await response.Content.ReadAsStringAsync(cancellationToken);
-            _logger.LogWarning("Whisper API error: {StatusCode}, {Response}", response.StatusCode, err);
+            _logger.LogWarning("[Whisper] API OpenAI erro: StatusCode={StatusCode}, Response={Response}", response.StatusCode, err);
             return null;
         }
 
@@ -89,12 +94,16 @@ public class WhisperTranscriptionService : ITranscriptionService
             {
                 var text = textEl.GetString()?.Trim();
                 if (!string.IsNullOrEmpty(text))
+                {
+                    _logger.LogInformation("[Whisper] Transcrição OK: {Length} caracteres", text.Length);
                     return text;
+                }
             }
+            _logger.LogWarning("[Whisper] Resposta JSON sem texto ou vazio: {Json}", json.Length > 200 ? json[..200] + "..." : json);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Whisper: falha ao parsear resposta JSON.");
+            _logger.LogWarning(ex, "[Whisper] Falha ao parsear resposta JSON.");
         }
 
         return null;

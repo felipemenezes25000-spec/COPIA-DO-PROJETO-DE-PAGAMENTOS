@@ -20,7 +20,6 @@ import { colors, spacing, borderRadius, typography, doctorDS } from '../../lib/t
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
-import { getDocumentDownloadUrl } from '../../lib/api';
 import { getDisplayPrice } from '../../lib/config/pricing';
 import { formatBRL } from '../../lib/utils/format';
 import StatusTracker from '../../components/StatusTracker';
@@ -30,7 +29,7 @@ import { DoctorCard } from '../../components/ui/DoctorCard';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { SkeletonList } from '../../components/ui/SkeletonLoader';
 import { showToast } from '../../components/ui/Toast';
-import { AssistantBanner } from '../../components/triage';
+import { DraggableAssistantBanner } from '../../components/triage';
 import { useTriageEval } from '../../hooks/useTriageEval';
 import { useDoctorRequest } from '../../hooks/useDoctorRequest';
 import { useFocusEffect } from 'expo-router';
@@ -193,7 +192,7 @@ export default function DoctorRequestDetail() {
         />
       </ScrollView>
       <View style={s.aiBannerSticky}>
-        <AssistantBanner />
+        <DraggableAssistantBanner />
       </View>
     </KeyboardAvoidingView>
   );
@@ -510,6 +509,7 @@ function ConductSection({ request, conductNotes, setConductNotes, includeConduct
 
 function SignedDocumentCard({ request }: { request: NonNullable<ReturnType<typeof useDoctorRequest>['request']> }) {
   if (!request.signedDocumentUrl) return null;
+
   return (
     <DoctorCard style={s.cardMargin}>
       <View style={s.sectionHeader}>
@@ -520,8 +520,7 @@ function SignedDocumentCard({ request }: { request: NonNullable<ReturnType<typeo
         style={s.pdfBtn}
         onPress={async () => {
           try {
-            const downloadUrl = await getDocumentDownloadUrl(request.id);
-            await WebBrowser.openBrowserAsync(downloadUrl);
+            await WebBrowser.openBrowserAsync(request.signedDocumentUrl!);
           } catch (e: unknown) {
             Alert.alert('Erro', (e as Error)?.message || 'Não foi possível abrir o documento.');
           }

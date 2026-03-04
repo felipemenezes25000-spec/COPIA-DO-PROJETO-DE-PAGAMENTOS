@@ -110,6 +110,17 @@ export interface TriageInput {
 
 // ── Persisted state ─────────────────────────────────────────
 
+/** Posição da Dra. Renova: fixa no fundo ou flutuante em um canto */
+export type BannerPositionMode = 'fixed' | 'floating';
+
+/** Posição flutuante (x, y em px a partir do canto) */
+export interface BannerFloatingPosition {
+  x: number;
+  y: number;
+  /** Canto de ancoragem: 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right' */
+  anchor: 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right';
+}
+
 export interface TriagePersistedState {
   /** key → timestamp da última exibição */
   cooldowns: Record<string, number>;
@@ -121,6 +132,10 @@ export interface TriagePersistedState {
   homeVisitCount?: number;
   /** Se o InfoCard da home foi dismissado pelo usuário */
   homeInfoCardDismissed?: boolean;
+  /** Modo da Dra. Renova: fixa no fundo ou flutuante arrastável */
+  bannerPositionMode?: BannerPositionMode;
+  /** Posição quando flutuante (persistida entre sessões) */
+  bannerFloatingPosition?: BannerFloatingPosition;
   /** Versão do schema (para migrações futuras) */
   version: number;
 }

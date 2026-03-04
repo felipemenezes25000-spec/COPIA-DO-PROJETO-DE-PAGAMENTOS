@@ -41,6 +41,7 @@ public class RequestService(
     IHttpClientFactory httpClientFactory,
     IOptions<ApiConfig> apiConfig,
     IDocumentTokenService documentTokenService,
+    IStorageService storageService,
     IConsultationTimeBankRepository consultationTimeBankRepository,
     IAiConductSuggestionService aiConductSuggestionService,
     IRequestEventsPublisher requestEventsPublisher,
@@ -509,6 +510,55 @@ public class RequestService(
             dtos.Add(MapRequestToDto(r, ct, ca, cs));
         }
         return dtos;
+    }
+
+    /// <summary>
+    /// Médico obtém perfil do paciente para identificação. Só retorna se o médico tiver acesso ao prontuário.
+    /// </summary>
+    public async Task<PatientProfileForDoctorDto?> GetPatientProfileForDoctorAsync(
+        Guid doctorId,
+        Guid patientId,
+        CancellationToken cancellationToken = default)
+    {
+        var doctor = await userRepository.GetByIdAsync(doctorId, cancellationToken);
+        if (doctor?.Role != UserRole.Doctor)
+            return null;
+
+        var requests = await requestRepository.GetByPatientIdAsync(patientId, cancellationToken);
+        var hasAccess = requests.Any(r => r.DoctorId == null || r.DoctorId == Guid.Empty || r.DoctorId == doctorId);
+        if (!hasAccess)
+            return null;
+
+        var user = await userRepository.GetByIdAsync(patientId, cancellationToken);
+        if (user == null || user.Role != UserRole.Patient)
+            return null;
+
+        var cpfMasked = MaskCpf(user.Cpf);
+
+        return new PatientProfileForDoctorDto(
+            user.Name,
+            user.Email.Value,
+            user.Phone?.Value,
+            user.BirthDate,
+            cpfMasked,
+            user.Gender,
+            user.Street,
+            user.Number,
+            user.Neighborhood,
+            user.Complement,
+            user.City,
+            user.State,
+            user.PostalCode,
+            user.AvatarUrl
+        );
+    }
+
+    private static string? MaskCpf(string? cpf)
+    {
+        if (string.IsNullOrWhiteSpace(cpf)) return null;
+        var digits = new string(cpf.Where(char.IsDigit).ToArray());
+        if (digits.Length != 11) return null;
+        return $"***.***.***-{digits[^2]}{digits[^1]}";
     }
 
     /// <summary>
@@ -1741,6 +1791,52 @@ public class RequestService(
         }
     }
 
+    /// <summary>
+    /// Obtém bytes de uma imagem de receita ou exame. Valida acesso via token ou Bearer.
+    /// </summary>
+    public async Task<byte[]?> GetRequestImageAsync(Guid id, string? token, Guid? userId, string imageType, int index, CancellationToken cancellationToken = default)
+    {
+        var request = await requestRepository.GetByIdAsync(id, cancellationToken);
+        if (request == null)
+            return null;
+
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            if (!documentTokenService.ValidateDocumentToken(token, id))
+                return null;
+        }
+        else if (userId.HasValue)
+        {
+            var isPatient = request.PatientId == userId.Value;
+            var isAssignedDoctor = request.DoctorId.HasValue && request.DoctorId.Value == userId.Value;
+            var isAvailableForDoctor = !request.DoctorId.HasValue || request.DoctorId == Guid.Empty;
+            User? user = null;
+            if (!isPatient && !isAssignedDoctor && isAvailableForDoctor)
+                user = await userRepository.GetByIdAsync(userId.Value, cancellationToken);
+            var canAccess = isPatient || isAssignedDoctor || (isAvailableForDoctor && user?.Role == UserRole.Doctor);
+            if (!canAccess)
+                return null;
+        }
+        else
+        {
+            return null;
+        }
+
+        List<string> urls;
+        if (string.Equals(imageType, "prescription", StringComparison.OrdinalIgnoreCase))
+            urls = request.PrescriptionImages;
+        else if (string.Equals(imageType, "exam", StringComparison.OrdinalIgnoreCase))
+            urls = request.ExamImages;
+        else
+            return null;
+
+        if (urls == null || index < 0 || index >= urls.Count)
+            return null;
+
+        var storageUrl = urls[index];
+        return await storageService.DownloadFromStorageUrlAsync(storageUrl, cancellationToken);
+    }
+
     private async Task CreateNotificationAsync(
         Guid userId,
         string title,
@@ -1960,6 +2056,9 @@ public class RequestService(
             // Se Api__DocumentTokenSecret não estiver configurado, docToken é null e mantemos a URL original (ex.: Supabase signed URL) para o link abrir no navegador.
         }
 
+        var prescriptionImages = ToProxyImageUrls(request.Id, request.PrescriptionImages, "prescription");
+        var examImages = ToProxyImageUrls(request.Id, request.ExamImages, "exam");
+
         return new RequestResponseDto(
             request.Id,
             request.PatientId,
@@ -1971,10 +2070,10 @@ public class RequestService(
             PrescriptionTypeToDisplay(request.PrescriptionType),
             request.PrescriptionKind.HasValue ? EnumHelper.ToSnakeCase(request.PrescriptionKind.Value) : null,
             request.Medications.Count > 0 ? request.Medications : null,
-            request.PrescriptionImages.Count > 0 ? request.PrescriptionImages : null,
+            prescriptionImages.Count > 0 ? prescriptionImages : null,
             request.ExamType,
             request.Exams.Count > 0 ? request.Exams : null,
-            request.ExamImages.Count > 0 ? request.ExamImages : null,
+            examImages.Count > 0 ? examImages : null,
             request.Symptoms,
             request.Price?.Amount,
             request.Notes,
@@ -2004,6 +2103,22 @@ public class RequestService(
             request.AiConductSuggestion,
             request.AiSuggestedExams,
             request.ConductUpdatedAt);
+    }
+
+    private List<string> ToProxyImageUrls(Guid requestId, List<string> urls, string imageType)
+    {
+        if (urls == null || urls.Count == 0)
+            return new List<string>();
+        if (string.IsNullOrWhiteSpace(_apiBaseUrl))
+            return urls;
+        var docToken = documentTokenService.GenerateDocumentToken(requestId, 60);
+        if (string.IsNullOrEmpty(docToken))
+            return urls;
+        var baseUrl = $"{_apiBaseUrl.TrimEnd('/')}/api/requests/{requestId}/{imageType}-image";
+        var result = new List<string>(urls.Count);
+        for (var i = 0; i < urls.Count; i++)
+            result.Add($"{baseUrl}/{i}?token={Uri.EscapeDataString(docToken)}");
+        return result;
     }
 
     private static VideoRoomResponseDto MapVideoRoomToDto(VideoRoom room)

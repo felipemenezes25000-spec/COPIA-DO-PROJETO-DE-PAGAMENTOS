@@ -18,7 +18,7 @@ import { formatBRL } from '../../../lib/utils/format';
 import { getApiErrorMessage } from '../../../lib/api-client';
 import type { RequestResponseDto } from '../../../types/database';
 import { SkeletonList } from '../../../components/ui/SkeletonLoader';
-import { AssistantBanner } from '../../../components/triage';
+import { DraggableAssistantBanner } from '../../../components/triage';
 import { useTriageEval } from '../../../hooks/useTriageEval';
 import { useRequestUpdated } from '../../../hooks/useRequestUpdated';
 
@@ -211,7 +211,7 @@ export default function PaymentRequestScreen() {
         </ScrollView>
       </View>
       <View style={styles.aiBannerSticky}>
-        <AssistantBanner
+        <DraggableAssistantBanner
           onAction={(action) => {
             if (action === 'teleconsulta' || action === 'consulta_breve' || action === 'agendar_retorno') {
               router.push('/new-request/consultation');

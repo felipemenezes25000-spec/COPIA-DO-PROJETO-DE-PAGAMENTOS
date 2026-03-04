@@ -545,7 +545,10 @@ export default function VideoCallScreenInner() {
       {isDoctor && timerStarted && audioRecorder.isRecording && (
         <View style={[S.recIndicator, { top: insets.top + 60 + 100 }]}>
           <View style={S.recDot} />
-          <Text style={S.recText}>Gravando · {audioRecorder.chunksSent} transcrições</Text>
+          <Text style={S.recText}>
+            Gravando · {audioRecorder.chunksSent} transcrições
+            {audioRecorder.chunksFailed > 0 && ` · ${audioRecorder.chunksFailed} falhas`}
+          </Text>
         </View>
       )}
       {isDoctor && timerStarted && audioRecorder.error && (

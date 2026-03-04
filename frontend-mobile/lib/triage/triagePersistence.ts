@@ -6,7 +6,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { TriagePersistedState } from './triage.types';
+import type { TriagePersistedState, BannerPositionMode, BannerFloatingPosition } from './triage.types';
 
 const STORAGE_KEY = '@renoveja:triage_v2';
 const CURRENT_VERSION = 2;
@@ -168,5 +168,33 @@ export async function unmuteAll(): Promise<void> {
   state.mutedKeys = [];
   state.cooldowns = {};
   state.sessionCounts = {};
+  scheduleSave();
+}
+
+// ── Posição da Dra. Renova (arrastar / acompanhar) ──────────
+
+/** Retorna posição da Dra. Renova: 'fixed' (acompanha no fundo) ou 'floating' (arrastável). */
+export async function getBannerPositionMode(): Promise<BannerPositionMode> {
+  const state = await load();
+  return state.bannerPositionMode ?? 'fixed';
+}
+
+/** Define modo da Dra. Renova. */
+export async function setBannerPositionMode(mode: BannerPositionMode): Promise<void> {
+  const state = await load();
+  state.bannerPositionMode = mode;
+  scheduleSave();
+}
+
+/** Retorna posição flutuante salva (quando modo = floating). */
+export async function getBannerFloatingPosition(): Promise<BannerFloatingPosition | null> {
+  const state = await load();
+  return state.bannerFloatingPosition ?? null;
+}
+
+/** Salva posição flutuante da Dra. Renova. */
+export async function setBannerFloatingPosition(pos: BannerFloatingPosition): Promise<void> {
+  const state = await load();
+  state.bannerFloatingPosition = pos;
   scheduleSave();
 }

@@ -13,6 +13,8 @@ public class ExceptionHandlingMiddleware(
     RequestDelegate next,
     ILogger<ExceptionHandlingMiddleware> logger)
 {
+    private static bool IsDevelopment() =>
+        string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
     /// <summary>
     /// Invoca o próximo middleware e trata exceções lançadas no pipeline.
     /// </summary>
@@ -88,7 +90,8 @@ public class ExceptionHandlingMiddleware(
             AuthConflictException => (HttpStatusCode.Conflict, exception.Message),
             DomainException => (HttpStatusCode.BadRequest, exception.Message),
             UnauthorizedAccessException => (HttpStatusCode.Unauthorized, "Unauthorized"),
-            InvalidOperationException => (HttpStatusCode.BadRequest, "Invalid operation"),
+            InvalidOperationException => (HttpStatusCode.BadRequest,
+                IsDevelopment() ? exception.Message : "Invalid operation"),
             KeyNotFoundException => (HttpStatusCode.NotFound, "Resource not found"),
             _ => (HttpStatusCode.InternalServerError, "An error occurred while processing your request")
         };

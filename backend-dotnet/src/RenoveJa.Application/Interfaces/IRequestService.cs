@@ -40,6 +40,12 @@ public interface IRequestService
         Guid patientId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Médico obtém perfil do paciente para identificação (dados cadastrais). Somente quando tem acesso ao prontuário.</summary>
+    Task<PatientProfileForDoctorDto?> GetPatientProfileForDoctorAsync(
+        Guid doctorId,
+        Guid patientId,
+        CancellationToken cancellationToken = default);
+
     Task<PagedResponse<RequestResponseDto>> GetUserRequestsPagedAsync(
         Guid userId,
         string? status = null,
@@ -131,6 +137,9 @@ public interface IRequestService
     /// </summary>
     Task<byte[]?> GetSignedDocumentByTokenAsync(Guid id, string? token, CancellationToken cancellationToken = default);
 
+    /// <summary>Obtém bytes de uma imagem de receita ou exame. Via Bearer ou token.</summary>
+    Task<byte[]?> GetRequestImageAsync(Guid id, string? token, Guid? userId, string imageType, int index, CancellationToken cancellationToken = default);
+
     /// <summary>Encerramento automático da consulta pelo cliente quando o timer expirar.</summary>
     Task<RequestResponseDto> AutoFinishConsultationAsync(Guid id, Guid userId, CancellationToken cancellationToken = default);
 
@@ -142,4 +151,5 @@ public interface IRequestService
 
     /// <summary>Estatísticas do médico (contagens e ganhos). Somente role doctor.</summary>
     Task<(int PendingCount, int InReviewCount, int CompletedCount, decimal TotalEarnings)> GetDoctorStatsAsync(Guid doctorId, CancellationToken cancellationToken = default);
+
 }

@@ -106,6 +106,7 @@ export default function DoctorProfile() {
         { icon: 'help-circle-outline' as const, label: 'Ajuda e FAQ', route: '/help-faq' },
         { icon: 'document-text-outline' as const, label: 'Termos de Uso', route: '/terms' },
         { icon: 'information-circle-outline' as const, label: 'Sobre', route: '/about' },
+        ...(__DEV__ ? [{ icon: 'mic' as const, label: 'Testar transcrição IA', route: '/(doctor)/transcription-test' }] : []),
       ],
     },
   ];

@@ -54,7 +54,13 @@ public class ConsultationController(
             return BadRequest("Consultation must be in progress to transcribe");
 
         if (file == null || file.Length == 0)
+        {
+            logger.LogWarning("[Transcribe] Chunk de áudio ausente ou vazio. RequestId={RequestId}", requestId);
             return BadRequest("Audio file is required");
+        }
+
+        logger.LogInformation("[Transcribe] Chunk recebido: RequestId={RequestId}, Size={Size}, Stream={Stream}",
+            requestId, file.Length, stream ?? "(null)");
 
         await using var fileStream = file.OpenReadStream();
         using var ms = new MemoryStream();
@@ -66,8 +72,11 @@ public class ConsultationController(
         var rawText = await transcriptionService.TranscribeAsync(audioBytes, file.FileName, cancellationToken);
         if (string.IsNullOrWhiteSpace(rawText))
         {
+            logger.LogInformation("[Transcribe] Whisper retornou vazio. RequestId={RequestId}", requestId);
             return Ok(new { transcribed = false, message = "No speech detected or transcription unavailable." });
         }
+
+        logger.LogInformation("[Transcribe] Transcrição OK: RequestId={RequestId}, TextLength={Len}", requestId, rawText.Length);
 
         // Diarização: prefixar com o locutor baseado no campo "stream"
         var isLocal = string.Equals(stream, "local", StringComparison.OrdinalIgnoreCase);
@@ -114,6 +123,53 @@ public class ConsultationController(
         }
 
         return Ok(new { transcribed = true, text = rawText, stream = prefix, fullLength = fullText.Length });
+    }
+
+    /// <summary>
+    /// Endpoint de teste de transcrição (apenas Development).
+    /// Aceita um arquivo de áudio e retorna o resultado do Whisper, sem precisar de consulta ativa.
+    /// Útil para validar OpenAI:ApiKey e o fluxo de transcrição.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("transcribe-test")]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    public async Task<IActionResult> TranscribeTest(
+        [FromForm] IFormFile? file,
+        CancellationToken cancellationToken)
+    {
+        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        logger.LogInformation("[TranscribeTest] Requisição recebida. ASPNETCORE_ENVIRONMENT={Env}", env ?? "(null)");
+
+        if (!string.Equals(env, "Development", StringComparison.OrdinalIgnoreCase))
+        {
+            logger.LogWarning("[TranscribeTest] Endpoint não disponível fora de Development. Retornando 404.");
+            return NotFound();
+        }
+
+        if (file == null || file.Length == 0)
+        {
+            logger.LogWarning("[TranscribeTest] Arquivo ausente ou vazio.");
+            return BadRequest(new { error = "Arquivo de áudio obrigatório" });
+        }
+
+        logger.LogInformation("[TranscribeTest] Arquivo recebido: {Name}, {Size} bytes", file.FileName, file.Length);
+
+        await using var fileStream = file.OpenReadStream();
+        using var ms = new MemoryStream();
+        await fileStream.CopyToAsync(ms, cancellationToken);
+        var audioBytes = ms.ToArray();
+
+        var rawText = await transcriptionService.TranscribeAsync(audioBytes, file.FileName, cancellationToken);
+        logger.LogInformation("[TranscribeTest] Resultado: transcribed={Transcribed}, textLength={Len}",
+            !string.IsNullOrWhiteSpace(rawText), rawText?.Length ?? 0);
+
+        return Ok(new
+        {
+            transcribed = !string.IsNullOrWhiteSpace(rawText),
+            text = rawText ?? "(nenhum texto detectado)",
+            fileSize = audioBytes.Length,
+            fileName = file.FileName
+        });
     }
 
     private Guid GetUserId()
