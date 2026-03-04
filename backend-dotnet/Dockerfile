@@ -29,12 +29,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Non-root user for security
 RUN adduser --disabled-password --gecos "" appuser
-USER appuser
 
 COPY --from=publish /app/publish .
 
-# Permissão para appuser escrever logs (Serilog WriteTo.File)
+# Permissão para appuser escrever logs (Serilog WriteTo.File) — deve rodar como root
 RUN mkdir -p /app/logs && chown -R appuser:appuser /app
+
+USER appuser
 
 # Render usa PORT=10000 por padrão; ASP.NET Core precisa de ASPNETCORE_URLS
 ENV PORT=10000
