@@ -17,7 +17,7 @@ namespace RenoveJa.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/consultation")]
-[Authorize(Roles = "doctor")]
+[Authorize(Roles = "doctor,patient")]
 public class ConsultationController(
     IRequestRepository requestRepository,
     ITranscriptionService transcriptionService,
@@ -33,8 +33,9 @@ public class ConsultationController(
 
     /// <summary>
     /// Recebe um chunk de áudio, transcreve e acumula.
-    /// Campo opcional "stream": "local" (médico) | "remote" (paciente, padrão).
-    /// Transcrições são prefixadas com [Médico] ou [Paciente] para diarização.
+    /// O PACIENTE envia o áudio (seu microfone) — transcrição do que o paciente fala.
+    /// O médico apenas visualiza transcrição e anamnese via SignalR (fica mudo durante a consulta).
+    /// Aceita médico ou paciente: paciente sempre [Paciente]; médico usa stream "local"/"remote".
     /// </summary>
     [HttpPost("transcribe")]
     [RequestSizeLimit(5 * 1024 * 1024)]
@@ -44,11 +45,13 @@ public class ConsultationController(
         [FromForm] string? stream,
         CancellationToken cancellationToken)
     {
-        var doctorId = GetUserId();
+        var userId = GetUserId();
         var request = await requestRepository.GetByIdAsync(requestId, cancellationToken);
         if (request == null)
             return NotFound("Request not found");
-        if (request.DoctorId != doctorId)
+        var isDoctor = request.DoctorId == userId;
+        var isPatient = request.PatientId == userId;
+        if (!isDoctor && !isPatient)
             return Forbid();
         if (request.Status != RequestStatus.InConsultation)
             return BadRequest("Consultation must be in progress to transcribe");
@@ -78,9 +81,8 @@ public class ConsultationController(
 
         logger.LogInformation("[Transcribe] Transcrição OK: RequestId={RequestId}, TextLength={Len}", requestId, rawText.Length);
 
-        // Diarização: prefixar com o locutor baseado no campo "stream"
-        var isLocal = string.Equals(stream, "local", StringComparison.OrdinalIgnoreCase);
-        var prefix = isLocal ? "[Médico]" : "[Paciente]";
+        // Diarização: paciente sempre [Paciente]; médico usa campo stream (local=própria voz, remote=outro)
+        var prefix = isPatient ? "[Paciente]" : (string.Equals(stream, "local", StringComparison.OrdinalIgnoreCase) ? "[Médico]" : "[Paciente]");
         var labeledText = $"{prefix} {rawText}";
 
         sessionStore.AppendTranscript(requestId, labeledText);

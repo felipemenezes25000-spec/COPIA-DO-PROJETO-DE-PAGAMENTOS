@@ -37,14 +37,16 @@ internal sealed class BcCrlListStore : IStore<X509Crl>
 
 /// <summary>
 /// Container de assinatura externa com OIDs de documento de saúde exigidos pelo ITI (validar.iti.gov.br).
-/// Inclui: 2.16.76.1.12.1.1 (prescrição), 2.16.76.1.4.2.2.1 (CRM), 2.16.76.1.4.2.2.2 (UF).
-/// Suporta RSA e ECDSA, CRL, OCSP e TSA com fallback (assina sem revogação/timestamp se indisponível).
-/// Referência: https://bry-developer.readme.io/reference/assinatura-digital-com-metadados
+/// Inclui OID do documento (prescrição 2.16.76.1.12.1.1 ou solicitação de exame 2.16.76.1.12.1.3),
+/// 2.16.76.1.4.2.2.1 (CRM), 2.16.76.1.4.2.2.2 (UF).
+/// Documentos sem OID não são reconhecidos pelo validar.iti.gov.br nem pelo Adobe.
+/// Referência: Guia do Desenvolvedor ITI - https://validar.iti.gov.br/guia-desenvolvedor.html
 /// </summary>
 public sealed class ItiHealthOidsSignatureContainer : IExternalSignatureContainer
 {
-    // OIDs ITI para documentos de saúde (ICP-Brasil)
-    private const string OidPrescricao = "2.16.76.1.12.1.1";   // Prescrição de medicamento (valor "")
+    // OIDs ITI para documentos de saúde (ICP-Brasil) — Guia ITI Cap. V
+    private const string OidPrescricao = "2.16.76.1.12.1.1";   // Prescrição de medicamento
+    private const string OidSolicitacaoExame = "2.16.76.1.12.1.3"; // Solicitação de exame
     private const string OidCrm = "2.16.76.1.4.2.2.1";         // Número de registro profissional (CRM)
     private const string OidUf = "2.16.76.1.4.2.2.2";         // UF de registro profissional
 
@@ -58,16 +60,19 @@ public sealed class ItiHealthOidsSignatureContainer : IExternalSignatureContaine
     private readonly X509Certificate[] _chain;
     private readonly string _crmNumber;
     private readonly string _uf;
+    private readonly string _documentOid; // OID do documento: prescrição ou solicitação de exame
     private readonly IOcspClient? _ocspClient;
     private readonly ICrlClient? _crlClient;
     private readonly ITSAClient? _tsaClient;
     private readonly IX509Certificate[] _chainItext; // iText.Commons.Bouncycastle.Cert.IX509Certificate
 
+    /// <param name="documentTypeHint">"exam" para solicitação de exame (OID 2.16.76.1.12.1.3); qualquer outro valor usa prescrição (2.16.76.1.12.1.1).</param>
     public ItiHealthOidsSignatureContainer(
         Org.BouncyCastle.Crypto.AsymmetricKeyParameter privateKey,
         X509Certificate[] chain,
         string? crmNumber,
         string? uf,
+        string? documentTypeHint = null,
         IOcspClient? ocspClient = null,
         ICrlClient? crlClient = null,
         ITSAClient? tsaClient = null)
@@ -76,6 +81,9 @@ public sealed class ItiHealthOidsSignatureContainer : IExternalSignatureContaine
         _chain = chain ?? throw new ArgumentNullException(nameof(chain));
         _crmNumber = crmNumber ?? "";
         _uf = uf ?? "";
+        _documentOid = string.Equals(documentTypeHint, "exam", StringComparison.OrdinalIgnoreCase)
+            ? OidSolicitacaoExame
+            : OidPrescricao;
         _ocspClient = ocspClient;
         _crlClient = crlClient;
         _tsaClient = tsaClient;
@@ -123,8 +131,8 @@ public sealed class ItiHealthOidsSignatureContainer : IExternalSignatureContaine
     {
         var v = new Asn1EncodableVector();
 
-        // 2.16.76.1.12.1.1 - Prescrição de medicamento (valor string vazia conforme ITI)
-        v.Add(new CmsAttribute(new DerObjectIdentifier(OidPrescricao), new DerSet(new DerUtf8String(""))));
+        // OID do documento (prescrição ou solicitação de exame) — valor conforme ITI
+        v.Add(new CmsAttribute(new DerObjectIdentifier(_documentOid), new DerSet(new DerUtf8String(""))));
 
         // 2.16.76.1.4.2.2.1 - CRM
         v.Add(new CmsAttribute(new DerObjectIdentifier(OidCrm), new DerSet(new DerUtf8String(_crmNumber))));

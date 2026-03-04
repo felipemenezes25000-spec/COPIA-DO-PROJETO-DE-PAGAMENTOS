@@ -54,12 +54,14 @@ public interface IDigitalCertificateService
     /// <summary>
     /// Assina um documento PDF usando o certificado do médico.
     /// pfxPassword: senha do certificado PFX. Obrigatória para desbloquear a chave privada.
+    /// documentTypeHint: "prescription" ou "exam" — define OID ITI (2.16.76.1.12.1.1 ou 2.16.76.1.12.1.3) para validar.iti.gov.br.
     /// </summary>
     Task<DigitalSignatureResult> SignPdfAsync(
         Guid certificateId,
         byte[] pdfBytes,
         string outputFileName,
         string? pfxPassword = null,
+        string? documentTypeHint = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

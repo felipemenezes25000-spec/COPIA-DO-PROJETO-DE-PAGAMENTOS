@@ -212,6 +212,7 @@ public class DigitalCertificateService : IDigitalCertificateService
         byte[] pdfBytes,
         string outputFileName,
         string? pfxPassword = null,
+        string? documentTypeHint = null,
         CancellationToken cancellationToken = default)
     {
         try
@@ -245,8 +246,8 @@ public class DigitalCertificateService : IDigitalCertificateService
                 return new DigitalSignatureResult(false, "Senha do certificado PFX é obrigatória para assinar. Envie PfxPassword no corpo da requisição.", null, null, null);
             }
 
-            // Assina o PDF com iText7 + BouncyCastle
-            var signedPdfBytes = SignPdfWithBouncyCastle(pfxBytes, passwordToUse, pdfBytes, certificate);
+            // Assina o PDF com iText7 + BouncyCastle (inclui OID correto para ITI/Adobe)
+            var signedPdfBytes = SignPdfWithBouncyCastle(pfxBytes, passwordToUse, pdfBytes, certificate, documentTypeHint);
 
             // Upload do PDF assinado
             var signedPath = $"signed/{outputFileName}";
@@ -301,7 +302,7 @@ public class DigitalCertificateService : IDigitalCertificateService
         using var httpClient = new HttpClient();
         var pdfBytes = await httpClient.GetByteArrayAsync(pdfUrl, cancellationToken);
         
-        return await SignPdfAsync(certificateId, pdfBytes, outputFileName, null, cancellationToken);
+        return await SignPdfAsync(certificateId, pdfBytes, outputFileName, null, documentTypeHint: null, cancellationToken);
     }
 
     public async Task<bool> HasValidCertificateAsync(
@@ -357,10 +358,11 @@ public class DigitalCertificateService : IDigitalCertificateService
     /// Assina um PDF usando o PFX via iText7 BouncyCastle adapter.
     /// Padrão mais alto: PAdES (ISO/ETSI) com PKCS#7/CMS, SHA256, cadeia completa, timestamp TSA e revogação (OCSP + CRL) quando disponível.
     /// Inclui DocMDP (P=2) para evitar "Assinatura Indeterminada" no validar.iti.gov.br.
-    /// Inclui OIDs ITI nos atributos assinados (prescrição, CRM, UF) via ItiHealthOidsSignatureContainer.
+    /// Inclui OIDs ITI nos atributos assinados (prescrição ou exame, CRM, UF) via ItiHealthOidsSignatureContainer.
     /// Aceito pelo validar.iti.gov.br (ICP-Brasil) e por validadores Adobe quando a cadeia for válida.
     /// </summary>
-    private byte[] SignPdfWithBouncyCastle(byte[] pfxBytes, string pfxPassword, byte[] pdfBytes, DoctorCertificate certificate)
+    /// <param name="documentTypeHint">"exam" para solicitação de exame; "prescription" ou null para receita.</param>
+    private byte[] SignPdfWithBouncyCastle(byte[] pfxBytes, string pfxPassword, byte[] pdfBytes, DoctorCertificate certificate, string? documentTypeHint = null)
     {
         // Load PKCS12 store with password (PFX is password-protected)
         using var pfxStream = new MemoryStream(pfxBytes);
@@ -419,6 +421,7 @@ public class DigitalCertificateService : IDigitalCertificateService
             bcChain,
             crmForOid,
             ufForOid,
+            documentTypeHint,
             ocspClient,
             crlClient,
             tsaClient);
@@ -439,7 +442,7 @@ public class DigitalCertificateService : IDigitalCertificateService
             _logger.LogWarning(ex, "Container OIDs ITI falhou. Fallback para SignDetached (sem OIDs).");
             try
             {
-                return SignPdfDetachedFallback(pdfBytes, store, keyAlias, certificate, useAppendMode: true, certifyDocument: true);
+                return SignPdfDetachedFallback(pdfBytes, store, keyAlias, certificate, useAppendMode: true, certifyDocument: true, documentTypeHint: documentTypeHint);
             }
             catch (Exception fallbackEx) when (IsPreClosedOrAlreadySignedError(fallbackEx))
             {
@@ -448,13 +451,14 @@ public class DigitalCertificateService : IDigitalCertificateService
                 _logger.LogWarning(
                     fallbackEx,
                     "Fallback com append/certificação falhou. Tentando assinatura conservadora sem certificação/append.");
-                return SignPdfDetachedFallback(pdfBytes, store, keyAlias, certificate, useAppendMode: false, certifyDocument: false);
+                return SignPdfDetachedFallback(pdfBytes, store, keyAlias, certificate, useAppendMode: false, certifyDocument: false, documentTypeHint: documentTypeHint);
             }
         }
     }
 
     /// <summary>
     /// Fallback: assina com SignDetached (sem OIDs ITI) quando o container falha.
+    /// Atenção: documentos assinados via fallback não são reconhecidos pelo validar.iti.gov.br.
     /// </summary>
     private byte[] SignPdfDetachedFallback(
         byte[] pdfBytes,
@@ -462,7 +466,8 @@ public class DigitalCertificateService : IDigitalCertificateService
         string keyAlias,
         DoctorCertificate certificate,
         bool useAppendMode = true,
-        bool certifyDocument = true)
+        bool certifyDocument = true,
+        string? documentTypeHint = null)
     {
         var pk = store.GetKey(keyAlias);
         var chainEntries = store.GetCertificateChain(keyAlias);

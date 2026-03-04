@@ -112,8 +112,8 @@ export default function VideoCallScreenInner() {
   const [bankBalance, setBankBalance] = useState<{ minutes: number; seconds: number } | null>(null);
   const [consultationType, setConsultationType] = useState<string>('medico_clinico');
 
-  // Audio recording for transcription (doctor only) — real implementation
-  const audioRecorder = useAudioRecorder(rid);
+  // Audio recording for transcription — PACIENTE grava (seu microfone); médico só visualiza via SignalR
+  const audioRecorder = useAudioRecorder(rid, isDoctor ? 'local' : 'remote');
 
   // Anamnesis & Transcript (doctor)
   const [panelOpen, setPanelOpen] = useState(false);
@@ -281,21 +281,7 @@ export default function VideoCallScreenInner() {
       // Also report doctor as connected to help trigger server-side timer
       reportCallConnected(rid).catch(() => {});
       connectSignalR();
-      // Start real audio recording for transcription
-      if (isDoctor) {
-        // Small delay to let audio session stabilize after Daily.co
-        await new Promise(r => setTimeout(r, 500));
-        const started = await audioRecorder.start();
-        if (!started) {
-          console.warn('Audio recording failed to start — transcription won\'t work');
-          // Retry once after a longer delay
-          await new Promise(r => setTimeout(r, 1500));
-          const retried = await audioRecorder.start();
-          if (!retried) {
-            console.warn('Audio recording retry also failed');
-          }
-        }
-      }
+      // Médico NÃO grava — transcrição vem do paciente. Médico só vê ao vivo via SignalR.
     } catch (e: any) {
       console.warn('Failed to start consultation:', e?.message);
       // Still set local timer so UI isn't stuck
@@ -355,6 +341,24 @@ export default function VideoCallScreenInner() {
     }, 4000);
     return () => clearInterval(poll);
   }, [isDoctor, rid, consultationStartedAt]);
+
+  // Patient: iniciar gravação para transcrição quando a consulta começar (paciente fala, médico vê ao vivo)
+  const patientRecordingStartedRef = useRef(false);
+  useEffect(() => {
+    if (isDoctor || !rid || !consultationStartedAt || callState !== 'joined') return;
+    if (patientRecordingStartedRef.current) return;
+    patientRecordingStartedRef.current = true;
+    (async () => {
+      await new Promise(r => setTimeout(r, 500));
+      const started = await audioRecorder.start();
+      if (!started) {
+        console.warn('[Patient] Transcrição: falha ao iniciar gravação');
+        await new Promise(r => setTimeout(r, 1500));
+        const retried = await audioRecorder.start();
+        if (!retried) console.warn('[Patient] Transcrição: retry falhou');
+      }
+    })();
+  }, [isDoctor, rid, consultationStartedAt, callState, audioRecorder]);
 
   // Countdown / Auto-finish
   useEffect(() => {
@@ -541,20 +545,11 @@ export default function VideoCallScreenInner() {
         </View>
       )}
 
-      {/* Doctor: Recording indicator */}
-      {isDoctor && timerStarted && audioRecorder.isRecording && (
+      {/* Doctor: indicador de transcrição ao vivo (paciente grava, médico vê) */}
+      {isDoctor && timerStarted && (transcript.length > 0 || isAiActive) && (
         <View style={[S.recIndicator, { top: insets.top + 60 + 100 }]}>
           <View style={S.recDot} />
-          <Text style={S.recText}>
-            Gravando · {audioRecorder.chunksSent} transcrições
-            {audioRecorder.chunksFailed > 0 && ` · ${audioRecorder.chunksFailed} falhas`}
-          </Text>
-        </View>
-      )}
-      {isDoctor && timerStarted && audioRecorder.error && (
-        <View style={[S.recIndicator, { top: insets.top + 60 + 100, backgroundColor: 'rgba(245,158,11,0.8)' }]}>
-          <Ionicons name="warning" size={12} color="#fff" />
-          <Text style={S.recText}>Mic: {audioRecorder.error}</Text>
+          <Text style={S.recText}>Transcrição ao vivo</Text>
         </View>
       )}
 

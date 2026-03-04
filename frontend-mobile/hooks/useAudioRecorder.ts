@@ -1,12 +1,12 @@
 /**
  * useAudioRecorder — Captura áudio do microfone em chunks e envia para transcrição.
  *
- * Fluxo:
+ * Fluxo: O PACIENTE grava (seu microfone). O médico fica mudo e só vê transcrição/anamnese ao vivo.
  *  1. Solicita permissão de microfone
  *  2. Grava áudio em chunks de CHUNK_DURATION_MS (10s)
- *  3. A cada chunk: para → lê arquivo → envia POST /api/consultation/transcribe
+ *  3. A cada chunk: para → lê arquivo → envia POST /api/consultation/transcribe (stream: remote)
  *  4. Backend: Whisper transcreve → SessionStore acumula → SignalR broadcast
- *  5. Frontend: SignalR listener atualiza painel de transcrição/anamnese
+ *  5. Médico: SignalR listener atualiza painel de transcrição/anamnese
  *
  * Compatível com teleconsulta (Daily.co) e consulta presencial.
  */
@@ -50,19 +50,22 @@ interface UseAudioRecorderReturn {
   chunksSent: number;
   /** Number of chunks that failed to send */
   chunksFailed: number;
-  /** Last error message */
+  /** Last error message (permissão, gravação) */
   error: string | null;
+  /** Último erro de envio (API/rede) — útil quando chunksFailed > 0 */
+  lastChunkError: string | null;
   /** Start recording and sending chunks */
   start: () => Promise<boolean>;
   /** Stop recording and send final chunk */
   stop: () => Promise<void>;
 }
 
-export function useAudioRecorder(requestId: string): UseAudioRecorderReturn {
+export function useAudioRecorder(requestId: string, stream: 'local' | 'remote' = 'local'): UseAudioRecorderReturn {
   const [isRecording, setIsRecording] = useState(false);
   const [chunksSent, setChunksSent] = useState(0);
   const [chunksFailed, setChunksFailed] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [lastChunkError, setLastChunkError] = useState<string | null>(null);
 
   const recordingRef = useRef<Audio.Recording | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -97,8 +100,13 @@ export function useAudioRecorder(requestId: string): UseAudioRecorderReturn {
 
         await transcribeAudioChunk(requestId, fileObject as any, stream);
         setChunksSent((c) => c + 1);
+        setLastChunkError(null);
       } catch (e: any) {
-        console.warn(`[AudioRecorder] Chunk send failed: ${e?.message}`);
+        const msg = e?.message ?? String(e);
+        const status = e?.status;
+        const display = status != null ? `[${status}] ${msg}` : msg;
+        console.warn(`[AudioRecorder] Chunk send failed:`, display);
+        setLastChunkError(display);
         setChunksFailed((c) => c + 1);
         // Don't stop recording on individual chunk failure
       } finally {
@@ -146,9 +154,9 @@ export function useAudioRecorder(requestId: string): UseAudioRecorderReturn {
 
     // 3. Send previous chunk in background (don't block next recording)
     if (prevUri) {
-      sendChunk(prevUri, 'local').catch(() => {});
+      sendChunk(prevUri, stream).catch(() => {});
     }
-  }, [sendChunk]);
+  }, [sendChunk, stream]);
 
   // ── Start recording ──
 
@@ -236,7 +244,7 @@ export function useAudioRecorder(requestId: string): UseAudioRecorderReturn {
         recordingRef.current = null;
         if (uri) {
           // Send final chunk synchronously (we're ending the session)
-          await sendChunk(uri, 'local');
+          await sendChunk(uri, stream);
         }
       } catch (e: any) {
         console.warn('[AudioRecorder] Final chunk error:', e?.message);
@@ -255,7 +263,7 @@ export function useAudioRecorder(requestId: string): UseAudioRecorderReturn {
     console.log(
       `[AudioRecorder] Stopped. Sent: ${chunkIndexRef.current} chunks`,
     );
-  }, [sendChunk]);
+  }, [sendChunk, stream]);
 
   // ── Cleanup on unmount ──
 
@@ -279,6 +287,7 @@ export function useAudioRecorder(requestId: string): UseAudioRecorderReturn {
     chunksSent,
     chunksFailed,
     error,
+    lastChunkError,
     start,
     stop,
   };

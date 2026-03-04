@@ -142,7 +142,7 @@ public class PrescriptionPdfService : IPrescriptionPdfService
     public async Task<PrescriptionPdfResult> SignAsync(
         byte[] pdfBytes, Guid certificateId, string outputFileName, CancellationToken cancellationToken = default)
     {
-        var signatureResult = await _certificateService.SignPdfAsync(certificateId, pdfBytes, outputFileName, null, cancellationToken);
+        var signatureResult = await _certificateService.SignPdfAsync(certificateId, pdfBytes, outputFileName, null, documentTypeHint: null, cancellationToken);
         if (!signatureResult.Success) return new PrescriptionPdfResult(false, null, null, signatureResult.ErrorMessage);
         return new PrescriptionPdfResult(true, null, signatureResult.SignedDocumentUrl, null);
     }
@@ -162,7 +162,8 @@ public class PrescriptionPdfService : IPrescriptionPdfService
             var frontendBase = !string.IsNullOrWhiteSpace(_verificationConfig.FrontendUrl)
                 ? _verificationConfig.FrontendUrl.TrimEnd('/')
                 : apiBase;
-            var qrUrl = $"{apiBase}/{data.RequestId}";
+            // type=exame conforme Guia ITI Cap. IV — necessário para validar.iti.gov.br identificar solicitação de exame
+            var qrUrl = $"{apiBase}/{data.RequestId}?type=exame";
             var displayUrl = $"{frontendBase}/{data.RequestId}";
 
             using var ms = new MemoryStream();
@@ -731,7 +732,9 @@ public class PrescriptionPdfService : IPrescriptionPdfService
             ? _verificationConfig.FrontendUrl.TrimEnd('/')
             : apiBase;
 
-        var qrUrl = data.VerificationUrl ?? $"{apiBase}/{data.RequestId}";
+        // type=prescricao conforme Guia ITI Cap. IV — necessário para validar.iti.gov.br identificar o documento
+        var basePath = data.VerificationUrl ?? $"{apiBase}/{data.RequestId}";
+        var qrUrl = basePath.Contains('?') ? $"{basePath}&type=prescricao" : $"{basePath}?type=prescricao";
         var displayUrl = $"{frontendBase}/{data.RequestId}";
         var accessCode = data.AccessCode ?? GenerateAccessCode(data.RequestId);
         return (qrUrl, displayUrl, accessCode);

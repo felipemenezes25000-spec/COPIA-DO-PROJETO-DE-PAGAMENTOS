@@ -1225,11 +1225,13 @@ public class RequestService(
                     if (certInfo == null)
                         throw new InvalidOperationException("Certificado ativo não encontrado. Cadastre ou reative um certificado em Configurações.");
 
+                    var documentTypeHint = request.RequestType == Domain.Enums.RequestType.Exam ? "exam" : "prescription";
                     var signResult = await digitalCertificateService.SignPdfAsync(
                                 certInfo.Id,
                                 pdfBytes,
                                 pdfFileName,
                                 normalizedPfxPassword,
+                                documentTypeHint,
                                 cancellationToken);
 
                             if (signResult.Success)

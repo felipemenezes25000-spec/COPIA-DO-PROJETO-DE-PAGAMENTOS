@@ -316,7 +316,7 @@ export async function getTimeBankBalance(consultationType: string): Promise<{ ba
   return apiClient.get(`/api/requests/time-bank?consultationType=${encodeURIComponent(consultationType)}`);
 }
 
-/** Envia chunk de áudio para transcrição em tempo real (médico). */
+/** Envia chunk de áudio para transcrição em tempo real. Paciente envia (stream=remote); médico só visualiza. */
 export async function transcribeAudioChunk(
   requestId: string,
   audioBlob: Blob | { uri: string; name: string; type: string },
