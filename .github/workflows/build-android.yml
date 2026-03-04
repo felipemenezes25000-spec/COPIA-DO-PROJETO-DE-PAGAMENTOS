@@ -83,7 +83,7 @@ jobs:
         run: chmod +x android/gradlew
 
       - name: Setup Android signing
-        if: inputs.build_type == 'release'
+        if: github.event.inputs.build_type == 'release'
         run: |
           if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
             echo "⚠ ANDROID_KEYSTORE_BASE64 não configurado. Build release usará debug signing."
@@ -102,7 +102,7 @@ jobs:
       - name: Build APK
         run: |
           cd android
-          if [ "${{ inputs.build_type }}" = "release" ]; then
+          if [ "${{ github.event.inputs.build_type }}" = "release" ]; then
             ./gradlew assembleRelease --no-daemon
           else
             ./gradlew assembleDebug --no-daemon
@@ -113,7 +113,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: renoveja-${{ inputs.build_type }}-apk
+          name: renoveja-${{ github.event.inputs.build_type }}-apk
           path: |
             frontend-mobile/android/app/build/outputs/apk/release/*.apk
             frontend-mobile/android/app/build/outputs/apk/debug/*.apk
