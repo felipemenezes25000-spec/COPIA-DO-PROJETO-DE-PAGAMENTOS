@@ -36,6 +36,7 @@ using Microsoft.Extensions.Logging;
 using System.Threading.RateLimiting;
 using Serilog;
 using Microsoft.AspNetCore.Rewrite;
+using Microsoft.AspNetCore.HttpOverrides;
 
 // Carrega .env da pasta do projeto e garante Supabase no Environment (evita 400 por ServiceKey)
 static string? FindEnvPath()
@@ -321,6 +322,14 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IPushNotificationSender, RenoveJa.Infrastructure.Notifications.ExpoPushService>();
 
 builder.Services.AddHttpClient();
+
+// ForwardedHeaders: respeita X-Forwarded-For e X-Forwarded-Proto quando atrás de proxy (Render, Railway, nginx)
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 builder.Services.AddScoped<IAiReadingService, RenoveJa.Infrastructure.AiReading.OpenAiReadingService>();
 builder.Services.AddScoped<IAiPrescriptionGeneratorService, RenoveJa.Infrastructure.AiReading.OpenAiPrescriptionGeneratorService>();
 builder.Services.AddScoped<IAiConductSuggestionService, RenoveJa.Infrastructure.AiReading.OpenAiConductSuggestionService>();
@@ -353,11 +362,13 @@ builder.Services.AddCors(options =>
         "https://www.renovejasaude.com.br",
         "https://app.renovejasaude.com.br",
         "https://validar.iti.gov.br",
+        "https://h-validar.iti.gov.br",
+        "https://www.validar.iti.gov.br",
         "https://lovable.app",
         "https://www.lovable.app"
     };
 
-    // Permite lovable.dev, lovable.app e qualquer subdomínio (previews: xxx.lovable.app)
+    // Permite lovable.dev, lovable.app, iti.gov.br (validador) e qualquer subdomínio
     static bool IsAllowedOrigin(string? origin, IReadOnlyCollection<string> explicitOrigins)
     {
         if (string.IsNullOrEmpty(origin)) return false;
@@ -369,6 +380,9 @@ builder.Services.AddCors(options =>
             if (host.Equals("lovable.app", StringComparison.OrdinalIgnoreCase) || host.EndsWith(".lovable.app", StringComparison.OrdinalIgnoreCase))
                 return true;
             if (host.Equals("lovable.dev", StringComparison.OrdinalIgnoreCase) || host.Equals("www.lovable.dev", StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (host.Equals("validar.iti.gov.br", StringComparison.OrdinalIgnoreCase) || host.Equals("h-validar.iti.gov.br", StringComparison.OrdinalIgnoreCase)
+                || host.EndsWith(".iti.gov.br", StringComparison.OrdinalIgnoreCase))
                 return true;
             return false;
         }
@@ -413,6 +427,23 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
+    });
+
+    // Policy permissiva para endpoints de verificação (ITI validar.iti.gov.br e h-validar.iti.gov.br)
+    options.AddPolicy("VerifyCors", policy =>
+    {
+        policy.SetIsOriginAllowed(origin =>
+        {
+            if (string.IsNullOrEmpty(origin)) return true;
+            try
+            {
+                var host = new Uri(origin).Host;
+                return host.EndsWith(".iti.gov.br", StringComparison.OrdinalIgnoreCase);
+            }
+            catch { return false; }
+        })
+        .AllowAnyMethod()
+        .AllowAnyHeader();
     });
 });
 
@@ -494,6 +525,8 @@ builder.Services.AddRateLimiter(options =>
 });
 
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 // Executar migrations do Supabase na inicialização
 try
