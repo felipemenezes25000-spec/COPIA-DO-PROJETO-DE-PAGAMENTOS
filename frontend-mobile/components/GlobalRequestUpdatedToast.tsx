@@ -7,10 +7,10 @@ import { showToast } from './ui/Toast';
 import type { RequestUpdatedPayload } from '../lib/requestsEvents';
 import { colors } from '../lib/theme';
 
-export function getMessageForUser(payload: RequestUpdatedPayload): string {
+export function getMessageForUser(payload: RequestUpdatedPayload, isDoctor?: boolean): string {
   if (payload.message && payload.message.trim()) return payload.message.trim();
   const s = (payload.status || '').toLowerCase();
-  const map: Record<string, string> = {
+  const patientMap: Record<string, string> = {
     paid: 'Pagamento confirmado.',
     signed: 'Documento assinado. Baixe em Meus pedidos.',
     delivered: 'Documento recebido.',
@@ -21,7 +21,19 @@ export function getMessageForUser(payload: RequestUpdatedPayload): string {
     cancelled: 'Pedido cancelado.',
     rejected: 'Pedido rejeitado.',
   };
-  return map[s] || 'Seu pedido foi atualizado.';
+  const doctorMap: Record<string, string> = {
+    submitted: 'Nova solicitação na fila. Toque para ver.',
+    paid: 'Pagamento confirmado.',
+    signed: 'Documento assinado.',
+    delivered: 'Documento recebido.',
+    approved_pending_payment: 'Solicitação aprovada.',
+    in_consultation: 'Paciente na sala.',
+    consultation_finished: 'Consulta encerrada.',
+    cancelled: 'Pedido cancelado.',
+    rejected: 'Pedido rejeitado.',
+  };
+  const map = isDoctor ? doctorMap : patientMap;
+  return map[s] || (isDoctor ? 'Solicitação atualizada.' : 'Seu pedido foi atualizado.');
 }
 
 const COUNTDOWN_SECONDS = 10;
@@ -46,7 +58,7 @@ export function GlobalRequestUpdatedToast() {
   useEffect(() => {
     if (!user) return;
     const unsubscribe = subscribe((payload: RequestUpdatedPayload) => {
-      const message = getMessageForUser(payload);
+      const message = getMessageForUser(payload, isDoctor);
       const requestId = payload.requestId || '';
       const isDoctor = user?.role === 'doctor';
 

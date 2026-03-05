@@ -105,7 +105,7 @@ export default function DoctorDashboard() {
       loadData();
       // Polling fallback quando SignalR desconectado — evita médico precisar dar refresh
       if (!isConnected) {
-        const interval = setInterval(loadData, 15000);
+        const interval = setInterval(loadData, 8000);
         return () => clearInterval(interval);
       }
     }, [loadData, isConnected])

@@ -271,6 +271,7 @@ public class RequestService(
         {
             await pushDispatcher.SendAsync(PushNotificationRules.Submitted(userId, req.Id, RequestType.Prescription), cancellationToken);
             await NotifyAvailableDoctorsOfNewRequestAsync("receita", req, cancellationToken);
+            await requestEventsPublisher.NotifyNewRequestToDoctorsAsync(req.Id, "submitted", "Nova receita na fila", cancellationToken);
         }
 
         return (MapRequestToDto(req!), null);
@@ -319,6 +320,7 @@ public class RequestService(
         {
             await pushDispatcher.SendAsync(PushNotificationRules.Submitted(userId, req.Id, RequestType.Exam), cancellationToken);
             await NotifyAvailableDoctorsOfNewRequestAsync("exame", req, cancellationToken);
+            await requestEventsPublisher.NotifyNewRequestToDoctorsAsync(req.Id, "submitted", "Novo exame na fila", cancellationToken);
         }
 
         return (MapRequestToDto(req!), null);
@@ -403,6 +405,7 @@ public class RequestService(
         await pushDispatcher.SendAsync(PushNotificationRules.Submitted(userId, medicalRequest.Id, RequestType.Consultation), cancellationToken);
 
         await NotifyAvailableDoctorsOfNewRequestAsync("consulta", medicalRequest, cancellationToken);
+        await requestEventsPublisher.NotifyNewRequestToDoctorsAsync(medicalRequest.Id, "submitted", "Nova consulta na fila", cancellationToken);
 
         return (MapRequestToDto(medicalRequest), null);
     }

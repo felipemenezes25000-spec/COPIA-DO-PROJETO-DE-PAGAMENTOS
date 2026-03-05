@@ -69,20 +69,13 @@ function scheduleSave(): void {
 
 // ── Public API ──────────────────────────────────────────────
 
-/** Verifica se uma mensagem pode ser exibida (não em cooldown e não mutada). */
-export async function canShow(key: string, cooldownMs: number): Promise<boolean> {
+/** Verifica se uma mensagem pode ser exibida (apenas mute é respeitado).
+ * Cooldown e sessionCount desativados: Dra. Renoveja sempre presente, como uma pessoa acompanhando o paciente. */
+export async function canShow(key: string, _cooldownMs?: number): Promise<boolean> {
   const state = await load();
 
-  // Check muted
+  // Check muted — usuário pediu para não mostrar esta mensagem
   if (state.mutedKeys.includes(key)) return false;
-
-  // Check cooldown
-  const lastShown = state.cooldowns[key];
-  if (lastShown && Date.now() - lastShown < cooldownMs) return false;
-
-  // Session count: permite 1 por "visita" à tela; resetSessionCounts limpa ao abrir o app
-  const sessionMax = 1;
-  if ((state.sessionCounts[key] || 0) >= sessionMax) return false;
 
   return true;
 }

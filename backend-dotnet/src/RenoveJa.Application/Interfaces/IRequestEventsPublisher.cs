@@ -24,4 +24,13 @@ public interface IRequestEventsPublisher
         string status,
         string? message = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Notifica todos os médicos conectados sobre uma nova solicitação na fila (tempo real, sem delay).
+    /// </summary>
+    Task NotifyNewRequestToDoctorsAsync(
+        Guid requestId,
+        string status,
+        string? message = null,
+        CancellationToken cancellationToken = default);
 }

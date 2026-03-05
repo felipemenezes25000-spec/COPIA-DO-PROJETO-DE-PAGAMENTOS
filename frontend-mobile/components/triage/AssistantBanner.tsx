@@ -40,6 +40,10 @@ const COMPANION_TIPS = [
   'Mantenha o acompanhamento com seu médico — faz toda a diferença no tratamento.',
   'Dúvidas sobre o app? Toque em mim para ver orientações e FAQ.',
   'Receitas e exames digitais com assinatura segura. Estou aqui para ajudar.',
+  'Fotos nítidas e bem iluminadas agilizam a análise do médico.',
+  'Conte ao médico sintomas, há quanto tempo e quais medicamentos você usa.',
+  'Pedidos pendentes? Acompanhe o status aqui e pague quando aprovado.',
+  'Não esqueça de levar os resultados dos exames ao seu médico.',
 ];
 
 interface AssistantBannerProps {

@@ -142,8 +142,8 @@ export default function DoctorQueue() {
   useFocusEffect(
     useCallback(() => {
       loadData();
-      // Polling: 15s quando SignalR desconectado (fallback), 45s quando conectado
-      const intervalMs = isConnected ? 45000 : 15000;
+      // Polling: 8s quando SignalR desconectado (fallback), 30s quando conectado
+      const intervalMs = isConnected ? 30000 : 8000;
       const interval = setInterval(() => loadData(true, false), intervalMs);
       return () => clearInterval(interval);
     }, [loadData, isConnected])

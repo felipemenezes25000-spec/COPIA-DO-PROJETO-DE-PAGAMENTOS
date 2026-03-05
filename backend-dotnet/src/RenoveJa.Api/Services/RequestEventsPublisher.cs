@@ -47,4 +47,28 @@ public class RequestEventsPublisher(IHubContext<RequestsHub> hubContext, ILogger
             logger.LogWarning(ex, "RequestEvents: failed to send for request {RequestId}", requestId);
         }
     }
+
+    public async Task NotifyNewRequestToDoctorsAsync(
+        Guid requestId,
+        string status,
+        string? message = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var payload = new
+            {
+                requestId = requestId.ToString(),
+                status,
+                message
+            };
+
+            await hubContext.Clients.Group(RequestsHub.DoctorsGroupName).SendAsync(EventName, payload, cancellationToken);
+            logger.LogDebug("RequestEvents: sent {Event} for new request {RequestId} to doctors group", EventName, requestId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "RequestEvents: failed to notify doctors of new request {RequestId}", requestId);
+        }
+    }
 }

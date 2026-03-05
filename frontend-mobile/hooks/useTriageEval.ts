@@ -51,6 +51,14 @@ export function useTriageEval(input: TriageInput): void {
     return () => clearTimeout(t);
   }, [depKey, evaluate, input]);
 
+  // Re-avalia periodicamente (25s) — Dra. Renoveja sempre presente, como pessoa acompanhando
+  useEffect(() => {
+    const interval = setInterval(() => {
+      evaluate(input);
+    }, 25_000);
+    return () => clearInterval(interval);
+  }, [evaluate, input]);
+
   // Clear when screen loses focus
   useFocusEffect(
     useCallback(() => {

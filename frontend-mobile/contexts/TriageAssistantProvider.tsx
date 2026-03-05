@@ -31,8 +31,8 @@ import type { TriageMessage, TriageInput } from '../lib/triage/triage.types';
 
 const IS_ENABLED = process.env.EXPO_PUBLIC_TRIAGE_ENABLED !== 'false';
 const IS_AI_ENABLED = process.env.EXPO_PUBLIC_TRIAGE_AI_ENABLED !== 'false';
-const SAME_TOPIC_COOLDOWN_MS = 90_000;   // 90s – evita repetir o mesmo tópico em curto intervalo
-const MIN_REPLACE_INTERVAL_MS = 40_000; // 40s – evita pisca-pisca do banner ao trocar mensagens
+const SAME_TOPIC_COOLDOWN_MS = 15_000;   // 15s – permite trocar de tópico mais rápido (Dra. sempre presente)
+const MIN_REPLACE_INTERVAL_MS = 12_000; // 12s – permite trocar mensagens mais frequentemente
 
 // ── Context types ───────────────────────────────────────────
 
@@ -83,8 +83,7 @@ export function TriageAssistantProvider({ children }: { children: React.ReactNod
     const message = evaluateTriageRules(input);
     if (!message) return;
 
-    // Dedupe: mesma key na mesma "tela" → não mostrar de novo
-    if (screenKeyRef.current === message.key) return;
+    // Dedupe removido: Dra. Renoveja sempre ajuda, mesmo ao voltar à mesma tela
 
     const nextPriority = getMessagePriority(message);
     const nextTopic = getMessageTopic(message);
