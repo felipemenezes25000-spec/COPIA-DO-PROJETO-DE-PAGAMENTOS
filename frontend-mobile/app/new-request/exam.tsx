@@ -240,7 +240,7 @@ export default function NewExam() {
         <AppCard style={[styles.assistantCard, apiLoading && styles.assistantCardLoading]}>
           <View style={styles.assistantHeader}>
             <Ionicons name="sparkles-outline" size={18} color={c.primary.main} />
-            <Text style={styles.assistantTitle}>Dra. Renoveja: checklist de qualidade</Text>
+            <Text style={styles.assistantTitle}>Dra. Renoveja: qualidade do envio</Text>
             {apiLoading && (
               <ActivityIndicator size="small" color={c.primary.main} style={styles.assistantLoading} />
             )}

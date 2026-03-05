@@ -39,7 +39,7 @@ import { AssistantBanner } from './AssistantBanner';
 import type { CTAAction } from '../../lib/triage/triage.types';
 
 const FAB_SIZE = 48;
-const BANNER_WIDTH = 340;
+const BANNER_WIDTH = 300;
 const SPRING_CONFIG = { damping: 22, stiffness: 200 };
 const DRAG_THRESHOLD = 16; // Maior para evitar conflito com tap — tap expande, arraste move
 
@@ -118,7 +118,7 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
     await setBannerFloatingPosition({ x, y, anchor: 'bottom-right' });
   }, []);
 
-  const expandedHeight = Math.min(320, screenH - (insets.top ?? 0) - (insets.bottom ?? 0) - padding * 2);
+  const expandedHeight = Math.min(180, screenH - (insets.top ?? 0) - (insets.bottom ?? 0) - padding * 2);
   const handleExpand = useCallback(() => {
     const topLimit = (insets.top ?? 0) + padding;
     const bottomLimit = screenH - expandedHeight - (insets.bottom ?? 0) - padding;
@@ -318,10 +318,11 @@ const styles = StyleSheet.create({
     ...theme.shadows.card,
   },
   bannerScroll: {
-    flex: 1,
+    flexGrow: 0,
   },
   bannerScrollContent: {
-    flexGrow: 1,
+    flexGrow: 0,
+    paddingBottom: 12,
   },
   expandedHeader: {
     flexDirection: 'row',

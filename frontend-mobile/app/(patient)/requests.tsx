@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useListBottomPadding } from '../../lib/ui/responsive';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, gradients } from '../../lib/theme';
@@ -39,6 +40,7 @@ const FILTER_ITEMS: { key: string; label: string; type?: RequestType }[] = [
 
 export default function PatientRequests() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const listPadding = useListBottomPadding();
   const [requests, setRequests] = useState<RequestResponseDto[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<RequestResponseDto[]>([]);
@@ -157,12 +159,13 @@ export default function PatientRequests() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerWrap}>
+      <View style={[styles.headerWrap, { paddingTop: insets.top + 12 }]}>
         <View style={styles.headerClip}>
           <AppHeader
             title="Meus pedidos"
             left={<View style={{ width: 44 }} />}
             gradient={gradients.patientHeader}
+            skipSafeAreaTop
           />
         </View>
       </View>
@@ -244,7 +247,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   headerWrap: {
     paddingHorizontal: uiTokens.screenPaddingHorizontal,
-    paddingTop: 8,
     paddingBottom: 8,
   },
   headerClip: {

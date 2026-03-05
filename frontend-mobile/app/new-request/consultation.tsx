@@ -220,7 +220,7 @@ export default function ConsultationScreen() {
         <AppCard style={[styles.assistantCard, apiLoading && styles.assistantCardLoading]}>
           <View style={styles.assistantHeader}>
             <Ionicons name="sparkles-outline" size={18} color={c.primary.main} />
-            <Text style={styles.assistantTitle}>Dra. Renoveja: checklist de envio</Text>
+            <Text style={styles.assistantTitle}>Dra. Renoveja: qualidade do envio</Text>
             {apiLoading && (
               <ActivityIndicator size="small" color={c.primary.main} style={styles.assistantLoading} />
             )}
@@ -244,7 +244,9 @@ export default function ConsultationScreen() {
           <View style={styles.iconCircle}>
             <Ionicons name="videocam" size={28} color={c.primary.main} />
           </View>
-          <Text style={styles.bannerTitle}>Consulta Breve - Renoveja+</Text>
+          <View style={styles.bannerTitleWrap}>
+            <Text style={styles.bannerTitle} numberOfLines={2}>Consulta Breve - Renoveja+</Text>
+          </View>
           <Text style={styles.bannerDesc}>
             Plantão de dúvidas em telemedicina para sanar dúvidas pontuais!
           </Text>
@@ -372,6 +374,7 @@ const styles = StyleSheet.create({
   },
   assistantCard: {
     marginTop: s.md,
+    marginBottom: s.lg,
     borderWidth: 1,
     borderColor: c.primary.soft,
     backgroundColor: c.primary.soft + '66',
@@ -398,7 +401,14 @@ const styles = StyleSheet.create({
   redFlagText: { flex: 1, color: c.status.error, fontSize: 12, lineHeight: 18 },
   banner: {
     alignItems: 'center',
+    marginTop: s.xs,
     marginBottom: s.lg,
+    paddingHorizontal: s.lg,
+    paddingEnd: 56,
+  },
+  bannerTitleWrap: {
+    alignSelf: 'stretch',
+    paddingHorizontal: s.sm,
   },
   iconCircle: {
     width: 64,
@@ -413,6 +423,7 @@ const styles = StyleSheet.create({
     ...t.variants.h3,
     color: c.text.primary,
     marginTop: s.xs,
+    textAlign: 'center',
   },
   bannerDesc: {
     ...t.variants.body2,

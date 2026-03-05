@@ -19,6 +19,8 @@ interface AppHeaderProps {
   transparent?: boolean;
   /** Pass gradient colors array to render a gradient background with white text */
   gradient?: readonly string[] | string[];
+  /** Quando true, o pai já aplica safe area — usa apenas padding mínimo no topo */
+  skipSafeAreaTop?: boolean;
 }
 
 export function AppHeader({
@@ -29,6 +31,7 @@ export function AppHeader({
   right,
   transparent,
   gradient,
+  skipSafeAreaTop,
 }: AppHeaderProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -37,12 +40,13 @@ export function AppHeader({
   const isGradient = !!gradient;
   const textColor = isGradient ? c.white : c.text.primary;
   const backBgColor = isGradient ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)';
+  const topPadding = skipSafeAreaTop ? 8 : insets.top + 8;
 
   const content = (
     <View
       style={[
         styles.container,
-        { paddingTop: insets.top + 8 },
+        { paddingTop: topPadding },
         transparent && styles.transparent,
         !isGradient && !transparent && styles.defaultBg,
       ]}
