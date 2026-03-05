@@ -381,12 +381,12 @@ function ConsultationPostSection({ request, router }: { request: NonNullable<Ret
             try {
               const items = JSON.parse(request.consultationAiSuggestions || '[]') as string[];
               return items.map((item, i) => {
-                const s = typeof item === 'string' ? item : '';
-                const isRedFlag = s.startsWith('🚨');
+                const text = typeof item === 'string' ? item : '';
+                const isRedFlag = text.startsWith('🚨');
                 return (
                   <View key={i} style={[s.suggestionItem, isRedFlag && s.suggestionItemDanger]}>
                     <Ionicons name={isRedFlag ? 'alert-circle' : 'bulb-outline'} size={16} color={isRedFlag ? '#EF4444' : '#8B5CF6'} />
-                    <Text style={[s.suggestionText, isRedFlag && { color: '#EF4444' }]}>{s.replace('🚨 ', '')}</Text>
+                    <Text style={[s.suggestionText, isRedFlag && { color: '#EF4444' }]}>{text.replace('🚨 ', '')}</Text>
                   </View>
                 );
               });

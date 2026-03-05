@@ -41,5 +41,5 @@ export const STATUS_DISPLAY_LABELS_PT: Record<string, string> = {
  */
 export function getStatusLabelPt(status: string | null | undefined): string {
   const s = status ?? '';
-  return STATUS_LABELS_PT[s] ?? s || '—';
+  return (STATUS_LABELS_PT[s] ?? s) || '—';
 }
