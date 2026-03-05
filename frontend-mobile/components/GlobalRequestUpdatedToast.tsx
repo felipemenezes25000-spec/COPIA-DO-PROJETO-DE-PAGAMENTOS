@@ -58,9 +58,9 @@ export function GlobalRequestUpdatedToast() {
   useEffect(() => {
     if (!user) return;
     const unsubscribe = subscribe((payload: RequestUpdatedPayload) => {
+      const isDoctor = user?.role === 'doctor';
       const message = getMessageForUser(payload, isDoctor);
       const requestId = payload.requestId || '';
-      const isDoctor = user?.role === 'doctor';
 
       // Paciente: quando médico inicia consulta (in_consultation), mostra countdown e entra automaticamente
       if (payload.status === 'in_consultation' && !isDoctor && requestId) {

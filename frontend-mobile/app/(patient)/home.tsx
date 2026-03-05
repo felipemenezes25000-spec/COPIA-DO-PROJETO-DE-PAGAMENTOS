@@ -98,13 +98,6 @@ export default function PatientHome() {
     ready: requests.filter(r => isSignedOrDelivered(r)).length,
   }), [requests]);
 
-  // Deduplica: não mostra na lista recente o pedido que já aparece no card de follow-up
-  const recentRequests = useMemo(() => {
-    const filtered = followUpRequest
-      ? requests.filter(r => r.id !== followUpRequest.id)
-      : requests;
-    return filtered.slice(0, 2);
-  }, [requests, followUpRequest]);
   const firstName = user?.name?.split(' ')[0] || 'Paciente';
   const initial = firstName[0]?.toUpperCase() || 'P';
 
@@ -191,6 +184,14 @@ export default function PatientHome() {
       .filter((request) => !['delivered', 'consultation_finished', 'rejected', 'cancelled'].includes(request.status))
       .sort((a, b) => (priorityMap[b.status] ?? 0) - (priorityMap[a.status] ?? 0))[0] ?? null;
   }, [requests]);
+
+  // Deduplica: não mostra na lista recente o pedido que já aparece no card de follow-up
+  const recentRequests = useMemo(() => {
+    const filtered = followUpRequest
+      ? requests.filter(r => r.id !== followUpRequest.id)
+      : requests;
+    return filtered.slice(0, 2);
+  }, [requests, followUpRequest]);
 
   const [followUpActionFromApi, setFollowUpActionFromApi] = useState<AssistantNextActionResponseData | null>(null);
 

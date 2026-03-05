@@ -419,6 +419,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight, borderRadius: borderRadius.sm, padding: spacing.sm,
   },
   instructionText: { flex: 1, fontSize: 12, color: colors.textSecondary, lineHeight: 18 },
+  securityRow: {
+    marginTop: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+  },
+  securityText: { fontSize: 12, color: colors.textSecondary, fontWeight: '600' },
 
   // Approved state
   approvedCard: {

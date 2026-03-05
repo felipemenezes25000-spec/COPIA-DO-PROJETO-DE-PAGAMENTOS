@@ -66,6 +66,7 @@ const createStyles = (
     textMuted: string;
     textSecondary: string;
     white: string;
+    borderLight: string;
   },
   radius: {
     card: number;

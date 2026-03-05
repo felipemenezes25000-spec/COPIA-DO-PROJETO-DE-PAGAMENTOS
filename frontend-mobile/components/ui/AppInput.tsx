@@ -13,7 +13,7 @@ import { useAppTheme, type AppThemeRole } from '../../lib/ui/useAppTheme';
 
 const LOGIN_FOCUS_DEBUG = __DEV__ && false;
 
-interface AppInputProps extends TextInputProps {
+interface AppInputProps extends Omit<TextInputProps, 'role'> {
   label?: string;
   /** Exibe asterisco vermelho ao lado do label (campo obrigatório). */
   required?: boolean;

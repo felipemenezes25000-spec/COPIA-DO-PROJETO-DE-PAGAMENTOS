@@ -428,6 +428,7 @@ export const colors = {
   info: theme.colors.status.info,
   infoLight: theme.colors.status.infoLight,
   white: '#FFFFFF',
+  black: '#0F172A',
   // Status-specific
   statusSubmitted: '#F59E0B',
   statusInReview: '#3B82F6',

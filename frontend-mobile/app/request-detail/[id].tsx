@@ -17,6 +17,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useListBottomPadding } from '../../lib/ui/responsive';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
 import { colors, spacing, borderRadius, shadows } from '../../lib/theme';
 import { uiTokens } from '../../lib/ui/tokens';
 import { fetchRequestById, markRequestDelivered, cancelRequest, getAssistantNextAction } from '../../lib/api';
@@ -287,8 +289,6 @@ export default function RequestDetailScreen() {
     try {
       await markAsDeliveredIfSigned();
       // Tenta compartilhar/salvar o PDF usando Sharing API; fallback para browser
-      const { Sharing } = await import('expo-sharing');
-      const { FileSystem } = await import('expo-file-system');
       if (Sharing && FileSystem) {
         const fileName = `renoveja_${request.requestType}_${request.id.slice(0, 8)}.pdf`;
         const localUri = FileSystem.cacheDirectory + fileName;
