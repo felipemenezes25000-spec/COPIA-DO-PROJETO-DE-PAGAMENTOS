@@ -79,9 +79,10 @@ export function useAudioRecorder(requestId: string, stream: 'local' | 'remote' =
       try {
         // Check file exists and has content
         const fileInfo = await FileSystem.getInfoAsync(uri);
-        if (!fileInfo.exists || (fileInfo.size ?? 0) < 500) {
+        const fileSize = fileInfo.exists ? (fileInfo as { exists: true; size: number }).size : 0;
+        if (!fileInfo.exists || (fileSize ?? 0) < 500) {
           if (__DEV__) {
-            console.warn(`[AudioRecorder] Chunk ignorado: arquivo muito pequeno (${fileInfo.size ?? 0} bytes). Fale durante a gravação.`);
+            console.warn(`[AudioRecorder] Chunk ignorado: arquivo muito pequeno (${fileSize ?? 0} bytes). Fale durante a gravação.`);
           }
           return;
         }
