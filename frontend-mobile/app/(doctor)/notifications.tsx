@@ -33,7 +33,7 @@ function getNotificationIcon(type: string): keyof typeof Ionicons.glyphMap {
 function getNotificationColor(type: string): string {
   switch (type) {
     case 'success': return colors.success;
-    case 'warning': return '#F59E0B';
+    case 'warning': return colors.warning;
     case 'error': return colors.error;
     default: return colors.primary;
   }
@@ -293,11 +293,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: typography.fontFamily.bold,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.white,
     letterSpacing: 0.2,
   },
   subtitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: typography.fontFamily.regular,
     color: 'rgba(255,255,255,0.7)',
     marginTop: 4,
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   categoryChipText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.primary,
     letterSpacing: 0.3,
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 10,
   },
-  markAllText: { fontSize: 10, fontFamily: typography.fontFamily.bold, color: '#fff', fontWeight: '700', letterSpacing: 0.2 },
+  markAllText: { fontSize: 12, fontFamily: typography.fontFamily.bold, color: colors.white, fontWeight: '700', letterSpacing: 0.2 },
   listContent: {
     paddingHorizontal: doctorDS.screenPaddingHorizontal,
   },
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 14, fontFamily: typography.fontFamily.semibold, fontWeight: '600', color: colors.text },
   cardTitleUnread: { fontWeight: '700' },
   cardMessage: { fontSize: 13, fontFamily: typography.fontFamily.regular, color: colors.textSecondary, marginTop: 2, lineHeight: 18 },
-  cardTime: { fontSize: 11, fontFamily: typography.fontFamily.regular, color: colors.textMuted, marginTop: 4 },
+  cardTime: { fontSize: 12, fontFamily: typography.fontFamily.regular, color: colors.textMuted, marginTop: 4 },
   unreadDot: {
     width: 7,
     height: 7,
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
   },
   groupLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.textMuted,
     letterSpacing: 0.2,

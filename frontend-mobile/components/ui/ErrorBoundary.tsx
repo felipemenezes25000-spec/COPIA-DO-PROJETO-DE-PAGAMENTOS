@@ -103,6 +103,6 @@ const styles = StyleSheet.create({
   retryText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.white,
   },
 });

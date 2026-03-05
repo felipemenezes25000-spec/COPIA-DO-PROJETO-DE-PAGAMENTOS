@@ -174,7 +174,7 @@ export default function DoctorDashboard() {
           icon="time-outline"
           label="Na fila"
           value={naFila}
-          iconColor="#D97706"
+          iconColor={colors.warning}
           onPress={() => router.push('/(doctor)/requests')}
         />
         <StatsCard
@@ -188,7 +188,7 @@ export default function DoctorDashboard() {
           icon="checkmark-circle-outline"
           label="Em consulta"
           value={emConsulta}
-          iconColor="#059669"
+          iconColor={colors.success}
           onPress={() => router.push('/(doctor)/requests')}
         />
       </View>
@@ -204,7 +204,7 @@ export default function DoctorDashboard() {
             accessibilityLabel="Fazer upload do certificado digital"
           >
             <View style={styles.alertIconWrap}>
-              <Ionicons name="warning" size={18} color="#B45309" />
+              <Ionicons name="warning" size={18} color={colors.warning} />
             </View>
             <View style={styles.alertTextWrap}>
               <Text style={styles.alertTitle}>Certificado digital necessário</Text>
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#fff',
+    color: colors.white,
     letterSpacing: -0.3,
   },
   pendingSummary: {
@@ -327,13 +327,13 @@ const styles = StyleSheet.create({
   alertBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: colors.warningLight,
     borderRadius: 14,
     padding: 14,
     gap: 10,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: colors.warningLight,
   },
   alertIconWrap: {
     width: 36,
@@ -344,8 +344,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   alertTextWrap: { flex: 1 },
-  alertTitle: { fontSize: 12, fontWeight: '700', color: '#92400E', letterSpacing: 0.2 },
-  alertDesc: { fontSize: 12, color: '#B45309', marginTop: 2 },
+  alertTitle: { fontSize: 12, fontWeight: '700', color: colors.warning, letterSpacing: 0.2 },
+  alertDesc: { fontSize: 12, color: colors.warning, marginTop: 2 },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   pendingCardType: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.primary,
     marginBottom: 4,
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
     borderRadius: 100,
   },
   statusPillText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.1,
   },

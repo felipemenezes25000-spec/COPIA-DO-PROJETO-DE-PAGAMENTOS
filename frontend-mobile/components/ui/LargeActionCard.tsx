@@ -31,10 +31,10 @@ export function LargeActionCard({
       : shadows.card;
   const borderColor =
     variant === 'exam'
-      ? '#E5E7EB'
+      ? colors.border
       : variant === 'consultation'
-        ? '#D1FAE5'
-        : '#E9EEF5';
+        ? colors.successLight
+        : colors.borderLight;
   const styles = createStyles(colors, radius);
 
   return (
@@ -77,7 +77,7 @@ const createStyles = (
     alignItems: 'center',
     backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: '#E9EEF5',
+    borderColor: colors.borderLight,
     borderRadius: radius.card,
     paddingVertical: 20,
     paddingHorizontal: 20,

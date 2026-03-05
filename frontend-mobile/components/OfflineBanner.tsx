@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { colors } from '../lib/theme';
 
 export function OfflineBanner() {
   const { isConnected } = useNetworkStatus();
@@ -12,7 +13,7 @@ export function OfflineBanner() {
 
   return (
     <View style={[styles.container, { top: insets.top }]} accessibilityRole="alert" accessibilityLabel="Sem conexão com a internet">
-      <Ionicons name="cloud-offline-outline" size={16} color="#fff" />
+      <Ionicons name="cloud-offline-outline" size={16} color={colors.white} />
       <Text style={styles.text}>Sem conexão com a internet</Text>
     </View>
   );
@@ -24,7 +25,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 999,
-    backgroundColor: '#EF4444',
+    backgroundColor: colors.error,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -33,7 +34,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   text: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 13,
     fontWeight: '600',
   },

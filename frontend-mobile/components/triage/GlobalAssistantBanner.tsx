@@ -11,6 +11,7 @@ import { usePathname, useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { DraggableAssistantBanner } from './DraggableAssistantBanner';
 import type { CTAAction } from '../../lib/triage/triage.types';
+import { theme } from '../../lib/theme';
 
 function shouldHideBanner(
   pathname: string | null | undefined,
@@ -25,6 +26,13 @@ function shouldHideBanner(
   if (!pathname || typeof pathname !== 'string') return false;
   // Telas de pagamento (dados privados)
   if (pathname.includes('/payment')) return true;
+  // Vídeo e telas de resumo/plano: evitar sobreposição com controles críticos e modais
+  if (
+    pathname.includes('/video') ||
+    pathname.includes('/consultation-summary') ||
+    pathname.includes('/care-plans') ||
+    pathname.includes('/request-detail/')
+  ) return true;
   // Auth: login, registro, etc.
   if (pathname.includes('(auth)') || pathname.includes('login') || pathname.includes('register') ||
       pathname.includes('complete-') || pathname.includes('forgot-password') || pathname.includes('reset-password')) return true;
@@ -88,7 +96,8 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     top: 0,
-    zIndex: 9998, // Acima de modais e overlays — Dra. Renoveja sempre visível
+    // Mantém acima do conteúdo normal, mas abaixo de modais nativos.
+    zIndex: theme.zIndex.fixed,
     pointerEvents: 'box-none',
   },
 });

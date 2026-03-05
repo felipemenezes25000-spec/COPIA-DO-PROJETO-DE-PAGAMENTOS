@@ -221,12 +221,12 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#fff',
+    color: colors.white,
   },
   userName: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.white,
   },
   userEmail: {
     fontSize: 14,
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: uiTokens.screenPaddingHorizontal,
   },
   sectionTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.textMuted,
     textTransform: 'uppercase',
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: colors.errorLight,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: colors.errorLight,
   },
   logoutText: {
     fontSize: 15,

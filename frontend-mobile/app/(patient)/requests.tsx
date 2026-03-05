@@ -161,7 +161,7 @@ export default function PatientRequests() {
         <View style={styles.headerClip}>
           <AppHeader
             title="Meus pedidos"
-            left={<View style={{ width: 40 }} />}
+            left={<View style={{ width: 44 }} />}
             gradient={gradients.patientHeader}
           />
         </View>
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
   errorTitle: { fontSize: 18, fontWeight: '600', color: colors.text },
   errorMsg: { fontSize: 14, color: colors.textSecondary, textAlign: 'center' },
   retryBtn: { marginTop: spacing.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.lg, backgroundColor: colors.primary, borderRadius: borderRadius.md },
-  retryText: { fontSize: 15, fontWeight: '600', color: '#fff' },
+  retryText: { fontSize: 15, fontWeight: '600', color: colors.white },
   listContent: { paddingTop: 14, paddingHorizontal: uiTokens.screenPaddingHorizontal },
   listContentEmpty: { flexGrow: 1 },
 });

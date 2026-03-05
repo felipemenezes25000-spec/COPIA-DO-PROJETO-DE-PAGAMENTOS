@@ -27,8 +27,8 @@ export function RequestTypeFilter({
   disabled = false,
   variant = 'patient',
 }: RequestTypeFilterProps) {
-  const accent = variant === 'doctor' ? '#0077B6' : c.primary.main;
-  const accentSoft = variant === 'doctor' ? '#E0F2FE' : c.primary.soft;
+  const accent = variant === 'doctor' ? c.status.info : c.primary.main;
+  const accentSoft = variant === 'doctor' ? c.status.infoLight : c.primary.soft;
 
   return (
     <View style={styles.wrapper}>

@@ -65,11 +65,12 @@ describe('triageRulesEngine', () => {
       expect(result?.key).toBe('home:pending_results');
     });
 
-    it('returns null when no insights available', () => {
+    it('returns companion fallback when no specific insights available', () => {
       const result = evaluateTriageRules(input({
         context: 'home', totalRequests: 2, recentPrescriptionCount: 1,
       }));
-      expect(result).toBeNull();
+      expect(result?.key).toBe('home:companion');
+      expect(result?.severity).toBe('info');
     });
 
     it('suggests medication review when there is high medication burden', () => {
@@ -172,11 +173,12 @@ describe('triageRulesEngine', () => {
       expect(result?.key).toBe('exam:ok');
     });
 
-    it('suppresses exam:ok when patient has photo and exams (suggestion #8)', () => {
+    it('shows companion fallback when patient has photo and exams (suggestion #8)', () => {
       const result = evaluateTriageRules(input({
         context: 'exam', step: 'result', exams: ['Hemograma'], imagesCount: 1,
       }));
-      expect(result).toBeNull();
+      expect(result?.key).toBe('exam:companion');
+      expect(result?.severity).toBe('info');
     });
   });
 

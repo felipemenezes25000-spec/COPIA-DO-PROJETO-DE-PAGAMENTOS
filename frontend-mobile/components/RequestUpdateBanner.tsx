@@ -60,7 +60,7 @@ export function RequestUpdateBanner() {
                 onPress={handleVerPedido}
               >
                 <Text style={styles.ctaText}>Ver pedido</Text>
-                <Ionicons name="arrow-forward" size={14} color="#fff" />
+                <Ionicons name="arrow-forward" size={14} color={theme.colors.text.inverse} />
               </Pressable>
             ) : null}
             <TouchableOpacity onPress={handleDismiss} style={styles.dismissBtn} hitSlop={12}>
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   label: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: theme.colors.text.tertiary,
@@ -148,10 +148,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   ctaText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
-    color: '#FFFFFF',
+    color: theme.colors.text.inverse,
     letterSpacing: 0.2,
   },
   dismissBtn: {
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     paddingTop: 2,
   },
   disclaimer: {
-    fontSize: 9,
+    fontSize: 12,
     color: theme.colors.text.disabled,
     fontStyle: 'italic',
   },

@@ -2,6 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../lib/theme';
+import { colors as doctorColors } from '../../lib/themeDoctor';
 
 interface TabBarIconProps {
   name: keyof typeof Ionicons.glyphMap;
@@ -10,7 +11,8 @@ interface TabBarIconProps {
   variant?: 'patient' | 'doctor';
 }
 
-export function TabBarIcon({ name, color, focused }: TabBarIconProps) {
+export function TabBarIcon({ name, color, focused, variant = 'patient' }: TabBarIconProps) {
+  const activeIndicatorColor = variant === 'doctor' ? doctorColors.primary : colors.primary;
   return (
     <View style={{ alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
       {focused && (
@@ -20,7 +22,7 @@ export function TabBarIcon({ name, color, focused }: TabBarIconProps) {
           width: 24,
           height: 3,
           borderRadius: 2,
-          backgroundColor: colors.primary,
+          backgroundColor: activeIndicatorColor,
         }} />
       )}
       <Ionicons name={name} size={22} color={color} />

@@ -129,7 +129,7 @@ export function DoctorActionButtons({
             <AppButton
               title="Visualizar e Assinar"
               variant="doctorPrimary"
-              trailing={<Ionicons name="chevron-forward" size={20} color="#FFFFFF" />}
+              trailing={<Ionicons name="chevron-forward" size={20} color={colors.white} />}
               onPress={onNavigateEditor}
               style={s.actionBtnFull}
             />
@@ -141,7 +141,7 @@ export function DoctorActionButtons({
             <AppButton
               title="Iniciar Consulta"
               variant="doctorPrimary"
-              trailing={<Ionicons name="chevron-forward" size={20} color="#FFFFFF" />}
+              trailing={<Ionicons name="chevron-forward" size={20} color={colors.white} />}
               onPress={onStartVideo}
               style={s.actionBtnFull}
             />

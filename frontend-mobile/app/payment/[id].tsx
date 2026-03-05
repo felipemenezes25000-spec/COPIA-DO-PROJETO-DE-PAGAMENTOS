@@ -20,6 +20,8 @@ import { colors, spacing, borderRadius, shadows } from '../../lib/theme';
 import { fetchPayment, fetchPixCode, syncPaymentStatus } from '../../lib/api';
 import { formatBRL, formatTimeBR } from '../../lib/utils/format';
 import { PaymentResponseDto } from '../../types/database';
+import { PaymentHeader } from '../../components/payment/PaymentHeader';
+import { PaymentMethodSelection } from '../../components/payment/PaymentMethodSelection';
 
 type PayScreen = 'selection' | 'pix';
 
@@ -224,44 +226,13 @@ export default function PaymentScreen() {
   if (screen === 'selection') {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color={colors.primary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Pagamento</Text>
-          <View style={{ width: 40 }} />
-        </View>
+        <PaymentHeader onBack={() => router.back()} />
         <ScrollView contentContainerStyle={styles.scroll}>
-          <View style={styles.selectionCard}>
-            <View style={styles.selectionIcon}>
-              <Ionicons name="qr-code" size={40} color={colors.primary} />
-            </View>
-            <Text style={styles.selectionTitle}>Escolha a forma de pagamento</Text>
-            <Text style={styles.selectionDesc}>
-              Selecione o método de sua preferência para realizar o pagamento.
-            </Text>
-
-            <TouchableOpacity style={styles.pixButton} onPress={handleSelectPix} activeOpacity={0.8}>
-              <Ionicons name="qr-code" size={20} color="#fff" />
-              <Text style={styles.pixButtonText}>Pagar com PIX</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.cardButton} onPress={handleSelectCard} activeOpacity={0.8}>
-              <Ionicons name="card" size={20} color={colors.primary} />
-              <Text style={styles.cardButtonText}>Pagar com Cartão</Text>
-            </TouchableOpacity>
-
-            <View style={styles.priceDivider} />
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Valor</Text>
-              <Text style={styles.priceValue}>{formatBRL(payment?.amount ?? 0)}</Text>
-            </View>
-          </View>
-
-          <View style={styles.securityRow}>
-            <Ionicons name="shield-checkmark" size={16} color={colors.success} />
-            <Text style={styles.securityText}>Pagamento 100% seguro</Text>
-          </View>
+          <PaymentMethodSelection
+            amount={payment?.amount ?? 0}
+            onSelectPix={handleSelectPix}
+            onSelectCard={handleSelectCard}
+          />
         </ScrollView>
       </SafeAreaView>
     );
@@ -275,13 +246,7 @@ export default function PaymentScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => setScreen('selection')} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Pagamento</Text>
-        <View style={{ width: 40 }} />
-      </View>
+      <PaymentHeader onBack={() => setScreen('selection')} />
 
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Estado de pagamento aprovado — botão funcional para ir ao pedido */}
@@ -298,7 +263,7 @@ export default function PaymentScreen() {
               activeOpacity={0.8}
             >
               <Text style={styles.approvedButtonText}>Ver Pedido</Text>
-              <Ionicons name="arrow-forward" size={20} color="#fff" />
+              <Ionicons name="arrow-forward" size={20} color={colors.white} />
             </TouchableOpacity>
           </View>
         ) : (
@@ -338,7 +303,7 @@ export default function PaymentScreen() {
               </TouchableOpacity>
               {copied && <Text style={styles.copiedText}>Código copiado!</Text>}
               <TouchableOpacity style={styles.copyButton} onPress={handleCopyPix} activeOpacity={0.8}>
-                <Ionicons name="copy-outline" size={18} color="#fff" />
+                <Ionicons name="copy-outline" size={18} color={colors.white} />
                 <Text style={styles.copyButtonText}>Copiar código PIX</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.bankButton} onPress={handleOpenBankApp} activeOpacity={0.8}>
@@ -365,10 +330,10 @@ export default function PaymentScreen() {
         {/* Check button */}
         <TouchableOpacity style={styles.checkButton} onPress={handleCheckStatus} disabled={checkingNow} activeOpacity={0.8}>
           {checkingNow ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.white} />
           ) : (
             <>
-              <Ionicons name="refresh" size={20} color="#fff" />
+              <Ionicons name="refresh" size={20} color={colors.white} />
               <Text style={styles.checkButtonText}>Já paguei</Text>
             </>
           )}
@@ -396,46 +361,7 @@ export default function PaymentScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
-  },
-  backBtn: {
-    width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: colors.surface, ...shadows.card,
-  },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
   scroll: { padding: spacing.md, paddingBottom: spacing.xl * 2 },
-
-  // Selection
-  selectionCard: {
-    backgroundColor: colors.surface, borderRadius: borderRadius.lg,
-    padding: spacing.lg, alignItems: 'center', ...shadows.card,
-  },
-  selectionIcon: {
-    width: 72, height: 72, borderRadius: 36, backgroundColor: colors.primaryLight,
-    alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md,
-  },
-  selectionTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: spacing.xs },
-  selectionDesc: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.lg, lineHeight: 20 },
-  pixButton: {
-    backgroundColor: colors.primary, borderRadius: 26, paddingVertical: 16,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
-    width: '100%', marginBottom: spacing.sm,
-    shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25, shadowRadius: 12, elevation: 4,
-  },
-  pixButtonText: { fontSize: 16, fontWeight: '700', color: '#fff' },
-  cardButton: {
-    borderWidth: 2, borderColor: colors.primary, borderRadius: 26, paddingVertical: 14,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
-    width: '100%', backgroundColor: colors.surface,
-  },
-  cardButtonText: { fontSize: 16, fontWeight: '700', color: colors.primary },
-  priceDivider: { height: 1, backgroundColor: colors.border, width: '100%', marginVertical: spacing.md },
-  priceRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
-  priceLabel: { fontSize: 14, color: colors.textSecondary },
-  priceValue: { fontSize: 20, fontWeight: '700', color: colors.text },
 
   // PIX
   pixCard: {
@@ -456,7 +382,7 @@ const styles = StyleSheet.create({
   qrLoadingText: { fontSize: 12, color: colors.textMuted },
   copyLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, alignSelf: 'flex-start', marginBottom: spacing.xs },
   copyRow: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC',
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceSecondary,
     borderRadius: borderRadius.sm, padding: spacing.sm, width: '100%', gap: spacing.sm,
     borderWidth: 1, borderColor: colors.border,
   },
@@ -473,7 +399,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.xs,
   },
-  copyButtonText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  copyButtonText: { fontSize: 14, fontWeight: '700', color: colors.white },
   bankButton: {
     marginTop: spacing.xs,
     width: '100%',
@@ -494,13 +420,6 @@ const styles = StyleSheet.create({
   },
   instructionText: { flex: 1, fontSize: 12, color: colors.textSecondary, lineHeight: 18 },
 
-  // Security
-  securityRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: spacing.xs, paddingVertical: spacing.md,
-  },
-  securityText: { fontSize: 12, fontWeight: '600', color: colors.textMuted },
-
   // Approved state
   approvedCard: {
     backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: spacing.xl,
@@ -515,7 +434,7 @@ const styles = StyleSheet.create({
     width: '100%', shadowColor: colors.success, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3, shadowRadius: 12, elevation: 4,
   },
-  approvedButtonText: { fontSize: 17, fontWeight: '700', color: '#fff' },
+  approvedButtonText: { fontSize: 17, fontWeight: '700', color: colors.white },
 
   // Check button
   checkButton: {
@@ -524,7 +443,7 @@ const styles = StyleSheet.create({
     shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25, shadowRadius: 12, elevation: 4,
   },
-  checkButtonText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  checkButtonText: { fontSize: 16, fontWeight: '700', color: colors.white },
   checkingText: {
     marginTop: spacing.sm,
     fontSize: 13,

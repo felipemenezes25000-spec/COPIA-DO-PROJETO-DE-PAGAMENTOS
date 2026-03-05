@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { registerPushToken, unregisterPushToken as unregisterPushTokenApi } from './api';
+import { colors } from './theme';
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
@@ -60,7 +61,7 @@ export async function registerForPushNotifications(
         description: 'Pagamentos, documento pronto, consulta',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#0EA5E9',
+        lightColor: colors.info,
       });
       await Notifications.setNotificationChannelAsync('quiet', {
         name: 'Informativos',

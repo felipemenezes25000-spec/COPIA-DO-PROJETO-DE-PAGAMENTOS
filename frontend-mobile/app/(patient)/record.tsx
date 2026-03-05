@@ -67,25 +67,25 @@ function formatDatePt(iso: string | null | undefined): string {
 }
 
 const ENCOUNTER_META: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string; bg: string; label: string }> = {
-  teleconsulta: { icon: 'videocam', color: '#0EA5E9', bg: '#E0F2FE', label: 'Teleconsulta' },
-  consultation: { icon: 'videocam', color: '#0EA5E9', bg: '#E0F2FE', label: 'Consulta' },
-  renovacao: { icon: 'refresh', color: '#10B981', bg: '#D1FAE5', label: 'Renovação' },
-  prescription: { icon: 'medical', color: '#EC4899', bg: '#FCE7F3', label: 'Receita' },
-  exame: { icon: 'flask', color: '#8B5CF6', bg: '#EDE9FE', label: 'Exame' },
-  exam: { icon: 'flask', color: '#8B5CF6', bg: '#EDE9FE', label: 'Exame' },
+  teleconsulta: { icon: 'videocam', color: colors.info, bg: colors.infoLight, label: 'Teleconsulta' },
+  consultation: { icon: 'videocam', color: colors.info, bg: colors.infoLight, label: 'Consulta' },
+  renovacao: { icon: 'refresh', color: colors.success, bg: colors.successLight, label: 'Renovação' },
+  prescription: { icon: 'medical', color: colors.accent, bg: colors.accentSoft, label: 'Receita' },
+  exame: { icon: 'flask', color: colors.accent, bg: colors.accentSoft, label: 'Exame' },
+  exam: { icon: 'flask', color: colors.accent, bg: colors.accentSoft, label: 'Exame' },
 };
 
 const DOC_TYPE_META: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string; bg: string; label: string }> = {
-  prescription: { icon: 'medical', color: '#EC4899', bg: '#FCE7F3', label: 'Receita' },
-  exam: { icon: 'flask', color: '#8B5CF6', bg: '#EDE9FE', label: 'Exame' },
-  report: { icon: 'document-text', color: '#3B82F6', bg: '#DBEAFE', label: 'Laudo' },
-  atestado: { icon: 'ribbon', color: '#F59E0B', bg: '#FEF3C7', label: 'Atestado' },
+  prescription: { icon: 'medical', color: colors.accent, bg: colors.accentSoft, label: 'Receita' },
+  exam: { icon: 'flask', color: colors.accent, bg: colors.accentSoft, label: 'Exame' },
+  report: { icon: 'document-text', color: colors.info, bg: colors.infoLight, label: 'Laudo' },
+  atestado: { icon: 'ribbon', color: colors.warning, bg: colors.warningLight, label: 'Atestado' },
 };
 
 const DOC_STATUS_META: Record<string, { color: string; bg: string; label: string }> = {
-  signed: { color: '#059669', bg: '#D1FAE5', label: 'Assinado' },
-  draft: { color: '#D97706', bg: '#FEF3C7', label: 'Rascunho' },
-  cancelled: { color: '#6B7280', bg: '#F3F4F6', label: 'Cancelado' },
+  signed: { color: colors.success, bg: colors.successLight, label: 'Assinado' },
+  draft: { color: colors.warning, bg: colors.warningLight, label: 'Rascunho' },
+  cancelled: { color: colors.textMuted, bg: colors.surfaceSecondary, label: 'Cancelado' },
 };
 
 export default function PatientRecordScreen() {
@@ -378,14 +378,14 @@ function SummaryTab({
           label="Pedidos"
           value={summary?.stats?.totalRequests ?? 0}
           color={colors.primary}
-          bgColor="#E3F4FF"
+          bgColor={colors.primarySoft}
         />
         <StatCard
           icon="document-text"
           label="Receitas"
           value={summary?.stats?.totalPrescriptions ?? 0}
           color={colors.success}
-          bgColor="#D1FAE5"
+          bgColor={colors.successLight}
         />
       </View>
       <View style={s.statsRow}>
@@ -394,14 +394,14 @@ function SummaryTab({
           label="Exames"
           value={summary?.stats?.totalExams ?? 0}
           color={colors.info}
-          bgColor="#DBEAFE"
+          bgColor={colors.infoLight}
         />
         <StatCard
           icon="videocam"
           label="Consultas"
           value={summary?.stats?.totalConsultations ?? 0}
           color={colors.accent}
-          bgColor="#EDE9FE"
+          bgColor={colors.accentSoft}
         />
       </View>
 
@@ -426,8 +426,8 @@ function SummaryTab({
 
       <View style={s.sectionCard}>
         <View style={s.sectionHeader}>
-          <View style={[s.sectionIconCircle, { backgroundColor: '#FCE7F3' }]}>
-            <Ionicons name="medical" size={18} color="#EC4899" />
+          <View style={[s.sectionIconCircle, { backgroundColor: colors.accentSoft }]}>
+            <Ionicons name="medical" size={18} color={colors.accent} />
           </View>
           <View style={s.sectionHeaderText}>
             <Text style={s.sectionTitle}>Medicamentos recentes</Text>
@@ -438,7 +438,7 @@ function SummaryTab({
           <View style={s.listWrap}>
             {(summary?.medications ?? []).map((m, idx) => (
               <View key={`med-${idx}`} style={s.listItem}>
-                <View style={[s.listDot, { backgroundColor: '#EC4899' }]} />
+                <View style={[s.listDot, { backgroundColor: colors.accent }]} />
                 <Text style={s.listItemText}>{String(m ?? '')}</Text>
               </View>
             ))}
@@ -455,7 +455,7 @@ function SummaryTab({
 
       <View style={s.sectionCard}>
         <View style={s.sectionHeader}>
-          <View style={[s.sectionIconCircle, { backgroundColor: '#DBEAFE' }]}>
+          <View style={[s.sectionIconCircle, { backgroundColor: colors.infoLight }]}>
             <Ionicons name="flask" size={18} color={colors.info} />
           </View>
           <View style={s.sectionHeaderText}>
@@ -524,7 +524,7 @@ function TimelineTab({ encounters }: { encounters: EncounterSummaryDto[] }) {
         const meta = ENCOUNTER_META[typeKey] ?? {
           icon: 'ellipse' as const,
           color: colors.textMuted,
-          bg: '#F1F5F9',
+          bg: colors.surfaceSecondary,
           label: enc.type,
         };
         const isLast = idx === sorted.length - 1;
@@ -533,7 +533,7 @@ function TimelineTab({ encounters }: { encounters: EncounterSummaryDto[] }) {
           <View key={enc.id ?? `enc-${idx}`} style={s.timelineRow}>
             <View style={s.timelineLineCol}>
               <View style={[s.timelineDot, { backgroundColor: meta.color }]}>
-                <Ionicons name={meta.icon} size={14} color="#fff" />
+                <Ionicons name={meta.icon} size={14} color={colors.white} />
               </View>
               {!isLast && <View style={s.timelineLine} />}
             </View>
@@ -555,7 +555,7 @@ function TimelineTab({ encounters }: { encounters: EncounterSummaryDto[] }) {
                 <View
                   style={[
                     s.timelineStatusDot,
-                    { backgroundColor: enc.finishedAt ? '#10B981' : '#F59E0B' },
+                    { backgroundColor: enc.finishedAt ? colors.success : colors.warning },
                   ]}
                 />
                 <Text style={s.timelineStatusText}>
@@ -593,14 +593,14 @@ function DocumentsTab({ documents, router }: { documents: MedicalDocumentSummary
         const typeKey = (doc.documentType ?? '').toLowerCase();
         const typeMeta = DOC_TYPE_META[typeKey] ?? {
           icon: 'document-outline' as const,
-          color: '#6B7280',
-          bg: '#F3F4F6',
+          color: colors.textMuted,
+          bg: colors.surfaceSecondary,
           label: doc.documentType ?? 'Documento',
         };
         const statusKey = (doc.status ?? '').toLowerCase();
         const statusMeta = DOC_STATUS_META[statusKey] ?? {
-          color: '#6B7280',
-          bg: '#F3F4F6',
+          color: colors.textMuted,
+          bg: colors.surfaceSecondary,
           label: doc.status,
         };
 
@@ -681,7 +681,7 @@ const s = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: 26,
   },
-  retryText: { fontSize: 15, fontWeight: '600', color: '#fff' },
+  retryText: { fontSize: 15, fontWeight: '600', color: colors.white },
 
   header: {
     paddingHorizontal: uiTokens.screenPaddingHorizontal,
@@ -701,7 +701,7 @@ const s = StyleSheet.create({
   headerName: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#fff',
+    color: colors.white,
     marginTop: 2,
   },
   headerSubtitle: {
@@ -720,7 +720,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontSize: 20, fontWeight: '700', color: '#fff' },
+  avatarText: { fontSize: 20, fontWeight: '700', color: colors.white },
 
   segmentBar: {
     flexDirection: 'row',
@@ -919,7 +919,7 @@ const s = StyleSheet.create({
   },
   legalText: {
     flex: 1,
-    fontSize: 11,
+    fontSize: 12,
     color: colors.textMuted,
     lineHeight: 17,
   },
@@ -975,7 +975,7 @@ const s = StyleSheet.create({
     borderRadius: 8,
   },
   timelineTypeText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -1057,7 +1057,7 @@ const s = StyleSheet.create({
     borderRadius: 3,
   },
   docStatusText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
   docActionBtn: {

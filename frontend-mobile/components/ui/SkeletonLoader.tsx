@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, Animated, StyleSheet, ViewStyle } from 'react-native';
+import { theme } from '../../lib/theme';
 
 // Shared animation value — all skeletons shimmer in sync using a single JS animation loop.
 const sharedShimmer = new Animated.Value(0);
@@ -26,7 +27,7 @@ function ensureAnimationStarted() {
 
 const sharedBg = sharedShimmer.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#E2EDF6', '#F0F9FF'],
+    outputRange: [theme.colors.border.main, theme.colors.primary.soft],
 });
 
 interface SkeletonProps {
@@ -87,11 +88,11 @@ export function SkeletonList({ count = 4 }: { count?: number }) {
 
 const skStyles = StyleSheet.create({
     card: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.colors.background.paper,
         borderRadius: 16,
         padding: 16,
         marginBottom: 10,
-        shadowColor: '#2CB1FF',
+        shadowColor: theme.colors.primary.main,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06,
         shadowRadius: 12,

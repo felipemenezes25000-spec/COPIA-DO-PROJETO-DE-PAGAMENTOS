@@ -76,7 +76,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
   },
   circleText: { fontSize: 12, fontWeight: '800' },
-  label: { marginTop: 6, fontSize: 11, fontWeight: '600' },
+  label: { marginTop: 6, fontSize: 12, fontWeight: '600' },
   line: {
     position: 'absolute',
     top: 13,

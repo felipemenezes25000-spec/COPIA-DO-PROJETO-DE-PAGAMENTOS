@@ -100,7 +100,7 @@ export default function DoctorRequestDetail() {
           <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text, marginTop: 16 }}>Erro ao carregar</Text>
           <Text style={{ fontSize: 14, color: colors.textMuted, marginTop: 6, textAlign: 'center' }}>Verifique sua conexão e tente novamente</Text>
           <TouchableOpacity onPress={loadData} style={{ marginTop: 20, paddingVertical: 12, paddingHorizontal: 28, backgroundColor: colors.primary, borderRadius: 26 }}>
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Tentar novamente</Text>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.white }}>Tentar novamente</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -228,8 +228,8 @@ function DetailsCard({ request }: { request: NonNullable<ReturnType<typeof useDo
           <View style={s.detailItem}>
             <Text style={s.detailItemLabel}>MODALIDADE</Text>
             <View style={[s.detailChip, request.prescriptionType === 'controlado' && s.detailChipWarn, request.prescriptionType === 'azul' && s.detailChipInfo]}>
-              {request.prescriptionType === 'controlado' && <Ionicons name="warning" size={13} color="#D97706" />}
-              <Text style={[s.detailChipText, request.prescriptionType === 'controlado' && { color: '#D97706' }, request.prescriptionType === 'azul' && { color: colors.info }]}>
+              {request.prescriptionType === 'controlado' && <Ionicons name="warning" size={13} color={colors.warning} />}
+              <Text style={[s.detailChipText, request.prescriptionType === 'controlado' && { color: colors.warning }, request.prescriptionType === 'azul' && { color: colors.info }]}>
                 {request.prescriptionType === 'simples' ? 'Simples' : request.prescriptionType === 'controlado' ? 'Controlada' : 'Azul'}
               </Text>
             </View>
@@ -354,8 +354,8 @@ function ConsultationPostSection({ request, router }: { request: NonNullable<Ret
             {Array.isArray(ana.alertas_vermelhos) && (ana.alertas_vermelhos as unknown[]).length > 0 && (
               <View style={s.redFlagBlock}>
                 <View style={s.anaLabelRow}>
-                  <Ionicons name="alert-circle" size={14} color="#EF4444" />
-                  <Text style={[s.anaLabel, { color: '#EF4444' }]}>ALERTAS DE GRAVIDADE</Text>
+                  <Ionicons name="alert-circle" size={14} color={colors.error} />
+                  <Text style={[s.anaLabel, { color: colors.error }]}>ALERTAS DE GRAVIDADE</Text>
                 </View>
                 {(ana.alertas_vermelhos as string[]).map((flag, i) => (
                   <View key={i} style={s.redFlagItem}><Text style={s.redFlagText}>{flag}</Text></View>
@@ -374,7 +374,7 @@ function ConsultationPostSection({ request, router }: { request: NonNullable<Ret
       })()) && (
         <DoctorCard style={[s.cardMargin, { borderWidth: 1, borderColor: colors.accent }]}>
           <View style={s.aiHeader}>
-            <Ionicons name="bulb" size={18} color="#8B5CF6" />
+            <Ionicons name="bulb" size={18} color={colors.primaryLight} />
             <Text style={s.aiTitle}>SUGESTÕES CLÍNICAS DA IA</Text>
           </View>
           {request.consultationAiSuggestions && (() => {
@@ -385,8 +385,8 @@ function ConsultationPostSection({ request, router }: { request: NonNullable<Ret
                 const isRedFlag = text.startsWith('🚨');
                 return (
                   <View key={i} style={[s.suggestionItem, isRedFlag && s.suggestionItemDanger]}>
-                    <Ionicons name={isRedFlag ? 'alert-circle' : 'bulb-outline'} size={16} color={isRedFlag ? '#EF4444' : '#8B5CF6'} />
-                    <Text style={[s.suggestionText, isRedFlag && { color: '#EF4444' }]}>{text.replace('🚨 ', '')}</Text>
+                    <Ionicons name={isRedFlag ? 'alert-circle' : 'bulb-outline'} size={16} color={isRedFlag ? colors.error : colors.primaryLight} />
+                    <Text style={[s.suggestionText, isRedFlag && { color: colors.error }]}>{text.replace('🚨 ', '')}</Text>
                   </View>
                 );
               });
@@ -442,7 +442,7 @@ function ConsultationPostSection({ request, router }: { request: NonNullable<Ret
               <AppButton
                 title="Criar Receita Baseada na Consulta"
                 variant="doctorPrimary"
-                trailing={<Ionicons name="chevron-forward" size={20} color="#FFFFFF" />}
+                trailing={<Ionicons name="chevron-forward" size={20} color={colors.white} />}
                 onPress={() => router.push({ pathname: '/doctor-request/editor/[id]' as never, params: { id: request.id, prefillMeds: JSON.stringify(meds) } })}
                 style={{ width: '100%' }}
               />
@@ -543,7 +543,7 @@ function ConductSection({ request, conductNotes, setConductNotes, includeConduct
         activeOpacity={0.7}
       >
         <View style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 1, borderColor: includeConductInPdf ? colors.primary : colors.border, backgroundColor: includeConductInPdf ? colors.primary : 'transparent', alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
-          {includeConductInPdf && <Ionicons name="checkmark" size={14} color="#fff" />}
+          {includeConductInPdf && <Ionicons name="checkmark" size={14} color={colors.white} />}
         </View>
         <Text style={{ fontSize: 13, color: colors.textSecondary, flex: 1 }}>
           Incluir esta conduta no PDF e no histórico compartilhado com o paciente.
@@ -593,17 +593,17 @@ const s = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background, gap: spacing.md },
   emptyTitle: { fontSize: 14, fontFamily: typography.fontFamily.bold, color: colors.textSecondary, letterSpacing: 0.8 },
   emptyAction: { paddingVertical: spacing.sm, paddingHorizontal: spacing.lg, backgroundColor: colors.primary, borderRadius: borderRadius.md, marginTop: spacing.sm },
-  emptyActionText: { fontSize: 13, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: '#fff', letterSpacing: 0.6 },
+  emptyActionText: { fontSize: 13, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.white, letterSpacing: 0.6 },
   cardMargin: { marginHorizontal: pad, marginTop: spacing.md },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.text, letterSpacing: 0.5 },
   sectionIconWrap: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  sectionLabel: { fontSize: 11, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', flex: 1, marginBottom: 2 },
+  sectionLabel: { fontSize: 12, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', flex: 1, marginBottom: 2 },
   sectionCountBadge: { backgroundColor: colors.primarySoft, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
   sectionCountText: { fontSize: 12, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.primary },
   detailsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   detailItem: { minWidth: 80 },
-  detailItemLabel: { fontSize: 10, fontFamily: typography.fontFamily.bold, color: colors.textMuted, marginBottom: 6, letterSpacing: 1 },
+  detailItemLabel: { fontSize: 12, fontFamily: typography.fontFamily.bold, color: colors.textMuted, marginBottom: 6, letterSpacing: 1 },
   detailChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.primarySoft, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, alignSelf: 'flex-start' },
   detailChipWarn: { backgroundColor: colors.warningLight },
   detailChipInfo: { backgroundColor: colors.infoLight },
@@ -613,9 +613,9 @@ const s = StyleSheet.create({
   aiHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
   aiTitle: { fontSize: 13, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.text, flex: 1, letterSpacing: 0.8 },
   riskBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: 8 },
-  riskText: { fontSize: 11, fontFamily: typography.fontFamily.bold, fontWeight: '700' },
+  riskText: { fontSize: 12, fontFamily: typography.fontFamily.bold, fontWeight: '700' },
   aiDisclaimer: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: spacing.sm, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: 'rgba(0,119,182,0.06)', borderRadius: 6 },
-  aiDisclaimerText: { fontSize: 11, fontFamily: typography.fontFamily.regular, color: colors.textMuted, fontStyle: 'italic' },
+  aiDisclaimerText: { fontSize: 12, fontFamily: typography.fontFamily.regular, color: colors.textMuted, fontStyle: 'italic' },
   aiSummary: { fontSize: 15, fontFamily: typography.fontFamily.regular, color: colors.text, lineHeight: 24 },
   aiSummaryActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 10 },
   aiSummaryActionText: { fontSize: 13, fontFamily: typography.fontFamily.semibold, fontWeight: '600', color: colors.primary },
@@ -628,17 +628,17 @@ const s = StyleSheet.create({
   symptomsText: { fontSize: 14, fontFamily: typography.fontFamily.regular, color: colors.textSecondary, lineHeight: 22, fontStyle: 'italic' },
   anaField: { marginBottom: 10, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   anaLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4 },
-  anaLabel: { fontSize: 10, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+  anaLabel: { fontSize: 12, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
   anaValue: { fontSize: 14, fontFamily: typography.fontFamily.regular, color: colors.text, lineHeight: 21 },
-  redFlagBlock: { marginTop: 8, padding: 10, backgroundColor: '#1C0A0A', borderRadius: 8, borderWidth: 1, borderColor: '#7F1D1D' },
+  redFlagBlock: { marginTop: 8, padding: 10, backgroundColor: colors.errorLight, borderRadius: 8, borderWidth: 1, borderColor: colors.error },
   redFlagItem: { paddingVertical: 4 },
-  redFlagText: { fontSize: 13, fontFamily: typography.fontFamily.medium, fontWeight: '500', color: '#FCA5A5', lineHeight: 20 },
+  redFlagText: { fontSize: 13, fontFamily: typography.fontFamily.medium, fontWeight: '500', color: colors.error, lineHeight: 20 },
   suggestionItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
-  suggestionItemDanger: { backgroundColor: '#1C0A0A', borderRadius: 6, paddingHorizontal: 8, borderBottomWidth: 0, marginBottom: 4 },
+  suggestionItemDanger: { backgroundColor: colors.errorLight, borderRadius: 6, paddingHorizontal: 8, borderBottomWidth: 0, marginBottom: 4 },
   suggestionText: { flex: 1, fontSize: 14, fontFamily: typography.fontFamily.regular, color: colors.text, lineHeight: 21 },
   medChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  medChip: { paddingHorizontal: 10, paddingVertical: 5, backgroundColor: '#064E3B', borderRadius: 20 },
-  medChipText: { fontSize: 12, fontFamily: typography.fontFamily.medium, fontWeight: '500', color: '#6EE7B7' },
+  medChip: { paddingHorizontal: 10, paddingVertical: 5, backgroundColor: colors.success, borderRadius: 20 },
+  medChipText: { fontSize: 12, fontFamily: typography.fontFamily.medium, fontWeight: '500', color: colors.successLight },
   pdfBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.primarySoft, borderRadius: borderRadius.md, padding: spacing.md },
   pdfBtnText: { fontSize: 14, fontFamily: typography.fontFamily.semibold, fontWeight: '600', color: colors.primary },
   formCard: { borderWidth: 1, borderColor: colors.border },

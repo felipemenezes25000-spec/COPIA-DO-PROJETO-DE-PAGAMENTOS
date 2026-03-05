@@ -58,9 +58,11 @@ public class PushTokenRepository(SupabaseClient supabase) : IPushTokenRepository
 
     public async Task DeleteByTokenAsync(string token, Guid userId, CancellationToken cancellationToken = default)
     {
+        // Token (ExponentPushToken[xxx]) contém [ ] que quebram o filtro na URL se não codificados
+        var encodedToken = Uri.EscapeDataString(token);
         await supabase.UpdateAsync<PushTokenModel>(
             TableName,
-            $"token=eq.{token}&user_id=eq.{userId}",
+            $"token=eq.{encodedToken}&user_id=eq.{userId}",
             new { active = false },
             cancellationToken);
     }

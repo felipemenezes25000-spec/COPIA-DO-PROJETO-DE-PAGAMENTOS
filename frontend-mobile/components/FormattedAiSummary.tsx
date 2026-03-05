@@ -74,7 +74,7 @@ export function FormattedAiSummary({ text, maxBlocks, accentColor }: FormattedAi
 const styles = StyleSheet.create({
   block: {},
   blockSpaced: { marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.06)' },
-  blockHeader: { fontSize: 11, fontFamily: typography.fontFamily.bold, fontWeight: '700', letterSpacing: 0.8, marginBottom: 4 },
+  blockHeader: { fontSize: 12, fontFamily: typography.fontFamily.bold, fontWeight: '700', letterSpacing: 0.8, marginBottom: 4 },
   blockContent: { fontSize: 14, fontFamily: typography.fontFamily.regular, color: colors.text, lineHeight: 22 },
   bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 4, paddingLeft: 2 },
   bulletDot: { width: 6, height: 6, borderRadius: 3, marginTop: 7 },

@@ -11,7 +11,7 @@ interface LoadingProps {
   color?: string;
 }
 
-export function Loading({ message, size = 'large', color = '#FFFFFF' }: LoadingProps) {
+export function Loading({ message, size = 'large', color = colors.text.inverse }: LoadingProps) {
   return (
     <View style={styles.container}>
       <ActivityIndicator size={size} color={color} />

@@ -284,7 +284,7 @@ export default function PatientHome() {
           label={STATUS_LABELS_PT.in_review}
           value={stats.pending}
           iconColor={colors.warning}
-          iconBgColor="#FEF3C7"
+          iconBgColor={colors.warningLight}
           onPress={() => router.push('/(patient)/requests')}
         />
         <StatsCard
@@ -292,7 +292,7 @@ export default function PatientHome() {
           label="A pagar"
           value={stats.toPay}
           iconColor={colors.error}
-          iconBgColor="#FEE2E2"
+          iconBgColor={colors.errorLight}
           onPress={() => router.push('/(patient)/requests')}
         />
         <StatsCard
@@ -300,7 +300,7 @@ export default function PatientHome() {
           label="Prontos"
           value={stats.ready}
           iconColor={colors.success}
-          iconBgColor="#D1FAE5"
+          iconBgColor={colors.successLight}
           onPress={() => router.push('/(patient)/requests')}
         />
       </View>
@@ -511,7 +511,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontFamily: 'PlusJakartaSans_700Bold',
     fontWeight: '800',
-    color: '#fff',
+    color: colors.white,
     letterSpacing: -0.2,
   },
   avatarBtn: {
@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: 'PlusJakartaSans_700Bold',
     fontWeight: '700',
-    color: '#fff',
+    color: colors.white,
   },
 
   // ─── Destaque IA ───
@@ -609,7 +609,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: 18,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 12,
@@ -642,7 +642,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: colors.primary + '26',
-    shadowColor: '#000',
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 12,
@@ -658,7 +658,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   followUpTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: colors.primary,
     textTransform: 'uppercase',

@@ -35,7 +35,7 @@ export function AppHeader({
   const handleBack = onBack || (() => router.back());
 
   const isGradient = !!gradient;
-  const textColor = isGradient ? '#FFFFFF' : c.text.primary;
+  const textColor = isGradient ? c.white : c.text.primary;
   const backBgColor = isGradient ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)';
 
   const content = (
@@ -103,9 +103,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -125,10 +125,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   rightSlot: {
-    minWidth: 40,
+    minWidth: 44,
     alignItems: 'flex-end',
   },
   placeholder: {
-    width: 40,
+    width: 44,
   },
 });

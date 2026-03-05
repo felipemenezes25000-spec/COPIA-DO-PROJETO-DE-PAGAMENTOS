@@ -315,11 +315,17 @@ export default function RequestDetailScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+          >
             <Ionicons name="arrow-back" size={24} color={colors.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Detalhes</Text>
-          <View style={{ width: 40 }} />
+          <View style={{ width: 44 }} />
         </View>
         <View style={styles.center}>
           <AppEmptyState
@@ -338,11 +344,17 @@ export default function RequestDetailScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+          >
             <Ionicons name="arrow-back" size={24} color={colors.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Detalhes</Text>
-          <View style={{ width: 40 }} />
+          <View style={{ width: 44 }} />
         </View>
         <View style={styles.center}>
           <AppEmptyState
@@ -387,7 +399,13 @@ export default function RequestDetailScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backBtn}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+        >
           <Ionicons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{getTypeLabel(request.requestType)}</Text>
@@ -472,7 +490,7 @@ export default function RequestDetailScreen() {
               <Text style={styles.detailLabel}>Médico</Text>
               <View style={styles.doctorInfo}>
                 <View style={styles.doctorAvatarSmall}>
-                  <Ionicons name="person" size={14} color="#fff" />
+                  <Ionicons name="person" size={14} color={colors.white} />
                 </View>
                 <Text style={styles.detailValue}>{request.doctorName}</Text>
               </View>
@@ -523,7 +541,7 @@ export default function RequestDetailScreen() {
                 <TouchableOpacity key={i} onPress={() => setSelectedImageUri(img)} activeOpacity={0.8} style={styles.thumbWrap}>
                   <CompatibleImage uri={img} style={styles.thumbImg} resizeMode="cover" />
                   <View style={styles.zoomBadge}>
-                    <Ionicons name="search" size={14} color="#fff" />
+                    <Ionicons name="search" size={14} color={colors.white} />
                   </View>
                 </TouchableOpacity>
               ))}
@@ -544,7 +562,7 @@ export default function RequestDetailScreen() {
                 <TouchableOpacity key={i} onPress={() => setSelectedImageUri(img)} activeOpacity={0.8} style={styles.thumbWrap}>
                   <CompatibleImage uri={img} style={styles.thumbImg} resizeMode="cover" />
                   <View style={styles.zoomBadge}>
-                    <Ionicons name="search" size={14} color="#fff" />
+                    <Ionicons name="search" size={14} color={colors.white} />
                   </View>
                 </TouchableOpacity>
               ))}
@@ -584,30 +602,30 @@ export default function RequestDetailScreen() {
 
         {/* AI Analysis */}
         {request.aiSummaryForDoctor && (
-          <View style={[styles.card, { backgroundColor: '#FFFBEB' }]}>
+          <View style={[styles.card, { backgroundColor: colors.warningLight }]}>
             <View style={styles.cardHeader}>
-              <Ionicons name="sparkles" size={20} color="#F59E0B" />
+              <Ionicons name="sparkles" size={20} color={colors.warning} />
               <Text style={styles.cardTitle}>Análise IA</Text>
               {request.aiRiskLevel && (
-                <View style={[styles.riskBadge, { backgroundColor: request.aiRiskLevel === 'high' ? '#FEE2E2' : request.aiRiskLevel === 'medium' ? '#FEF3C7' : '#D1FAE5' }]}>
-                  <Text style={[styles.riskText, { color: request.aiRiskLevel === 'high' ? '#EF4444' : request.aiRiskLevel === 'medium' ? '#D97706' : '#059669' }]}>
+                <View style={[styles.riskBadge, { backgroundColor: request.aiRiskLevel === 'high' ? colors.errorLight : request.aiRiskLevel === 'medium' ? colors.warningLight : colors.successLight }]}>
+                  <Text style={[styles.riskText, { color: request.aiRiskLevel === 'high' ? colors.error : request.aiRiskLevel === 'medium' ? colors.warning : colors.success }]}}>
                     {getRiskLabelPt(request.aiRiskLevel)}
                   </Text>
                 </View>
               )}
             </View>
-            <FormattedAiSummary text={request.aiSummaryForDoctor} accentColor="#D97706" />
+            <FormattedAiSummary text={request.aiSummaryForDoctor} accentColor={colors.warning} />
           </View>
         )}
 
         {/* Rejection */}
         {request.rejectionReason && (
-          <View style={[styles.card, { backgroundColor: '#FEE2E2' }]}>
+          <View style={[styles.card, { backgroundColor: colors.errorLight }]}>
             <View style={styles.cardHeader}>
               <Ionicons name="close-circle" size={20} color={colors.error} />
               <Text style={[styles.cardTitle, { color: colors.error }]}>Motivo da Rejeição</Text>
             </View>
-            <Text style={[styles.symptomsText, { color: '#991B1B' }]}>{request.rejectionReason}</Text>
+            <Text style={[styles.symptomsText, { color: colors.error }]}>{request.rejectionReason}</Text>
           </View>
         )}
 
@@ -673,7 +691,7 @@ export default function RequestDetailScreen() {
         <GestureHandlerRootView style={{ flex: 1 }}>
           <View style={styles.modalContainer}>
             <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setSelectedImageUri(null)} activeOpacity={0.7}>
-              <Ionicons name="close" size={32} color="#fff" />
+              <Ionicons name="close" size={32} color={colors.white} />
             </TouchableOpacity>
             {selectedImageUri && (
               Platform.OS === 'web' && /\.(heic|heif)$/i.test(selectedImageUri) ? (
@@ -703,7 +721,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   backBtn: {
-    width: 40, height: 40, borderRadius: 12,
+    width: 44, height: 44, borderRadius: 14,
     backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center',
     ...shadows.card,
   },
@@ -722,7 +740,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     ...shadows.card,
   },
-  cardLabel: { fontSize: 11, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.2, marginBottom: spacing.xs },
+  cardLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.2, marginBottom: spacing.xs },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
   cardTitle: { fontSize: 16, fontWeight: '700', color: colors.text, flex: 1 },
   detailRow: {
@@ -766,9 +784,9 @@ const styles = StyleSheet.create({
   },
   nextActionBody: { fontSize: 14, lineHeight: 20, color: colors.text },
   nextActionEta: { marginTop: 6, fontSize: 12, color: colors.textSecondary },
-  aiSummary: { fontSize: 14, color: '#92400E', lineHeight: 20 },
+  aiSummary: { fontSize: 14, color: colors.warning, lineHeight: 20 },
   riskBadge: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: borderRadius.sm },
-  riskText: { fontSize: 11, fontWeight: '700' },
+  riskText: { fontSize: 12, fontWeight: '700' },
   actions: {
     gap: spacing.sm,
     marginTop: spacing.md,
@@ -796,11 +814,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     marginTop: spacing.md,
   },
-  errorBtnText: { fontSize: 15, fontWeight: '600', color: '#fff' },
+  errorBtnText: { fontSize: 15, fontWeight: '600', color: colors.white },
   thumbWrap: { marginHorizontal: spacing.sm, position: 'relative' },
   thumbImg: { width: 120, height: 120, borderRadius: 14 },
   zoomBadge: { position: 'absolute', bottom: 6, right: 6, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 12, padding: 4, alignItems: 'center', justifyContent: 'center' },
-  zoomHint: { fontSize: 11, color: colors.textMuted, marginBottom: spacing.xs },
+  zoomHint: { fontSize: 12, color: colors.textMuted, marginBottom: spacing.xs },
   modalContainer: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.95)', justifyContent: 'center', alignItems: 'center' },
   modalCloseBtn: {
     position: 'absolute',

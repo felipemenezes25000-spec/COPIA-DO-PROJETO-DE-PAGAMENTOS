@@ -23,7 +23,7 @@ import type { AvatarState, CTAAction, Severity } from '../../lib/triage/triage.t
 
 const AVATAR: Record<AvatarState, { bg: string; border: string; icon: keyof typeof Ionicons.glyphMap; iconColor: string }> = {
   neutral:  { bg: theme.colors.primary.soft,    border: theme.colors.primary.main,    icon: 'medical',     iconColor: theme.colors.primary.dark },
-  alert:    { bg: theme.colors.status.warningLight, border: theme.colors.status.warning,  icon: 'alert-circle', iconColor: '#D97706' },
+  alert:    { bg: theme.colors.status.warningLight, border: theme.colors.status.warning,  icon: 'alert-circle', iconColor: theme.colors.status.warning },
   positive: { bg: theme.colors.secondary.soft,  border: theme.colors.secondary.main,  icon: 'checkmark-circle', iconColor: theme.colors.secondary.dark },
   thinking: { bg: theme.colors.accent.soft,     border: theme.colors.accent.main,     icon: 'sparkles',    iconColor: theme.colors.accent.dark },
 };
@@ -257,13 +257,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   personalizedText: {
-    fontSize: 9,
+    fontSize: 12,
     color: theme.colors.accent.main,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     letterSpacing: 0.3,
   },
   label: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
     color: theme.colors.text.tertiary,
@@ -285,10 +285,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   ctaText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
-    color: '#FFFFFF',
+    color: theme.colors.text.inverse,
     letterSpacing: 0.2,
   },
   dismissBtn: {
@@ -314,12 +314,12 @@ const styles = StyleSheet.create({
     paddingTop: 2,
   },
   muteHint: {
-    fontSize: 9,
+    fontSize: 12,
     color: theme.colors.text.disabled,
     marginBottom: 2,
   },
   disclaimer: {
-    fontSize: 9,
+    fontSize: 12,
     color: theme.colors.text.disabled,
     fontStyle: 'italic',
   },
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
   },
   modalBadge: {
-    fontSize: 10,
+    fontSize: 12,
     color: theme.colors.text.disabled,
     marginTop: 2,
   },
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   modalDisclaimer: {
-    fontSize: 11,
+    fontSize: 12,
     color: theme.colors.text.disabled,
   },
 });

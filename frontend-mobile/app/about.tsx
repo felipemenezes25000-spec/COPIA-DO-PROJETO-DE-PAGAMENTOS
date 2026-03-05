@@ -16,11 +16,17 @@ export default function AboutScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backBtn}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+        >
           <Ionicons name="chevron-back" size={22} color={colors.primaryDark} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{'SOBRE O ' + (COMPANY.name ?? '').toUpperCase()}</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 44 }} />
       </View>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.logoSection}>
@@ -64,10 +70,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#F1F5F9',
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: colors.surfaceSecondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -97,7 +103,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   version: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     color: colors.textMuted,
     textAlign: 'center',
@@ -106,12 +112,12 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: colors.border,
     marginVertical: spacing.lg,
   },
   paragraph: {
     fontSize: 14,
-    color: '#475569',
+    color: colors.textSecondary,
     marginBottom: spacing.md,
     lineHeight: 22,
   },
@@ -119,16 +125,16 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   contactLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#94A3B8',
+    color: colors.textMuted,
     letterSpacing: 1,
     marginTop: 8,
     marginBottom: 2,
   },
   contactText: {
     fontSize: 14,
-    color: '#475569',
+    color: colors.textSecondary,
     lineHeight: 20,
   },
 });

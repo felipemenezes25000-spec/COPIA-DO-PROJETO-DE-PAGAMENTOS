@@ -34,7 +34,7 @@ export function PrescriptionImageGallery({ images, label, iconBackgroundColor, s
             <TouchableOpacity key={i} onPress={() => setSelectedImageUri(img)} activeOpacity={0.8} style={s.thumbContainer}>
               <CompatibleImage uri={img} style={s.img} resizeMode="cover" />
               <View style={s.zoomBadge}>
-                <Ionicons name="expand" size={14} color="#fff" />
+                <Ionicons name="expand" size={14} color={colors.white} />
               </View>
               {images.length > 1 && (
                 <View style={s.imgCounter}>
@@ -56,7 +56,7 @@ export function PrescriptionImageGallery({ images, label, iconBackgroundColor, s
         <GestureHandlerRootView style={{ flex: 1 }}>
           <View style={s.modalContainer}>
             <TouchableOpacity style={s.modalCloseButton} onPress={() => setSelectedImageUri(null)} activeOpacity={0.7}>
-              <Ionicons name="close" size={32} color="#fff" />
+              <Ionicons name="close" size={32} color={colors.white} />
             </TouchableOpacity>
             {selectedImageUri && (
               <View style={s.modalImageWrapper}>
@@ -77,14 +77,14 @@ export function PrescriptionImageGallery({ images, label, iconBackgroundColor, s
 const s = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   sectionIconWrap: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  sectionLabel: { fontSize: 11, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', flex: 1, marginBottom: 2 },
-  zoomHint: { fontSize: 10, color: colors.textMuted, fontFamily: typography.fontFamily.regular },
+  sectionLabel: { fontSize: 12, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', flex: 1, marginBottom: 2 },
+  zoomHint: { fontSize: 12, color: colors.textMuted, fontFamily: typography.fontFamily.regular },
   imageScroll: { marginTop: 4 },
   img: { width: 160, height: 200, borderRadius: 14 },
   thumbContainer: { marginRight: 10, position: 'relative' },
   zoomBadge: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 12, padding: 5, alignItems: 'center', justifyContent: 'center' },
   imgCounter: { position: 'absolute', top: 8, left: 8, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
-  imgCounterText: { fontSize: 10, fontFamily: typography.fontFamily.semibold, fontWeight: '600', color: '#fff' },
+  imgCounterText: { fontSize: 12, fontFamily: typography.fontFamily.semibold, fontWeight: '600', color: colors.white },
   modalContainer: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.95)', justifyContent: 'center', alignItems: 'center' },
   modalImageWrapper: { flex: 1, width: '100%', alignSelf: 'stretch' },
   modalImageFull: { flex: 1, width: '100%', minHeight: 300 },

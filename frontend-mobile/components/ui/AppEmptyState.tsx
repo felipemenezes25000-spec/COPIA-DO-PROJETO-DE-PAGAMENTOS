@@ -48,8 +48,8 @@ export function AppEmptyState({
           accessibilityRole="button"
           accessibilityLabel={actionLabel}
         >
-          <Text style={[s.actionText, { fontFamily: typography.fontFamily.bold }]}>{actionLabel}</Text>
-          <Ionicons name="chevron-forward" size={14} color="#fff" />
+          <Text style={[s.actionText, { color: colors.white, fontFamily: typography.fontFamily.bold }]}>{actionLabel}</Text>
+          <Ionicons name="chevron-forward" size={14} color={colors.white} />
         </Pressable>
       ) : null}
     </View>
@@ -70,5 +70,5 @@ const s = StyleSheet.create({
     borderRadius: 16,
     marginTop: 12,
   },
-  actionText: { fontSize: 13, fontWeight: '800', color: '#fff', letterSpacing: 0.1 },
+  actionText: { fontSize: 13, fontWeight: '800', letterSpacing: 0.1 },
 });

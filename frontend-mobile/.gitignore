@@ -9,3 +9,7 @@ expo-env.d.ts
 .env
 .env.local
 .env.*.local
+
+# Firebase Service Account (FCM v1) - NAO commitar
+*-fcm-key.json
+*-firebase-adminsdk-*.json

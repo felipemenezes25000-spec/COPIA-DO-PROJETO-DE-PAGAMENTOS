@@ -19,7 +19,7 @@ import { createPrescriptionSchema } from '../../lib/validation/schemas';
 import { PRESCRIPTION_TYPE_PRICES } from '../../lib/config/pricing';
 import { formatBRL } from '../../lib/utils/format';
 import { getApiErrorMessage } from '../../lib/api-client';
-import { useListBottomPadding } from '../../lib/ui/responsive';
+import { useStickyCtaScrollPadding } from '../../lib/ui/responsive';
 import { Screen } from '../../components/ui/Screen';
 import { AppHeader, AppCard, StepIndicator, StickyCTA } from '../../components/ui';
 import { CompatibleImage } from '../../components/CompatibleImage';
@@ -74,7 +74,7 @@ export default function NewPrescription() {
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const currentStep = images.length > 0 ? 3 : 2;
-  const listPadding = useListBottomPadding();
+  const listPadding = useStickyCtaScrollPadding();
   const selectedPrice = formatBRL(TYPES.find((type) => type.key === selectedType)?.price ?? 0);
   const completenessLocal = evaluatePrescriptionCompleteness({
     prescriptionType: selectedType,
@@ -202,7 +202,7 @@ export default function NewPrescription() {
   return (
     <Screen scroll={false} edges={['bottom']} padding={false}>
       <View style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={[styles.body, { paddingBottom: listPadding + 150 }]} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.body, { paddingBottom: listPadding }]} showsVerticalScrollIndicator={false}>
           <AppHeader title="Renovação de Receita" />
           <StepIndicator current={currentStep} total={3} labels={['Tipo', 'Foto', 'Revisão']} />
           <AppCard style={[styles.assistantCard, apiLoading && styles.assistantCardLoading]}>
@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
     color: c.text.tertiary,
   },
   comingSoonBadge: {
-    backgroundColor: c.border?.main ?? '#E5E7EB',
+    backgroundColor: c.border.main,
     paddingHorizontal: s.sm,
     paddingVertical: 2,
     borderRadius: r.full,

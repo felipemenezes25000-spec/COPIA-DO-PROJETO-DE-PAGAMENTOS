@@ -10,6 +10,7 @@ import { getMercadoPagoPublicKey, fetchRequestById, fetchSavedCards, createPayme
 import { getApiErrorMessage } from '../../lib/api-client';
 import { getDisplayPrice } from '../../lib/config/pricing';
 import { colors, spacing } from '../../lib/theme';
+import { PaymentHeader } from '../../components/payment/PaymentHeader';
 
 const TOKEN_KEY = '@renoveja:auth_token';
 
@@ -21,18 +22,18 @@ function buildCardPaymentHtml(publicKey: string, amount: number, requestId: stri
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <script src="https://sdk.mercadopago.com/js/v2"></script>
 <style>
-*{box-sizing:border-box}body{font-family:system-ui,sans-serif;margin:0;padding:16px;background:#f8fafc}
-#container{min-height:380px;background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-#saveCardRow{margin:14px 0;display:flex;align-items:center;gap:10px;font-size:15px;color:#334155}
-#saveCardRow input{width:20px;height:20px;accent-color:#0EA5E9}
-.error{color:#dc2626;background:#fef2f2;padding:12px;border-radius:8px;margin-top:12px;font-size:14px}
+*{box-sizing:border-box}body{font-family:system-ui,sans-serif;margin:0;padding:16px;background:${colors.background}}
+#container{min-height:380px;background:${colors.white};border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+#saveCardRow{margin:14px 0;display:flex;align-items:center;gap:10px;font-size:15px;color:${colors.textSecondary}}
+#saveCardRow input{width:20px;height:20px;accent-color:${colors.primary}}
+.error{color:${colors.error};background:${colors.errorLight};padding:12px;border-radius:8px;margin-top:12px;font-size:14px}
 .submitting{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;z-index:9999}
-.submitting span{font-size:16px;color:#334155;margin-top:12px}
-.savedCards{margin-bottom:16px;padding:12px;background:#f1f5f9;border-radius:8px}
-.savedCard{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;border-radius:8px;margin-bottom:8px;border:2px solid #e2e8f0;cursor:pointer}
-.savedCard.selected{border-color:#0EA5E9;background:#eff6ff}
+.submitting span{font-size:16px;color:${colors.textSecondary};margin-top:12px}
+.savedCards{margin-bottom:16px;padding:12px;background:${colors.surfaceSecondary};border-radius:8px}
+.savedCard{display:flex;align-items:center;gap:10px;padding:10px 12px;background:${colors.white};border-radius:8px;margin-bottom:8px;border:2px solid ${colors.border};cursor:pointer}
+.savedCard.selected{border-color:${colors.primary};background:${colors.primarySoft}}
 .savedCard:last-child{margin-bottom:0}
-.useNew{font-size:14px;color:#64748b;margin-top:8px;cursor:pointer;text-decoration:underline}
+.useNew{font-size:14px;color:${colors.textMuted};margin-top:8px;cursor:pointer;text-decoration:underline}
 </style></head>
 <body>
 <div id="savedCardsSection" style="display:none"></div>
@@ -44,7 +45,7 @@ function buildCardPaymentHtml(publicKey: string, amount: number, requestId: stri
 </div>
 </div>
 <div id="error" class="error" style="display:none"></div>
-<div id="submitting" class="submitting" style="display:none"><div style="text-align:center"><div style="width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:#0EA5E9;border-radius:50%;animation:spin 0.8s linear infinite"></div><span>Processando pagamento...</span></div></div>
+<div id="submitting" class="submitting" style="display:none"><div style="text-align:center"><div style="width:40px;height:40px;border:3px solid ${colors.border};border-top-color:${colors.primary};border-radius:50%;animation:spin 0.8s linear infinite"></div><span>Processando pagamento...</span></div></div>
 <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 <script>
 (function(){
@@ -61,13 +62,13 @@ function showSavedCards(){
   if(savedCards.length===0)return;
   var sec=document.getElementById('savedCardsSection');
   sec.style.display='block';
-  sec.innerHTML='<div class="savedCards"><strong style="font-size:13px;color:#64748b">CARTÕES SALVOS</strong>'+
+  sec.innerHTML='<div class="savedCards"><strong style="font-size:13px;color:${colors.textMuted}">CARTÕES SALVOS</strong>'+
     savedCards.map(function(c){
-      return '<div class="savedCard" data-id="'+esc(c.id)+'" data-mpcardid="'+esc(c.mpCardId||'')+'" data-last="'+esc(c.lastFour)+'" data-brand="'+esc(c.brand)+'"><span style="font-size:18px">••••</span><span>'+esc(c.lastFour)+'</span><span style="color:#64748b;font-size:13px">'+esc(c.brand)+'</span></div>';
+      return '<div class="savedCard" data-id="'+esc(c.id)+'" data-mpcardid="'+esc(c.mpCardId||'')+'" data-last="'+esc(c.lastFour)+'" data-brand="'+esc(c.brand)+'"><span style="font-size:18px">••••</span><span>'+esc(c.lastFour)+'</span><span style="color:${colors.textMuted};font-size:13px">'+esc(c.brand)+'</span></div>';
     }).join('')+
-    '<div id="cvvSection" style="display:none;margin-top:12px"><label style="font-size:13px;color:#64748b">CVV do cartão salvo</label><div id="cvvFieldMount" style="min-height:50px;border:1px solid #e2e8f0;border-radius:8px;margin-top:6px"></div></div>'+
+    '<div id="cvvSection" style="display:none;margin-top:12px"><label style="font-size:13px;color:${colors.textMuted}">CVV do cartão salvo</label><div id="cvvFieldMount" style="min-height:50px;border:1px solid ${colors.border};border-radius:8px;margin-top:6px"></div></div>'+
     '<div class="useNew" id="useNewCard">Usar outro cartão</div>'+
-    '<button id="paySavedBtn" style="width:100%;margin-top:12px;padding:14px;background:#0EA5E9;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer">Pagar com cartão salvo</button></div>';
+    '<button id="paySavedBtn" style="width:100%;margin-top:12px;padding:14px;background:${colors.primary};color:${colors.white};border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer">Pagar com cartão salvo</button></div>';
   sec.querySelectorAll('.savedCard').forEach(function(el){
     el.addEventListener('click',function(){selectSavedCard(this);});
   });
@@ -248,13 +249,7 @@ export default function CardPaymentScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={colors.primaryDark} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Pagamento com Cartão</Text>
-          <View style={{ width: 24 }} />
-        </View>
+        <PaymentHeader title="Pagamento com Cartão" onBack={() => router.back()} iconColor={colors.primaryDark} />
         <View style={styles.loadingBox}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Carregando formulário...</Text>
@@ -266,13 +261,7 @@ export default function CardPaymentScreen() {
   if (error || !html) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={colors.primaryDark} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Pagamento com Cartão</Text>
-          <View style={{ width: 24 }} />
-        </View>
+        <PaymentHeader title="Pagamento com Cartão" onBack={() => router.back()} iconColor={colors.primaryDark} />
         <View style={styles.errorBox}>
           <Ionicons name="alert-circle" size={48} color={colors.error} />
           <Text style={styles.errorText}>{error}</Text>
@@ -286,13 +275,7 @@ export default function CardPaymentScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={colors.primaryDark} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Pagamento com Cartão</Text>
-        <View style={{ width: 24 }} />
-      </View>
+      <PaymentHeader title="Pagamento com Cartão" onBack={() => router.back()} iconColor={colors.primaryDark} />
       {isFocused && (
         <WebView
           ref={webViewRef}
@@ -313,17 +296,6 @@ export default function CardPaymentScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.primaryDark },
   webview: { flex: 1, backgroundColor: 'transparent' },
   loadingBox: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
   loadingText: { fontSize: 16, color: colors.textSecondary },

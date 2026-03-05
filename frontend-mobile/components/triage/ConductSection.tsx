@@ -64,7 +64,7 @@ export function ConductSection({
         <Text style={styles.sectionTitle}>CONDUTA MÉDICA</Text>
         {aiSuggestion && (
           <View style={styles.aiBadge}>
-            <Ionicons name="sparkles" size={9} color="#7C3AED" />
+            <Ionicons name="sparkles" size={9} color={colors.accent} />
             <Text style={styles.aiBadgeText}>Sugestão IA</Text>
           </View>
         )}
@@ -92,7 +92,7 @@ export function ConductSection({
         <View style={styles.aiCard}>
           <View style={styles.aiCardHeader}>
             <View style={styles.aiIconCircle}>
-              <Ionicons name="sparkles" size={14} color="#7C3AED" />
+              <Ionicons name="sparkles" size={14} color={colors.accent} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.aiCardTitle}>Sugestão de conduta (IA)</Text>
@@ -112,7 +112,7 @@ export function ConductSection({
               style={({ pressed }) => [styles.aiBtn, styles.aiBtnSecondary, pressed && styles.pressed]}
               onPress={appendSuggestion}
             >
-              <Ionicons name="add" size={14} color="#7C3AED" />
+              <Ionicons name="add" size={14} color={colors.accent} />
               <Text style={styles.aiBtnSecondaryText}>Adicionar</Text>
             </Pressable>
             <Pressable
@@ -170,8 +170,8 @@ export function ConductSection({
         <Switch
           value={includeInPdf}
           onValueChange={onTogglePdf}
-          trackColor={{ false: colors.border, true: '#BBF7D0' }}
-          thumbColor={includeInPdf ? colors.success : '#CBD5E1'}
+          trackColor={{ false: colors.border, true: colors.successLight }}
+          thumbColor={includeInPdf ? colors.success : colors.borderLight}
           ios_backgroundColor={colors.border}
         />
       </View>
@@ -195,15 +195,15 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   sectionTitle: {
-    fontSize: 11, fontWeight: '700', fontFamily: typography.fontFamily.bold,
+    fontSize: 12, fontWeight: '700', fontFamily: typography.fontFamily.bold,
     letterSpacing: 1, color: colors.textMuted, textTransform: 'uppercase',
     flex: 1,
   },
   aiBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: '#EDE9FE', paddingHorizontal: 7, paddingVertical: 2.5, borderRadius: 100,
+    backgroundColor: colors.accentSoft, paddingHorizontal: 7, paddingVertical: 2.5, borderRadius: 100,
   },
-  aiBadgeText: { fontSize: 9, fontWeight: '700', color: '#7C3AED', letterSpacing: 0.2 },
+  aiBadgeText: { fontSize: 12, fontWeight: '700', color: colors.accent, letterSpacing: 0.2 },
   hint: {
     fontSize: 12, lineHeight: 17, color: colors.textMuted,
     fontFamily: typography.fontFamily.regular, marginBottom: 14,
@@ -211,31 +211,31 @@ const styles = StyleSheet.create({
 
   // Auto observation card
   autoObsCard: {
-    backgroundColor: '#EFF6FF', borderRadius: borderRadius.sm, padding: 12, marginBottom: 14,
+    backgroundColor: colors.primarySoft, borderRadius: borderRadius.sm, padding: 12, marginBottom: 14,
     borderLeftWidth: 3, borderLeftColor: colors.primary,
   },
   autoObsHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 5,
   },
-  autoObsLabel: { fontSize: 11, fontWeight: '600', color: colors.primaryDark, flex: 1 },
+  autoObsLabel: { fontSize: 12, fontWeight: '600', color: colors.primaryDark, flex: 1 },
   autoObsBadge: {
     backgroundColor: colors.primarySoft, paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 100,
   },
-  autoObsBadgeText: { fontSize: 8, fontWeight: '700', color: colors.primary, letterSpacing: 0.3 },
+  autoObsBadgeText: { fontSize: 12, fontWeight: '700', color: colors.primary, letterSpacing: 0.3 },
   autoObsText: { fontSize: 12, lineHeight: 17, color: colors.textSecondary, fontStyle: 'italic' },
 
   // AI suggestion card
   aiCard: {
-    backgroundColor: '#FAF5FF', borderRadius: borderRadius.sm, padding: 14, marginBottom: 14,
-    borderWidth: 1, borderColor: '#E9D5FF',
+    backgroundColor: colors.accentSoft, borderRadius: borderRadius.sm, padding: 14, marginBottom: 14,
+    borderWidth: 1, borderColor: colors.accentSoft,
   },
   aiCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
   aiIconCircle: {
-    width: 32, height: 32, borderRadius: 8, backgroundColor: '#EDE9FE',
+    width: 32, height: 32, borderRadius: 8, backgroundColor: colors.accentSoft,
     alignItems: 'center', justifyContent: 'center',
   },
-  aiCardTitle: { fontSize: 13, fontWeight: '700', color: '#7C3AED' },
-  aiCardSubtitle: { fontSize: 10, color: '#A78BFA', marginTop: 1 },
+  aiCardTitle: { fontSize: 13, fontWeight: '700', color: colors.accent },
+  aiCardSubtitle: { fontSize: 12, color: colors.accent, marginTop: 1 },
   aiCardText: { fontSize: 12.5, lineHeight: 18, color: colors.textSecondary, marginBottom: 12 },
   aiCardActions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   aiBtn: {
@@ -243,23 +243,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: borderRadius.pill,
     minHeight: 32,
   },
-  aiBtnPrimary: { backgroundColor: '#7C3AED' },
+  aiBtnPrimary: { backgroundColor: colors.accent },
   aiBtnPrimaryText: { fontSize: 12, fontWeight: '700', color: colors.white },
-  aiBtnSecondary: { backgroundColor: '#EDE9FE' },
-  aiBtnSecondaryText: { fontSize: 12, fontWeight: '600', color: '#7C3AED' },
-  aiBtnGhostText: { fontSize: 12, fontWeight: '500', color: '#94A3B8' },
-  aiDisclaimer: { fontSize: 9, color: '#C4B5FD', fontStyle: 'italic', marginTop: 8 },
+  aiBtnSecondary: { backgroundColor: colors.accentSoft },
+  aiBtnSecondaryText: { fontSize: 12, fontWeight: '600', color: colors.accent },
+  aiBtnGhostText: { fontSize: 12, fontWeight: '500', color: colors.textMuted },
+  aiDisclaimer: { fontSize: 12, color: colors.textMuted, fontStyle: 'italic', marginTop: 8 },
 
   // Exam chips
   examsWrap: { marginBottom: 14 },
-  examsLabel: { fontSize: 11.5, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 },
+  examsLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: colors.primarySoft, paddingHorizontal: 10, paddingVertical: 6,
     borderRadius: borderRadius.pill, borderWidth: 1, borderColor: colors.accent,
   },
-  chipText: { fontSize: 11.5, fontWeight: '500', color: colors.primaryDark },
+  chipText: { fontSize: 12, fontWeight: '500', color: colors.primaryDark },
 
   // TextArea
   textarea: {

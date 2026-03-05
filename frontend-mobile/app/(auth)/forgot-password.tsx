@@ -48,7 +48,7 @@ export default function ForgotPasswordScreen() {
           {sent ? (
             <View style={styles.centerContent}>
               <View style={styles.successCircle}>
-                <Ionicons name="checkmark" size={36} color="#FFFFFF" />
+                <Ionicons name="checkmark" size={36} color={colors.white} />
               </View>
               <Text style={styles.title}>E-mail enviado!</Text>
               <Text style={styles.subtitle}>
@@ -64,10 +64,10 @@ export default function ForgotPasswordScreen() {
             <View style={styles.centerContent}>
               <Text style={styles.brandTitle}>RenoveJá+</Text>
               <Text style={styles.subtitle}>
-                escreva seu email abaixo para recuperar seu acesso!
+                Escreva seu e-mail abaixo para recuperar seu acesso.
               </Text>
               <AppInput
-                label="Email Address"
+                label="E-mail"
                 placeholder="seu@email.com"
                 value={email}
                 onChangeText={setEmail}
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: spacing.sm,
-    shadowColor: '#000',
+    shadowColor: theme.colors.text.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,

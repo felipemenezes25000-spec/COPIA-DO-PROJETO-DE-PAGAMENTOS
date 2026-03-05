@@ -20,7 +20,7 @@ import { formatBRL } from '../../lib/utils/format';
 import { getApiErrorMessage } from '../../lib/api-client';
 import { validate } from '../../lib/validation';
 import { createConsultationSchema, CONSULTATION_MIN_MINUTES, CONSULTATION_MAX_MINUTES } from '../../lib/validation/schemas';
-import { useListBottomPadding } from '../../lib/ui/responsive';
+import { useStickyCtaScrollPadding } from '../../lib/ui/responsive';
 import { Screen } from '../../components/ui/Screen';
 import { AppHeader, AppCard, StepIndicator, StickyCTA } from '../../components/ui';
 import { useTriageEval } from '../../hooks/useTriageEval';
@@ -64,7 +64,7 @@ export default function ConsultationScreen() {
   const [loading, setLoading] = useState(false);
   const [bankMinutes, setBankMinutes] = useState<number>(0);
   const [loadingBank, setLoadingBank] = useState(false);
-  const listPadding = useListBottomPadding();
+  const listPadding = useStickyCtaScrollPadding();
   const completenessLocal = evaluateConsultationCompleteness({
     consultationType,
     durationMinutes,
@@ -214,7 +214,7 @@ export default function ConsultationScreen() {
   return (
     <Screen scroll={false} edges={['bottom']} padding={false}>
       <View style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: listPadding + 150 }]} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: listPadding }]} showsVerticalScrollIndicator={false}>
         <AppHeader title="Consulta Breve" />
         <StepIndicator current={currentStep} total={4} labels={['Profissional', 'Minutos', 'Sintomas', 'Revisão']} />
         <AppCard style={[styles.assistantCard, apiLoading && styles.assistantCardLoading]}>
@@ -235,7 +235,7 @@ export default function ConsultationScreen() {
         </AppCard>
         {redFlags.isUrgent ? (
           <View style={styles.redFlagCard}>
-            <Ionicons name="warning-outline" size={18} color="#DC2626" />
+            <Ionicons name="warning-outline" size={18} color={c.status.error} />
             <Text style={styles.redFlagText}>{redFlags.guidance}</Text>
           </View>
         ) : null}
@@ -318,7 +318,7 @@ export default function ConsultationScreen() {
         {!loadingBank && bankMinutes > 0 && (
           <AppCard style={styles.bankCard}>
             <View style={styles.bankRow}>
-              <Ionicons name="time" size={18} color={c.status.success ?? '#16a34a'} />
+              <Ionicons name="time" size={18} color={c.status.success} />
               <Text style={styles.bankText}>
                 Você tem <Text style={styles.bankBold}>{bankMinutes} min</Text> gratuitos disponíveis no banco de horas
               </Text>
@@ -388,14 +388,14 @@ const styles = StyleSheet.create({
     marginBottom: s.sm,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#FCA5A5',
-    backgroundColor: '#FEF2F2',
+    borderColor: c.status.errorLight,
+    backgroundColor: c.status.errorLight,
     padding: s.md,
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: s.sm,
   },
-  redFlagText: { flex: 1, color: '#991B1B', fontSize: 12, lineHeight: 18 },
+  redFlagText: { flex: 1, color: c.status.error, fontSize: 12, lineHeight: 18 },
   banner: {
     alignItems: 'center',
     marginBottom: s.lg,
@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: c.primary.soft ?? '#EFF6FF',
+    backgroundColor: c.primary.soft,
     borderWidth: 2,
     borderColor: c.primary.main,
     alignItems: 'center',
@@ -532,19 +532,19 @@ const styles = StyleSheet.create({
   },
   discountValue: {
     ...t.variants.h3,
-    color: '#16a34a',
+    color: c.status.success,
   },
   freeLabel: {
     fontSize: t.fontSize.sm,
-    color: '#16a34a',
+    color: c.status.success,
     fontWeight: '600',
     marginTop: s.xs,
     textAlign: 'center',
   },
   bankCard: {
     marginBottom: s.md,
-    backgroundColor: '#f0fdf4',
-    borderColor: '#86efac',
+    backgroundColor: c.status.successLight,
+    borderColor: c.status.success,
     borderWidth: 1,
   },
   bankRow: {
@@ -554,7 +554,7 @@ const styles = StyleSheet.create({
   },
   bankText: {
     fontSize: t.fontSize.sm,
-    color: '#166534',
+    color: c.status.success,
     flex: 1,
     lineHeight: 18,
   },

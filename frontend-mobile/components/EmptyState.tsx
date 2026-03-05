@@ -33,7 +33,7 @@ export function EmptyState({
           onPress={onAction}
         >
           <Text style={styles.actionText}>{actionLabel}</Text>
-          <Ionicons name="chevron-forward" size={14} color="#fff" />
+          <Ionicons name="chevron-forward" size={14} color={theme.colors.text.inverse} />
         </Pressable>
       )}
     </View>
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#fff',
+    color: theme.colors.text.inverse,
     letterSpacing: 0.6,
   },
 });

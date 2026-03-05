@@ -21,7 +21,7 @@ import { formatBRL } from '../../lib/utils/format';
 import { getApiErrorMessage } from '../../lib/api-client';
 import { validate } from '../../lib/validation';
 import { createExamSchema } from '../../lib/validation/schemas';
-import { useListBottomPadding } from '../../lib/ui/responsive';
+import { useStickyCtaScrollPadding } from '../../lib/ui/responsive';
 import { Screen } from '../../components/ui/Screen';
 import { AppHeader, AppCard, AppInput, StepIndicator, StickyCTA } from '../../components/ui';
 import { CompatibleImage } from '../../components/CompatibleImage';
@@ -50,7 +50,7 @@ export default function NewExam() {
   const [symptoms, setSymptoms] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const listPadding = useListBottomPadding();
+  const listPadding = useStickyCtaScrollPadding();
   const completenessLocal = evaluateExamCompleteness({
     examType,
     examsCount: exams.length,
@@ -234,7 +234,7 @@ export default function NewExam() {
   return (
     <Screen scroll={false} padding={false} edges={['bottom']}>
       <View style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={[styles.body, { paddingBottom: listPadding + 150 }]} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.body, { paddingBottom: listPadding }]} showsVerticalScrollIndicator={false}>
         <AppHeader title="Novo Exame" />
         <StepIndicator current={currentStep} total={4} labels={['Tipo', 'Exames', 'Sintomas', 'Revisão']} />
         <AppCard style={[styles.assistantCard, apiLoading && styles.assistantCardLoading]}>
@@ -255,7 +255,7 @@ export default function NewExam() {
         </AppCard>
         {redFlags.isUrgent ? (
           <View style={styles.redFlagCard}>
-            <Ionicons name="warning-outline" size={18} color="#DC2626" />
+            <Ionicons name="warning-outline" size={18} color={c.status.error} />
             <Text style={styles.redFlagText}>{redFlags.guidance}</Text>
           </View>
         ) : null}
@@ -307,7 +307,7 @@ export default function NewExam() {
             containerStyle={styles.inputContainer}
           />
           <TouchableOpacity style={styles.addButton} onPress={addExam}>
-            <Ionicons name="add" size={24} color="#fff" />
+            <Ionicons name="add" size={24} color={c.primary.contrast} />
           </TouchableOpacity>
         </View>
         {exams.length > 0 && (
@@ -431,14 +431,14 @@ const styles = StyleSheet.create({
     marginBottom: s.sm,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#FCA5A5',
-    backgroundColor: '#FEF2F2',
+    borderColor: c.status.errorLight,
+    backgroundColor: c.status.errorLight,
     padding: s.md,
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: s.sm,
   },
-  redFlagText: { flex: 1, color: '#991B1B', fontSize: 12, lineHeight: 18 },
+  redFlagText: { flex: 1, color: c.status.error, fontSize: 12, lineHeight: 18 },
   stepHint: {
     fontSize: 13,
     color: c.text.secondary,

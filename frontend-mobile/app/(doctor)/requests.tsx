@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontFamily: typography.fontFamily.bold,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.white,
     letterSpacing: 0.2,
   },
   subtitle: {
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: typography.fontFamily.bold,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.white,
   },
   searchWrap: {
     flexDirection: 'row',
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   periodChipLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.textMuted,
     marginBottom: 4,
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: typography.fontFamily.semibold,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.white,
   },
   listContent: {
     paddingTop: doctorDS.sectionGap,

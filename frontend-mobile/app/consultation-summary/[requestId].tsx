@@ -29,12 +29,12 @@ import type { RequestResponseDto } from '../../types/database';
 const ANA_FIELDS = [
   { key: 'queixa_principal', label: 'Queixa Principal', icon: 'chatbubble-ellipses', color: colors.primary },
   { key: 'historia_doenca_atual', label: 'História da Doença Atual', icon: 'time', color: colors.primary },
-  { key: 'sintomas', label: 'Sintomas', icon: 'thermometer', color: '#f59e0b' },
-  { key: 'medicamentos_em_uso', label: 'Medicamentos em Uso', icon: 'medical', color: '#8B5CF6' },
-  { key: 'alergias', label: 'Alergias', icon: 'warning', color: '#EF4444' },
-  { key: 'antecedentes_relevantes', label: 'Antecedentes', icon: 'document-text', color: '#64748b' },
-  { key: 'cid_sugerido', label: 'CID Sugerido', icon: 'code-slash', color: '#059669' },
-  { key: 'outros', label: 'Outras Informações', icon: 'ellipsis-horizontal', color: '#64748b' },
+  { key: 'sintomas', label: 'Sintomas', icon: 'thermometer', color: colors.warning },
+  { key: 'medicamentos_em_uso', label: 'Medicamentos em Uso', icon: 'medical', color: colors.primaryLight },
+  { key: 'alergias', label: 'Alergias', icon: 'warning', color: colors.error },
+  { key: 'antecedentes_relevantes', label: 'Antecedentes', icon: 'document-text', color: colors.textMuted },
+  { key: 'cid_sugerido', label: 'CID Sugerido', icon: 'code-slash', color: colors.success },
+  { key: 'outros', label: 'Outras Informações', icon: 'ellipsis-horizontal', color: colors.textMuted },
 ] as const;
 
 export default function ConsultationSummaryScreen() {
@@ -159,8 +159,14 @@ export default function ConsultationSummaryScreen() {
     <View style={[S.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={S.header}>
-        <TouchableOpacity onPress={() => router.back()} style={S.headerBack}>
-          <Ionicons name="arrow-back" size={22} color="#e2e8f0" />
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={S.headerBack}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+        >
+          <Ionicons name="arrow-back" size={22} color={colors.border} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={S.headerTitle}>Resumo da Consulta</Text>
@@ -199,7 +205,7 @@ export default function ConsultationSummaryScreen() {
                     <View style={[S.fieldIcon, { backgroundColor: `${color}15` }]}>
                       <Ionicons name={icon as any} size={13} color={color} />
                     </View>
-                    <Text style={[S.fieldLabelText, isAlert && { color: '#EF4444' }]}>{label}</Text>
+                    <Text style={[S.fieldLabelText, isAlert && { color: colors.error }]}>{label}</Text>
                   </View>
                   <Text style={S.fieldValue}>{display}</Text>
                 </View>
@@ -210,8 +216,8 @@ export default function ConsultationSummaryScreen() {
             {Array.isArray(anamnesis.alertas_vermelhos) && anamnesis.alertas_vermelhos.length > 0 && (
               <View style={S.alertBlock}>
                 <View style={S.fieldLabel}>
-                  <Ionicons name="alert-circle" size={15} color="#EF4444" />
-                  <Text style={[S.fieldLabelText, { color: '#EF4444', fontWeight: '700' }]}>
+                  <Ionicons name="alert-circle" size={15} color={colors.error} />
+                  <Text style={[S.fieldLabelText, { color: colors.error, fontWeight: '700' }]}>
                     ALERTAS VERMELHOS
                   </Text>
                 </View>
@@ -225,8 +231,8 @@ export default function ConsultationSummaryScreen() {
             {Array.isArray(anamnesis.medicamentos_sugeridos) && anamnesis.medicamentos_sugeridos.length > 0 && (
               <View style={S.medsBlock}>
                 <View style={S.fieldLabel}>
-                  <Ionicons name="medkit" size={15} color="#8B5CF6" />
-                  <Text style={[S.fieldLabelText, { color: '#8B5CF6' }]}>
+                  <Ionicons name="medkit" size={15} color={colors.primaryLight} />
+                  <Text style={[S.fieldLabelText, { color: colors.primaryLight }]}>
                     MEDICAMENTOS SUGERIDOS
                   </Text>
                 </View>
@@ -246,8 +252,8 @@ export default function ConsultationSummaryScreen() {
         {hasSuggestions && (
           <View style={S.section}>
             <View style={S.sectionHeader}>
-              <Ionicons name="bulb" size={18} color="#8B5CF6" />
-              <Text style={[S.sectionTitle, { color: '#8B5CF6' }]}>Sugestões Clínicas</Text>
+              <Ionicons name="bulb" size={18} color={colors.primaryLight} />
+              <Text style={[S.sectionTitle, { color: colors.primaryLight }]}>Sugestões Clínicas</Text>
             </View>
             {suggestions.map((s: string, i: number) => {
               const isRed = s.startsWith('🚨');
@@ -256,9 +262,9 @@ export default function ConsultationSummaryScreen() {
                   <Ionicons
                     name={isRed ? 'alert-circle' : 'bulb-outline'}
                     size={16}
-                    color={isRed ? '#EF4444' : '#8B5CF6'}
+                    color={isRed ? colors.error : colors.primaryLight}
                   />
-                  <Text style={[S.suggestionText, isRed && { color: '#EF4444' }]}>
+                  <Text style={[S.suggestionText, isRed && { color: colors.error }]}>
                     {s.replace('🚨 ', '')}
                   </Text>
                 </View>
@@ -276,7 +282,7 @@ export default function ConsultationSummaryScreen() {
           <TextInput
             style={S.clinicalNoteInput}
             placeholder="Digite ou edite a nota clínica para salvar no prontuário..."
-            placeholderTextColor="#64748b"
+            placeholderTextColor={colors.textMuted}
             value={clinicalNote}
             onChangeText={setClinicalNote}
             multiline
@@ -288,7 +294,7 @@ export default function ConsultationSummaryScreen() {
         {hasTranscript && (
           <View style={S.section}>
             <View style={S.sectionHeader}>
-              <Ionicons name="mic" size={18} color="#64748b" />
+              <Ionicons name="mic" size={18} color={colors.textMuted} />
               <Text style={S.sectionTitle}>Transcrição</Text>
               <TouchableOpacity
                 style={S.copyIcon}
@@ -317,7 +323,7 @@ export default function ConsultationSummaryScreen() {
         {/* Empty state */}
         {!hasAnamnesis && !hasSuggestions && !hasTranscript && (
           <View style={S.emptyState}>
-            <Ionicons name="sparkles-outline" size={48} color="#334155" />
+            <Ionicons name="sparkles-outline" size={48} color={colors.textSecondary} />
             <Text style={S.emptyTitle}>Sem dados da IA</Text>
             <Text style={S.emptySub}>
               A transcrição e anamnese automática não foram geradas para esta consulta.
@@ -328,7 +334,7 @@ export default function ConsultationSummaryScreen() {
 
         {/* Footer disclaimer */}
         <View style={S.footerDisclaimer}>
-          <Ionicons name="information-circle-outline" size={14} color="#475569" />
+          <Ionicons name="information-circle-outline" size={14} color={colors.textSecondary} />
           <Text style={S.footerDisclaimerText}>
             Conteúdo gerado por IA como apoio à decisão clínica. A revisão e validação
             médica são obrigatórias. Conformidade com CFM Resolução 2.299/2021.
@@ -356,7 +362,7 @@ export default function ConsultationSummaryScreen() {
           style={S.actionBtn}
           onPress={() => router.back()}
         >
-          <Ionicons name="checkmark-circle" size={20} color="#fff" />
+          <Ionicons name="checkmark-circle" size={20} color={colors.white} />
           <Text style={S.actionBtnText}>Concluir</Text>
         </TouchableOpacity>
       </View>
@@ -367,12 +373,12 @@ export default function ConsultationSummaryScreen() {
 // ── Styles ──
 
 const S = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a' },
+  container: { flex: 1, backgroundColor: colors.black },
   center: { justifyContent: 'center', alignItems: 'center', gap: 12 },
-  loadText: { color: '#94a3b8', fontSize: 14 },
-  errorText: { color: '#fca5a5', fontSize: 15 },
+  loadText: { color: colors.textMuted, fontSize: 14 },
+  errorText: { color: colors.errorLight, fontSize: 15 },
   backBtn: { marginTop: 12, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: colors.primary, borderRadius: 10 },
-  backBtnText: { color: '#fff', fontWeight: '600' },
+  backBtnText: { color: colors.white, fontWeight: '600' },
 
   header: {
     flexDirection: 'row',
@@ -384,9 +390,9 @@ const S = StyleSheet.create({
     borderBottomColor: 'rgba(51,65,85,0.3)',
     gap: 12,
   },
-  headerBack: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(51,65,85,0.5)', justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { color: '#e2e8f0', fontSize: 17, fontWeight: '700' },
-  headerSub: { color: '#64748b', fontSize: 12, marginTop: 1 },
+  headerBack: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(51,65,85,0.5)', justifyContent: 'center', alignItems: 'center' },
+  headerTitle: { color: colors.border, fontSize: 17, fontWeight: '700' },
+  headerSub: { color: colors.textMuted, fontSize: 12, marginTop: 1 },
   headerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -396,7 +402,7 @@ const S = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: 'rgba(44,177,255,0.1)',
   },
-  headerBadgeText: { fontSize: 11, fontWeight: '700', color: colors.primary },
+  headerBadgeText: { fontSize: 12, fontWeight: '700', color: colors.primary },
 
   content: { padding: 16, gap: 16 },
 
@@ -407,34 +413,34 @@ const S = StyleSheet.create({
     gap: 12,
   },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sectionTitle: { fontSize: 13, fontWeight: '800', color: '#94a3b8', letterSpacing: 0.5, flex: 1 },
+  sectionTitle: { fontSize: 13, fontWeight: '800', color: colors.textMuted, letterSpacing: 0.5, flex: 1 },
   copyIcon: { padding: 6, borderRadius: 8, backgroundColor: 'rgba(44,177,255,0.1)' },
 
   field: { gap: 4, paddingLeft: 2 },
   fieldLabel: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   fieldIcon: { width: 24, height: 24, borderRadius: 6, justifyContent: 'center', alignItems: 'center' },
-  fieldLabelText: { fontSize: 11, fontWeight: '700', color: '#64748b', letterSpacing: 0.3, textTransform: 'uppercase' },
-  fieldValue: { fontSize: 14, color: '#e2e8f0', lineHeight: 21, paddingLeft: 30 },
+  fieldLabelText: { fontSize: 12, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.3, textTransform: 'uppercase' },
+  fieldValue: { fontSize: 14, color: colors.border, lineHeight: 21, paddingLeft: 30 },
 
   alertBlock: { backgroundColor: 'rgba(239,68,68,0.1)', borderRadius: 10, padding: 12, gap: 6 },
-  alertText: { fontSize: 13, color: '#fca5a5', lineHeight: 20, paddingLeft: 22 },
+  alertText: { fontSize: 13, color: colors.errorLight, lineHeight: 20, paddingLeft: 22 },
 
   medsBlock: { backgroundColor: 'rgba(139,92,246,0.08)', borderRadius: 10, padding: 12, gap: 6 },
   medItem: { flexDirection: 'row', gap: 6, paddingLeft: 22 },
-  medNum: { color: '#8B5CF6', fontWeight: '700', fontSize: 13 },
-  medText: { color: '#c4b5fd', fontSize: 13, lineHeight: 20, flex: 1 },
-  disclaimer: { fontSize: 10, color: '#475569', fontStyle: 'italic', paddingLeft: 22, marginTop: 4 },
+  medNum: { color: colors.primaryLight, fontWeight: '700', fontSize: 13 },
+  medText: { color: colors.primaryLight, fontSize: 13, lineHeight: 20, flex: 1 },
+  disclaimer: { fontSize: 12, color: colors.textSecondary, fontStyle: 'italic', paddingLeft: 22, marginTop: 4 },
 
   suggestionItem: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', paddingLeft: 2 },
   suggestionDanger: { backgroundColor: 'rgba(239,68,68,0.1)', borderRadius: 8, padding: 8 },
-  suggestionText: { fontSize: 13, color: '#c4b5fd', lineHeight: 20, flex: 1 },
+  suggestionText: { fontSize: 13, color: colors.primaryLight, lineHeight: 20, flex: 1 },
 
-  transcriptText: { fontSize: 13, color: '#94a3b8', lineHeight: 21 },
+  transcriptText: { fontSize: 13, color: colors.textMuted, lineHeight: 21 },
   expandLink: { fontSize: 12, color: colors.primary, fontWeight: '600', marginTop: 6 },
 
   emptyState: { alignItems: 'center', gap: 12, paddingVertical: 40 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: '#475569' },
-  emptySub: { fontSize: 13, color: '#334155', textAlign: 'center', lineHeight: 20, paddingHorizontal: 20 },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: colors.textSecondary },
+  emptySub: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, paddingHorizontal: 20 },
 
   footerDisclaimer: {
     flexDirection: 'row',
@@ -444,7 +450,7 @@ const S = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'flex-start',
   },
-  footerDisclaimerText: { fontSize: 11, color: '#475569', lineHeight: 17, flex: 1 },
+  footerDisclaimerText: { fontSize: 12, color: colors.textSecondary, lineHeight: 18, flex: 1 },
 
   bottomBar: {
     paddingHorizontal: 16,
@@ -459,7 +465,7 @@ const S = StyleSheet.create({
     borderRadius: 10,
     padding: 12,
     fontSize: 14,
-    color: '#e2e8f0',
+    color: colors.border,
     minHeight: 100,
     textAlignVertical: 'top',
   },
@@ -472,7 +478,7 @@ const S = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: 14,
   },
-  actionBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  actionBtnText: { color: colors.white, fontSize: 16, fontWeight: '700' },
   actionBtnSecondary: {
     backgroundColor: 'rgba(44,177,255,0.15)',
     borderWidth: 1,

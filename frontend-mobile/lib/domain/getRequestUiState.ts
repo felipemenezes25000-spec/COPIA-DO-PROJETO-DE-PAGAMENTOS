@@ -15,6 +15,7 @@
 
 import type { RequestResponseDto } from '../../types/database';
 import { STATUS_DISPLAY_LABELS_PT } from './statusLabels';
+import { colors } from '../theme';
 
 export type RequestUiState =
   | 'needs_action'
@@ -234,8 +235,8 @@ export function isSignedOrDelivered(request: RequestResponseDto | { status: stri
 
 /** Design system: Azul = ação, Verde = sucesso, Amarelo = aguardando, Cinza = histórico (sem roxo/cyan) */
 export const UI_STATUS_COLORS: Record<RequestUiColorKey, { color: string; bg: string }> = {
-  action: { color: '#3B82F6', bg: '#DBEAFE' },
-  success: { color: '#059669', bg: '#D1FAE5' },
-  waiting: { color: '#D97706', bg: '#FEF3C7' },
-  historical: { color: '#6B7280', bg: '#F3F4F6' },
+  action: { color: colors.info, bg: colors.infoLight },
+  success: { color: colors.success, bg: colors.successLight },
+  waiting: { color: colors.warning, bg: colors.warningLight },
+  historical: { color: colors.textMuted, bg: colors.surfaceSecondary },
 };

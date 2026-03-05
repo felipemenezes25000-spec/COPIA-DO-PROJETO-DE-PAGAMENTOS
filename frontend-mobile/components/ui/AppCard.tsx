@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
   },
   selected: {
     borderColor: c.primary.main,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: c.primary.soft,
   },
   pressed: {
     opacity: 0.88,

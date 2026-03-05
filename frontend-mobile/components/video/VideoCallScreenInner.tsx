@@ -63,7 +63,7 @@ function fmt(s: number) {
 }
 
 function qColor(q: ConnectionQuality) {
-  return q === 'good' ? '#22c55e' : q === 'poor' ? '#f59e0b' : q === 'bad' ? '#ef4444' : '#64748b';
+  return q === 'good' ? colors.success : q === 'poor' ? colors.warning : q === 'bad' ? colors.error : colors.textMuted;
 }
 
 function qLabel(q: ConnectionQuality) {
@@ -535,7 +535,7 @@ export default function VideoCallScreenInner() {
         <Text style={S.retryTxt}>Tentar novamente</Text>
       </TouchableOpacity>
       <TouchableOpacity style={{ marginTop: 8, padding: 10 }} onPress={() => router.back()}>
-        <Text style={{ color: '#64748b' }}>Voltar</Text>
+        <Text style={{ color: colors.textMuted }}>Voltar</Text>
       </TouchableOpacity>
     </View>
   );
@@ -563,7 +563,7 @@ export default function VideoCallScreenInner() {
       ) : (
         <View style={[S.remote, S.noVid]}>
           <View style={S.waitCircle}>
-            <Ionicons name="person-circle-outline" size={72} color="#334155" />
+            <Ionicons name="person-circle-outline" size={72} color={colors.textSecondary} />
           </View>
           <Text style={S.waitTitle}>{callState === 'joining' ? 'Entrando na sala...' : 'Aguardando participante'}</Text>
           <Text style={S.waitSub}>{isDoctor ? 'O paciente será notificado' : 'O médico entrará em breve'}</Text>
@@ -578,7 +578,7 @@ export default function VideoCallScreenInner() {
             audioTrack={null} mirror={isFrontCamera} zOrder={1} style={S.pipVid} objectFit="cover"
           />
           {isMuted && (
-            <View style={S.pipMute}><Ionicons name="mic-off" size={10} color="#fff" /></View>
+            <View style={S.pipMute}><Ionicons name="mic-off" size={10} color={colors.white} /></View>
           )}
         </View>
       )}
@@ -598,7 +598,7 @@ export default function VideoCallScreenInner() {
           )}
         </View>
         <View style={[S.tPill, urgent && S.tPillUrg, critical && S.tPillCrit]}>
-          <Ionicons name="time-outline" size={14} color={critical ? '#fff' : urgent ? '#f59e0b' : '#94a3b8'} />
+          <Ionicons name="time-outline" size={14} color={critical ? colors.white : urgent ? colors.warning : colors.textMuted} />
           <Text style={[S.tTxt, urgent && S.tTxtUrg, critical && S.tTxtCrit]}>{timerStr}</Text>
         </View>
       </View>
@@ -609,7 +609,7 @@ export default function VideoCallScreenInner() {
           style={[S.panelBtn, { top: insets.top + 60 + 160 }, panelOpen && S.panelBtnOn]}
           onPress={togglePanel} activeOpacity={0.7}
         >
-          <Ionicons name={panelOpen ? 'chevron-forward' : 'document-text'} size={20} color="#fff" />
+          <Ionicons name={panelOpen ? 'chevron-forward' : 'document-text'} size={20} color={colors.white} />
           {panelHas && !panelOpen && <View style={S.panelDot} />}
         </TouchableOpacity>
       )}
@@ -618,7 +618,7 @@ export default function VideoCallScreenInner() {
       {isDoctor && callState === 'joined' && !timerStarted && (
         <View style={S.startTimerOverlay}>
           <TouchableOpacity style={S.startTimerBtn} onPress={handleStartTimer} activeOpacity={0.8}>
-            <Ionicons name="play-circle" size={28} color="#fff" />
+            <Ionicons name="play-circle" size={28} color={colors.white} />
             <View>
               <Text style={S.startTimerTitle}>Iniciar Consulta</Text>
               <Text style={S.startTimerSub}>Timer, transcrição e anamnese IA</Text>
@@ -638,7 +638,7 @@ export default function VideoCallScreenInner() {
       {/* Patient: Time Bank Balance */}
       {!isDoctor && bankBalance && bankBalance.minutes > 0 && (
         <View style={[S.bankBadge, { top: insets.top + 60 }]}>
-          <Ionicons name="time-outline" size={14} color="#22c55e" />
+          <Ionicons name="time-outline" size={14} color={colors.success} />
           <Text style={S.bankText}>Saldo: {bankBalance.minutes} min</Text>
         </View>
       )}
@@ -655,13 +655,13 @@ export default function VideoCallScreenInner() {
             </>
           ) : audioRecorder.error ? (
             <>
-              <Ionicons name="alert-circle" size={12} color="#f59e0b" />
-              <Text style={[S.recText, { color: '#f59e0b' }]}>{audioRecorder.error}</Text>
+              <Ionicons name="alert-circle" size={12} color={colors.warning} />
+              <Text style={[S.recText, { color: colors.warning }]}>{audioRecorder.error}</Text>
             </>
           ) : audioRecorder.lastChunkError ? (
             <>
-              <Ionicons name="warning" size={12} color="#f59e0b" />
-              <Text style={[S.recText, { color: '#f59e0b', fontSize: 11 }]}>Erro ao enviar áudio</Text>
+              <Ionicons name="warning" size={12} color={colors.warning} />
+              <Text style={[S.recText, { color: colors.warning, fontSize: 12 }]}>Erro ao enviar áudio</Text>
             </>
           ) : canStartRecording ? (
             <Text style={[S.recText, { opacity: 0.7 }]}>Iniciando transcrição...</Text>
@@ -674,7 +674,7 @@ export default function VideoCallScreenInner() {
       {/* Patient: info about early leave */}
       {!isDoctor && callState === 'joined' && contractedMinutes && callSeconds > 0 && (
         <View style={[S.earlyLeaveHint, { bottom: 80 + insets.bottom + 12 }]}>
-          <Ionicons name="information-circle-outline" size={14} color="#94a3b8" />
+          <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />
           <Text style={S.earlyLeaveText}>Sair antes? O tempo restante vai pro seu banco de horas.</Text>
         </View>
       )}
@@ -701,14 +701,14 @@ export default function VideoCallScreenInner() {
                   const alert = key === 'alergias';
                   return (
                     <View key={key} style={S.af}>
-                      <View style={S.afL}><Ionicons name={icon as any} size={11} color={alert ? colors.error : '#64748b'} /><Text style={[S.afLT, alert && { color: colors.error }]}>{label}</Text></View>
+                      <View style={S.afL}><Ionicons name={icon as any} size={11} color={alert ? colors.error : colors.textMuted} /><Text style={[S.afLT, alert && { color: colors.error }]}>{label}</Text></View>
                       <Text style={S.afV}>{d}</Text>
                     </View>
                   );
                 })}
                 {Array.isArray(anamnesis?.alertas_vermelhos) && anamnesis!.alertas_vermelhos.length > 0 && (
                   <View style={S.rfBlock}>
-                    <View style={S.afL}><Ionicons name="alert-circle" size={13} color="#EF4444" /><Text style={[S.afLT, { color: '#EF4444', fontWeight: '700' }]}>ALERTAS</Text></View>
+                    <View style={S.afL}><Ionicons name="alert-circle" size={13} color={colors.error} /><Text style={[S.afLT, { color: colors.error, fontWeight: '700' }]}>ALERTAS</Text></View>
                     {(anamnesis!.alertas_vermelhos as string[]).map((f, i) => <Text key={i} style={S.rfTxt}>⚠️ {f}</Text>)}
                   </View>
                 )}
@@ -718,14 +718,14 @@ export default function VideoCallScreenInner() {
             {/* Suggestions */}
             {hasSug && (
               <View style={S.sec}>
-                <View style={S.secH}><Ionicons name="bulb" size={16} color="#8B5CF6" /><Text style={[S.secT, { color: '#8B5CF6' }]}>SUGESTÕES</Text></View>
+                <View style={S.secH}><Ionicons name="bulb" size={16} color={colors.primaryLight} /><Text style={[S.secT, { color: colors.primaryLight }]}>SUGESTÕES</Text></View>
                 {suggestions.map((s, i) => {
                   const str = typeof s === 'string' ? s : '';
                   const red = str.startsWith('🚨');
                   return (
                     <View key={i} style={[S.sugItem, red && S.sugDng]}>
-                      <Ionicons name={red ? 'alert-circle' : 'bulb-outline'} size={14} color={red ? '#EF4444' : '#8B5CF6'} />
-                      <Text style={[S.sugTxt, red && { color: '#EF4444' }]}>{str.replace('🚨 ', '')}</Text>
+                      <Ionicons name={red ? 'alert-circle' : 'bulb-outline'} size={14} color={red ? colors.error : colors.primaryLight} />
+                      <Text style={[S.sugTxt, red && { color: colors.error }]}>{str.replace('🚨 ', '')}</Text>
                     </View>
                   );
                 })}
@@ -736,7 +736,7 @@ export default function VideoCallScreenInner() {
             {hasT && (
               <View style={S.sec}>
                 <View style={S.secH}>
-                  <Ionicons name="mic" size={16} color="#64748b" />
+                  <Ionicons name="mic" size={16} color={colors.textMuted} />
                   <Text style={S.secT}>TRANSCRIÇÃO</Text>
                   <View style={S.speakerCountPills}>
                     <View style={S.doctorCountPill}>
@@ -815,14 +815,14 @@ export default function VideoCallScreenInner() {
             {/* Empty */}
             {!panelHas && (
               <View style={S.panelEmpty}>
-                <Ionicons name="sparkles-outline" size={32} color="#334155" />
+                <Ionicons name="sparkles-outline" size={32} color={colors.textSecondary} />
                 <Text style={S.peTitle}>Anamnese IA</Text>
                 <Text style={S.peSub}>A anamnese e transcrição aparecerão aqui durante a conversa</Text>
               </View>
             )}
           </ScrollView>
           <View style={S.panelFoot}>
-            <Ionicons name="information-circle-outline" size={12} color="#475569" />
+            <Ionicons name="information-circle-outline" size={12} color={colors.textSecondary} />
             <Text style={S.panelFootTxt}>IA como apoio — revisão médica obrigatória</Text>
           </View>
         </Animated.View>
@@ -831,20 +831,20 @@ export default function VideoCallScreenInner() {
       {/* Controls */}
       <View style={[S.ctrl, { paddingBottom: insets.bottom + 12 }]}>
         <TouchableOpacity style={[S.cb, isMuted && S.cbOn]} onPress={toggleMute}>
-          <Ionicons name={isMuted ? 'mic-off' : 'mic'} size={22} color="#fff" />
+          <Ionicons name={isMuted ? 'mic-off' : 'mic'} size={22} color={colors.white} />
           <Text style={S.cLbl}>{isMuted ? 'Mudo' : 'Mic'}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[S.cb, isCameraOff && S.cbOn]} onPress={toggleCamera}>
-          <Ionicons name={isCameraOff ? 'videocam-off' : 'videocam'} size={22} color="#fff" />
+          <Ionicons name={isCameraOff ? 'videocam-off' : 'videocam'} size={22} color={colors.white} />
           <Text style={S.cLbl}>{isCameraOff ? 'Off' : 'Câm'}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={S.cb} onPress={flipCamera}>
-          <Ionicons name="camera-reverse-outline" size={22} color="#fff" />
+          <Ionicons name="camera-reverse-outline" size={22} color={colors.white} />
           <Text style={S.cLbl}>Virar</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[S.cb, S.endCb]} onPress={onEndPress} disabled={ending}>
-          {ending ? <ActivityIndicator size="small" color="#fff" /> : (
-            <Ionicons name="call" size={22} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
+          {ending ? <ActivityIndicator size="small" color={colors.white} /> : (
+            <Ionicons name="call" size={22} color={colors.white} style={{ transform: [{ rotate: '135deg' }] }} />
           )}
           <Text style={S.cLbl}>Sair</Text>
         </TouchableOpacity>
@@ -858,7 +858,7 @@ export default function VideoCallScreenInner() {
             <Text style={S.mSub}>Adicione observações finais antes de encerrar (opcional)</Text>
             <TextInput
               style={S.mInput} placeholder="Diagnóstico, conduta, orientações..."
-              placeholderTextColor="#94a3b8" multiline textAlignVertical="top"
+              placeholderTextColor={colors.textMuted} multiline textAlignVertical="top"
               value={clinicalNotes} onChangeText={setClinicalNotes} autoFocus
             />
             <View style={S.mActs}>
@@ -879,126 +879,126 @@ export default function VideoCallScreenInner() {
 // ──── Styles ────
 
 const S = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0c1222' },
+  container: { flex: 1, backgroundColor: colors.black },
   center: { justifyContent: 'center', alignItems: 'center', gap: 12 },
 
   remote: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   noVid: { justifyContent: 'center', alignItems: 'center', gap: 12 },
   waitCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(44,177,255,0.08)', justifyContent: 'center', alignItems: 'center' },
-  waitTitle: { color: '#94a3b8', fontSize: 16, fontWeight: '600' },
-  waitSub: { color: '#475569', fontSize: 13 },
+  waitTitle: { color: colors.textMuted, fontSize: 16, fontWeight: '600' },
+  waitSub: { color: colors.textSecondary, fontSize: 13 },
 
-  pip: { position: 'absolute', left: 12, width: 100, height: 136, borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: colors.primary, zIndex: 15, backgroundColor: '#1e293b' },
+  pip: { position: 'absolute', left: 12, width: 100, height: 136, borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: colors.primary, zIndex: 15, backgroundColor: colors.text },
   pipVid: { flex: 1 },
-  pipMute: { position: 'absolute', bottom: 4, left: 4, width: 18, height: 18, borderRadius: 9, backgroundColor: '#ef4444', justifyContent: 'center', alignItems: 'center' },
+  pipMute: { position: 'absolute', bottom: 4, left: 4, width: 18, height: 18, borderRadius: 9, backgroundColor: colors.error, justifyContent: 'center', alignItems: 'center' },
 
   top: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, paddingBottom: 10, backgroundColor: 'rgba(12,18,34,0.75)', zIndex: 20 },
   topL: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   qPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   qDot: { width: 7, height: 7, borderRadius: 4 },
-  qTxt: { fontSize: 11, fontWeight: '600' },
+  qTxt: { fontSize: 12, fontWeight: '600' },
   aiPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, backgroundColor: 'rgba(139,92,246,0.2)' },
-  aiDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#8B5CF6' },
-  aiTxt: { fontSize: 10, fontWeight: '700', color: '#8B5CF6' },
+  aiDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primaryLight },
+  aiTxt: { fontSize: 12, fontWeight: '700', color: colors.primaryLight },
   tPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16, backgroundColor: 'rgba(30,41,59,0.85)' },
   tPillUrg: { backgroundColor: 'rgba(120,53,15,0.6)' },
-  tPillCrit: { backgroundColor: '#dc2626' },
-  tTxt: { color: '#94a3b8', fontSize: 13, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  tTxtUrg: { color: '#f59e0b' },
-  tTxtCrit: { color: '#fff' },
+  tPillCrit: { backgroundColor: colors.destructive },
+  tTxt: { color: colors.textMuted, fontSize: 13, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  tTxtUrg: { color: colors.warning },
+  tTxtCrit: { color: colors.white },
 
   panelBtn: { position: 'absolute', right: 0, zIndex: 25, width: 44, height: 44, borderTopLeftRadius: 12, borderBottomLeftRadius: 12, backgroundColor: 'rgba(44,177,255,0.85)', justifyContent: 'center', alignItems: 'center' },
   panelBtnOn: { backgroundColor: 'rgba(30,41,59,0.9)' },
-  panelDot: { position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: 4, backgroundColor: '#22c55e' },
+  panelDot: { position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success },
 
   panel: { position: 'absolute', right: 0, zIndex: 22, backgroundColor: 'rgba(15,23,42,0.95)', borderTopLeftRadius: 16, borderBottomLeftRadius: 16, overflow: 'hidden' },
   panelInner: { padding: 14, gap: 16 },
 
   sec: { gap: 8 },
   secH: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  secT: { fontSize: 11, fontWeight: '800', color: '#94a3b8', letterSpacing: 0.5 },
+  secT: { fontSize: 12, fontWeight: '800', color: colors.textMuted, letterSpacing: 0.5 },
   badge: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 8, backgroundColor: 'rgba(44,177,255,0.1)' },
-  badgeTxt: { fontSize: 9, fontWeight: '700', color: colors.primary },
+  badgeTxt: { fontSize: 12, fontWeight: '700', color: colors.primary },
   copyBtn: { marginLeft: 'auto', padding: 4, borderRadius: 6, backgroundColor: 'rgba(44,177,255,0.1)' },
   speakerCountPills: { flexDirection: 'row', gap: 6, marginLeft: 4 },
   doctorCountPill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(44,177,255,0.16)' },
   patientCountPill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(34,197,94,0.16)' },
-  doctorCountTxt: { fontSize: 9, fontWeight: '700', color: '#7dd3fc' },
-  patientCountTxt: { fontSize: 9, fontWeight: '700', color: '#86efac' },
+  doctorCountTxt: { fontSize: 12, fontWeight: '700', color: colors.primaryLight },
+  patientCountTxt: { fontSize: 12, fontWeight: '700', color: colors.successLight },
   transcriptFilters: { flexDirection: 'row', gap: 8, marginTop: 2 },
   transcriptFilterPill: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: 'rgba(51,65,85,0.5)' },
   transcriptFilterPillActive: { backgroundColor: 'rgba(44,177,255,0.2)', borderWidth: 1, borderColor: 'rgba(44,177,255,0.35)' },
-  transcriptFilterTxt: { fontSize: 10, fontWeight: '700', color: '#94a3b8' },
-  transcriptFilterTxtActive: { color: '#7dd3fc' },
+  transcriptFilterTxt: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
+  transcriptFilterTxtActive: { color: colors.primaryLight },
 
   af: { gap: 2, paddingLeft: 4 },
   afL: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  afLT: { fontSize: 10, fontWeight: '700', color: '#64748b', letterSpacing: 0.3, textTransform: 'uppercase' },
-  afV: { fontSize: 13, color: '#e2e8f0', lineHeight: 19 },
+  afLT: { fontSize: 12, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.3, textTransform: 'uppercase' },
+  afV: { fontSize: 13, color: colors.border, lineHeight: 19 },
   rfBlock: { backgroundColor: 'rgba(239,68,68,0.1)', borderRadius: 8, padding: 8, gap: 4 },
-  rfTxt: { fontSize: 12, color: '#fca5a5', lineHeight: 18 },
+  rfTxt: { fontSize: 12, color: colors.errorLight, lineHeight: 18 },
 
   sugItem: { flexDirection: 'row', gap: 6, alignItems: 'flex-start', paddingLeft: 4 },
   sugDng: { backgroundColor: 'rgba(239,68,68,0.1)', borderRadius: 6, padding: 6 },
-  sugTxt: { fontSize: 12, color: '#c4b5fd', lineHeight: 18, flex: 1 },
+  sugTxt: { fontSize: 12, color: colors.primaryLight, lineHeight: 18, flex: 1 },
 
   tBox: { maxHeight: 190, backgroundColor: 'rgba(30,41,59,0.6)', borderRadius: 8, padding: 8 },
   tItem: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 7, backgroundColor: 'rgba(51,65,85,0.5)', marginBottom: 6 },
   tItemDoctor: { backgroundColor: 'rgba(44,177,255,0.14)', borderWidth: 1, borderColor: 'rgba(44,177,255,0.3)' },
   tItemPatient: { backgroundColor: 'rgba(34,197,94,0.12)', borderWidth: 1, borderColor: 'rgba(34,197,94,0.28)' },
-  tItemSpeaker: { fontSize: 10, fontWeight: '800', color: '#94a3b8', marginBottom: 2, textTransform: 'uppercase' },
-  tItemSpeakerDoctor: { color: '#7dd3fc' },
-  tItemSpeakerPatient: { color: '#86efac' },
-  tItemText: { fontSize: 12, color: '#e2e8f0', lineHeight: 18 },
+  tItemSpeaker: { fontSize: 12, fontWeight: '800', color: colors.textMuted, marginBottom: 2, textTransform: 'uppercase' },
+  tItemSpeakerDoctor: { color: colors.primaryLight },
+  tItemSpeakerPatient: { color: colors.successLight },
+  tItemText: { fontSize: 12, color: colors.border, lineHeight: 18 },
   tEmpty: { alignItems: 'center', paddingVertical: 12 },
-  tEmptyTxt: { fontSize: 11, color: '#64748b' },
+  tEmptyTxt: { fontSize: 12, color: colors.textMuted },
 
   panelEmpty: { alignItems: 'center', gap: 8, paddingVertical: 40 },
-  peTitle: { fontSize: 14, fontWeight: '700', color: '#475569' },
-  peSub: { fontSize: 12, color: '#334155', textAlign: 'center', lineHeight: 18 },
+  peTitle: { fontSize: 14, fontWeight: '700', color: colors.textSecondary },
+  peSub: { fontSize: 12, color: colors.textSecondary, textAlign: 'center', lineHeight: 18 },
   panelFoot: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: 'rgba(30,41,59,0.8)', borderTopWidth: 1, borderTopColor: 'rgba(51,65,85,0.3)' },
-  panelFootTxt: { fontSize: 10, color: '#475569' },
+  panelFootTxt: { fontSize: 12, color: colors.textSecondary },
 
   ctrl: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 20, paddingTop: 14, backgroundColor: 'rgba(12,18,34,0.9)' },
   cb: { width: 56, height: 64, borderRadius: 16, backgroundColor: 'rgba(51,65,85,0.7)', justifyContent: 'center', alignItems: 'center', gap: 4 },
   cbOn: { backgroundColor: 'rgba(239,68,68,0.5)' },
-  endCb: { backgroundColor: '#dc2626' },
-  cLbl: { fontSize: 10, color: 'rgba(255,255,255,0.7)', fontWeight: '600' },
+  endCb: { backgroundColor: colors.destructive },
+  cLbl: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '600' },
 
-  loadTitle: { color: '#e2e8f0', fontSize: 17, fontWeight: '700' },
-  loadSub: { color: '#64748b', fontSize: 13 },
-  errText: { color: '#fca5a5', fontSize: 14, textAlign: 'center', paddingHorizontal: 32 },
+  loadTitle: { color: colors.border, fontSize: 17, fontWeight: '700' },
+  loadSub: { color: colors.textMuted, fontSize: 13 },
+  errText: { color: colors.errorLight, fontSize: 14, textAlign: 'center', paddingHorizontal: 32 },
   retryBtn: { marginTop: 12, paddingHorizontal: 28, paddingVertical: 12, backgroundColor: colors.primary, borderRadius: 12 },
-  retryTxt: { color: '#fff', fontWeight: '700' },
+  retryTxt: { color: colors.white, fontWeight: '700' },
 
   mOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  mCard: { backgroundColor: '#1e293b', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 12 },
+  mCard: { backgroundColor: colors.text, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 12 },
   mHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  mTitle: { fontSize: 18, fontWeight: '700', color: '#e2e8f0' },
-  mSub: { fontSize: 13, color: '#64748b' },
-  mInput: { backgroundColor: 'rgba(30,41,59,0.8)', borderRadius: 12, padding: 14, minHeight: 120, maxHeight: 200, color: '#e2e8f0', fontSize: 14, lineHeight: 22, borderWidth: 1, borderColor: 'rgba(51,65,85,0.5)' },
+  mTitle: { fontSize: 18, fontWeight: '700', color: colors.border },
+  mSub: { fontSize: 13, color: colors.textMuted },
+  mInput: { backgroundColor: 'rgba(30,41,59,0.8)', borderRadius: 12, padding: 14, minHeight: 120, maxHeight: 200, color: colors.border, fontSize: 14, lineHeight: 22, borderWidth: 1, borderColor: 'rgba(51,65,85,0.5)' },
   mActs: { flexDirection: 'row', gap: 12, marginTop: 8 },
   mBtnSec: { flex: 1, height: 48, borderRadius: 12, backgroundColor: 'rgba(51,65,85,0.5)', justifyContent: 'center', alignItems: 'center' },
-  mBtnSecT: { color: '#94a3b8', fontWeight: '600', fontSize: 14 },
+  mBtnSecT: { color: colors.textMuted, fontWeight: '600', fontSize: 14 },
   mBtnPri: { flex: 2, height: 48, borderRadius: 12, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
-  mBtnPriT: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  mBtnPriT: { color: colors.white, fontWeight: '700', fontSize: 14 },
 
   // Doctor: Start Timer button
   startTimerOverlay: { position: 'absolute', left: 16, right: 16, bottom: 100, zIndex: 30, alignItems: 'center' },
-  startTimerBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#059669', paddingHorizontal: 24, paddingVertical: 16, borderRadius: 20, shadowColor: '#059669', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8 },
-  startTimerTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  startTimerSub: { color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 1 },
+  startTimerBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.success, paddingHorizontal: 24, paddingVertical: 16, borderRadius: 20, shadowColor: colors.success, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8 },
+  startTimerTitle: { color: colors.white, fontSize: 16, fontWeight: '700' },
+  startTimerSub: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 1 },
 
   // Recording indicator
   recIndicator: { position: 'absolute', left: 12, zIndex: 25, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: 'rgba(220,38,38,0.8)' },
-  recDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' },
-  recText: { color: '#fff', fontSize: 11, fontWeight: '600' },
+  recDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.white },
+  recText: { color: colors.white, fontSize: 12, fontWeight: '600' },
 
   // Patient: Time Bank Badge
   bankBadge: { position: 'absolute', left: 12, zIndex: 25, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: 'rgba(22,163,74,0.2)' },
-  bankText: { color: '#22c55e', fontSize: 12, fontWeight: '600' },
+  bankText: { color: colors.success, fontSize: 12, fontWeight: '600' },
 
   // Patient: Early leave hint
   earlyLeaveHint: { position: 'absolute', left: 12, right: 12, zIndex: 25, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: 'rgba(30,41,59,0.85)' },
-  earlyLeaveText: { color: '#94a3b8', fontSize: 11, flex: 1 },
+  earlyLeaveText: { color: colors.textMuted, fontSize: 12, flex: 1 },
 });

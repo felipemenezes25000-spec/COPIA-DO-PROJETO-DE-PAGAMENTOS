@@ -1,4 +1,4 @@
-import React, { useState, forwardRef, useCallback, useRef } from 'react';
+import React, { useState, forwardRef, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   TextInput,
@@ -9,11 +9,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../../lib/theme';
-
-const c = theme.colors;
-const s = theme.spacing;
-const r = theme.borderRadius;
+import { useAppTheme, type AppThemeRole } from '../../lib/ui/useAppTheme';
 
 const LOGIN_FOCUS_DEBUG = __DEV__ && false;
 
@@ -27,6 +23,7 @@ interface AppInputProps extends TextInputProps {
   disabled?: boolean;
   containerStyle?: ViewStyle;
   _logLabel?: string;
+  role?: AppThemeRole;
 }
 
 export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput({
@@ -40,11 +37,14 @@ export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput({
   containerStyle,
   style,
   _logLabel,
+  role,
   onFocus,
   onBlur,
   onChangeText,
   ...rest
 }, ref) {
+  const { colors, spacing, radius } = useAppTheme({ role });
+  const styles = useMemo(() => createStyles(spacing, radius, colors), [spacing, radius, colors]);
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(secureTextEntry);
   const focusUpdateScheduled = useRef(false);
@@ -75,18 +75,18 @@ export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput({
   }, [onChangeText, _logLabel]);
 
   const borderColor = error
-    ? c.status.error
+    ? colors.error
     : focused
-    ? c.primary.main
-    : c.border.main;
+    ? colors.primary
+    : colors.border;
 
   const bgColor = error
-    ? '#FEF2F2'
+    ? colors.errorLight
     : focused
-    ? c.background.paper
-    : c.background.secondary;
+    ? colors.surface
+    : colors.surfaceSecondary;
 
-  const iconColor = focused ? c.primary.main : c.text.tertiary;
+  const iconColor = focused ? colors.primary : colors.textMuted;
 
   // Avoid shadow/elevation on focus: they trigger layout on Android and can cause focus flicker.
   const showFocusShadow = false;
@@ -113,7 +113,7 @@ export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput({
         <TextInput
           ref={ref}
           style={[styles.input, style]}
-          placeholderTextColor={c.text.tertiary}
+          placeholderTextColor={colors.textMuted}
           onFocus={handleFocus}
           onBlur={handleBlur}
           onChangeText={onChangeText ? handleChangeText : undefined}
@@ -130,7 +130,7 @@ export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput({
             <Ionicons
               name={hidden ? 'eye-off-outline' : 'eye-outline'}
               size={20}
-              color={c.text.tertiary}
+              color={colors.textMuted}
             />
           </TouchableOpacity>
         )}
@@ -142,30 +142,44 @@ export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput({
   );
 });
 
-const styles = StyleSheet.create({
+const createStyles = (
+  spacing: {
+    sm: number;
+    md: number;
+  },
+  radius: {
+    md: number;
+  },
+  colors: {
+    primary: string;
+    text: string;
+    textMuted: string;
+    error: string;
+  }
+) => StyleSheet.create({
   container: {
-    marginBottom: s.md,
+    marginBottom: spacing.md,
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: c.text.primary,
+    color: colors.text,
     marginBottom: 6,
   },
   requiredAsterisk: {
-    color: c.status.error,
+    color: colors.error,
     fontWeight: '700',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 14,
+    borderRadius: radius.md,
     borderWidth: 1.5,
     minHeight: 52,
     paddingHorizontal: 14,
   },
   focusShadow: {
-    shadowColor: c.primary.main,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -175,7 +189,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   leftIcon: {
-    marginRight: s.sm,
+    marginRight: spacing.sm,
   },
   eyeButton: {
     marginLeft: 4,
@@ -189,7 +203,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '400',
-    color: c.text.primary,
+    color: colors.text,
     paddingVertical: 12,
   },
   errorContainer: {
@@ -199,14 +213,14 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 12,
     fontWeight: '500',
-    color: c.status.error,
+    color: colors.error,
     marginTop: 4,
     marginLeft: 4,
   },
   hintText: {
     fontSize: 12,
     fontWeight: '500',
-    color: c.text.tertiary,
+    color: colors.textMuted,
     marginTop: 4,
     marginLeft: 4,
   },

@@ -71,15 +71,54 @@ public class ExpoPushService : IPushNotificationSender
         try
         {
             var response = await _httpClient.PostAsJsonAsync(ExpoApiUrl, messages, ct);
+            var responseBody = await response.Content.ReadAsStringAsync(ct);
+
             if (!response.IsSuccessStatusCode)
             {
-                var error = await response.Content.ReadAsStringAsync(ct);
-                _logger.LogWarning("Expo push failed: {StatusCode} {Error}", response.StatusCode, error);
+                _logger.LogWarning("Expo push failed: {StatusCode} {Error}", response.StatusCode, responseBody);
+                return;
             }
-            else
+
+            // Expo retorna 200 mesmo quando tickets individuais falham; parsear para diagnosticar
+            try
             {
-                _logger.LogInformation("Push sent to {Count} tokens for user {UserId} [{Type}]", activeTokens.Count, request.UserId, request.Payload.Type);
+                using var doc = JsonDocument.Parse(responseBody);
+                if (doc.RootElement.TryGetProperty("data", out var dataArr) && dataArr.ValueKind == JsonValueKind.Array)
+                {
+                    var idx = 0;
+                    foreach (var ticket in dataArr.EnumerateArray())
+                    {
+                        var status = ticket.TryGetProperty("status", out var s) ? s.GetString() : null;
+                        if (status == "error")
+                        {
+                            var msg = ticket.TryGetProperty("message", out var m) ? m.GetString() : "unknown";
+                            var details = ticket.TryGetProperty("details", out var d) ? d.GetRawText() : null;
+                            var tokenPreview = idx < activeTokens.Count
+                                ? (activeTokens[idx].Token.Length > 40 ? activeTokens[idx].Token[..40] + "..." : activeTokens[idx].Token)
+                                : "?";
+                            _logger.LogWarning("Expo push ticket error for user {UserId} token[{Idx}]: {Message} | details: {Details} | token: {TokenPreview}",
+                                request.UserId, idx, msg, details ?? "null", tokenPreview);
+                            // DeviceNotRegistered → considerar remover token do banco (futuro)
+                        }
+                        idx++;
+                    }
+                }
+                if (doc.RootElement.TryGetProperty("errors", out var errArr) && errArr.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var err in errArr.EnumerateArray())
+                    {
+                        var code = err.TryGetProperty("code", out var c) ? c.GetString() : null;
+                        var msg = err.TryGetProperty("message", out var m) ? m.GetString() : null;
+                        _logger.LogWarning("Expo push request error: {Code} {Message}", code, msg);
+                    }
+                }
             }
+            catch (JsonException)
+            {
+                // Resposta inesperada; log genérico
+            }
+
+            _logger.LogInformation("Push sent to {Count} tokens for user {UserId} [{Type}]", activeTokens.Count, request.UserId, request.Payload.Type);
         }
         catch (Exception ex)
         {

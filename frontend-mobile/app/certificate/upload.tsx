@@ -7,7 +7,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { DoctorHeader } from '../../components/ui/DoctorHeader';
 import { DoctorCard } from '../../components/ui/DoctorCard';
 import { AppButton } from '../../components/ui/AppButton';
-import { Input } from '../../components/Input';
+import { AppInput } from '../../components/ui/AppInput';
 import { Loading } from '../../components/Loading';
 import { uploadCertificate, getActiveCertificate, revokeCertificate } from '../../lib/api';
 import { colors, spacing, typography, borderRadius, doctorDS } from '../../lib/themeDoctor';
@@ -147,7 +147,8 @@ export default function CertificateUploadScreen() {
               {selectedFile && <Text style={styles.fileSize}>{(selectedFile.size / 1024).toFixed(0)} KB</Text>}
             </TouchableOpacity>
 
-            <Input
+            <AppInput
+              role="doctor"
               label="Senha do Certificado"
               placeholder="Digite a senha do PFX"
               value={password}

@@ -1,5 +1,5 @@
 /**
- * Header padrão do fluxo médico: gradiente #157AB5 → #2F9BDB, título branco, botão voltar branco.
+ * Header padrão do fluxo médico com gradiente institucional e contraste alto.
  */
 
 import React from 'react';
@@ -8,7 +8,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { gradients, typography, doctorDS } from '../../lib/themeDoctor';
+import { gradients, typography, doctorDS, colors } from '../../lib/themeDoctor';
 
 export interface DoctorHeaderProps {
   title: string;
@@ -30,7 +30,7 @@ export function DoctorHeader({ title, subtitle, onBack, right }: DoctorHeaderPro
         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         accessibilityLabel="Voltar"
       >
-        <Ionicons name="chevron-back" size={24} color="#fff" />
+        <Ionicons name="chevron-back" size={24} color={colors.white} />
       </TouchableOpacity>
       <View style={styles.titleWrap}>
         <Text style={styles.title} numberOfLines={1}>
@@ -65,9 +65,9 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   backButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: typography.fontFamily.bold,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.white,
     textAlign: 'center',
     letterSpacing: 0.5,
   },
@@ -94,10 +94,10 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   rightSlot: {
-    minWidth: 38,
+    minWidth: 44,
     alignItems: 'flex-end',
   },
   placeholder: {
-    width: 38,
+    width: 44,
   },
 });

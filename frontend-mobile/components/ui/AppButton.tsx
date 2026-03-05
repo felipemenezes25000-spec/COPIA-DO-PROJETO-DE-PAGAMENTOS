@@ -14,8 +14,8 @@ import { colors as doctorColors } from '../../lib/themeDoctor';
 
 const c = theme.colors;
 // Usar tom mais escuro para melhor contraste e visibilidade
-const PRIMARY_MAIN = c.primary?.dark ?? '#1A9DE0';
-const PRIMARY_BORDER = '#1583C7';
+const PRIMARY_MAIN = c.primary.dark;
+const PRIMARY_BORDER = c.primary.darker;
 
 export type AppButtonVariant =
   | 'primary'
@@ -57,30 +57,30 @@ const VARIANT_CONFIG: Record<AppButtonVariant, {
 }> = {
   primary: {
     bg: PRIMARY_MAIN,
-    text: '#FFFFFF',
+    text: c.text.inverse,
     border: PRIMARY_BORDER,
     shadow: {
-      shadowColor: '#0F172A',
+      shadowColor: c.text.primary,
       shadowOffset: { width: 0, height: 3 },
       shadowOpacity: 0.25,
       shadowRadius: 6,
       elevation: 6,
     },
   },
-  secondary: { bg: c.secondary?.main ?? '#10B981', text: '#FFFFFF', shadow: theme.shadows.buttonSuccess },
+  secondary: { bg: c.secondary.main, text: c.text.inverse, shadow: theme.shadows.buttonSuccess },
   outline: { bg: 'transparent', text: PRIMARY_MAIN, border: PRIMARY_MAIN, shadow: theme.shadows.none },
-  ghost: { bg: 'transparent', text: c.primary?.main ?? '#2CB1FF', shadow: theme.shadows.none },
-  danger: { bg: c.status?.error ?? '#EF4444', text: '#FFFFFF', shadow: theme.shadows.buttonDanger },
+  ghost: { bg: 'transparent', text: c.primary.main, shadow: theme.shadows.none },
+  danger: { bg: c.status.error, text: c.text.inverse, shadow: theme.shadows.buttonDanger },
   doctorPrimary: {
     bg: doctorColors.primary,
-    text: '#FFFFFF',
+    text: doctorColors.white,
     border: doctorColors.primaryDark,
     shadow: { shadowColor: doctorColors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10, elevation: 6 },
   },
   doctorSecondary: {
-    bg: '#2EC4B6',
-    text: '#FFFFFF',
-    shadow: { shadowColor: '#2EC4B6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 4 },
+    bg: doctorColors.primaryLight,
+    text: doctorColors.white,
+    shadow: { shadowColor: doctorColors.primaryLight, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 4 },
   },
   doctorOutline: {
     bg: doctorColors.surface,
@@ -90,7 +90,7 @@ const VARIANT_CONFIG: Record<AppButtonVariant, {
   },
   doctorDanger: {
     bg: doctorColors.error,
-    text: '#FFFFFF',
+    text: doctorColors.white,
     border: doctorColors.destructive,
     shadow: {
       shadowColor: doctorColors.error,
@@ -148,7 +148,7 @@ export function AppButton({
     >
       {loading ? (
         <ActivityIndicator
-          color={variant === 'outline' || variant === 'ghost' || variant === 'doctorOutline' || variant === 'doctorOutlineDanger' ? varConf.text : '#FFFFFF'}
+          color={variant === 'outline' || variant === 'ghost' || variant === 'doctorOutline' || variant === 'doctorOutlineDanger' ? varConf.text : c.text.inverse}
           size="small"
         />
       ) : (

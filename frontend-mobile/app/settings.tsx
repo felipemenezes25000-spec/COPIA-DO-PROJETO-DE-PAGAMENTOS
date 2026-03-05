@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 're
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Card } from '../components/Card';
+import { AppCard } from '../components/ui/AppCard';
 import { fetchPushTokens, setPushPreference, sendTestPush } from '../lib/api';
 import { colors, spacing } from '../lib/theme';
 import { getMutedKeys, unmuteAll } from '../lib/triage/triagePersistence';
@@ -71,14 +71,19 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+        >
           <Ionicons name="arrow-back" size={24} color={colors.primaryDark} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Configurações</Text>
         <View style={{ width: 24 }} />
       </View>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Card style={styles.section}>
+        <AppCard style={styles.section}>
           <Text style={styles.sectionTitle}>Assistente Dra. Renoveja</Text>
           <SettingItem
             icon="chatbubble-ellipses-outline"
@@ -93,9 +98,9 @@ export default function SettingsScreen() {
               )
             }
           />
-        </Card>
+        </AppCard>
 
-        <Card style={styles.section}>
+        <AppCard style={styles.section}>
           <Text style={styles.sectionTitle}>Notificações</Text>
           <SettingItem
             icon="notifications-outline"
@@ -132,7 +137,7 @@ export default function SettingsScreen() {
               />
             }
           />
-        </Card>
+        </AppCard>
       </ScrollView>
     </SafeAreaView>
   );
@@ -151,7 +156,7 @@ const styles = StyleSheet.create({
   scroll: { padding: spacing.lg, paddingBottom: spacing.xxl },
   section: { marginBottom: spacing.md },
   sectionTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     color: colors.textMuted,
     textTransform: 'uppercase',

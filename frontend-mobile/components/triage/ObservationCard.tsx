@@ -36,7 +36,7 @@ const CONFIG: Record<CardMode, {
     badgeColor: theme.colors.accent.dark,
   },
   conduct: {
-    bg: '#F0FDF4', // green-50
+    bg: theme.colors.secondary.soft,
     accentColor: theme.colors.secondary.dark,
     accentBg: theme.colors.secondary.soft,
     icon: 'clipboard',
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     borderRadius: 100,
   },
   badgeText: {
-    fontSize: 9,
+    fontSize: 12,
     fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
     letterSpacing: 0.2,
@@ -163,10 +163,10 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
   },
   disclaimer: {
-    fontSize: 9,
+    fontSize: 12,
     color: theme.colors.text.disabled,
     fontStyle: 'italic',
     marginTop: 8,
-    lineHeight: 12,
+    lineHeight: 16,
   },
 });

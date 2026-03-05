@@ -90,7 +90,7 @@ const CLOSED_STATUSES = new Set([
 function getStatusTone(status: string | null | undefined): { label: string; color: string } {
   const key = (status ?? '').toLowerCase();
   if (key === 'consultation_finished') return { label: 'Finalizada', color: colors.textMuted };
-  if (key === 'paid') return { label: 'Pago', color: '#3B82F6' };
+  if (key === 'paid') return { label: 'Pago', color: colors.info };
   if (key === 'delivered') return { label: 'Entregue', color: colors.success };
   return { label: getStatusLabelPt(key), color: colors.textMuted };
 }
@@ -317,7 +317,7 @@ export default function DoctorPatientProntuario() {
             onPress={() => loadData()}
             style={{ marginTop: 20, paddingVertical: 12, paddingHorizontal: 28, backgroundColor: colors.primary, borderRadius: 26 }}
           >
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Tentar novamente</Text>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.white }}>Tentar novamente</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1073,6 +1073,6 @@ const styles = StyleSheet.create({
   applyFiltersText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.white,
   },
 });

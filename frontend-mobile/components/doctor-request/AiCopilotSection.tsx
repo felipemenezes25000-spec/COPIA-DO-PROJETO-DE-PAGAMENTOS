@@ -14,7 +14,7 @@ type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
 const RISK_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
   low: { bg: colors.successLight, text: colors.success, icon: 'shield-checkmark' },
-  medium: { bg: colors.warningLight, text: '#D97706', icon: 'alert-circle' },
+  medium: { bg: colors.warningLight, text: colors.warning, icon: 'alert-circle' },
   high: { bg: colors.errorLight, text: colors.destructive, icon: 'warning' },
 };
 const RISK_LABELS_PT: Record<string, string> = {
@@ -165,13 +165,13 @@ const s = StyleSheet.create({
   aiHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
   aiTitle: { fontSize: 13, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.text, flex: 1, letterSpacing: 0.8 },
   riskBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: 8 },
-  riskText: { fontSize: 11, fontFamily: typography.fontFamily.bold, fontWeight: '700' },
+  riskText: { fontSize: 12, fontFamily: typography.fontFamily.bold, fontWeight: '700' },
   aiDisclaimer: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: spacing.sm, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: 'rgba(0,119,182,0.06)', borderRadius: 6 },
-  aiDisclaimerText: { fontSize: 11, fontFamily: typography.fontFamily.regular, color: colors.textMuted, fontStyle: 'italic' },
+  aiDisclaimerText: { fontSize: 12, fontFamily: typography.fontFamily.regular, color: colors.textMuted, fontStyle: 'italic' },
   aiSummarySection: { marginBottom: spacing.sm },
   aiBlock: {},
   aiBlockSpaced: { marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(0,119,182,0.08)' },
-  aiBlockHeader: { fontSize: 11, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.primary, letterSpacing: 0.8, marginBottom: 4 },
+  aiBlockHeader: { fontSize: 12, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.primary, letterSpacing: 0.8, marginBottom: 4 },
   aiBlockContent: { fontSize: 14, fontFamily: typography.fontFamily.regular, color: colors.text, lineHeight: 22 },
   aiBulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 4, paddingLeft: 2 },
   aiBulletDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary, marginTop: 7 },

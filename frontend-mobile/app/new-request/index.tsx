@@ -28,7 +28,7 @@ const OPTIONS = [
     desc: 'Solicitar exames e laudos',
     icon: 'flask' as const,
     color: c.status.info,
-    bgColor: '#E0F2FE' + 'CC',
+    bgColor: c.status.infoLight + 'CC',
   },
   {
     key: 'consultation' as const,

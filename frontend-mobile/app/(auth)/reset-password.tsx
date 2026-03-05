@@ -69,7 +69,13 @@ export default function ResetPasswordScreen() {
 
   return (
     <Screen variant="gradient" scroll>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+      <TouchableOpacity
+        onPress={() => router.back()}
+        style={styles.backBtn}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        accessibilityRole="button"
+        accessibilityLabel="Voltar"
+      >
         <Ionicons name="chevron-back" size={24} color={theme.colors.text.primary} />
       </TouchableOpacity>
 
@@ -118,10 +124,10 @@ export default function ResetPasswordScreen() {
 
 const styles = StyleSheet.create({
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: theme.colors.overlay.light,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: spacing.sm,

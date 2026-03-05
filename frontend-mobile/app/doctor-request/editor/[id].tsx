@@ -39,7 +39,7 @@ import { ConductSection } from '../../../components/triage';
 
 const RISK_COLORS: Record<string, { bg: string; text: string }> = {
   low: { bg: colors.successLight, text: colors.success },
-  medium: { bg: colors.warningLight, text: '#D97706' },
+  medium: { bg: colors.warningLight, text: colors.warning },
   high: { bg: colors.errorLight, text: colors.destructive },
 };
 const RISK_LABELS_PT: Record<string, string> = {
@@ -136,10 +136,10 @@ function buildPdfEmbedHtml(): string {
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=3,user-scalable=yes"/>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;background:#f8f9fa;overflow-x:hidden}
-canvas{display:block;width:100%!important;height:auto!important;margin-bottom:2px;background:#fff}
-#status{text-align:center;padding:32px;color:#64748b;font-family:sans-serif;font-size:14px}
-#status.error{color:#dc2626}
+html,body{width:100%;height:100%;background:${colors.background};overflow-x:hidden}
+canvas{display:block;width:100%!important;height:auto!important;margin-bottom:2px;background:${colors.white}}
+#status{text-align:center;padding:32px;color:${colors.textMuted};font-family:sans-serif;font-size:14px}
+#status.error{color:${colors.error}}
 </style>
 </head><body>
 <div id="status">Carregando PDF.js...</div>
@@ -576,7 +576,7 @@ export default function PrescriptionEditorScreen() {
             style={st.helpBtn}
             hitSlop={12}
           >
-            <Ionicons name="help-circle-outline" size={22} color="#fff" />
+            <Ionicons name="help-circle-outline" size={22} color={colors.white} />
             <Text style={st.helpBtnText}>Me ajuda</Text>
           </TouchableOpacity>
         }
@@ -928,7 +928,7 @@ export default function PrescriptionEditorScreen() {
             <DoctorCard style={[st.cardMargin, st.signFormCard]}>
               {signFormDoctorProfileBlocked && (
                 <View style={st.profileBlockedBanner}>
-                  <Ionicons name="warning" size={18} color="#B45309" />
+                  <Ionicons name="warning" size={18} color={colors.warning} />
                   <Text style={st.profileBlockedBannerText}>
                     Complete endereço e telefone profissional no seu perfil para poder assinar.
                   </Text>
@@ -1037,14 +1037,14 @@ const st = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   navTitle: { fontSize: 18, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.text, flex: 1, textAlign: 'center' },
 
   scroll: { flex: 1 },
   scrollContent: { padding: doctorDS.screenPaddingHorizontal },
 
   helpBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  helpBtnText: { fontSize: 12, fontFamily: typography.fontFamily.semibold, fontWeight: '600', color: '#fff' },
+  helpBtnText: { fontSize: 12, fontFamily: typography.fontFamily.semibold, fontWeight: '600', color: colors.white },
 
   dataRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.xs },
   dataLabel: { fontSize: 13, fontFamily: typography.fontFamily.medium, color: colors.textMuted, fontWeight: '500' },
@@ -1073,7 +1073,7 @@ const st = StyleSheet.create({
   pdfTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
   pdfTitle: { fontSize: 16, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.text },
   draftBadge: { backgroundColor: colors.textMuted, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
-  draftBadgeText: { fontSize: 11, fontFamily: typography.fontFamily.semibold, fontWeight: '600', color: '#fff' },
+  draftBadgeText: { fontSize: 12, fontFamily: typography.fontFamily.semibold, fontWeight: '600', color: colors.white },
   refreshBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.sm, paddingVertical: 6, backgroundColor: colors.primarySoft, borderRadius: borderRadius.sm },
   refreshBtnText: { fontSize: 13, fontFamily: typography.fontFamily.semibold, fontWeight: '600', color: colors.primary },
   pdfContainer: { marginTop: spacing.sm, overflow: 'hidden', borderRadius: 8 },
@@ -1090,16 +1090,16 @@ const st = StyleSheet.create({
   aiHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs, flexWrap: 'wrap' },
   aiTitle: { fontSize: 16, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.text, flex: 1 },
   riskBadge: { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: 8 },
-  riskText: { fontSize: 11, fontFamily: typography.fontFamily.bold, fontWeight: '700' },
+  riskText: { fontSize: 12, fontFamily: typography.fontFamily.bold, fontWeight: '700' },
   aiDisclaimer: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: spacing.sm, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: 'rgba(0,119,182,0.06)', borderRadius: 6 },
-  aiDisclaimerText: { fontSize: 11, fontFamily: typography.fontFamily.regular, color: colors.textMuted, fontStyle: 'italic' },
+  aiDisclaimerText: { fontSize: 12, fontFamily: typography.fontFamily.regular, color: colors.textMuted, fontStyle: 'italic' },
   aiSummary: { fontSize: 15, fontFamily: typography.fontFamily.regular, color: colors.text, lineHeight: 24, letterSpacing: 0.2 },
   urgencyRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.sm },
   urgencyText: { fontSize: 13, fontFamily: typography.fontFamily.regular, color: colors.textSecondary },
 
   // Sections
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  sectionTitle: { fontSize: 11, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.8, marginBottom: spacing.sm, textTransform: 'uppercase' as any },
+  sectionTitle: { fontSize: 12, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.8, marginBottom: spacing.sm, textTransform: 'uppercase' as any },
   hint: { fontSize: 12, fontFamily: typography.fontFamily.regular, color: colors.textMuted, marginBottom: spacing.sm },
   addBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   addBtnText: { fontSize: 14, fontFamily: typography.fontFamily.semibold, fontWeight: '600', color: colors.primary },
@@ -1186,7 +1186,7 @@ const st = StyleSheet.create({
     padding: spacing.sm,
     marginBottom: spacing.md,
     borderLeftWidth: 4,
-    borderLeftColor: '#B45309',
+    borderLeftColor: colors.warning,
   },
   profileBlockedBannerText: {
     fontSize: 13,
@@ -1205,7 +1205,7 @@ const st = StyleSheet.create({
     fontSize: 12,
     fontFamily: typography.fontFamily.bold,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.white,
     letterSpacing: 0.4,
   },
   signFormHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
@@ -1263,5 +1263,5 @@ const st = StyleSheet.create({
   signPrimaryBtn: { flex: 1 },
   bottomPrimaryBtn: { flex: 1 },
   bottomPrimaryBtnFull: { flex: 1, minWidth: 0 },
-  btnText: { fontSize: 16, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: '#fff' },
+  btnText: { fontSize: 16, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.white },
 });

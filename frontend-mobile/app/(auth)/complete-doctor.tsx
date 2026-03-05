@@ -4,9 +4,9 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import { Card } from '../../components/Card';
+import { AppCard } from '../../components/ui/AppCard';
 import { AppButton } from '../../components/ui/AppButton';
-import { Input } from '../../components/Input';
+import { AppInput } from '../../components/ui/AppInput';
 import { Loading } from '../../components/Loading';
 import { uploadCertificate, getActiveCertificate } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -122,10 +122,10 @@ export default function CompleteDoctorScreen() {
           <Text style={styles.signOutText}>Sair</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Completar cadastro</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 44 }} />
       </View>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Card style={{ ...styles.infoBanner, backgroundColor: colors.primarySoft }}>
+        <AppCard style={{ ...styles.infoBanner, backgroundColor: colors.primarySoft }}>
           <Ionicons name="shield-checkmark" size={32} color={colors.primary} />
           <Text style={styles.infoTitle}>Certificado digital obrigatório</Text>
           <Text style={styles.infoDesc}>
@@ -135,9 +135,9 @@ export default function CompleteDoctorScreen() {
           <Text style={styles.infoDesc}>
             A senha do certificado não é armazenada: ela é usada apenas no momento da assinatura e não fica salva em nossos servidores.
           </Text>
-        </Card>
+        </AppCard>
 
-        <Card style={styles.disclaimerCard}>
+        <AppCard style={styles.disclaimerCard}>
           <Text style={styles.disclaimerTitle}>Uso de IA, Certificado e Documentos</Text>
           <Text style={styles.disclaimerText}>
             A plataforma utiliza IA no atendimento (triagem e leitura de receitas e exames). A senha do certificado não é armazenada — é usada apenas no momento da assinatura.
@@ -148,7 +148,7 @@ export default function CompleteDoctorScreen() {
             activeOpacity={0.8}
           >
             <View style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}>
-              {acceptedTerms ? <Ionicons name="checkmark" size={18} color="#fff" /> : null}
+              {acceptedTerms ? <Ionicons name="checkmark" size={18} color={colors.white} /> : null}
             </View>
             <Text style={styles.termsCheckText}>
               Li e aceito os Termos de Uso.
@@ -163,7 +163,7 @@ export default function CompleteDoctorScreen() {
             activeOpacity={0.8}
           >
             <View style={[styles.checkbox, acceptedPrivacy && styles.checkboxChecked]}>
-              {acceptedPrivacy ? <Ionicons name="checkmark" size={18} color="#fff" /> : null}
+              {acceptedPrivacy ? <Ionicons name="checkmark" size={18} color={colors.white} /> : null}
             </View>
             <Text style={styles.termsCheckText}>
               Li e aceito a Política de Privacidade.
@@ -172,9 +172,9 @@ export default function CompleteDoctorScreen() {
           <TouchableOpacity onPress={() => router.push('/privacy' as any)} style={styles.termsLinkWrap}>
             <Text style={styles.termsLink}>Ler Política de Privacidade</Text>
           </TouchableOpacity>
-        </Card>
+        </AppCard>
 
-        <Card style={styles.uploadCard}>
+        <AppCard style={styles.uploadCard}>
           <Text style={styles.uploadTitle}>Upload do Certificado</Text>
 
           <TouchableOpacity style={styles.fileBtn} onPress={pickFile}>
@@ -191,7 +191,7 @@ export default function CompleteDoctorScreen() {
             )}
           </TouchableOpacity>
 
-          <Input
+          <AppInput
             label="Senha do Certificado"
             placeholder="Digite a senha do PFX (não é armazenada)"
             value={password}
@@ -207,16 +207,16 @@ export default function CompleteDoctorScreen() {
             fullWidth
             leading={<Ionicons name="shield-checkmark" size={20} color={colors.white} />}
           />
-        </Card>
+        </AppCard>
 
-        <Card style={styles.helpCard}>
+        <AppCard style={styles.helpCard}>
           <Text style={styles.helpTitle}>Como obter um certificado?</Text>
           <Text style={styles.helpText}>
             1. Adquira um e-CPF A1 em uma Autoridade Certificadora (AC).
           </Text>
           <Text style={styles.helpText}>2. Faça o download do arquivo .PFX (PKCS#12).</Text>
           <Text style={styles.helpText}>3. Faça o upload aqui com a senha definida na emissão.</Text>
-        </Card>
+        </AppCard>
       </ScrollView>
     </SafeAreaView>
   );

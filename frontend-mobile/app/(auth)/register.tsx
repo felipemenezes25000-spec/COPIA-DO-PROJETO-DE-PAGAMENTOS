@@ -373,7 +373,7 @@ export default function Register() {
           activeOpacity={0.8}
         >
           <View style={[styles.roleIconWrap, role === 'patient' && styles.roleIconWrapActive]}>
-            <Ionicons name="person" size={16} color={role === 'patient' ? '#FFF' : c.text.tertiary} />
+            <Ionicons name="person" size={16} color={role === 'patient' ? c.text.inverse : c.text.tertiary} />
           </View>
           <Text style={[styles.roleText, role === 'patient' && styles.roleTextActive]}>Paciente</Text>
         </TouchableOpacity>
@@ -383,7 +383,7 @@ export default function Register() {
           activeOpacity={0.8}
         >
           <View style={[styles.roleIconWrap, role === 'doctor' && styles.roleIconWrapActive]}>
-            <Ionicons name="medical" size={16} color={role === 'doctor' ? '#FFF' : c.text.tertiary} />
+            <Ionicons name="medical" size={16} color={role === 'doctor' ? c.text.inverse : c.text.tertiary} />
           </View>
           <Text style={[styles.roleText, role === 'doctor' && styles.roleTextActive]}>Médico</Text>
         </TouchableOpacity>
@@ -848,7 +848,7 @@ export default function Register() {
         {/* ── IA Notice ── */}
         <View style={styles.aiNotice}>
           <View style={styles.aiIconWrap}>
-            <Ionicons name="sparkles" size={16} color="#FFF" />
+            <Ionicons name="sparkles" size={16} color={c.text.inverse} />
           </View>
           <Text style={styles.aiNoticeText}>
             O RenoveJá+ utiliza <Text style={styles.aiBold}>inteligência artificial</Text> para triagem, leitura de receitas e exames, e apoio às consultas — sempre sob supervisão médica. Conforme nossos Termos de Uso e Política de Privacidade.
@@ -863,7 +863,7 @@ export default function Register() {
             activeOpacity={0.8}
           >
             <View style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}>
-              {acceptedTerms ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}
+              {acceptedTerms ? <Ionicons name="checkmark" size={16} color={c.text.inverse} /> : null}
             </View>
             <Text style={styles.termsLabel}>Li e aceito os </Text>
             <TouchableOpacity
@@ -884,7 +884,7 @@ export default function Register() {
             activeOpacity={0.8}
           >
             <View style={[styles.checkbox, acceptedPrivacy && styles.checkboxChecked]}>
-              {acceptedPrivacy ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}
+              {acceptedPrivacy ? <Ionicons name="checkmark" size={16} color={c.text.inverse} /> : null}
             </View>
             <Text style={styles.termsLabel}>Li e aceito a </Text>
             <TouchableOpacity
@@ -973,7 +973,7 @@ const styles = StyleSheet.create({
     gap: 8,
     height: 50,
     borderRadius: 16,
-    backgroundColor: '#FFF',
+    backgroundColor: c.background.paper,
     borderWidth: 1.5,
     borderColor: c.border.main,
   },
@@ -1003,12 +1003,12 @@ const styles = StyleSheet.create({
     color: c.text.tertiary,
   },
   roleTextActive: {
-    color: '#FFFFFF',
+    color: c.text.inverse,
   },
 
   /* ── Card ── */
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.background.paper,
     borderRadius: CARD_RADIUS,
     paddingHorizontal: 20,
     paddingTop: 24,
@@ -1016,9 +1016,9 @@ const styles = StyleSheet.create({
     marginBottom: s.lg,
     overflow: 'hidden',
     ...Platform.select({
-      ios: { shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 20 },
+      ios: { shadowColor: c.text.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 20 },
       android: { elevation: 3 },
-      default: { shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 20 },
+      default: { shadowColor: c.text.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 20 },
     }),
   },
 
@@ -1135,13 +1135,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: c.border.main,
-    backgroundColor: '#FFF',
+    backgroundColor: c.background.paper,
     maxHeight: 240,
     overflow: 'hidden',
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12 },
+      ios: { shadowColor: c.text.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12 },
       android: { elevation: 4 },
-      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12 },
+      default: { shadowColor: c.text.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12 },
     }),
   },
   specialtySearchWrap: {
@@ -1239,7 +1239,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: c.primary.light,
     borderStyle: 'dashed',
-    backgroundColor: '#FFF',
+    backgroundColor: c.background.paper,
   },
   certUploadIcon: {
     width: 36,
@@ -1306,7 +1306,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFF',
+    backgroundColor: c.background.paper,
   },
   checkboxChecked: {
     backgroundColor: c.primary.main,

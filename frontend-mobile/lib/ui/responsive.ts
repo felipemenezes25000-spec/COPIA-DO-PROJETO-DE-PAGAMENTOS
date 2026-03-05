@@ -17,6 +17,17 @@ export function useListBottomPadding(): number {
   return tabBarHeight + EXTRA_MARGIN;
 }
 
+const STICKY_CTA_HEIGHT = 88;
+const STICKY_CTA_EXTRA_GAP = 24;
+
+/**
+ * Padding inferior para telas com CTA fixa sobreposta ao conteúdo.
+ * Evita uso de valores mágicos como `+150`.
+ */
+export function useStickyCtaScrollPadding(): number {
+  return useListBottomPadding() + STICKY_CTA_HEIGHT + STICKY_CTA_EXTRA_GAP;
+}
+
 type ScreenCategory = {
   isCompact: boolean;   // < 375px (SE, Galaxy A)
   isMedium: boolean;    // 375–413px (iPhone 12/13/14)

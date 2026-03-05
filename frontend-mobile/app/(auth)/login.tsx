@@ -38,7 +38,7 @@ const SMALL_SCREEN_HEIGHT = 700;
 const EXTRA_SMALL_SCREEN_HEIGHT = 560;
 
 // Gradiente suave único (sem bloco azul chapado)
-const AUTH_GRADIENT: [string, string, ...string[]] = ['#F7FBFF', '#B8DFFB', '#8FD0FF'];
+const AUTH_GRADIENT: [string, string, ...string[]] = [c.background.secondary, c.accent.soft, c.accent.main];
 
 // Necessário para o fluxo OAuth no app (completar sessão ao voltar do browser)
 WebBrowser.maybeCompleteAuthSession();
@@ -270,7 +270,7 @@ export default function Login() {
           activeOpacity={0.9}
         >
           {loading ? (
-            <ActivityIndicator color="#FFFFFF" size="small" />
+            <ActivityIndicator color={c.text.inverse} size="small" />
           ) : (
             <Text style={styles.loginButtonText}>Login</Text>
           )}
@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
 
   // Card único — contém TUDO (logo + form + social + links)
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.background.paper,
     borderRadius: 28,
     paddingHorizontal: 24,
     paddingTop: 20,
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   loginButtonText: {
-    color: '#FFFFFF',
+    color: c.text.inverse,
     fontSize: 16,
     fontWeight: '700',
   },

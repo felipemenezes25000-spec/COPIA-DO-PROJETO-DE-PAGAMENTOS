@@ -201,7 +201,7 @@ export default function PatientNotifications() {
         <View style={styles.headerClip}>
           <AppHeader
             title="Notificações"
-            left={<View style={{ width: 40 }} />}
+            left={<View style={{ width: 44 }} />}
             gradient={gradients.patientHeader}
             right={notifications.some(n => !n.read) ? (
               <TouchableOpacity
@@ -213,7 +213,7 @@ export default function PatientNotifications() {
                 <Text style={styles.markAll}>Marcar lidas</Text>
               </TouchableOpacity>
             ) : (
-              <View style={{ width: 40 }} />
+              <View style={{ width: 44 }} />
             )}
           />
         </View>
@@ -287,11 +287,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   markAllBtn: { paddingVertical: spacing.xs, paddingHorizontal: spacing.sm },
-  markAll: { fontSize: 13, color: '#fff', fontWeight: '600' },
+  markAll: { fontSize: 13, color: colors.white, fontWeight: '600' },
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   listContent: { paddingHorizontal: uiTokens.screenPaddingHorizontal, paddingTop: 6 },
   groupLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.textMuted,
     letterSpacing: 0.2,
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cardUnread: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: colors.primarySoft,
     borderLeftWidth: 3,
     borderLeftColor: colors.primary,
   },
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   cardDate: {
-    fontSize: 11,
+    fontSize: 12,
     color: colors.textMuted,
     marginTop: 4,
   },

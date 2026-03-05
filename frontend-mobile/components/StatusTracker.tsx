@@ -46,7 +46,7 @@ interface Props {
 
 const DOT_SIZE = 26;
 const LINE_W = 2.5;
-const COMPLETED_COLOR = '#10B981';
+const COMPLETED_COLOR = c.status.success;
 const CURRENT_COLOR = c.primary.main;
 const PENDING_COLOR = c.border.main;
 
@@ -94,9 +94,9 @@ export default function StatusTracker({ currentStatus, requestType }: Props) {
             <View style={styles.dotColumn}>
               <View style={[styles.dot, { borderColor: dotColor, backgroundColor: dotBg }]}>
                 {isCompleted ? (
-                  <Ionicons name="checkmark" size={14} color="#fff" />
+                  <Ionicons name="checkmark" size={14} color={c.text.inverse} />
                 ) : (
-                  <Ionicons name={step.icon} size={12} color={isCurrent ? '#fff' : c.text.tertiary} />
+                  <Ionicons name={step.icon} size={12} color={isCurrent ? c.text.inverse : c.text.tertiary} />
                 )}
               </View>
               {!isLast && (
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     backgroundColor: c.primary.main,
   },
   currentText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: c.primary.main,
     letterSpacing: 0.2,

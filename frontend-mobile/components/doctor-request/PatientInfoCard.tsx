@@ -69,11 +69,11 @@ export function PatientInfoCard({ request, profile, onViewRecord, style }: Patie
 const s = StyleSheet.create({
   patientRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   patientAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  patientAvatarText: { fontSize: 18, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: '#fff' },
+  patientAvatarText: { fontSize: 18, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.white },
   patientInfo: { flex: 1, minWidth: 0 },
   patientName: { fontSize: 16, fontFamily: typography.fontFamily.semibold, fontWeight: '600', color: colors.text },
   patientDate: { fontSize: 12, fontFamily: typography.fontFamily.regular, color: colors.textMuted, marginTop: 2 },
   patientMetaText: { fontSize: 12, fontFamily: typography.fontFamily.regular, color: colors.textSecondary, marginTop: 4 },
   patientLink: { flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 4 },
-  patientLinkText: { fontSize: 11, fontFamily: typography.fontFamily.bold, color: colors.primary, fontWeight: '700', letterSpacing: 0.5 },
+  patientLinkText: { fontSize: 12, fontFamily: typography.fontFamily.bold, color: colors.primary, fontWeight: '700', letterSpacing: 0.5 },
 });

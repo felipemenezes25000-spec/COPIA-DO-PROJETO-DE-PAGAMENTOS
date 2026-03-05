@@ -181,7 +181,7 @@ export default function DoctorProfile() {
         <Text style={styles.headerEmail} numberOfLines={1} ellipsizeMode="tail">{user?.email || ''}</Text>
         {doctor && (
           <View style={styles.crmBadge}>
-            <Ionicons name="medical" size={12} color="#fff" />
+            <Ionicons name="medical" size={12} color={colors.white} />
             <Text style={styles.crmText}>CRM {doctor.crm}/{doctor.crmState} {'\u00B7'} {doctor.specialty}</Text>
           </View>
         )}
@@ -277,7 +277,7 @@ export default function DoctorProfile() {
           activeOpacity={0.8}
         >
           {saving ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color={colors.white} />
           ) : (
             <Text style={styles.saveRecipeDataBtnText}>SALVAR</Text>
           )}
@@ -369,14 +369,14 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#fff',
+    color: colors.white,
     letterSpacing: 1,
   },
   headerName: {
     fontSize: 18,
     fontFamily: typography.fontFamily.bold,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.white,
     letterSpacing: 0.5,
   },
   headerEmail: {
@@ -396,10 +396,10 @@ const styles = StyleSheet.create({
     borderRadius: 100,
   },
   crmText: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: typography.fontFamily.semibold,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.white,
     letterSpacing: 0.3,
   },
 
@@ -409,14 +409,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: 14,
     padding: spacing.md,
-    shadowColor: '#000',
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 1,
   },
   recipeDataTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: typography.fontFamily.bold,
     fontWeight: '700',
     color: colors.textMuted,
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: typography.fontFamily.bold,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.white,
     letterSpacing: 0.6,
   },
 
@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: pad,
   },
   sectionTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: typography.fontFamily.bold,
     fontWeight: '700',
     color: colors.textMuted,
@@ -537,9 +537,9 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingVertical: 14,
     borderRadius: 14,
-    backgroundColor: '#FEE2E2',
+    backgroundColor: colors.errorLight,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: colors.errorLight,
   },
   logoutText: {
     fontSize: 13,
@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
   },
 
   version: {
-    fontSize: 10,
+    fontSize: 12,
     color: colors.textMuted,
     textAlign: 'center',
     marginTop: 16,

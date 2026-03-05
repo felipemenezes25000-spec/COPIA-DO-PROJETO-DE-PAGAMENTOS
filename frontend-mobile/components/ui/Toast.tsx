@@ -24,10 +24,10 @@ interface ToastConfig {
 }
 
 const TYPE_CONFIG: Record<ToastType, { bg: string; icon: keyof typeof Ionicons.glyphMap; iconColor: string }> = {
-    success: { bg: '#D1FAE5', icon: 'checkmark-circle', iconColor: '#059669' },
-    error: { bg: '#FEE2E2', icon: 'alert-circle', iconColor: '#EF4444' },
-    info: { bg: '#E0F2FE', icon: 'information-circle', iconColor: '#0077B6' },
-    warning: { bg: '#FEF3C7', icon: 'warning', iconColor: '#F59E0B' },
+    success: { bg: colors.successLight, icon: 'checkmark-circle', iconColor: colors.success },
+    error: { bg: colors.errorLight, icon: 'alert-circle', iconColor: colors.error },
+    info: { bg: colors.infoLight, icon: 'information-circle', iconColor: colors.info },
+    warning: { bg: colors.warningLight, icon: 'warning', iconColor: colors.warning },
 };
 
 // Global toast state
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
         right: spacing.md,
         zIndex: 9999,
         borderRadius: borderRadius.md,
-        shadowColor: '#000',
+        shadowColor: colors.black,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.12,
         shadowRadius: 12,

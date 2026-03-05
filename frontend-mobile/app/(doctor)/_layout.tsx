@@ -38,7 +38,7 @@ export default function DoctorLayout() {
         }}
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: '#2EC4B6',
+          tabBarActiveTintColor: colors.primaryLight,
           tabBarInactiveTintColor: colors.textMuted,
           tabBarStyle: {
             backgroundColor: colors.surface,
@@ -50,7 +50,7 @@ export default function DoctorLayout() {
             overflow: 'hidden',
             ...Platform.select({
               ios: {
-                shadowColor: '#000',
+                shadowColor: colors.black,
                 shadowOffset: { width: 0, height: -2 },
                 shadowOpacity: 0.06,
                 shadowRadius: 12,
@@ -74,7 +74,7 @@ export default function DoctorLayout() {
           },
           tabBarBadgeStyle: {
             backgroundColor: colors.error,
-            fontSize: 10,
+            fontSize: 12,
             fontWeight: '700',
             minWidth: 18,
             height: 18,

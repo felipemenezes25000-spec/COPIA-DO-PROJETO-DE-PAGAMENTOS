@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     },
     segmentActive: {
         backgroundColor: colors.surface,
-        shadowColor: '#0077B6',
+        shadowColor: colors.primary,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.1,
         shadowRadius: 4,

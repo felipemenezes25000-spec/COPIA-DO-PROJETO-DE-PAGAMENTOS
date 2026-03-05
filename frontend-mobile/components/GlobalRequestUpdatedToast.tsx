@@ -5,6 +5,7 @@ import { useRequestsEvents } from '../contexts/RequestsEventsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { showToast } from './ui/Toast';
 import type { RequestUpdatedPayload } from '../lib/requestsEvents';
+import { colors } from '../lib/theme';
 
 export function getMessageForUser(payload: RequestUpdatedPayload): string {
   if (payload.message && payload.message.trim()) return payload.message.trim();
@@ -124,27 +125,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   countdownCard: {
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.text,
     borderRadius: 24,
     padding: 32,
     alignItems: 'center',
     minWidth: 260,
   },
   countdownTitle: {
-    color: '#e2e8f0',
+    color: colors.border,
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 12,
     textAlign: 'center',
   },
   countdownNumber: {
-    color: '#22c55e',
+    color: colors.success,
     fontSize: 64,
     fontWeight: '800',
     fontVariant: ['tabular-nums'],
   },
   countdownSub: {
-    color: '#94a3b8',
+    color: colors.textMuted,
     fontSize: 14,
     marginTop: 4,
   },

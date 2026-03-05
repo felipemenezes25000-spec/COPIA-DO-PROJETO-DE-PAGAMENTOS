@@ -4,8 +4,8 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native';
-import { Card } from '../components/Card';
-import { Input } from '../components/Input';
+import { AppCard } from '../components/ui/AppCard';
+import { AppInput } from '../components/ui/AppInput';
 import { AppButton } from '../components/ui/AppButton';
 import { changePassword } from '../lib/api';
 import { validate } from '../lib/validation';
@@ -48,7 +48,12 @@ export default function ChangePasswordScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+        >
           <Ionicons name="arrow-back" size={24} color={colors.primaryDark} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Alterar Senha</Text>
@@ -59,9 +64,9 @@ export default function ChangePasswordScreen() {
         keyboardShouldPersistTaps="always"
         showsVerticalScrollIndicator={false}
       >
-        <Card style={styles.card}>
+        <AppCard style={styles.card}>
           <Text style={styles.hint}>Para sua segurança, informe a senha atual e defina uma nova senha com no mínimo 8 caracteres.</Text>
-          <Input
+          <AppInput
             label="Senha atual"
             value={currentPassword}
             onChangeText={setCurrentPassword}
@@ -69,7 +74,7 @@ export default function ChangePasswordScreen() {
             placeholder="Digite sua senha atual"
             leftIcon="lock-closed-outline"
           />
-          <Input
+          <AppInput
             label="Nova senha"
             value={newPassword}
             onChangeText={setNewPassword}
@@ -77,7 +82,7 @@ export default function ChangePasswordScreen() {
             placeholder="Digite a nova senha"
             leftIcon="key-outline"
           />
-          <Input
+          <AppInput
             label="Confirmar nova senha"
             value={confirmPassword}
             onChangeText={setConfirmPassword}
@@ -87,7 +92,7 @@ export default function ChangePasswordScreen() {
           />
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
           <AppButton title="Alterar Senha" onPress={handleSubmit} loading={loading} fullWidth />
-        </Card>
+        </AppCard>
       </ScrollView>
     </SafeAreaView>
   );

@@ -169,7 +169,7 @@ const createStyles = (
     flexShrink: 0,
   },
   badgeText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.primary,
     letterSpacing: 0.3,

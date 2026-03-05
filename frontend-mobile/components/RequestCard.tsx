@@ -9,18 +9,18 @@ import { formatBRL, formatDateBR } from '../lib/utils/format';
 import { RequestResponseDto } from '../types/database';
 
 const RISK_CONFIG: Record<string, { label: string; color: string; bg: string; icon: keyof typeof Ionicons.glyphMap }> = {
-  high: { label: 'Risco alto', color: '#DC2626', bg: '#FEE2E2', icon: 'alert-circle' },
-  medium: { label: 'Risco médio', color: '#D97706', bg: '#FEF3C7', icon: 'warning' },
-  low: { label: 'Risco baixo', color: '#059669', bg: '#D1FAE5', icon: 'shield-checkmark' },
+  high: { label: 'Risco alto', color: colors.error, bg: colors.errorLight, icon: 'alert-circle' },
+  medium: { label: 'Risco médio', color: colors.warning, bg: colors.warningLight, icon: 'warning' },
+  low: { label: 'Risco baixo', color: colors.success, bg: colors.successLight, icon: 'shield-checkmark' },
 };
 
 const TYPE_CONFIG: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string; bg: string; label: string }> = {
-  prescription: { icon: 'document-text', color: '#3B82F6', bg: '#DBEAFE', label: 'Receita' },
-  exam: { icon: 'flask', color: '#6B7280', bg: '#F3F4F6', label: 'Exame' },
-  consultation: { icon: 'videocam', color: '#059669', bg: '#D1FAE5', label: 'Consulta' },
+  prescription: { icon: 'document-text', color: colors.info, bg: colors.infoLight, label: 'Receita' },
+  exam: { icon: 'flask', color: colors.textMuted, bg: colors.surfaceSecondary, label: 'Exame' },
+  consultation: { icon: 'videocam', color: colors.success, bg: colors.successLight, label: 'Consulta' },
 };
 
-const FALLBACK_TYPE = { icon: 'document' as keyof typeof Ionicons.glyphMap, color: '#3B82F6', bg: '#DBEAFE', label: 'Solicitação' };
+const FALLBACK_TYPE = { icon: 'document' as keyof typeof Ionicons.glyphMap, color: colors.info, bg: colors.infoLight, label: 'Solicitação' };
 
 function getRequestSubtitle(request: RequestResponseDto, showPatientName?: boolean): string {
   if (showPatientName && request.patientName) {
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   riskText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.1,
   },

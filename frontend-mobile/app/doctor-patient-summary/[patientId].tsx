@@ -37,12 +37,12 @@ import { formatDateTimeBR } from '../../lib/utils/format';
 const ANA_FIELDS = [
   { key: 'queixa_principal', label: 'Queixa Principal', icon: 'chatbubble-ellipses' as const, color: colors.primary },
   { key: 'historia_doenca_atual', label: 'História da Doença Atual', icon: 'time' as const, color: colors.primary },
-  { key: 'sintomas', label: 'Sintomas', icon: 'thermometer' as const, color: '#f59e0b' },
-  { key: 'medicamentos_em_uso', label: 'Medicamentos em Uso', icon: 'medical' as const, color: '#8B5CF6' },
-  { key: 'alergias', label: 'Alergias', icon: 'warning' as const, color: '#EF4444' },
-  { key: 'antecedentes_relevantes', label: 'Antecedentes', icon: 'document-text' as const, color: '#64748b' },
-  { key: 'cid_sugerido', label: 'CID Sugerido', icon: 'code-slash' as const, color: '#059669' },
-  { key: 'outros', label: 'Outras Informações', icon: 'ellipsis-horizontal' as const, color: '#64748b' },
+  { key: 'sintomas', label: 'Sintomas', icon: 'thermometer' as const, color: colors.warning },
+  { key: 'medicamentos_em_uso', label: 'Medicamentos em Uso', icon: 'medical' as const, color: colors.primaryLight },
+  { key: 'alergias', label: 'Alergias', icon: 'warning' as const, color: colors.error },
+  { key: 'antecedentes_relevantes', label: 'Antecedentes', icon: 'document-text' as const, color: colors.textMuted },
+  { key: 'cid_sugerido', label: 'CID Sugerido', icon: 'code-slash' as const, color: colors.success },
+  { key: 'outros', label: 'Outras Informações', icon: 'ellipsis-horizontal' as const, color: colors.textMuted },
 ] as const;
 
 function fmtDateTime(d: string): string {
@@ -326,7 +326,7 @@ export default function DoctorPatientClinicalSummary() {
           {allAllergies.length > 0 && (
             <View style={styles.allergyBlock}>
               <View style={styles.allergyLabel}>
-                <Ionicons name="warning" size={14} color="#EF4444" />
+                <Ionicons name="warning" size={14} color={colors.error} />
                 <Text style={styles.allergyLabelText}>ALERGIAS REGISTRADAS</Text>
               </View>
               <Text style={styles.allergyValue}>{allAllergies.join(' · ')}</Text>
@@ -338,19 +338,19 @@ export default function DoctorPatientClinicalSummary() {
         {requests.length > 0 && (structured?.alerts?.length ?? 0) + allAllergies.length > 0 && (
           <View style={styles.alertsCard}>
             <View style={styles.alertsHeader}>
-              <Ionicons name="warning" size={20} color="#EF4444" />
+              <Ionicons name="warning" size={20} color={colors.error} />
               <Text style={styles.alertsTitle}>Pontos de atenção</Text>
             </View>
             <View style={styles.alertsList}>
               {allAllergies.map((a, i) => (
                 <View key={`allergy-${i}`} style={styles.alertItem}>
-                  <Ionicons name="medical" size={14} color="#EF4444" />
+                  <Ionicons name="medical" size={14} color={colors.error} />
                   <Text style={styles.alertsItemText}>Alergia: {a}</Text>
                 </View>
               ))}
               {structured?.alerts?.map((a, i) => (
                 <View key={`alert-${i}`} style={styles.alertItem}>
-                  <Ionicons name="alert-circle" size={14} color="#F59E0B" />
+                  <Ionicons name="alert-circle" size={14} color={colors.warning} />
                   <Text style={styles.alertsItemText}>{a}</Text>
                 </View>
               ))}
@@ -362,8 +362,8 @@ export default function DoctorPatientClinicalSummary() {
         {structured?.problemList && structured.problemList.length > 0 && (
           <View style={styles.structuredCard}>
             <View style={styles.structuredHeader}>
-              <View style={[styles.structuredIcon, { backgroundColor: '#DBEAFE' }]}>
-                <Ionicons name="list" size={18} color="#3B82F6" />
+              <View style={[styles.structuredIcon, { backgroundColor: colors.infoLight }]}>
+                <Ionicons name="list" size={18} color={colors.info} />
               </View>
               <Text style={styles.structuredTitle}>Lista de problemas</Text>
             </View>
@@ -399,8 +399,8 @@ export default function DoctorPatientClinicalSummary() {
         {typeof structured?.carePlan === 'string' && structured.carePlan.trim().length > 0 && (
           <View style={styles.structuredCard}>
             <View style={styles.structuredHeader}>
-              <View style={[styles.structuredIcon, { backgroundColor: '#D1FAE5' }]}>
-                <Ionicons name="clipboard" size={18} color="#059669" />
+              <View style={[styles.structuredIcon, { backgroundColor: colors.successLight }]}>
+                <Ionicons name="clipboard" size={18} color={colors.success} />
               </View>
               <Text style={styles.structuredTitle}>Plano de cuidado</Text>
             </View>
@@ -413,7 +413,7 @@ export default function DoctorPatientClinicalSummary() {
           <View style={styles.summaryCard}>
             <View style={styles.summaryHeader}>
               <View style={styles.summaryIconWrap}>
-                <Ionicons name="document-text" size={22} color="#8B5CF6" />
+                <Ionicons name="document-text" size={22} color={colors.primaryLight} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.summaryTitle}>Resumo narrativo</Text>
@@ -461,7 +461,7 @@ export default function DoctorPatientClinicalSummary() {
                 </Text>
                 {allAllergies.length > 0 && (
                   <View style={styles.draRenovaAlert}>
-                    <Ionicons name="alert-circle" size={14} color="#EF4444" />
+                    <Ionicons name="alert-circle" size={14} color={colors.error} />
                     <Text style={styles.draRenovaAlertText}>
                       Atenção: alergias registradas — {allAllergies.slice(0, 2).join(', ')}{allAllergies.length > 2 ? '...' : ''}
                     </Text>
@@ -721,7 +721,7 @@ export default function DoctorPatientClinicalSummary() {
                               <Ionicons name={icon} size={12} color={color} />
                             </View>
                             <View style={{ flex: 1 }}>
-                              <Text style={[styles.anaFieldLabel, isAlert && { color: '#EF4444' }]}>{label}</Text>
+                              <Text style={[styles.anaFieldLabel, isAlert && { color: colors.error }]}>{label}</Text>
                               <Text style={styles.anaFieldValue}>{display}</Text>
                             </View>
                           </View>
@@ -750,9 +750,9 @@ export default function DoctorPatientClinicalSummary() {
                             <Ionicons
                               name={isRed ? 'alert-circle' : 'bulb-outline'}
                               size={14}
-                              color={isRed ? '#EF4444' : '#8B5CF6'}
+                              color={isRed ? colors.error : colors.primaryLight}
                             />
-                            <Text style={[styles.suggestionText, isRed && { color: '#EF4444' }]}>
+                            <Text style={[styles.suggestionText, isRed && { color: colors.error }]}>
                               {str.replace('🚨 ', '')}
                             </Text>
                           </View>
@@ -842,7 +842,7 @@ const styles = StyleSheet.create({
   patientGrid: { gap: spacing.sm },
   patientRow: { gap: 2 },
   patientLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: typography.fontFamily.bold,
     color: colors.textMuted,
     letterSpacing: 0.5,
@@ -868,26 +868,26 @@ const styles = StyleSheet.create({
   },
   allergyLabel: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   allergyLabelText: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: typography.fontFamily.bold,
-    color: '#EF4444',
+    color: colors.error,
     letterSpacing: 0.5,
   },
   allergyValue: { fontSize: 13, color: colors.text, lineHeight: 20 },
 
   alertsCard: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: colors.errorLight,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     borderLeftWidth: 4,
-    borderLeftColor: '#EF4444',
+    borderLeftColor: colors.error,
   },
   alertsHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
   alertsTitle: {
     fontSize: 14,
     fontFamily: typography.fontFamily.bold,
     fontWeight: '700',
-    color: '#B91C1C',
+    color: colors.error,
     letterSpacing: 0.5,
   },
   alertsList: { gap: spacing.xs },
@@ -954,7 +954,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     borderLeftWidth: 4,
-    borderLeftColor: '#8B5CF6',
+    borderLeftColor: colors.primaryLight,
   },
   draRenovaHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   draRenovaAvatar: {
@@ -985,12 +985,12 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: spacing.sm,
     padding: spacing.sm,
-    backgroundColor: '#FEE2E2',
+    backgroundColor: colors.errorLight,
     borderRadius: borderRadius.sm,
   },
-  draRenovaAlertText: { fontSize: 12, color: '#EF4444', fontWeight: '600' },
+  draRenovaAlertText: { fontSize: 12, color: colors.error, fontWeight: '600' },
   draRenovaDisclaimer: {
-    fontSize: 10,
+    fontSize: 12,
     color: colors.textMuted,
     fontStyle: 'italic',
     marginTop: spacing.sm,
@@ -1001,7 +1001,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     borderLeftWidth: 4,
-    borderLeftColor: '#8B5CF6',
+    borderLeftColor: colors.primaryLight,
   },
   summaryHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md },
   summaryIconWrap: {
@@ -1039,7 +1039,7 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   summaryDisclaimer: {
-    fontSize: 10,
+    fontSize: 12,
     color: colors.textMuted,
     fontStyle: 'italic',
     marginTop: spacing.md,
@@ -1132,7 +1132,7 @@ const styles = StyleSheet.create({
   },
   fieldBlock: { marginTop: spacing.xs },
   fieldLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: typography.fontFamily.bold,
     fontWeight: '700',
     color: colors.textMuted,
@@ -1170,7 +1170,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   anaFieldLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: typography.fontFamily.bold,
     color: colors.textMuted,
     letterSpacing: 0.3,
@@ -1178,13 +1178,13 @@ const styles = StyleSheet.create({
   anaFieldValue: { fontSize: 13, color: colors.text, lineHeight: 20, flex: 1 },
 
   alertBlock: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: colors.errorLight,
     borderRadius: borderRadius.sm,
     padding: spacing.sm,
     marginTop: spacing.xs,
   },
-  alertLabel: { fontSize: 11, fontWeight: '700', color: '#EF4444', marginBottom: 4 },
-  alertText: { fontSize: 12, color: '#DC2626', lineHeight: 18 },
+  alertLabel: { fontSize: 12, fontWeight: '700', color: colors.error, marginBottom: 4 },
+  alertText: { fontSize: 12, color: colors.destructive, lineHeight: 18 },
 
   suggestionsBlock: {
     marginTop: spacing.md,
@@ -1196,7 +1196,7 @@ const styles = StyleSheet.create({
   suggestionsTitle: {
     fontSize: 12,
     fontFamily: typography.fontFamily.bold,
-    color: '#8B5CF6',
+    color: colors.primaryLight,
     letterSpacing: 0.5,
     marginBottom: 4,
   },
@@ -1205,7 +1205,7 @@ const styles = StyleSheet.create({
     gap: 8,
     alignItems: 'flex-start',
   },
-  suggestionDanger: { backgroundColor: '#FEE2E2', borderRadius: 8, padding: 8 },
+  suggestionDanger: { backgroundColor: colors.errorLight, borderRadius: 8, padding: 8 },
   suggestionText: { fontSize: 13, color: colors.textSecondary, lineHeight: 20, flex: 1 },
 
   transcriptBlock: {

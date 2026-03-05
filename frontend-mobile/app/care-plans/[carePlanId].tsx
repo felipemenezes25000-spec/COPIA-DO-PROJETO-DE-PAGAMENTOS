@@ -21,6 +21,7 @@ import {
   type CarePlan,
   type CarePlanTask,
 } from '../../lib/api-care-plans';
+import { colors } from '../../lib/themeDoctor';
 
 export default function CarePlanDetailsScreen() {
   const router = useRouter();
@@ -120,7 +121,7 @@ export default function CarePlanDetailsScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#22c55e" />
+          <ActivityIndicator size="large" color={colors.success} />
           <Text style={styles.subtle}>Carregando plano...</Text>
         </View>
       </SafeAreaView>
@@ -143,8 +144,14 @@ export default function CarePlanDetailsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={20} color="#e2e8f0" />
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backBtn}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+        >
+          <Ionicons name="chevron-back" size={20} color={colors.border} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>{title}</Text>
@@ -216,21 +223,21 @@ export default function CarePlanDetailsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a' },
+  container: { flex: 1, backgroundColor: colors.black },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
-  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#1e293b', alignItems: 'center', justifyContent: 'center' },
-  title: { color: '#e2e8f0', fontSize: 18, fontWeight: '700' },
-  subtle: { color: '#94a3b8', fontSize: 12 },
+  backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.text, alignItems: 'center', justifyContent: 'center' },
+  title: { color: colors.border, fontSize: 18, fontWeight: '700' },
+  subtle: { color: colors.textMuted, fontSize: 12 },
   content: { padding: 12, gap: 12, paddingBottom: 30 },
-  card: { backgroundColor: '#1e293b', borderRadius: 12, padding: 12, gap: 6 },
-  cardTitle: { color: '#e2e8f0', fontSize: 15, fontWeight: '700' },
-  cardMeta: { color: '#94a3b8', fontSize: 11, textTransform: 'capitalize' },
-  cardDescription: { color: '#cbd5e1', fontSize: 13, lineHeight: 18 },
-  filesInfo: { color: '#86efac', fontSize: 12, fontWeight: '600' },
+  card: { backgroundColor: colors.text, borderRadius: 12, padding: 12, gap: 6 },
+  cardTitle: { color: colors.border, fontSize: 15, fontWeight: '700' },
+  cardMeta: { color: colors.textMuted, fontSize: 12, textTransform: 'capitalize' },
+  cardDescription: { color: colors.border, fontSize: 13, lineHeight: 18 },
+  filesInfo: { color: colors.successLight, fontSize: 12, fontWeight: '600' },
   actions: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  primaryBtn: { backgroundColor: '#22c55e', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, alignItems: 'center' },
-  primaryBtnText: { color: '#052e16', fontWeight: '800' },
-  secondaryBtn: { backgroundColor: '#334155', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, alignItems: 'center' },
-  secondaryBtnText: { color: '#e2e8f0', fontWeight: '700' },
+  primaryBtn: { backgroundColor: colors.success, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, alignItems: 'center' },
+  primaryBtnText: { color: colors.white, fontWeight: '800' },
+  secondaryBtn: { backgroundColor: colors.textSecondary, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, alignItems: 'center' },
+  secondaryBtnText: { color: colors.border, fontWeight: '700' },
 });
