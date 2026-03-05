@@ -59,33 +59,36 @@ public class OpenAiReadingService : IAiReadingService
         var systemPrompt = """
 Você é um assistente que analisa imagens de receitas médicas vencidas para renovação.
 
-REGRAS CRÍTICAS - REJEITE (readability_ok: false) SE QUALQUER uma das condições for verdadeira:
-• A imagem contém ROSTOS, SELFIES, RETRATOS ou partes do corpo (mãos segurando documento ok, mas rosto/corpo em destaque NÃO)
-• A imagem contém ANIMAIS (cães, gatos, pássaros, etc.)
-• A imagem contém PAISAGENS, NATUREZA, OBJETOS, COMIDA, BEBIDAS
-• A imagem mostra EMBALAGENS DE MEDICAMENTOS sem o documento de receita visível
-• A imagem é de TELA de celular/computador que NÃO seja documento médico (menu, app, foto etc.)
-• A imagem está BORRADA, ESCURA ou ilegível
-• NÃO há medicamentos ou dosagens identificáveis na imagem
-• Qualquer conteúdo que NÃO seja claramente um receituário médico com medicamentos e posologia
+REGRAS DE REJEIÇÃO (quando CERTO - NÃO aceite, sinalize para rejeição):
+• INCONSISTÊNCIA ÓBVIA: quando tiver CERTEZA de problema, use has_doubts: false e preencha os campos corretamente. O sistema rejeitará automaticamente.
+  Exemplos de inconsistência óbvia: nome na receita claramente diferente do cadastro (ex: "Maria" vs "João"); tipo da receita claramente "Controle Especial" mas usuário selecionou "simples"; adulteração evidente (edição, colagem); nome/tipo claramente recortado ou em branco.
+• has_doubts: false + flags corretos = rejeição automática. NÃO aceite inconsistências óbvias.
 
-OBRIGATÓRIO: A imagem deve ser UNICAMENTE um documento de receita médica legível (papel, PDF ou tela) com medicamentos e dosagens. Na dúvida, REJEITE.
-Mensagem para o usuário: "A imagem não parece ser de uma receita médica. Envie APENAS fotos do documento da receita (papel ou tela com medicamentos e dosagem). Não envie fotos de pessoas, animais, selfies ou outros objetos."
+QUANDO TIVER DÚVIDA (incerteza real): use has_doubts: true. Ex: nome pode ser abreviação; recorte pode ser acidental; tipo pouco legível. Encaminhe ao médico com "DÚVIDAS:" no resumo.
+
+REJEITE (readability_ok: false) quando tiver CERTEZA de que:
+• A imagem contém ROSTOS, SELFIES, ANIMAIS, PAISAGENS, OBJETOS, COMIDA, BEBIDAS
+• A imagem mostra EMBALAGENS sem documento de receita
+• A imagem é de TELA que NÃO seja documento médico
+• A imagem está BORRADA, ESCURA ou ilegível
+• NÃO há medicamentos ou dosagens identificáveis
+• Qualquer conteúdo que NÃO seja claramente um receituário médico
 
 Analise a(s) imagem(ns) e responda em JSON com exatamente estes campos:
 
-- readability_ok (boolean): false se a imagem estiver ilegível, borrada, incompleta ou NÃO for documento de receita; true se conseguir ler.
-- message_to_user (string ou null): Se readability_ok for false, mensagem curta em português pedindo foto mais nítida.
-- summary_for_doctor (string): PRONTUÁRIO estruturado para o médico copiar/colar no sistema. Formato:
-  "MEDICAMENTOS IDENTIFICADOS:
-  • [Nome do medicamento] - [dosagem completa, ex: 1cp 12/12h]
-  • [Outro medicamento] - [posologia]
-  MÉDICO ANTERIOR: [nome ou "não identificado"]
-  OBSERVAÇÕES: [observações relevantes ou "nenhuma"]"
-  Se não leu, use "".
-- extracted (objeto): { "medications": ["Nome Medicamento 1 - dosagem", "Nome Medicamento 2 - posologia"], "dosage": "texto resumido", "previous_doctor": "nome ou null" }
-  IMPORTANTE: medications deve listar cada medicamento de forma completa (nome + posologia) para preenchimento do PDF.
-- risk_level (string): "low", "medium" ou "high" (controlado/azul = medium/high).
+- readability_ok (boolean): false quando CERTEZA de que não é receita legível; true quando for receita legível.
+- message_to_user (string ou null): Se readability_ok for false, mensagem em português.
+- summary_for_doctor (string): PRONTUÁRIO. Inclua "DÚVIDAS:" quando has_doubts for true. Formato:
+  "MEDICAMENTOS IDENTIFICADOS: • [med] - [dosagem]
+  MÉDICO ANTERIOR: [nome]
+  OBSERVAÇÕES: [texto]
+  DÚVIDAS: [apenas quando has_doubts: true - liste incertezas]"
+- extracted (objeto): { "medications": [...], "dosage": "...", "previous_doctor": "nome ou null", "prescription_type_detected": "simples"|"controlado"|"azul"|null, "patient_name_detected": "nome" ou null, "patient_name_visible": true|false, "prescription_type_visible": true|false, "signs_of_tampering": true|false, "has_doubts": true|false }
+  has_doubts: true APENAS quando houver incerteza real. Se a inconsistência for ÓBVIA (nome diferente, tipo errado, adulteração clara, recorte evidente), use has_doubts: false e preencha os campos para rejeição.
+  patient_name_visible: false se nome recortado/em branco/rasurado (óbvio). Se incerto, has_doubts: true.
+  prescription_type_visible: false se tipo oculto/recortado (óbvio). Se incerto, has_doubts: true.
+  signs_of_tampering: true se CERTEZA de adulteração. Se incerto, has_doubts: true.
+- risk_level (string): "low", "medium" ou "high"
 
 Responda APENAS com o JSON, sem markdown e sem texto antes ou depois.
 """;
@@ -218,13 +221,13 @@ Responda APENAS com o JSON, sem markdown e sem texto antes ou depois.
 
     private static AiPrescriptionAnalysisResult ParsePrescriptionResult(string raw)
     {
-        var (readabilityOk, messageToUser, summary, extracted, riskLevel) = ParseCommonAndRisk(raw);
-        return new AiPrescriptionAnalysisResult(readabilityOk, summary, extracted, riskLevel, messageToUser);
+        var (readabilityOk, messageToUser, summary, extracted, riskLevel, extractedPrescriptionType, extractedPatientName, patientNameVisible, prescriptionTypeVisible, signsOfTampering, hasDoubts) = ParseCommonAndRisk(raw);
+        return new AiPrescriptionAnalysisResult(readabilityOk, summary, extracted, riskLevel, messageToUser, extractedPrescriptionType, extractedPatientName, patientNameVisible, prescriptionTypeVisible, signsOfTampering, hasDoubts);
     }
 
     private static AiExamAnalysisResult ParseExamResult(string raw)
     {
-        var (readabilityOk, messageToUser, summary, extracted, _) = ParseCommonAndRisk(raw);
+        var (readabilityOk, messageToUser, summary, extracted, _, _, _, _, _, _, _) = ParseCommonAndRisk(raw);
         string? urgency = null;
         try
         {
@@ -237,7 +240,7 @@ Responda APENAS com o JSON, sem markdown e sem texto antes ou depois.
         return new AiExamAnalysisResult(readabilityOk, summary, extracted, urgency, messageToUser);
     }
 
-    private static (bool readabilityOk, string? messageToUser, string? summary, string? extracted, string? riskLevel) ParseCommonAndRisk(string raw)
+    private static (bool readabilityOk, string? messageToUser, string? summary, string? extracted, string? riskLevel, string? extractedPrescriptionType, string? extractedPatientName, bool? patientNameVisible, bool? prescriptionTypeVisible, bool? signsOfTampering, bool? hasDoubts) ParseCommonAndRisk(string raw)
     {
         try
         {
@@ -249,13 +252,41 @@ Responda APENAS com o JSON, sem markdown e sem texto antes ou depois.
             var summary = r.TryGetProperty("summary_for_doctor", out var s) ? s.GetString() : null;
             var riskLevel = r.TryGetProperty("risk_level", out var rl) ? rl.GetString() : null;
             string? extracted = null;
+            string? extractedPrescriptionType = null;
+            string? extractedPatientName = null;
+            bool? patientNameVisible = null;
+            bool? prescriptionTypeVisible = null;
+            bool? signsOfTampering = null;
+            bool? hasDoubts = null;
             if (r.TryGetProperty("extracted", out var ex))
+            {
                 extracted = ex.GetRawText();
-            return (readabilityOk, messageToUser, summary, extracted, riskLevel);
+                if (ex.TryGetProperty("prescription_type_detected", out var ptd))
+                {
+                    var v = ptd.GetString()?.Trim().ToLowerInvariant();
+                    if (!string.IsNullOrEmpty(v) && (v == "simples" || v == "controlado" || v == "azul"))
+                        extractedPrescriptionType = v;
+                }
+                if (ex.TryGetProperty("patient_name_detected", out var pnd))
+                {
+                    var v = pnd.GetString()?.Trim();
+                    if (!string.IsNullOrEmpty(v) && v.Length >= 2)
+                        extractedPatientName = v;
+                }
+                if (ex.TryGetProperty("patient_name_visible", out var pnv))
+                    patientNameVisible = pnv.ValueKind == JsonValueKind.True || pnv.ValueKind == JsonValueKind.False ? pnv.GetBoolean() : null;
+                if (ex.TryGetProperty("prescription_type_visible", out var ptv))
+                    prescriptionTypeVisible = ptv.ValueKind == JsonValueKind.True || ptv.ValueKind == JsonValueKind.False ? ptv.GetBoolean() : null;
+                if (ex.TryGetProperty("signs_of_tampering", out var sot))
+                    signsOfTampering = sot.ValueKind == JsonValueKind.True || sot.ValueKind == JsonValueKind.False ? sot.GetBoolean() : null;
+                if (ex.TryGetProperty("has_doubts", out var hd))
+                    hasDoubts = hd.ValueKind == JsonValueKind.True || hd.ValueKind == JsonValueKind.False ? hd.GetBoolean() : null;
+            }
+            return (readabilityOk, messageToUser, summary, extracted, riskLevel, extractedPrescriptionType, extractedPatientName, patientNameVisible, prescriptionTypeVisible, signsOfTampering, hasDoubts);
         }
         catch
         {
-            return (false, "Resposta da IA em formato inesperado. Tente enviar uma imagem mais legível.", raw, null, null);
+            return (false, "Resposta da IA em formato inesperado. Tente enviar uma imagem mais legível.", raw, null, null, null, null, null, null, null, null);
         }
     }
 

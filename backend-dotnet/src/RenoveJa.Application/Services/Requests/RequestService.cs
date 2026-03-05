@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -181,6 +182,54 @@ public class RequestService(
         PrescriptionType.Blue => "azul",
         _ => null
     };
+
+    /// <summary>Label amigável do tipo para mensagem de rejeição (ex: "de controle especial").</summary>
+    private static string PrescriptionTypeToRejectionLabel(string? type) => type?.ToLowerInvariant() switch
+    {
+        "simples" => "simples",
+        "controlado" => "de controle especial",
+        "azul" => "azul/antimicrobiana",
+        _ => type ?? "desconhecido"
+    };
+
+    /// <summary>Verifica se o nome do documento corresponde ao nome cadastrado (primeiro e último nome devem bater).</summary>
+    private static bool PatientNamesMatch(string? registeredName, string? documentName)
+    {
+        if (string.IsNullOrWhiteSpace(registeredName) || string.IsNullOrWhiteSpace(documentName))
+            return true;
+        var regWords = GetSignificantNameWords(registeredName);
+        var docWords = GetSignificantNameWords(documentName);
+        if (regWords.Count == 0 || docWords.Count == 0)
+            return true;
+        var firstReg = regWords[0];
+        var lastReg = regWords[^1];
+        var firstDoc = docWords[0];
+        var lastDoc = docWords[^1];
+        return string.Equals(firstReg, firstDoc, StringComparison.OrdinalIgnoreCase) &&
+               string.Equals(lastReg, lastDoc, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static readonly HashSet<string> NameConjunctions = new(StringComparer.OrdinalIgnoreCase) { "da", "de", "do", "dos", "das", "e" };
+
+    private static List<string> GetSignificantNameWords(string name)
+    {
+        var normalized = RemoveAccents(name.Trim().ToLowerInvariant());
+        return normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Where(w => !NameConjunctions.Contains(w) && w.Length >= 2)
+            .ToList();
+    }
+
+    private static string RemoveAccents(string text)
+    {
+        var formD = text.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder();
+        foreach (var c in formD)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+                sb.Append(c);
+        }
+        return sb.ToString().Normalize(NormalizationForm.FormC);
+    }
 
     private static string GenerateAccessCode(Guid requestId)
     {
@@ -1405,19 +1454,75 @@ public class RequestService(
                 request = await requestRepository.UpdateAsync(request, cancellationToken);
                 logger.LogInformation("IA reanálise receita: request {RequestId} REJEITADO - imagens inválidas", id);
             }
-            else
+            else if (result.HasDoubts == true)
             {
                 request.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, result.RiskLevel, null, true, null);
                 request = await requestRepository.UpdateAsync(request, cancellationToken);
-                logger.LogInformation("IA reanálise receita: sucesso para request {RequestId}", id);
+                logger.LogInformation("IA reanálise receita: request {RequestId} encaminhado ao médico com dúvidas documentadas", id);
                 if (request.DoctorId.HasValue)
                 {
                     await CreateNotificationAsync(
                         request.DoctorId.Value,
                         "Reanálise Solicitada",
-                        "O paciente solicitou reanálise da receita. Nova análise da IA disponível.",
+                        "O paciente solicitou reanálise da receita. Nova análise da IA disponível (com dúvidas para sua avaliação).",
                         cancellationToken,
                         new Dictionary<string, object?> { ["requestId"] = request.Id.ToString() });
+                }
+            }
+            else if (result.SignsOfTampering == true)
+            {
+                var msg = "O documento enviado apresenta sinais de adulteração, edição ou recorte para ocultar informações. Envie uma foto completa e original da receita, sem alterações.";
+                request.Reject(msg);
+                request = await requestRepository.UpdateAsync(request, cancellationToken);
+                logger.LogInformation("IA reanálise receita: request {RequestId} REJEITADO - adulteração detectada", id);
+            }
+            else if (result.PatientNameVisible == false)
+            {
+                var msg = "O nome do paciente não está visível na receita (recortado, em branco ou ilegível). Envie uma foto completa do documento onde o nome do paciente esteja claramente legível.";
+                request.Reject(msg);
+                request = await requestRepository.UpdateAsync(request, cancellationToken);
+                logger.LogInformation("IA reanálise receita: request {RequestId} REJEITADO - nome não visível", id);
+            }
+            else if (result.PrescriptionTypeVisible == false)
+            {
+                var msg = "O tipo da receita não está visível no documento (recortado ou oculto). Envie uma foto completa onde o cabeçalho da receita esteja visível.";
+                request.Reject(msg);
+                request = await requestRepository.UpdateAsync(request, cancellationToken);
+                logger.LogInformation("IA reanálise receita: request {RequestId} REJEITADO - tipo não visível", id);
+            }
+            else
+            {
+                var userType = PrescriptionTypeToDisplay(request.PrescriptionType);
+                if (!string.IsNullOrEmpty(result.ExtractedPrescriptionType) && !string.IsNullOrEmpty(userType) &&
+                    !string.Equals(result.ExtractedPrescriptionType, userType, StringComparison.OrdinalIgnoreCase))
+                {
+                    var docLabel = PrescriptionTypeToRejectionLabel(result.ExtractedPrescriptionType);
+                    var msg = $"O documento enviado é uma receita {docLabel}, mas você selecionou receita {PrescriptionTypeToRejectionLabel(userType)}. O tipo da receita enviada deve corresponder ao tipo selecionado. Por favor, crie uma nova solicitação escolhendo o tipo correto.";
+                    request.Reject(msg);
+                    request = await requestRepository.UpdateAsync(request, cancellationToken);
+                    logger.LogInformation("IA reanálise receita: request {RequestId} REJEITADO - tipo incorreto. Documento={Doc}, Selecionado={Sel}", id, result.ExtractedPrescriptionType, userType);
+                }
+                else if (!string.IsNullOrEmpty(result.ExtractedPatientName) && !PatientNamesMatch(request.PatientName, result.ExtractedPatientName))
+                {
+                    var msg = $"O nome do paciente na receita ({result.ExtractedPatientName}) não corresponde ao nome cadastrado no app ({request.PatientName ?? "cadastro"}). A receita deve ser do próprio titular da conta. Verifique se o nome no seu cadastro está correto ou envie uma receita em seu nome.";
+                    request.Reject(msg);
+                    request = await requestRepository.UpdateAsync(request, cancellationToken);
+                    logger.LogInformation("IA reanálise receita: request {RequestId} REJEITADO - nome do paciente não confere. Documento={Doc}, Cadastro={Cad}", id, result.ExtractedPatientName, request.PatientName);
+                }
+                else
+                {
+                    request.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, result.RiskLevel, null, true, null);
+                    request = await requestRepository.UpdateAsync(request, cancellationToken);
+                    logger.LogInformation("IA reanálise receita: sucesso para request {RequestId}", id);
+                    if (request.DoctorId.HasValue)
+                    {
+                        await CreateNotificationAsync(
+                            request.DoctorId.Value,
+                            "Reanálise Solicitada",
+                            "O paciente solicitou reanálise da receita. Nova análise da IA disponível.",
+                            cancellationToken,
+                            new Dictionary<string, object?> { ["requestId"] = request.Id.ToString() });
+                    }
                 }
             }
         }
@@ -1450,8 +1555,60 @@ public class RequestService(
             {
                 logger.LogInformation("IA reanálise receita (médico): request {RequestId}, {ImageCount} imagem(ns)", id, request.PrescriptionImages.Count);
                 var result = await aiReadingService.AnalyzePrescriptionAsync(request.PrescriptionImages, cancellationToken);
-                request.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, result.RiskLevel, null, result.ReadabilityOk, result.MessageToUser);
-                logger.LogInformation("IA reanálise receita (médico): sucesso para request {RequestId}", id);
+                if (result.ReadabilityOk)
+                {
+                    if (result.HasDoubts == true)
+                    {
+                        request.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, result.RiskLevel, null, true, null);
+                        logger.LogInformation("IA reanálise receita (médico): request {RequestId} - dúvidas documentadas no resumo para avaliação", id);
+                    }
+                    else if (result.SignsOfTampering == true)
+                    {
+                        var msg = "O documento enviado apresenta sinais de adulteração, edição ou recorte para ocultar informações. Envie uma foto completa e original da receita, sem alterações.";
+                        request.Reject(msg);
+                        logger.LogInformation("IA reanálise receita (médico): request {RequestId} REJEITADO - adulteração detectada", id);
+                    }
+                    else if (result.PatientNameVisible == false)
+                    {
+                        var msg = "O nome do paciente não está visível na receita (recortado, em branco ou ilegível). Envie uma foto completa onde o nome esteja legível.";
+                        request.Reject(msg);
+                        logger.LogInformation("IA reanálise receita (médico): request {RequestId} REJEITADO - nome não visível", id);
+                    }
+                    else if (result.PrescriptionTypeVisible == false)
+                    {
+                        var msg = "O tipo da receita não está visível no documento (recortado ou oculto). Envie uma foto completa onde o cabeçalho esteja visível.";
+                        request.Reject(msg);
+                        logger.LogInformation("IA reanálise receita (médico): request {RequestId} REJEITADO - tipo não visível", id);
+                    }
+                    else
+                    {
+                        var userType = PrescriptionTypeToDisplay(request.PrescriptionType);
+                        if (!string.IsNullOrEmpty(result.ExtractedPrescriptionType) && !string.IsNullOrEmpty(userType) &&
+                            !string.Equals(result.ExtractedPrescriptionType, userType, StringComparison.OrdinalIgnoreCase))
+                        {
+                            var docLabel = PrescriptionTypeToRejectionLabel(result.ExtractedPrescriptionType);
+                            var msg = $"O documento enviado é uma receita {docLabel}, mas a solicitação foi criada como receita {PrescriptionTypeToRejectionLabel(userType)}. O tipo da receita enviada deve corresponder ao tipo selecionado.";
+                            request.Reject(msg);
+                            logger.LogInformation("IA reanálise receita (médico): request {RequestId} REJEITADO - tipo incorreto. Documento={Doc}, Selecionado={Sel}", id, result.ExtractedPrescriptionType, userType);
+                        }
+                        else if (!string.IsNullOrEmpty(result.ExtractedPatientName) && !PatientNamesMatch(request.PatientName, result.ExtractedPatientName))
+                        {
+                            var msg = $"O nome do paciente na receita ({result.ExtractedPatientName}) não corresponde ao nome cadastrado no app ({request.PatientName ?? "cadastro"}). A receita deve ser do próprio titular da conta.";
+                            request.Reject(msg);
+                            logger.LogInformation("IA reanálise receita (médico): request {RequestId} REJEITADO - nome do paciente não confere. Documento={Doc}, Cadastro={Cad}", id, result.ExtractedPatientName, request.PatientName);
+                        }
+                        else
+                        {
+                            request.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, result.RiskLevel, null, true, null);
+                            logger.LogInformation("IA reanálise receita (médico): sucesso para request {RequestId}", id);
+                        }
+                    }
+                }
+                else
+                {
+                    request.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, result.RiskLevel, null, false, result.MessageToUser);
+                    logger.LogInformation("IA reanálise receita (médico): legibilidade falhou para request {RequestId}", id);
+                }
             }
             catch (Exception ex)
             {
@@ -1968,6 +2125,56 @@ public class RequestService(
                 medicalRequest.Reject(msg);
                 await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
                 logger.LogInformation("IA receita: request {RequestId} REJEITADO - imagens inválidas. Mensagem: {Msg}", medicalRequest.Id, msg);
+                return;
+            }
+            if (result.HasDoubts == true)
+            {
+                medicalRequest.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, result.RiskLevel, null, true, null);
+                await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
+                logger.LogInformation("IA receita: request {RequestId} encaminhado ao médico com dúvidas documentadas no resumo", medicalRequest.Id);
+                return;
+            }
+            if (result.SignsOfTampering == true)
+            {
+                var msg = "O documento enviado apresenta sinais de adulteração, edição ou recorte para ocultar informações. Envie uma foto completa e original da receita, sem alterações.";
+                medicalRequest.Reject(msg);
+                await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
+                logger.LogInformation("IA receita: request {RequestId} REJEITADO - adulteração detectada", medicalRequest.Id);
+                return;
+            }
+            if (result.PatientNameVisible == false)
+            {
+                var msg = "O nome do paciente não está visível na receita (recortado, em branco ou ilegível). Envie uma foto completa do documento onde o nome do paciente esteja claramente legível.";
+                medicalRequest.Reject(msg);
+                await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
+                logger.LogInformation("IA receita: request {RequestId} REJEITADO - nome do paciente não visível", medicalRequest.Id);
+                return;
+            }
+            if (result.PrescriptionTypeVisible == false)
+            {
+                var msg = "O tipo da receita (simples, controlada ou azul) não está visível no documento (recortado ou oculto). Envie uma foto completa onde o cabeçalho da receita esteja visível.";
+                medicalRequest.Reject(msg);
+                await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
+                logger.LogInformation("IA receita: request {RequestId} REJEITADO - tipo da receita não visível", medicalRequest.Id);
+                return;
+            }
+            var userType = PrescriptionTypeToDisplay(medicalRequest.PrescriptionType);
+            if (!string.IsNullOrEmpty(result.ExtractedPrescriptionType) && !string.IsNullOrEmpty(userType) &&
+                !string.Equals(result.ExtractedPrescriptionType, userType, StringComparison.OrdinalIgnoreCase))
+            {
+                var docLabel = PrescriptionTypeToRejectionLabel(result.ExtractedPrescriptionType);
+                var msg = $"O documento enviado é uma receita {docLabel}, mas você selecionou receita {PrescriptionTypeToRejectionLabel(userType)}. O tipo da receita enviada deve corresponder ao tipo selecionado. Por favor, crie uma nova solicitação escolhendo o tipo correto.";
+                medicalRequest.Reject(msg);
+                await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
+                logger.LogInformation("IA receita: request {RequestId} REJEITADO - tipo incorreto. Documento={Doc}, Selecionado={Sel}", medicalRequest.Id, result.ExtractedPrescriptionType, userType);
+                return;
+            }
+            if (!string.IsNullOrEmpty(result.ExtractedPatientName) && !PatientNamesMatch(medicalRequest.PatientName, result.ExtractedPatientName))
+            {
+                var msg = $"O nome do paciente na receita ({result.ExtractedPatientName}) não corresponde ao nome cadastrado no app ({medicalRequest.PatientName ?? "cadastro"}). A receita deve ser do próprio titular da conta. Verifique se o nome no seu cadastro está correto ou envie uma receita em seu nome.";
+                medicalRequest.Reject(msg);
+                await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
+                logger.LogInformation("IA receita: request {RequestId} REJEITADO - nome do paciente não confere. Documento={Doc}, Cadastro={Cad}", medicalRequest.Id, result.ExtractedPatientName, medicalRequest.PatientName);
                 return;
             }
             medicalRequest.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, result.RiskLevel, null, true, null);
