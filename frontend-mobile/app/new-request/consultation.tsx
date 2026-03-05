@@ -58,8 +58,8 @@ export default function ConsultationScreen() {
   const oneColumn = width < NARROW_BREAKPOINT;
   const [consultationType, setConsultationType] = useState<'psicologo' | 'medico_clinico'>('psicologo');
   const [durationMinutes, setDurationMinutes] = useState(15);
-  const addMinutes = () => setDurationMinutes((m) => Math.min(CONSULTATION_MAX_MINUTES, m + 1));
-  const removeMinutes = () => setDurationMinutes((m) => Math.max(CONSULTATION_MIN_MINUTES, m - 1));
+  const addMinutes = () => { setDurationMinutes((m) => Math.min(CONSULTATION_MAX_MINUTES, m + 1)); setUserAdjustedMinutes(true); };
+  const removeMinutes = () => { setDurationMinutes((m) => Math.max(CONSULTATION_MIN_MINUTES, m - 1)); setUserAdjustedMinutes(true); };
   const [symptoms, setSymptoms] = useState('');
   const [loading, setLoading] = useState(false);
   const [bankMinutes, setBankMinutes] = useState<number>(0);
@@ -122,10 +122,13 @@ export default function ConsultationScreen() {
         guidance: apiResult.urgencyMessage ?? 'Sinais de urgência detectados. Considere buscar atendimento presencial.',
       }
     : redFlagsLocal;
+  // Step tracking: baseado na interação real do usuário, não em valores default
+  const [userPickedType, setUserPickedType] = useState(false);
+  const [userAdjustedMinutes, setUserAdjustedMinutes] = useState(false);
   let currentStep = 1;
-  if (consultationType) currentStep = 2;
-  if (durationMinutes >= CONSULTATION_MIN_MINUTES) currentStep = 3;
-  if (symptoms.trim().length > 0) currentStep = 4;
+  if (userPickedType) currentStep = 2;
+  if (userPickedType && userAdjustedMinutes) currentStep = 3;
+  if (userPickedType && userAdjustedMinutes && symptoms.trim().length > 0) currentStep = 4;
 
   useEffect(() => {
     let cancelled = false;
@@ -262,7 +265,7 @@ export default function ConsultationScreen() {
             <AppCard
               key={type.key}
               selected={consultationType === type.key}
-              onPress={() => setConsultationType(type.key)}
+              onPress={() => { setConsultationType(type.key); setUserPickedType(true); }}
               style={StyleSheet.flatten(oneColumn ? [styles.typeCard, styles.typeCardFull] : styles.typeCard)}
             >
               <Text style={[styles.typeName, consultationType === type.key && styles.typeNameSelected]} numberOfLines={1}>
@@ -404,7 +407,6 @@ const styles = StyleSheet.create({
     marginTop: s.xs,
     marginBottom: s.lg,
     paddingHorizontal: s.lg,
-    paddingEnd: 56,
   },
   bannerTitleWrap: {
     alignSelf: 'stretch',

@@ -135,13 +135,27 @@ export default function NewPrescription() {
   };
 
   const pickFromGallery = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permissão necessária', 'Precisamos de acesso à galeria para escolher a foto da receita.');
+      return;
+    }
+
+    const remaining = 5 - images.length;
+    if (remaining <= 0) {
+      Alert.alert('Limite atingido', 'Máximo de 5 fotos por solicitação.');
+      return;
+    }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       quality: 0.8,
       allowsMultipleSelection: true,
+      selectionLimit: remaining,
     });
 
     if (!result.canceled && result.assets?.length) {
-      setImages([...images, ...result.assets.map((a) => a.uri)]);
+      const allowed = result.assets.slice(0, remaining);
+      setImages([...images, ...allowed.map((a) => a.uri)]);
     }
   };
 

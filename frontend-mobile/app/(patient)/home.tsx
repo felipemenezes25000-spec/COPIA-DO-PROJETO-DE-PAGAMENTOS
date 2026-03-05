@@ -98,7 +98,13 @@ export default function PatientHome() {
     ready: requests.filter(r => isSignedOrDelivered(r)).length,
   }), [requests]);
 
-  const recentRequests = useMemo(() => requests.slice(0, 2), [requests]);
+  // Deduplica: não mostra na lista recente o pedido que já aparece no card de follow-up
+  const recentRequests = useMemo(() => {
+    const filtered = followUpRequest
+      ? requests.filter(r => r.id !== followUpRequest.id)
+      : requests;
+    return filtered.slice(0, 2);
+  }, [requests, followUpRequest]);
   const firstName = user?.name?.split(' ')[0] || 'Paciente';
   const initial = firstName[0]?.toUpperCase() || 'P';
 
@@ -212,10 +218,12 @@ export default function PatientHome() {
     return () => { cancelled = true; };
   }, [followUpRequest?.id]);
 
-  const followUpAction = followUpActionFromApi ?? (followUpRequest ? (() => {
+  const followUpAction = useMemo(() => {
+    if (followUpActionFromApi) return followUpActionFromApi;
+    if (!followUpRequest) return null;
     const local = getNextBestActionForRequest(followUpRequest);
     return { ...local, ctaLabel: local.ctaLabel ?? null };
-  })() : null);
+  }, [followUpActionFromApi, followUpRequest]);
 
   useTriageEval({
     context: 'home',

@@ -151,3 +151,20 @@ public record PatientProfileForDoctorDto(
     string? PostalCode,
     string? AvatarUrl
 );
+
+/// <summary>Nota clínica do médico (resposta API).</summary>
+public record DoctorNoteDto(
+    Guid Id,
+    string NoteType,
+    string Content,
+    Guid? RequestId,
+    DateTime CreatedAt,
+    DateTime UpdatedAt
+);
+
+/// <summary>Criação de nota clínica.</summary>
+public record CreateDoctorNoteDto(
+    string NoteType,
+    string Content,
+    Guid? RequestId
+);

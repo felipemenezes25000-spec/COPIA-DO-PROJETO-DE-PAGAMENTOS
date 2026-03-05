@@ -15,6 +15,9 @@ import {
   RefreshControl,
   TouchableOpacity,
   Pressable,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,14 +26,14 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 
 import { colors, spacing, borderRadius, typography, doctorDS } from '../../lib/themeDoctor';
-import { getPatientRequests, getPatientProfileForDoctor, getPatientClinicalSummary, sortRequestsByNewestFirst } from '../../lib/api';
+import { getPatientRequests, getPatientProfileForDoctor, getPatientClinicalSummary, addDoctorPatientNote, DOCTOR_NOTE_TYPES, sortRequestsByNewestFirst, type DoctorNoteDto } from '../../lib/api';
 import type { PatientClinicalSummaryStructured } from '../../lib/api';
 import type { RequestResponseDto, PatientProfileForDoctorDto } from '../../types/database';
 import { DoctorHeader } from '../../components/ui/DoctorHeader';
-import { AppEmptyState, FormSection } from '../../components/ui';
+import { AppEmptyState, AppButton, FormSection } from '../../components/ui';
 import { useTriageEval } from '../../hooks/useTriageEval';
 import { showToast } from '../../components/ui/Toast';
-import { formatDateTimeBR } from '../../lib/utils/format';
+import { formatDateTimeBR, formatDateBR } from '../../lib/utils/format';
 
 // ── Anamnese fields (alinhado com consultation-summary) ──
 
@@ -116,6 +119,11 @@ export default function DoctorPatientClinicalSummary() {
   const [expandedExam, setExpandedExam] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
   const [structured, setStructured] = useState<PatientClinicalSummaryStructured | null>(null);
+  const [doctorNotes, setDoctorNotes] = useState<DoctorNoteDto[]>([]);
+  const [newNoteContent, setNewNoteContent] = useState('');
+  const [newNoteType, setNewNoteType] = useState<string>('progress_note');
+  const [linkedRequestId, setLinkedRequestId] = useState<string | null>(null);
+  const [addingNote, setAddingNote] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [summaryRefreshKey, setSummaryRefreshKey] = useState(0);
@@ -142,7 +150,7 @@ export default function DoctorPatientClinicalSummary() {
   }, [loadData]);
 
   useEffect(() => {
-    if (!id || requests.length === 0) return;
+    if (!id) return;
     let cancelled = false;
     setSummaryLoading(true);
     setSummary(null);
@@ -152,6 +160,7 @@ export default function DoctorPatientClinicalSummary() {
         if (!cancelled) {
           setSummary(res.summary || res.fallback || null);
           setStructured(res.structured ?? null);
+          setDoctorNotes(res.doctorNotes ?? []);
         }
       })
       .catch(() => {
@@ -162,7 +171,31 @@ export default function DoctorPatientClinicalSummary() {
         if (!cancelled) setSummaryLoading(false);
       });
     return () => { cancelled = true; };
-  }, [id, requests.length, summaryRefreshKey]);
+  }, [id, summaryRefreshKey]);
+
+  const handleAddNote = useCallback(async () => {
+    if (!id || !newNoteContent.trim()) return;
+    setAddingNote(true);
+    try {
+      const note = await addDoctorPatientNote(id, {
+        noteType: newNoteType,
+        content: newNoteContent.trim(),
+        requestId: linkedRequestId,
+      });
+      setDoctorNotes((prev) => [note, ...prev]);
+      setNewNoteContent('');
+      setLinkedRequestId(null);
+      showToast({ message: 'Nota registrada', type: 'success' });
+    } catch (e) {
+      console.error(e);
+      showToast({ message: 'Não foi possível registrar a nota', type: 'error' });
+    } finally {
+      setAddingNote(false);
+    }
+  }, [id, newNoteContent, newNoteType, linkedRequestId]);
+
+  const getNoteTypeLabel = (key: string) => DOCTOR_NOTE_TYPES.find((t) => t.key === key)?.label ?? key;
+  const getNoteTypeIcon = (key: string) => DOCTOR_NOTE_TYPES.find((t) => t.key === key)?.icon ?? 'document-text';
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -244,13 +277,18 @@ export default function DoctorPatientClinicalSummary() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    >
       <DoctorHeader
         title="Resumo clínico"
         subtitle={patientName}
         onBack={() => router.back()}
       />
       <ScrollView
+        keyboardShouldPersistTaps="handled"
         style={styles.scroll}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: listPadding }]}
         showsVerticalScrollIndicator={false}
@@ -333,6 +371,117 @@ export default function DoctorPatientClinicalSummary() {
             </View>
           )}
         </FormSection>
+
+        {/* ── Notas clínicas do médico (FHIR/Epic-inspired) ── */}
+        <View style={styles.doctorNotesSection}>
+          <View style={styles.doctorNotesSectionHeader}>
+            <View style={[styles.doctorNotesSectionIcon, { backgroundColor: colors.primarySoft }]}>
+              <Ionicons name="journal" size={20} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.doctorNotesSectionTitle}>Notas clínicas</Text>
+              <Text style={styles.doctorNotesSectionSub}>Evolução, impressão diagnóstica, complementos e observações</Text>
+            </View>
+          </View>
+
+          {/* Formulário: nova nota */}
+          <View style={styles.doctorNotesForm}>
+            <Text style={styles.doctorNotesFormLabel}>Tipo da nota</Text>
+            <View style={styles.noteTypeChips}>
+              {DOCTOR_NOTE_TYPES.map((t) => (
+                <TouchableOpacity
+                  key={t.key}
+                  style={[styles.noteTypeChip, newNoteType === t.key && styles.noteTypeChipActive]}
+                  onPress={() => setNewNoteType(t.key)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name={t.icon as any} size={14} color={newNoteType === t.key ? colors.white : colors.primary} />
+                  <Text style={[styles.noteTypeChipText, newNoteType === t.key && styles.noteTypeChipTextActive]}>{t.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={styles.doctorNotesFormLabel}>Conteúdo</Text>
+            <TextInput
+              style={styles.doctorNotesInput}
+              placeholder="Ex: Opto por associar medicação X ao esquema atual..."
+              placeholderTextColor={colors.textMuted}
+              value={newNoteContent}
+              onChangeText={setNewNoteContent}
+              multiline
+              textAlignVertical="top"
+            />
+            {sortedRequests.length > 0 && (
+              <>
+                <Text style={styles.doctorNotesFormLabel}>Vincular a atendimento (opcional)</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.requestLinkScroll}>
+                  <TouchableOpacity
+                    style={[styles.requestLinkChip, !linkedRequestId && styles.requestLinkChipActive]}
+                    onPress={() => setLinkedRequestId(null)}
+                  >
+                    <Text style={[styles.requestLinkChipText, !linkedRequestId && styles.requestLinkChipTextActive]}>Nenhum</Text>
+                  </TouchableOpacity>
+                  {sortedRequests.slice(0, 8).map((r) => {
+                    const typeLabel = r.requestType === 'consultation' ? 'Consulta' : r.requestType === 'prescription' ? 'Receita' : 'Exame';
+                    const isSelected = linkedRequestId === r.id;
+                    return (
+                      <TouchableOpacity
+                        key={r.id}
+                        style={[styles.requestLinkChip, isSelected && styles.requestLinkChipActive]}
+                        onPress={() => setLinkedRequestId(isSelected ? null : r.id)}
+                      >
+                        <Text style={[styles.requestLinkChipText, isSelected && styles.requestLinkChipTextActive]} numberOfLines={1}>
+                          {typeLabel} · {formatDateBR(r.createdAt, { short: true })}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </>
+            )}
+            <AppButton
+              title="Registrar nota"
+              variant="doctorPrimary"
+              onPress={handleAddNote}
+              loading={addingNote}
+              disabled={!newNoteContent.trim()}
+              style={styles.doctorNotesAddBtn}
+            />
+          </View>
+
+          {/* Timeline de notas */}
+          {doctorNotes.length > 0 ? (
+            <View style={styles.doctorNotesTimeline}>
+              <Text style={styles.doctorNotesTimelineTitle}>Histórico ({doctorNotes.length})</Text>
+              {doctorNotes.map((note, idx) => (
+                <View key={note.id} style={[styles.noteCard, idx < doctorNotes.length - 1 && styles.noteCardBorder]}>
+                  <View style={styles.noteCardHeader}>
+                    <View style={[styles.noteCardTypeBadge, { backgroundColor: colors.primarySoft }]}>
+                      <Ionicons name={getNoteTypeIcon(note.noteType) as any} size={12} color={colors.primary} />
+                      <Text style={styles.noteCardTypeText}>{getNoteTypeLabel(note.noteType)}</Text>
+                    </View>
+                    <Text style={styles.noteCardDate}>{formatDateTimeBR(note.createdAt)}</Text>
+                  </View>
+                  <Text style={styles.noteCardContent}>{note.content}</Text>
+                  {note.requestId && (
+                    <TouchableOpacity
+                      style={styles.noteCardLink}
+                      onPress={() => router.push(`/doctor-request/${note.requestId}` as never)}
+                    >
+                      <Ionicons name="open-outline" size={12} color={colors.primary} />
+                      <Text style={styles.noteCardLinkText}>Ver atendimento vinculado</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.doctorNotesEmpty}>
+              <Ionicons name="document-text-outline" size={32} color={colors.textMuted} />
+              <Text style={styles.doctorNotesEmptyText}>Nenhuma nota registrada</Text>
+              <Text style={styles.doctorNotesEmptySub}>Use o formulário acima para adicionar evolução, impressão diagnóstica ou observações.</Text>
+            </View>
+          )}
+        </View>
 
         {/* ── Alertas (IA + alergias) — destaque no topo ── */}
         {requests.length > 0 && (structured?.alerts?.length ?? 0) + allAllergies.length > 0 && (
@@ -797,7 +946,7 @@ export default function DoctorPatientClinicalSummary() {
         )}
 
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -874,6 +1023,153 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   allergyValue: { fontSize: 13, color: colors.text, lineHeight: 20 },
+
+  doctorNotesSection: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+    overflow: 'hidden',
+  },
+  doctorNotesSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.lg },
+  doctorNotesSectionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  doctorNotesSectionTitle: {
+    fontSize: 16,
+    fontFamily: typography.fontFamily.bold,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  doctorNotesSectionSub: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  doctorNotesForm: { marginBottom: spacing.lg },
+  doctorNotesFormLabel: {
+    fontSize: 12,
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textMuted,
+    marginBottom: spacing.xs,
+    marginTop: spacing.sm,
+    letterSpacing: 0.5,
+  },
+  noteTypeChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.sm },
+  noteTypeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: borderRadius.pill,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  noteTypeChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  noteTypeChipText: {
+    fontSize: 13,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.primary,
+  },
+  noteTypeChipTextActive: { color: colors.white },
+  doctorNotesInput: {
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.sm,
+    padding: spacing.md,
+    fontSize: 14,
+    color: colors.text,
+    minHeight: 88,
+    borderWidth: 1,
+    borderColor: colors.border,
+    fontFamily: typography.fontFamily.regular,
+  },
+  requestLinkScroll: { marginBottom: spacing.sm, marginTop: spacing.xs },
+  requestLinkChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: borderRadius.pill,
+    backgroundColor: colors.surfaceSecondary,
+    marginRight: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  requestLinkChipActive: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
+  },
+  requestLinkChipText: {
+    fontSize: 12,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.textSecondary,
+  },
+  requestLinkChipTextActive: { color: colors.primary },
+  doctorNotesAddBtn: { marginTop: spacing.md, alignSelf: 'flex-start' },
+  doctorNotesTimeline: { marginTop: spacing.md, paddingTop: spacing.lg, borderTopWidth: 1, borderTopColor: colors.border },
+  doctorNotesTimelineTitle: {
+    fontSize: 12,
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textMuted,
+    marginBottom: spacing.md,
+    letterSpacing: 0.5,
+  },
+  noteCard: { paddingVertical: spacing.md },
+  noteCardBorder: { borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  noteCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm, flexWrap: 'wrap', gap: 4 },
+  noteCardTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: borderRadius.pill,
+    alignSelf: 'flex-start',
+  },
+  noteCardTypeText: {
+    fontSize: 11,
+    fontFamily: typography.fontFamily.bold,
+    color: colors.primary,
+    letterSpacing: 0.3,
+  },
+  noteCardDate: { fontSize: 11, color: colors.textMuted },
+  noteCardContent: {
+    fontSize: 14,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.text,
+    lineHeight: 22,
+  },
+  noteCardLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: spacing.sm,
+  },
+  noteCardLinkText: { fontSize: 12, fontFamily: typography.fontFamily.semibold, color: colors.primary },
+  doctorNotesEmpty: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+    gap: spacing.sm,
+  },
+  doctorNotesEmptyText: {
+    fontSize: 14,
+    fontFamily: typography.fontFamily.semibold,
+    color: colors.textMuted,
+  },
+  doctorNotesEmptySub: {
+    fontSize: 12,
+    color: colors.textMuted,
+    textAlign: 'center',
+    paddingHorizontal: spacing.lg,
+  },
 
   alertsCard: {
     backgroundColor: colors.errorLight,

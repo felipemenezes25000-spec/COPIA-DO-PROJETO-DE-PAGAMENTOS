@@ -206,7 +206,8 @@ public class MedicalRequest : AggregateRoot
 
     private static string GenerateAccessCode()
     {
-        return Random.Shared.Next(0, 1_000_000).ToString("D6");
+        // Usa gerador criptograficamente seguro (Random.Shared é previsível e enumerável)
+        return System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
     }
 
     public static MedicalRequest Reconstitute(
@@ -508,7 +509,13 @@ public class MedicalRequest : AggregateRoot
         else
             return false;
         if (DoctorCallConnectedAt.HasValue && PatientCallConnectedAt.HasValue && !ConsultationStartedAt.HasValue)
-            ConsultationStartedAt = now;
+        {
+            // ConsultationStartedAt = momento em que o ÚLTIMO participante conectou
+            // (máximo dos dois timestamps, não o 'now' da chamada atual)
+            ConsultationStartedAt = DoctorCallConnectedAt.Value > PatientCallConnectedAt.Value
+                ? DoctorCallConnectedAt.Value
+                : PatientCallConnectedAt.Value;
+        }
         UpdatedAt = now;
         return true;
     }

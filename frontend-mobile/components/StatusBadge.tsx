@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   textSm: {
-    fontSize: 12,
+    fontSize: 10,
     letterSpacing: 0.1,
   },
 });

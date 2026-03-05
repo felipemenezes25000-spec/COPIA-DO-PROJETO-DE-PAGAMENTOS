@@ -35,6 +35,33 @@ import { useTriageEval } from '../../hooks/useTriageEval';
 import { getNextBestActionForRequest, type NextActionIntent } from '../../lib/domain/assistantIntelligence';
 import type { AssistantNextActionResponseData } from '../../lib/api';
 
+/** Texto expansível: mostra N linhas com "Ver mais" / "Ver menos". */
+function ExpandableText({ text, maxLines = 4, style }: { text: string; maxLines?: number; style?: any }) {
+  const [expanded, setExpanded] = React.useState(false);
+  const [needsExpand, setNeedsExpand] = React.useState(false);
+  return (
+    <View>
+      <Text
+        style={style}
+        numberOfLines={expanded ? undefined : maxLines}
+        ellipsizeMode="tail"
+        onTextLayout={(e) => {
+          if (!needsExpand && e.nativeEvent.lines.length > maxLines) setNeedsExpand(true);
+        }}
+      >
+        {text}
+      </Text>
+      {needsExpand && (
+        <TouchableOpacity onPress={() => setExpanded(!expanded)} style={{ marginTop: 4 }}>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>
+            {expanded ? 'Ver menos' : 'Ver mais'}
+          </Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
 function getTypeLabel(type: string): string {
   switch (type) {
     case 'prescription': return 'Receita';
@@ -134,11 +161,14 @@ export default function RequestDetailScreen() {
   }, [requestId]);
 
   /** Refresh silencioso (sem loading) para refletir confirmação de pagamento pelo webhook. */
+  const mountedRef = useRef(true);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
+
   const loadSilent = useCallback(async () => {
     if (!requestId) return;
     try {
       const data = await fetchRequestById(requestId);
-      setRequest(data);
+      if (mountedRef.current) setRequest(data);
     } catch {
       // Ignore; não alterar estado em caso de erro no poll
     }
@@ -256,10 +286,27 @@ export default function RequestDetailScreen() {
     if (!request?.signedDocumentUrl) return;
     try {
       await markAsDeliveredIfSigned();
-      // signedDocumentUrl já vem do backend com o document token correto (não usar auth token)
+      // Tenta compartilhar/salvar o PDF usando Sharing API; fallback para browser
+      const { Sharing } = await import('expo-sharing');
+      const { FileSystem } = await import('expo-file-system');
+      if (Sharing && FileSystem) {
+        const fileName = `renoveja_${request.requestType}_${request.id.slice(0, 8)}.pdf`;
+        const localUri = FileSystem.cacheDirectory + fileName;
+        const download = await FileSystem.downloadAsync(request.signedDocumentUrl, localUri);
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(download.uri, { mimeType: 'application/pdf', dialogTitle: 'Salvar documento' });
+          return;
+        }
+      }
+      // Fallback: abre no browser
       await WebBrowser.openBrowserAsync(request.signedDocumentUrl);
     } catch (e: unknown) {
-      Alert.alert('Erro', (e as Error)?.message || String(e) || 'Não foi possível abrir o documento');
+      // Fallback: abre no browser se download/sharing falhar
+      try {
+        await WebBrowser.openBrowserAsync(request.signedDocumentUrl);
+      } catch {
+        Alert.alert('Erro', (e as Error)?.message || String(e) || 'Não foi possível baixar o documento');
+      }
     }
   };
 
@@ -267,7 +314,6 @@ export default function RequestDetailScreen() {
     if (!request?.signedDocumentUrl) return;
     try {
       await markAsDeliveredIfSigned();
-      // signedDocumentUrl já vem do backend com o document token correto (não usar auth token)
       await WebBrowser.openBrowserAsync(request.signedDocumentUrl);
     } catch (e: unknown) {
       Alert.alert('Erro', (e as Error)?.message || String(e) || 'Não foi possível abrir o documento.');
@@ -439,7 +485,7 @@ export default function RequestDetailScreen() {
             </View>
             <Text style={styles.nextActionText}>{nextAction.statusSummary}</Text>
           </View>
-          <Text style={styles.nextActionLabel}>Proximo passo</Text>
+          <Text style={styles.nextActionLabel}>Próximo passo</Text>
           <Text style={styles.nextActionBody}>{nextAction.whatToDo}</Text>
           <Text style={styles.nextActionEta}>{nextAction.eta}</Text>
           {nextActionQuickCta ? (
@@ -596,7 +642,7 @@ export default function RequestDetailScreen() {
             style={styles.formSection}
             contentStyle={styles.formSectionContent}
           >
-            <Text style={styles.symptomsText} numberOfLines={4} ellipsizeMode="tail">{request.symptoms}</Text>
+            <ExpandableText text={request.symptoms} maxLines={4} style={styles.symptomsText} />
           </FormSection>
         )}
 

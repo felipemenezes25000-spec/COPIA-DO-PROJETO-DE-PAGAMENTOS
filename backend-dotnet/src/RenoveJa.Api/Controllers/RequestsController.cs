@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RenoveJa.Application.DTOs.Requests;
 using RenoveJa.Application.Interfaces;
+using RenoveJa.Domain.Interfaces;
 using System.Security.Claims;
 
 namespace RenoveJa.Api.Controllers;
@@ -20,6 +21,7 @@ public class RequestsController(
     IAuditEventService auditEventService,
     IClinicalSummaryService clinicalSummaryService,
     IConsultationEncounterService consultationEncounterService,
+    IDoctorPatientNotesRepository doctorPatientNotesRepository,
     ILogger<RequestsController> logger) : ControllerBase
 {
     private static readonly string[] AllowedImageContentTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"];
@@ -314,7 +316,11 @@ public class RequestsController(
         var profile = await requestService.GetPatientProfileForDoctorAsync(doctorId, patientId, cancellationToken);
 
         if (requests.Count == 0)
-            return Ok(new { summary = (string?)null, fallback = (string?)null });
+        {
+            var emptyNotes = await doctorPatientNotesRepository.GetNotesAsync(doctorId, patientId, cancellationToken);
+            var emptyDoctorNotes = emptyNotes.Select(n => new DoctorNoteDto(n.Id, n.NoteType, n.Content, n.RequestId, n.CreatedAt, n.UpdatedAt)).ToList();
+            return Ok(new { summary = (string?)null, fallback = (string?)null, doctorNotes = emptyDoctorNotes });
+        }
 
         var patientName = profile?.Name ?? requests[0].PatientName ?? "Paciente";
 
@@ -431,9 +437,48 @@ public class RequestsController(
             alerts = structured.Alerts
         } : (object?)null;
 
+        var notes = await doctorPatientNotesRepository.GetNotesAsync(doctorId, patientId, cancellationToken);
+        var doctorNotes = notes.Select(n => new DoctorNoteDto(n.Id, n.NoteType, n.Content, n.RequestId, n.CreatedAt, n.UpdatedAt)).ToList();
+
         _ = auditEventService.LogReadAsync(doctorId, "PatientClinicalSummary", patientId, "api", HttpContext.Connection.RemoteIpAddress?.ToString(), HttpContext.Request.Headers.UserAgent.ToString(), cancellationToken: cancellationToken);
 
-        return Ok(new { summary = narrative, fallback, structured = structuredDto });
+        return Ok(new { summary = narrative, fallback, structured = structuredDto, doctorNotes });
+    }
+
+    private static readonly HashSet<string> ValidNoteTypes = ["progress_note", "clinical_impression", "addendum", "observation"];
+
+    /// <summary>
+    /// Médico adiciona nota clínica ao prontuário do paciente.
+    /// Tipos: progress_note (evolução), clinical_impression (impressão diagnóstica), addendum (complemento), observation (observação livre).
+    /// </summary>
+    [HttpPost("by-patient/{patientId}/doctor-notes")]
+    [Authorize(Roles = "doctor")]
+    public async Task<IActionResult> AddDoctorPatientNote(
+        Guid patientId,
+        [FromBody] CreateDoctorNoteDto dto,
+        CancellationToken cancellationToken)
+    {
+        var doctorId = GetUserId();
+        var requests = await requestService.GetPatientRequestsAsync(doctorId, patientId, cancellationToken);
+        if (requests.Count == 0)
+            return NotFound(new { error = "Paciente não encontrado ou sem acesso ao prontuário." });
+
+        var noteType = (dto.NoteType ?? "progress_note").Trim().ToLowerInvariant();
+        if (!ValidNoteTypes.Contains(noteType))
+            return BadRequest(new { error = $"Tipo inválido. Use: {string.Join(", ", ValidNoteTypes)}" });
+
+        var content = (dto.Content ?? "").Trim();
+        if (string.IsNullOrEmpty(content))
+            return BadRequest(new { error = "Conteúdo da nota é obrigatório." });
+
+        Guid? requestId = dto.RequestId;
+        if (requestId.HasValue && !requests.Any(r => r.Id == requestId.Value))
+            return BadRequest(new { error = "RequestId não pertence ao prontuário do paciente." });
+
+        var entity = await doctorPatientNotesRepository.AddNoteAsync(doctorId, patientId, noteType, content, requestId, cancellationToken);
+        var note = new DoctorNoteDto(entity.Id, entity.NoteType, entity.Content, entity.RequestId, entity.CreatedAt, entity.UpdatedAt);
+        _ = auditEventService.LogReadAsync(doctorId, "DoctorPatientNote", patientId, "api", HttpContext.Connection.RemoteIpAddress?.ToString(), HttpContext.Request.Headers.UserAgent.ToString(), cancellationToken: cancellationToken);
+        return Ok(note);
     }
 
     private static string BuildFallbackSummary(

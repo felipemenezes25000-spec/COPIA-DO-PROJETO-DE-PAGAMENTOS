@@ -150,7 +150,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (parsedDoctorProfile) setDoctorProfile(parsedDoctorProfile);
         setLoading(false);
 
-        // Valida token em background (sem travar a abertura). Se falhar, desloga.
+        // Valida token em background (sem travar a abertura).
+        // Só desloga em erros de autenticação (401/403); falhas de rede ou timeout mantêm a sessão em cache.
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 6000);
         try {
@@ -161,8 +162,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (currentUser.role === 'doctor' && parsedDoctorProfile) {
             setDoctorProfile(parsedDoctorProfile);
           }
-        } catch {
-          await clearAuth();
+        } catch (err: unknown) {
+          const status = (err as { status?: number })?.status;
+          const isAborted = err instanceof Error && err.name === 'AbortError';
+          if (status === 401 || status === 403) {
+            // Token inválido ou expirado: desloga
+            await clearAuth();
+          } else if (!isAborted) {
+            // Falha de rede, 5xx, timeout — mantém sessão com dados em cache
+            if (__DEV__) console.warn('[AuthContext] Validação background falhou (rede/servidor), mantendo sessão em cache:', err);
+          }
         } finally {
           clearTimeout(timeoutId);
         }

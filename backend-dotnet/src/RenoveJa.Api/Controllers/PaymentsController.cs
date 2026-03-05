@@ -388,10 +388,11 @@ public class PaymentsController(
         // Validar assinatura HMAC do Mercado Pago (usa id da URL quando presente, senão do body)
         // Em Development, pula validação HMAC para facilitar testes com ngrok
         var webhookSecret = mpConfig.Value.WebhookSecret;
-        var isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")?.Equals("Development", StringComparison.OrdinalIgnoreCase) == true;
         var xRequestId = Request.Headers["x-request-id"].FirstOrDefault();
 
-        if (!isDevelopment && !string.IsNullOrWhiteSpace(webhookSecret) && !webhookSecret.Contains("YOUR_"))
+        // Valida HMAC sempre que o secret estiver configurado, independente do ambiente.
+        // Nunca bypassar em Development: um atacante poderia setar ASPNETCORE_ENVIRONMENT=Development.
+        if (!string.IsNullOrWhiteSpace(webhookSecret) && !webhookSecret.Contains("YOUR_"))
         {
             var xSignature = Request.Headers["x-signature"].FirstOrDefault();
 
@@ -413,9 +414,10 @@ public class PaymentsController(
                 return Unauthorized(new { error = "Invalid webhook signature" });
             }
         }
-        else if (isDevelopment)
+        else
         {
-            logger.LogInformation("Webhook: validação HMAC desabilitada em Development");
+            // Secret não configurado: aceita o webhook mas avisa — deve ser configurado em produção
+            logger.LogWarning("Webhook: MercadoPago:WebhookSecret não configurado — validação HMAC desabilitada. Configure a variável para habilitar.");
         }
 
         // Persistir WebhookEvent antes do processamento para rastreamento completo

@@ -184,8 +184,11 @@ public class RequestService(
 
     private static string GenerateAccessCode(Guid requestId)
     {
-        var hash = requestId.GetHashCode();
-        return (Math.Abs(hash) % 1_000_000).ToString("D6");
+        // Usa SHA256 do requestId como fallback determinístico — mais seguro que GetHashCode()
+        // (GetHashCode não é estável entre processos e é trivialmente reversível)
+        var bytes = SHA256.HashData(requestId.ToByteArray());
+        var value = BitConverter.ToUInt32(bytes, 0) % 1_000_000;
+        return value.ToString("D6");
     }
 
     private static string ComputeSha256(string input)
@@ -249,9 +252,18 @@ public class RequestService(
 
         medicalRequest = await requestRepository.CreateAsync(medicalRequest, cancellationToken) ?? medicalRequest;
 
-        var autoObs = GenerateAutoObservation(RequestType.Prescription, prescriptionType);
-        medicalRequest.SetAutoObservation(autoObs);
-        medicalRequest = await requestRepository.UpdateAsync(medicalRequest, cancellationToken) ?? medicalRequest;
+        // AutoObservation em update separado — sem transação no Supabase HTTP.
+        // Falha aqui não deve abortar a criação do pedido (o médico pode processar mesmo sem ela).
+        try
+        {
+            var autoObs = GenerateAutoObservation(RequestType.Prescription, prescriptionType);
+            medicalRequest.SetAutoObservation(autoObs);
+            medicalRequest = await requestRepository.UpdateAsync(medicalRequest, cancellationToken) ?? medicalRequest;
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex, "Falha ao salvar AutoObservation para receita {RequestId}. Pedido criado sem ela.", medicalRequest.Id);
+        }
 
         try
         {
@@ -299,9 +311,17 @@ public class RequestService(
 
         medicalRequest = await requestRepository.CreateAsync(medicalRequest, cancellationToken) ?? medicalRequest;
 
-        var autoObs = GenerateAutoObservation(RequestType.Exam, examType: request.ExamType);
-        medicalRequest.SetAutoObservation(autoObs);
-        medicalRequest = await requestRepository.UpdateAsync(medicalRequest, cancellationToken) ?? medicalRequest;
+        // AutoObservation em update separado — sem transação no Supabase HTTP.
+        try
+        {
+            var autoObs = GenerateAutoObservation(RequestType.Exam, examType: request.ExamType);
+            medicalRequest.SetAutoObservation(autoObs);
+            medicalRequest = await requestRepository.UpdateAsync(medicalRequest, cancellationToken) ?? medicalRequest;
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex, "Falha ao salvar AutoObservation para exame {RequestId}. Pedido criado sem ela.", medicalRequest.Id);
+        }
 
         try
         {
@@ -384,9 +404,17 @@ public class RequestService(
 
         medicalRequest = await requestRepository.CreateAsync(medicalRequest, cancellationToken) ?? medicalRequest;
 
-        var autoObs = GenerateAutoObservation(RequestType.Consultation);
-        medicalRequest.SetAutoObservation(autoObs);
-        medicalRequest = await requestRepository.UpdateAsync(medicalRequest, cancellationToken) ?? medicalRequest;
+        // AutoObservation em update separado — sem transação no Supabase HTTP.
+        try
+        {
+            var autoObs = GenerateAutoObservation(RequestType.Consultation);
+            medicalRequest.SetAutoObservation(autoObs);
+            medicalRequest = await requestRepository.UpdateAsync(medicalRequest, cancellationToken) ?? medicalRequest;
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex, "Falha ao salvar AutoObservation para consulta {RequestId}. Pedido criado sem ela.", medicalRequest.Id);
+        }
 
         // Debitar minutos gratuitos do banco de horas
         if (freeMinutes > 0)

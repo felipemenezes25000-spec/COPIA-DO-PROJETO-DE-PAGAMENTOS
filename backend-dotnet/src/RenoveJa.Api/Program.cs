@@ -293,6 +293,7 @@ builder.Services.AddScoped<IMedicalDocumentRepository, MedicalDocumentRepository
 builder.Services.AddScoped<IConsentRepository, ConsentRepository>();
 builder.Services.AddScoped<IAuditEventRepository, AuditEventRepository>();
 builder.Services.AddScoped<IAiSuggestionRepository, AiSuggestionRepository>();
+builder.Services.AddScoped<IDoctorPatientNotesRepository, DoctorPatientNotesRepository>();
 builder.Services.AddScoped<ICarePlanRepository, CarePlanRepository>();
 builder.Services.AddScoped<ICarePlanTaskRepository, CarePlanTaskRepository>();
 builder.Services.AddScoped<IOutboxEventRepository, OutboxEventRepository>();
@@ -576,9 +577,15 @@ app.Use(async (context, next) =>
     await next();
 });
 
-// Swagger habilitado em Development e Production (Render) para debug/testes
-app.UseSwagger();
-app.UseSwaggerUI();
+// Swagger habilitado apenas em Development ou quando SWAGGER_ENABLED=true (ex.: staging)
+// Em Production sem flag, Swagger fica desabilitado para não expor a API publicamente
+var swaggerEnabled = app.Environment.IsDevelopment()
+    || string.Equals(Environment.GetEnvironmentVariable("SWAGGER_ENABLED"), "true", StringComparison.OrdinalIgnoreCase);
+if (swaggerEnabled)
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 

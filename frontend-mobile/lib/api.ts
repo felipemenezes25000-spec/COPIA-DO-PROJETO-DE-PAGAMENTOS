@@ -855,11 +855,23 @@ export interface PatientClinicalSummaryStructured {
   alerts: string[];
 }
 
+/** Nota clínica do médico (FHIR/Epic-inspired). */
+export interface DoctorNoteDto {
+  id: string;
+  noteType: string;
+  content: string;
+  requestId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** Resposta do resumo clínico (IA ou fallback). */
 export interface PatientClinicalSummaryResponse {
   summary: string | null;
   fallback: string | null;
   structured?: PatientClinicalSummaryStructured | null;
+  /** Notas clínicas do médico (progress_note, clinical_impression, addendum, observation). */
+  doctorNotes?: DoctorNoteDto[];
 }
 
 /** Médico obtém resumo narrativo completo do prontuário (IA). Consolida tudo em um texto único. */
@@ -874,6 +886,26 @@ export async function getPatientClinicalSummary(
   } catch {
     return { summary: null, fallback: null };
   }
+}
+
+/** Tipos de nota clínica (FHIR/Epic-inspired). */
+export const DOCTOR_NOTE_TYPES = [
+  { key: 'progress_note', label: 'Evolução', icon: 'document-text' },
+  { key: 'clinical_impression', label: 'Impressão diagnóstica', icon: 'medical' },
+  { key: 'addendum', label: 'Complemento', icon: 'add-circle' },
+  { key: 'observation', label: 'Observação', icon: 'eye' },
+] as const;
+
+/** Médico adiciona nota clínica ao prontuário. */
+export async function addDoctorPatientNote(
+  patientId: string,
+  data: { noteType: string; content: string; requestId?: string | null }
+): Promise<DoctorNoteDto> {
+  return apiClient.post(`/api/requests/by-patient/${patientId}/doctor-notes`, {
+    noteType: data.noteType,
+    content: data.content.trim(),
+    requestId: data.requestId ?? null,
+  });
 }
 
 // ALIASES (for convenience in screens)
