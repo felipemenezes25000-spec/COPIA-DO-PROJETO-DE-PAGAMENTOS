@@ -48,9 +48,11 @@ public class VerificationController(
         [FromQuery] string? _secretCode,
         CancellationToken cancellationToken)
     {
-        // Guia ITI Cap. IV: _format deve ser exatamente "application/validador-iti+json" (literal)
-        if (string.Equals(_format, "application/validador-iti+json", StringComparison.Ordinal) &&
-            !string.IsNullOrWhiteSpace(_secretCode))
+        // Guia ITI Cap. IV: _format deve ser "application/validador-iti+json" (literal).
+        // Em query strings, + é decodificado como espaço, então aceitar ambas as formas.
+        var formatMatch = string.Equals(_format, "application/validador-iti+json", StringComparison.Ordinal)
+            || string.Equals(_format, "application/validador-iti json", StringComparison.Ordinal);
+        if (formatMatch && !string.IsNullOrWhiteSpace(_secretCode))
         {
             logger.LogInformation("Verify ITI: requestId={RequestId}", id);
             try
