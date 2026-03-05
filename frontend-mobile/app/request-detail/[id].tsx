@@ -608,7 +608,7 @@ export default function RequestDetailScreen() {
               <Text style={styles.cardTitle}>Análise IA</Text>
               {request.aiRiskLevel && (
                 <View style={[styles.riskBadge, { backgroundColor: request.aiRiskLevel === 'high' ? colors.errorLight : request.aiRiskLevel === 'medium' ? colors.warningLight : colors.successLight }]}>
-                  <Text style={[styles.riskText, { color: request.aiRiskLevel === 'high' ? colors.error : request.aiRiskLevel === 'medium' ? colors.warning : colors.success }]}}>
+                  <Text style={[styles.riskText, { color: request.aiRiskLevel === 'high' ? colors.error : request.aiRiskLevel === 'medium' ? colors.warning : colors.success }]}>
                     {getRiskLabelPt(request.aiRiskLevel)}
                   </Text>
                 </View>
