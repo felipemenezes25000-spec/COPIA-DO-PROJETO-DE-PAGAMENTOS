@@ -22,6 +22,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { updateDoctorProfile } from '../../lib/api';
 import { showToast } from '../../components/ui/Toast';
 import { fetchAddressByCep } from '../../lib/viacep';
+import { haptics } from '../../lib/haptics';
+import { FadeIn } from '../../components/ui/FadeIn';
+import { motionTokens } from '../../lib/ui/motion';
 
 function formatCep(value: string) {
   const d = (value || '').replace(/\D/g, '').slice(0, 8);
@@ -184,6 +187,7 @@ export default function DoctorProfile() {
         )}
       </LinearGradient>
 
+      <FadeIn visible {...motionTokens.fade.doctorSection} delay={40} fill={false}>
       {/* Dados para assinar receitas */}
       <View style={styles.recipeDataCard}>
         <Text style={styles.recipeDataTitle}>DADOS PARA ASSINAR RECEITAS</Text>
@@ -265,7 +269,10 @@ export default function DoctorProfile() {
         />
         <TouchableOpacity
           style={[styles.saveRecipeDataBtn, saving && styles.saveRecipeDataBtnDisabled]}
-          onPress={saveRecipeData}
+          onPress={() => {
+            haptics.selection();
+            void saveRecipeData();
+          }}
           disabled={saving}
           activeOpacity={0.8}
         >
@@ -287,7 +294,10 @@ export default function DoctorProfile() {
                 <Pressable
                   key={item.label}
                   style={({ pressed }) => [styles.menuItemCard, pressed && styles.menuItemPressed]}
-                  onPress={() => router.push(item.route as Parameters<typeof router.push>[0])}
+                  onPress={() => {
+                    haptics.selection();
+                    router.push(item.route as Parameters<typeof router.push>[0]);
+                  }}
                   accessibilityRole="button"
                 >
                   <View style={styles.menuIconWrap}>
@@ -316,7 +326,10 @@ export default function DoctorProfile() {
 
       <TouchableOpacity
         style={styles.logoutBtn}
-        onPress={handleLogout}
+        onPress={() => {
+          haptics.selection();
+          handleLogout();
+        }}
         activeOpacity={0.8}
         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         accessibilityRole="button"
@@ -328,6 +341,7 @@ export default function DoctorProfile() {
 
       <Text style={styles.version}>RENOVEJA+ V1.0.0</Text>
       <View style={{ height: insets.bottom + 24 }} />
+      </FadeIn>
     </ScrollView>
   );
 }
@@ -337,14 +351,14 @@ const styles = StyleSheet.create({
 
   header: {
     alignItems: 'center',
-    paddingBottom: 32,
+    paddingBottom: 24,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
   avatarCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderWidth: 2.5,
     borderColor: 'rgba(255,255,255,0.35)',
@@ -353,13 +367,13 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   avatarText: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
     color: '#fff',
     letterSpacing: 1,
   },
   headerName: {
-    fontSize: 20,
+    fontSize: 18,
     fontFamily: typography.fontFamily.bold,
     fontWeight: '700',
     color: '#fff',
@@ -390,7 +404,7 @@ const styles = StyleSheet.create({
   },
 
   recipeDataCard: {
-    marginTop: 24,
+    marginTop: 14,
     marginHorizontal: pad,
     backgroundColor: colors.surface,
     borderRadius: 14,
@@ -453,7 +467,7 @@ const styles = StyleSheet.create({
   },
 
   menuSection: {
-    marginTop: 24,
+    marginTop: 18,
     paddingHorizontal: pad,
   },
   sectionTitle: {
@@ -466,20 +480,17 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   menuItemsColumn: {
-    gap: 8,
+    gap: 6,
   },
   menuItemCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   menuItemPressed: {
     opacity: 0.85,
@@ -523,7 +534,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     marginHorizontal: pad,
-    marginTop: 32,
+    marginTop: 20,
     paddingVertical: 14,
     borderRadius: 14,
     backgroundColor: '#FEE2E2',

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Pressable, StyleSheet, ViewStyle } from 'react-native';
+import { View, Pressable, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { theme } from '../../lib/theme';
 
 const c = theme.colors;
@@ -9,7 +9,7 @@ type CardVariant = 'default' | 'elevated' | 'outlined';
 
 interface AppCardProps {
   children: React.ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   variant?: CardVariant;
   noPadding?: boolean;
   selected?: boolean;

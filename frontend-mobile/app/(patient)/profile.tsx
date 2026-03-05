@@ -19,6 +19,9 @@ import { colors, gradients, shadows } from '../../lib/theme';
 import { uiTokens } from '../../lib/ui/tokens';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTriageEval } from '../../hooks/useTriageEval';
+import { haptics } from '../../lib/haptics';
+import { FadeIn } from '../../components/ui/FadeIn';
+import { motionTokens } from '../../lib/ui/motion';
 
 export default function PatientProfile() {
   const router = useRouter();
@@ -102,6 +105,7 @@ export default function PatientProfile() {
         <Text style={styles.userEmail} numberOfLines={1} ellipsizeMode="tail">{user?.email || ''}</Text>
       </LinearGradient>
 
+      <FadeIn visible {...motionTokens.fade.patientSection} delay={40} fill={false}>
       {/* Info Card - overlapping */}
       <View style={styles.infoCard}>
         <InfoRow icon="call-outline" label="Telefone" value={user?.phone || 'Não informado'} />
@@ -128,7 +132,10 @@ export default function PatientProfile() {
               <Pressable
                 key={item.label}
                 style={({ pressed }) => [styles.menuItemCard, pressed && styles.menuItemPressed]}
-                onPress={item.onPress}
+                onPress={() => {
+                  haptics.selection();
+                  item.onPress();
+                }}
                 accessibilityRole="button"
                 accessibilityLabel={item.label}
               >
@@ -148,7 +155,10 @@ export default function PatientProfile() {
       {/* Logout */}
       <TouchableOpacity
         style={styles.logoutButton}
-        onPress={handleLogout}
+        onPress={() => {
+          haptics.selection();
+          handleLogout();
+        }}
         disabled={logoutLoading}
         activeOpacity={0.8}
         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -168,6 +178,7 @@ export default function PatientProfile() {
       <Text style={styles.version}>RenoveJá+ v{require('expo-constants').default?.expoConfig?.version ?? '1.0.0'}</Text>
 
       <View style={{ height: insets.bottom + 24 }} />
+      </FadeIn>
     </ScrollView>
   );
 }
@@ -192,14 +203,14 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     paddingHorizontal: uiTokens.screenPaddingHorizontal,
-    paddingBottom: 50,
+    paddingBottom: 30,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
   },
   avatarCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: 'rgba(255,255,255,0.25)',
     borderWidth: 3,
     borderColor: 'rgba(255,255,255,0.5)',
@@ -208,12 +219,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   avatarText: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
     color: '#fff',
   },
   userName: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: '#fff',
   },
@@ -227,13 +238,13 @@ const styles = StyleSheet.create({
   infoCard: {
     backgroundColor: colors.surface,
     marginHorizontal: uiTokens.screenPaddingHorizontal,
-    marginTop: -30,
+    marginTop: -18,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderBottomLeftRadius: 14,
     borderBottomRightRadius: 14,
     padding: 16,
-    ...shadows.cardLg,
+    ...shadows.card,
   },
   infoRow: {
     flexDirection: 'row',
@@ -271,16 +282,17 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   menuItemsColumn: {
-    gap: 8,
+    gap: 6,
   },
   menuItemCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 14,
-    ...shadows.card,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   menuItemPressed: {
     opacity: 0.85,
@@ -315,9 +327,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     marginHorizontal: uiTokens.screenPaddingHorizontal,
-    marginTop: 28,
+    marginTop: 22,
     paddingVertical: 14,
-    borderRadius: 26,
+    borderRadius: 14,
     backgroundColor: colors.errorLight,
     borderWidth: 1,
     borderColor: '#FECACA',

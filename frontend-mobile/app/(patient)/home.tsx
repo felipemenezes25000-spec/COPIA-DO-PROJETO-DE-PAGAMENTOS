@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -24,7 +24,7 @@ import { StatsCard } from '../../components/StatsCard';
 import { LargeActionCard } from '../../components/ui/LargeActionCard';
 import { InfoCard } from '../../components/ui/InfoCard';
 import { HeaderInfo } from '../../components/ui/HeaderInfo';
-import { EmptyState } from '../../components/EmptyState';
+import { AppEmptyState } from '../../components/ui';
 import { SkeletonList } from '../../components/ui/SkeletonLoader';
 import { FadeIn } from '../../components/ui/FadeIn';
 import { useTriageEval } from '../../hooks/useTriageEval';
@@ -33,6 +33,12 @@ import {
   incrementHomeVisit,
   dismissHomeInfoCard,
 } from '../../lib/triage/triagePersistence';
+import { haptics } from '../../lib/haptics';
+import { showToast } from '../../components/ui/Toast';
+import { getNextBestActionForRequest } from '../../lib/domain/assistantIntelligence';
+import { getAssistantNextAction } from '../../lib/api';
+import type { AssistantNextActionResponseData } from '../../lib/api';
+import { motionTokens } from '../../lib/ui/motion';
 
 export default function PatientHome() {
   const router = useRouter();
@@ -52,10 +58,13 @@ export default function PatientHome() {
     }, [])
   );
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (withFeedback = false) => {
     try {
       const response = await getRequests({ page: 1, pageSize: 50 });
       setRequests(response.items || []);
+      if (withFeedback) {
+        showToast({ message: 'Início atualizado', type: 'success' });
+      }
     } catch (error: unknown) {
       const status = (error as { status?: number })?.status;
       if (status === 401) {
@@ -66,6 +75,9 @@ export default function PatientHome() {
         console.error('Error loading data:', error);
         setRequests([]);
       }
+      if (withFeedback) {
+        showToast({ message: 'Não foi possível atualizar o início', type: 'error' });
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -75,8 +87,9 @@ export default function PatientHome() {
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
   const onRefresh = () => {
+    haptics.light();
     setRefreshing(true);
-    loadData();
+    loadData(true);
   };
 
   const stats = useMemo(() => ({
@@ -154,6 +167,56 @@ export default function PatientHome() {
     return [...new Set(meds)];
   }, [requests]);
 
+  const followUpRequest = useMemo(() => {
+    if (requests.length === 0) return null;
+    const priorityMap: Record<string, number> = {
+      approved_pending_payment: 100,
+      pending_payment: 100,
+      consultation_ready: 95,
+      signed: 90,
+      in_review: 80,
+      submitted: 70,
+      searching_doctor: 65,
+      paid: 60,
+      in_consultation: 50,
+    };
+
+    return [...requests]
+      .filter((request) => !['delivered', 'consultation_finished', 'rejected', 'cancelled'].includes(request.status))
+      .sort((a, b) => (priorityMap[b.status] ?? 0) - (priorityMap[a.status] ?? 0))[0] ?? null;
+  }, [requests]);
+
+  const [followUpActionFromApi, setFollowUpActionFromApi] = useState<AssistantNextActionResponseData | null>(null);
+
+  useEffect(() => {
+    if (!followUpRequest?.id) {
+      setFollowUpActionFromApi(null);
+      return;
+    }
+    let cancelled = false;
+    getAssistantNextAction({ requestId: followUpRequest.id })
+      .then((res) => { if (!cancelled) setFollowUpActionFromApi(res); })
+      .catch(() => {
+        if (!cancelled && followUpRequest) {
+          const local = getNextBestActionForRequest(followUpRequest);
+          setFollowUpActionFromApi({
+            title: local.title,
+            statusSummary: local.statusSummary,
+            whatToDo: local.whatToDo,
+            eta: local.eta,
+            ctaLabel: local.ctaLabel ?? null,
+            intent: local.intent,
+          });
+        }
+      });
+    return () => { cancelled = true; };
+  }, [followUpRequest?.id]);
+
+  const followUpAction = followUpActionFromApi ?? (followUpRequest ? (() => {
+    const local = getNextBestActionForRequest(followUpRequest);
+    return { ...local, ctaLabel: local.ctaLabel ?? null };
+  })() : null);
+
   useTriageEval({
     context: 'home',
     step: 'idle',
@@ -175,7 +238,7 @@ export default function PatientHome() {
           <SkeletonList count={4} />
         </View>
       ) : (
-        <FadeIn visible={!loading} duration={300}>
+        <FadeIn visible={!loading} {...motionTokens.fade.patient}>
         <ScrollView
           style={styles.container}
           contentContainerStyle={[styles.content, { paddingBottom: listPadding }]}
@@ -204,6 +267,7 @@ export default function PatientHome() {
           <Pressable
             style={({ pressed }) => [styles.avatarBtn, pressed && { opacity: 0.8 }]}
             onPress={() => router.push('/(patient)/profile')}
+            onPressIn={haptics.selection}
             accessibilityRole="button"
             accessibilityLabel="Abrir perfil"
           >
@@ -213,6 +277,7 @@ export default function PatientHome() {
       </LinearGradient>
 
       {/* Stats: três cards brancos flutuando sobre o fundo cinza */}
+      <FadeIn visible={!loading} {...motionTokens.fade.patientSection} delay={50} fill={false}>
       <View style={styles.statsRow}>
         <StatsCard
           icon="analytics"
@@ -240,7 +305,34 @@ export default function PatientHome() {
         />
       </View>
 
+      {followUpRequest && followUpAction ? (
+        <View style={styles.section}>
+          <Pressable
+            style={({ pressed }) => [styles.followUpCard, pressed && { opacity: 0.9 }]}
+            onPress={() => router.push(`/request-detail/${followUpRequest.id}`)}
+            onPressIn={haptics.selection}
+            accessibilityRole="button"
+            accessibilityLabel="Abrir próximo passo do pedido"
+          >
+            <View style={styles.followUpHeader}>
+              <View style={styles.followUpIcon}>
+                <Ionicons name="sparkles-outline" size={18} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.followUpTitle}>Dra. RenoveJa: seu proximo passo</Text>
+                <Text style={styles.followUpSubtitle}>{followUpAction.title}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </View>
+            <Text style={styles.followUpBody}>{followUpAction.whatToDo}</Text>
+            <Text style={styles.followUpEta}>{followUpAction.eta}</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      </FadeIn>
+
       {/* ─── InfoCard da triagem (explicação) ─── */}
+      <FadeIn visible={!loading} {...motionTokens.fade.patientSection} delay={100} fill={false}>
       <View style={styles.aiBannerWrap}>
         {showInfoCard && (
           <InfoCard
@@ -255,8 +347,10 @@ export default function PatientHome() {
           />
         )}
       </View>
+      </FadeIn>
 
       {/* ─── Quick Actions (largura total, menos margem) ─── */}
+      <FadeIn visible={!loading} {...motionTokens.fade.patientSectionLong} delay={140} fill={false}>
       <View style={styles.actionsSection}>
         <HeaderInfo
           title="Falar com um profissional de saúde"
@@ -264,6 +358,18 @@ export default function PatientHome() {
           accessibilityLabel="Falar com um profissional de saúde. Acesse um profissional médico para: renovar receitas, solicitar exames ou consulta por teleatendimento."
         />
         <View style={styles.actionsColumn}>
+          <LargeActionCard
+            icon={
+              <View style={[styles.actionIconBox, { backgroundColor: colors.primarySoft }]}>
+                <Ionicons name="add-circle" size={24} color={colors.primary} />
+              </View>
+            }
+            title="Novo pedido"
+            description="Renovar receita, pedir exame ou consulta por vídeo. A Dra. RenoveJa te guia."
+            variant="primary"
+            onPress={() => router.push('/new-request' as any)}
+            accessibilityLabel="Iniciar novo pedido: renovar receita, exame ou consulta"
+          />
           <LargeActionCard
             icon={
               <View style={[styles.actionIconBox, { backgroundColor: colors.primarySoft }]}>
@@ -302,12 +408,17 @@ export default function PatientHome() {
           />
         </View>
       </View>
+      </FadeIn>
 
       {/* ─── Prontuário ─── */}
+      <FadeIn visible={!loading} {...motionTokens.fade.patientSection} delay={200} fill={false}>
       <View style={styles.section}>
         <Pressable
           style={({ pressed }) => [styles.recordCard, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}
-          onPress={() => router.push('/(patient)/record')}
+          onPress={() => {
+            haptics.selection();
+            router.push('/(patient)/record');
+          }}
           accessibilityRole="button"
           accessibilityLabel="Abrir meu prontuário médico"
         >
@@ -321,14 +432,19 @@ export default function PatientHome() {
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
         </Pressable>
       </View>
+      </FadeIn>
 
       {/* ─── Recent Requests ─── */}
+      <FadeIn visible={!loading} {...motionTokens.fade.patientSectionLong} delay={240} fill={false}>
       {recentRequests.length > 0 ? (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Pedidos recentes</Text>
             <Pressable
-              onPress={() => router.push('/(patient)/requests')}
+              onPress={() => {
+                haptics.selection();
+                router.push('/(patient)/requests');
+              }}
               style={({ pressed }) => [styles.seeAllBtn, pressed && { opacity: 0.7 }]}
               accessibilityRole="button"
               accessibilityLabel="Ver todos os pedidos"
@@ -342,19 +458,24 @@ export default function PatientHome() {
             <RequestCard
               key={req.id}
               request={req}
-              onPress={() => router.push(`/request-detail/${req.id}`)}
+              onPress={() => {
+                haptics.selection();
+                router.push(`/request-detail/${req.id}`);
+              }}
+              suppressHorizontalMargin
             />
           ))}
         </View>
       ) : (
         <View style={styles.section}>
-          <EmptyState
+          <AppEmptyState
             icon="document-text-outline"
             title="Nenhum pedido ainda"
             subtitle="Crie sua primeira solicitação usando as opções acima"
           />
         </View>
       )}
+      </FadeIn>
           {/* Espaço extra para não colar na tab bar */}
           <View style={{ height: uiTokens.cardGap * 3 }} />
         </ScrollView>
@@ -526,5 +647,52 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 2,
     lineHeight: 18,
+  },
+  followUpCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.primary + '26',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  followUpHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  followUpIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  followUpTitle: {
+    fontSize: 11,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  followUpSubtitle: {
+    marginTop: 2,
+    fontSize: 15,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: colors.text,
+  },
+  followUpBody: {
+    marginTop: 10,
+    fontSize: 13,
+    fontFamily: 'PlusJakartaSans_400Regular',
+    color: colors.textSecondary,
+    lineHeight: 19,
+  },
+  followUpEta: {
+    marginTop: 6,
+    fontSize: 12,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: colors.textMuted,
   },
 });
