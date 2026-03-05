@@ -5,7 +5,7 @@
  *  1. Solicita permissão de microfone
  *  2. Grava áudio em chunks de CHUNK_DURATION_MS (10s)
  *  3. A cada chunk: para → lê arquivo → envia POST /api/consultation/transcribe (stream: remote)
- *  4. Backend: Whisper transcreve → SessionStore acumula → SignalR broadcast
+ *  4. Backend: Deepgram transcreve → SessionStore acumula → SignalR broadcast
  *  5. Médico: SignalR listener atualiza painel de transcrição/anamnese
  *
  * Compatível com teleconsulta (Daily.co) e consulta presencial.

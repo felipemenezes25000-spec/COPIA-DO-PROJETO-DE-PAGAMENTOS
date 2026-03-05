@@ -71,6 +71,17 @@ describe('triageRulesEngine', () => {
       }));
       expect(result).toBeNull();
     });
+
+    it('suggests medication review when there is high medication burden', () => {
+      const result = evaluateTriageRules(input({
+        context: 'home',
+        totalRequests: 8,
+        recentMedications: ['Losartana', 'Metformina', 'Sinvastatina', 'AAS', 'Omeprazol'],
+        lastConsultationDays: 120,
+      }));
+      expect(result?.key).toBe('home:medication_review');
+      expect(result?.cta).toBe('teleconsulta');
+    });
   });
 
   // ── Prescription context ──────────────────────────────────
@@ -130,6 +141,14 @@ describe('triageRulesEngine', () => {
 
   // ── Exam context ──────────────────────────────────────────
   describe('exam', () => {
+    it('shows high risk exam warning', () => {
+      const result = evaluateTriageRules(input({
+        context: 'exam', step: 'result', aiRiskLevel: 'high',
+      }));
+      expect(result?.key).toBe('exam:high_risk');
+      expect(result?.severity).toBe('attention');
+    });
+
     it('detects complex exams', () => {
       const result = evaluateTriageRules(input({
         context: 'exam', step: 'result', exams: ['Hemograma', 'Ressonância magnética de crânio'],
@@ -168,6 +187,16 @@ describe('triageRulesEngine', () => {
       expect(result?.key).toBe('consult:entry');
     });
 
+    it('escalates when red-flag symptoms are present', () => {
+      const result = evaluateTriageRules(input({
+        context: 'consultation',
+        step: 'symptoms_entered',
+        symptoms: 'Dor no peito e falta de ar',
+      }));
+      expect(result?.key).toBe('consult:red_flags');
+      expect(result?.cta).toBe('teleconsulta');
+    });
+
     it('suggests more details for short symptoms', () => {
       const result = evaluateTriageRules(input({
         context: 'consultation', step: 'symptoms_entered', symptoms: 'Dor de cabeça',
@@ -190,6 +219,20 @@ describe('triageRulesEngine', () => {
         context: 'detail', step: 'idle', status: 'signed',
       }));
       expect(result?.key).toBe('detail:completed');
+    });
+  });
+
+  // ── Doctor detail context ─────────────────────────────────
+  describe('doctor detail', () => {
+    it('prioritizes high risk clinical review for doctors', () => {
+      const result = evaluateTriageRules(input({
+        role: 'doctor',
+        context: 'doctor_detail',
+        step: 'entry',
+        aiRiskLevel: 'high',
+      }));
+      expect(result?.key).toBe('doctor:detail:high_risk');
+      expect(result?.severity).toBe('attention');
     });
   });
 

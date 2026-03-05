@@ -148,7 +148,7 @@ submitted → pending_payment → paid → in_review → approved → signed →
 ### Consultas
 
 ```text
-submitted → searching_doctor → consultation_ready → in_consultation → consultation_finished → completed
+submitted → searching_doctor → approved_pending_payment → paid → in_consultation → consultation_finished → completed
 ```
 
 Esses status são exibidos no app e consumidos diretamente do backend.

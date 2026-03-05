@@ -149,7 +149,7 @@ CREATE TABLE IF NOT EXISTS public.consultation_anamnesis (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_consultation_anamnesis_request_id ON public.consultation_anamnesis(request_id);
 CREATE INDEX IF NOT EXISTS idx_consultation_anamnesis_patient_id        ON public.consultation_anamnesis(patient_id);
 
-COMMENT ON TABLE public.consultation_anamnesis IS 'Transcrição e anamnese da teleconsulta (gerada por IA via Whisper + GPT).';
+COMMENT ON TABLE public.consultation_anamnesis IS 'Transcrição e anamnese da teleconsulta (gerada por IA via Deepgram + GPT).';
 
 -- --------------------------------------------------------
 -- 7. PUSH_TOKENS

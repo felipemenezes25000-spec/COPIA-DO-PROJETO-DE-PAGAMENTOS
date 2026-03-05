@@ -75,7 +75,7 @@ public class ConsultationController(
         var rawText = await transcriptionService.TranscribeAsync(audioBytes, file.FileName, cancellationToken);
         if (string.IsNullOrWhiteSpace(rawText))
         {
-            logger.LogInformation("[Transcribe] Whisper retornou vazio. RequestId={RequestId}", requestId);
+            logger.LogInformation("[Transcribe] Transcrição retornou vazio. RequestId={RequestId}", requestId);
             return Ok(new { transcribed = false, message = "No speech detected or transcription unavailable." });
         }
 
@@ -129,7 +129,7 @@ public class ConsultationController(
 
     /// <summary>
     /// Endpoint de teste de transcrição (apenas Development).
-    /// Aceita um arquivo de áudio e retorna o resultado do Whisper, sem precisar de consulta ativa.
+    /// Aceita um arquivo de áudio e retorna o resultado da transcrição (Deepgram), sem precisar de consulta ativa.
     /// Útil para validar OpenAI:ApiKey e o fluxo de transcrição.
     /// </summary>
     [AllowAnonymous]

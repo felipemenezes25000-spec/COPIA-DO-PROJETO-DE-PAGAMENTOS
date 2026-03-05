@@ -24,12 +24,15 @@ import { evaluateTriageRules } from '../lib/triage/triageRulesEngine';
 import { canShow, markShown, muteKey, resetSessionCounts } from '../lib/triage/triagePersistence';
 import { trackTriageEvent } from '../lib/triage/triageAnalytics';
 import { enrichTriageMessage } from '../lib/triage/triageEnrichmentApi';
+import { getMessagePriority, getMessageTopic } from '../lib/triage/triagePriority';
 import type { TriageMessage, TriageInput } from '../lib/triage/triage.types';
 
 // ── Feature flags ──────────────────────────────────────────
 
 const IS_ENABLED = process.env.EXPO_PUBLIC_TRIAGE_ENABLED !== 'false';
 const IS_AI_ENABLED = process.env.EXPO_PUBLIC_TRIAGE_AI_ENABLED !== 'false';
+const SAME_TOPIC_COOLDOWN_MS = 8 * 60_000;
+const MIN_REPLACE_INTERVAL_MS = 20_000;
 
 // ── Context types ───────────────────────────────────────────
 
@@ -66,6 +69,8 @@ export function TriageAssistantProvider({ children }: { children: React.ReactNod
   const [current, setCurrent] = useState<TriageMessage | null>(null);
   const [history, setHistory] = useState<TriageMessage[]>([]);
   const screenKeyRef = useRef<string | null>(null);
+  const currentShownAtRef = useRef<number>(0);
+  const topicSessionRef = useRef<Record<string, { shownAt: number; priority: number }>>({});
 
   // Reset session counts on mount (app start) — permite mensagens em cada abertura do app
   useEffect(() => {
@@ -81,6 +86,26 @@ export function TriageAssistantProvider({ children }: { children: React.ReactNod
     // Dedupe: mesma key na mesma "tela" → não mostrar de novo
     if (screenKeyRef.current === message.key) return;
 
+    const nextPriority = getMessagePriority(message);
+    const nextTopic = getMessageTopic(message);
+    const now = Date.now();
+
+    // Memória leve por sessão: evita repetição de tópico em curto intervalo,
+    // exceto se a nova mensagem é mais relevante.
+    const topicState = topicSessionRef.current[nextTopic];
+    if (topicState && now - topicState.shownAt < SAME_TOPIC_COOLDOWN_MS && nextPriority <= topicState.priority) {
+      return;
+    }
+
+    // Ranking: evita trocar uma mensagem visível por outra de menor/igual prioridade
+    // em sequência curta, reduzindo "pisca-pisca" do banner.
+    if (current && current.key !== message.key) {
+      const currentPriority = getMessagePriority(current);
+      if (now - currentShownAtRef.current < MIN_REPLACE_INTERVAL_MS && nextPriority <= currentPriority) {
+        return;
+      }
+    }
+
     // Cooldown + mute check
     const allowed = await canShow(message.key, message.cooldownMs);
     if (!allowed) return;
@@ -88,6 +113,8 @@ export function TriageAssistantProvider({ children }: { children: React.ReactNod
     // Show rule message immediately (nunca bloqueia)
     await markShown(message.key);
     screenKeyRef.current = message.key;
+    currentShownAtRef.current = now;
+    topicSessionRef.current[nextTopic] = { shownAt: now, priority: nextPriority };
     setCurrent(message);
 
     if (message.analyticsEvent) {
@@ -127,6 +154,7 @@ export function TriageAssistantProvider({ children }: { children: React.ReactNod
   const clearScreen = useCallback(() => {
     setCurrent(null);
     screenKeyRef.current = null;
+    currentShownAtRef.current = 0;
   }, []);
 
   const muteCurrent = useCallback(async () => {

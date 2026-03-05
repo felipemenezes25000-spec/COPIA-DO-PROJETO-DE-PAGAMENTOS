@@ -14,7 +14,7 @@ Plataforma completa de telemedicina para **renovação de receitas**, **pedidos 
 | **Web** | React (Vite), TypeScript | Página pública de verificação de receitas/exames |
 | **Pagamentos** | Mercado Pago | PIX (QR Code + copia-e-cola), cartão de crédito, Checkout Pro |
 | **Vídeo** | Daily.co | Videochamadas WebRTC para teleconsultas |
-| **IA** | OpenAI GPT-4o, Whisper | Leitura de receitas, triagem, anamnese, sugestão de conduta |
+| **IA** | OpenAI GPT-4o, Deepgram | Leitura de receitas, triagem, anamnese, sugestão de conduta, transcrição |
 | **Assinatura** | ICP-Brasil (PAdES) | Certificado digital A1/A3 para assinatura de PDFs |
 
 ---
@@ -41,7 +41,7 @@ Plataforma completa de telemedicina para **renovação de receitas**, **pedidos 
 - Assinar digitalmente com certificado ICP-Brasil (PFX)
 - Gerar PDF de receita ou pedido de exame
 - Atender consultas por vídeo (Daily.co)
-- Transcrição em tempo real da consulta (Whisper)
+- Transcrição em tempo real da consulta (Deepgram)
 - Anamnese gerada por IA ao final da consulta
 - Gerenciar certificado digital (upload, revogação)
 - Validar CRM via InfoSimples
@@ -252,7 +252,7 @@ Aplique as migrações no SQL Editor do Supabase Dashboard na ordem:
 1. Paciente escolhe tipo (médico clínico ou psicólogo) e duração
 2. Paciente paga antecipadamente
 3. Médico aceita → sala Daily.co criada
-4. Videochamada com transcrição em tempo real (Whisper)
+4. Videochamada com transcrição em tempo real (Deepgram)
 5. Anamnese gerada por IA ao final
 6. Timer de minutos contratados; minutos não usados vão para banco de horas
 

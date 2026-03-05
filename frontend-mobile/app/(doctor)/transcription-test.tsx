@@ -1,5 +1,5 @@
 /**
- * Tela de teste de transcrição — valida Whisper + OpenAI sem consulta ativa.
+ * Tela de teste de transcrição — valida Deepgram sem consulta ativa.
  * Acesse via: router.push('/(doctor)/transcription-test')
  * Requer backend em ASPNETCORE_ENVIRONMENT=Development.
  */
@@ -127,7 +127,7 @@ export default function TranscriptionTestScreen() {
           <Ionicons name="mic" size={48} color={colors.primary} />
           <Text style={styles.title}>Teste de Transcrição</Text>
           <Text style={styles.subtitle}>
-            Grava {RECORD_SECONDS}s de áudio e envia para o backend (Whisper).{'\n'}
+            Grava {RECORD_SECONDS}s de áudio e envia para o backend (Deepgram).{'\n'}
             Requer backend em <Text style={styles.code}>Development</Text> e <Text style={styles.code}>OpenAI:ApiKey</Text> configurada.
           </Text>
 

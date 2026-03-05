@@ -1,5 +1,5 @@
-# Script para testar transcrição (Whisper) via endpoint /api/consultation/transcribe-test
-# Requer: backend rodando em Development, OpenAI:ApiKey configurada
+# Script para testar transcrição (Deepgram) via endpoint /api/consultation/transcribe-test
+# Requer: backend rodando em Development, Deepgram:ApiKey configurada
 # Uso: .\test-transcription.ps1 -AudioFile "caminho\para\audio.m4a"
 # Com token (médico): .\test-transcription.ps1 -AudioFile "audio.m4a" -Token "eyJ..."
 

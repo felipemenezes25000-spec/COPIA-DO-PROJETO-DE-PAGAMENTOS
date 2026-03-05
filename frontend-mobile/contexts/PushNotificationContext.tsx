@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import * as Linking from 'expo-linking';
 import { useAuth } from './AuthContext';
 import { registerPushToken, unregisterPushToken } from '../lib/api';
 import { isExpoGo } from '../lib/expo-go';
@@ -36,7 +37,16 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
     const sub = Notifications.addNotificationReceivedListener(() => {
       setLastNotificationAt(Date.now());
     });
-    return () => sub.remove();
+    const responseSub = Notifications.addNotificationResponseReceivedListener((response: any) => {
+      const deepLink = response?.notification?.request?.content?.data?.deepLink;
+      if (typeof deepLink === 'string' && deepLink.startsWith('renoveja://')) {
+        Linking.openURL(deepLink).catch(() => {});
+      }
+    });
+    return () => {
+      sub.remove();
+      responseSub.remove();
+    };
   }, []);
 
   useEffect(() => {

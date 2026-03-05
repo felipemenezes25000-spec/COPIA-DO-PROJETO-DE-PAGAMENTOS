@@ -8,6 +8,7 @@ using RenoveJa.Application.Services.Requests;
 using RenoveJa.Application.Services.Payments;
 using RenoveJa.Application.Services.Notifications;
 using RenoveJa.Application.Services.Video;
+using RenoveJa.Application.Services.CarePlans;
 using RenoveJa.Application.Services.Doctors;
 using RenoveJa.Application.Services.Verification;
 using RenoveJa.Application.Validators;
@@ -193,6 +194,20 @@ builder.Services.Configure<MercadoPagoConfig>(
 builder.Services.Configure<OpenAIConfig>(
     builder.Configuration.GetSection(OpenAIConfig.SectionName));
 
+// Configure Deepgram (Speech-to-Text da consulta)
+builder.Services.Configure<DeepgramConfig>(options =>
+{
+    options.ApiKey = (_envVars.GetValueOrDefault("DEEPGRAM_API_KEY")
+        ?? Environment.GetEnvironmentVariable("DEEPGRAM_API_KEY")
+        ?? string.Empty).Trim();
+    options.Model = (_envVars.GetValueOrDefault("DEEPGRAM_MODEL")
+        ?? Environment.GetEnvironmentVariable("DEEPGRAM_MODEL")
+        ?? "nova-3").Trim();
+    options.Language = (_envVars.GetValueOrDefault("DEEPGRAM_LANGUAGE")
+        ?? Environment.GetEnvironmentVariable("DEEPGRAM_LANGUAGE")
+        ?? "pt-BR").Trim();
+});
+
 // Configure SMTP para e-mails (recuperação de senha)
 builder.Services.Configure<SmtpConfig>(
     builder.Configuration.GetSection(SmtpConfig.SectionName));
@@ -263,6 +278,10 @@ builder.Services.AddScoped<IEncounterRepository, EncounterRepository>();
 builder.Services.AddScoped<IMedicalDocumentRepository, MedicalDocumentRepository>();
 builder.Services.AddScoped<IConsentRepository, ConsentRepository>();
 builder.Services.AddScoped<IAuditEventRepository, AuditEventRepository>();
+builder.Services.AddScoped<IAiSuggestionRepository, AiSuggestionRepository>();
+builder.Services.AddScoped<ICarePlanRepository, CarePlanRepository>();
+builder.Services.AddScoped<ICarePlanTaskRepository, CarePlanTaskRepository>();
+builder.Services.AddScoped<IOutboxEventRepository, OutboxEventRepository>();
 
 // Register Application Services
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -276,6 +295,7 @@ builder.Services.AddScoped<IDoctorService, DoctorService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IAuditEventService, AuditEventService>();
 builder.Services.AddScoped<IClinicalRecordService, ClinicalRecordService>();
+builder.Services.AddScoped<ICarePlanService, CarePlanService>();
 builder.Services.AddScoped<ISignedRequestClinicalSyncService, SignedRequestClinicalSyncService>();
 builder.Services.AddScoped<IVerificationService, RenoveJa.Application.Services.Verification.VerificationService>();
 
@@ -296,7 +316,7 @@ builder.Services.AddScoped<IClinicalSummaryService, RenoveJa.Infrastructure.AiRe
 builder.Services.AddScoped<ITriageEnrichmentService, RenoveJa.Infrastructure.AiReading.OpenAiTriageEnrichmentService>();
 builder.Services.AddScoped<IPrescriptionVerifyRepository, RenoveJa.Infrastructure.Repositories.PrescriptionVerifyRepository>();
 builder.Services.AddSingleton<IConsultationSessionStore, RenoveJa.Infrastructure.ConsultationAnamnesis.ConsultationSessionStore>();
-builder.Services.AddScoped<ITranscriptionService, RenoveJa.Infrastructure.Transcription.WhisperTranscriptionService>();
+builder.Services.AddScoped<ITranscriptionService, RenoveJa.Infrastructure.Transcription.DeepgramTranscriptionService>();
 builder.Services.AddScoped<IConsultationAnamnesisService, RenoveJa.Infrastructure.ConsultationAnamnesis.ConsultationAnamnesisService>();
 
 // Configure Authentication

@@ -13,7 +13,7 @@
  * - Criação de sala Daily.co antes do join
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -79,6 +79,42 @@ const ANA_FIELDS = [
   { key: 'cid_sugerido', label: 'CID Sugerido', icon: 'code-slash' },
 ] as const;
 
+type TranscriptSpeaker = 'medico' | 'paciente' | 'outro';
+type TranscriptFilter = 'todos' | 'medico' | 'paciente';
+
+type TranscriptEntry = {
+  speaker: TranscriptSpeaker;
+  text: string;
+};
+
+function parseTranscriptEntries(rawTranscript: string): TranscriptEntry[] {
+  if (!rawTranscript.trim()) return [];
+
+  return rawTranscript
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      if (line.startsWith('[Médico]')) {
+        return {
+          speaker: 'medico' as const,
+          text: line.replace('[Médico]', '').trim(),
+        };
+      }
+      if (line.startsWith('[Paciente]')) {
+        return {
+          speaker: 'paciente' as const,
+          text: line.replace('[Paciente]', '').trim(),
+        };
+      }
+      return {
+        speaker: 'outro' as const,
+        text: line,
+      };
+    })
+    .filter((entry) => !!entry.text);
+}
+
 // ──── Main Screen ────
 
 export default function VideoCallScreenInner() {
@@ -121,6 +157,7 @@ export default function VideoCallScreenInner() {
   const [transcript, setTranscript] = useState('');
   const [anamnesis, setAnamnesis] = useState<Record<string, any> | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [transcriptFilter, setTranscriptFilter] = useState<TranscriptFilter>('todos');
   const [isAiActive, setIsAiActive] = useState(false);
   const tScrollRef = useRef<ScrollView>(null);
   const signalRRef = useRef<any>(null);
@@ -435,6 +472,20 @@ export default function VideoCallScreenInner() {
     }
   };
 
+  const transcriptEntries = useMemo(() => parseTranscriptEntries(transcript), [transcript]);
+  const doctorSpeechCount = useMemo(
+    () => transcriptEntries.filter((entry) => entry.speaker === 'medico').length,
+    [transcriptEntries],
+  );
+  const patientSpeechCount = useMemo(
+    () => transcriptEntries.filter((entry) => entry.speaker === 'paciente').length,
+    [transcriptEntries],
+  );
+  const filteredTranscriptEntries = useMemo(() => {
+    if (transcriptFilter === 'todos') return transcriptEntries;
+    return transcriptEntries.filter((entry) => entry.speaker === transcriptFilter);
+  }, [transcriptEntries, transcriptFilter]);
+
   // ── Render helpers ──
 
   if (loading) return (
@@ -627,12 +678,76 @@ export default function VideoCallScreenInner() {
                 <View style={S.secH}>
                   <Ionicons name="mic" size={16} color="#64748b" />
                   <Text style={S.secT}>TRANSCRIÇÃO</Text>
+                  <View style={S.speakerCountPills}>
+                    <View style={S.doctorCountPill}>
+                      <Text style={S.doctorCountTxt}>Médico: {doctorSpeechCount}</Text>
+                    </View>
+                    <View style={S.patientCountPill}>
+                      <Text style={S.patientCountTxt}>Paciente: {patientSpeechCount}</Text>
+                    </View>
+                  </View>
                   <TouchableOpacity style={S.copyBtn} onPress={() => Clipboard.setStringAsync(transcript)}>
                     <Ionicons name="copy-outline" size={12} color={colors.primary} />
                   </TouchableOpacity>
                 </View>
+                <View style={S.transcriptFilters}>
+                  <TouchableOpacity
+                    style={[S.transcriptFilterPill, transcriptFilter === 'todos' && S.transcriptFilterPillActive]}
+                    onPress={() => setTranscriptFilter('todos')}
+                  >
+                    <Text style={[S.transcriptFilterTxt, transcriptFilter === 'todos' && S.transcriptFilterTxtActive]}>
+                      Todos
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[S.transcriptFilterPill, transcriptFilter === 'medico' && S.transcriptFilterPillActive]}
+                    onPress={() => setTranscriptFilter('medico')}
+                  >
+                    <Text style={[S.transcriptFilterTxt, transcriptFilter === 'medico' && S.transcriptFilterTxtActive]}>
+                      Médico
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[S.transcriptFilterPill, transcriptFilter === 'paciente' && S.transcriptFilterPillActive]}
+                    onPress={() => setTranscriptFilter('paciente')}
+                  >
+                    <Text style={[S.transcriptFilterTxt, transcriptFilter === 'paciente' && S.transcriptFilterTxtActive]}>
+                      Paciente
+                    </Text>
+                  </TouchableOpacity>
+                </View>
                 <ScrollView ref={tScrollRef} style={S.tBox} nestedScrollEnabled>
-                  <Text style={S.tBoxTxt}>{transcript}</Text>
+                  {filteredTranscriptEntries.map((entry, idx) => {
+                    const isDoctorEntry = entry.speaker === 'medico';
+                    const isPatientEntry = entry.speaker === 'paciente';
+                    const speakerLabel = isDoctorEntry ? 'Médico' : isPatientEntry ? 'Paciente' : 'Transcrição';
+                    return (
+                      <View
+                        key={`${entry.speaker}-${idx}`}
+                        style={[
+                          S.tItem,
+                          isDoctorEntry && S.tItemDoctor,
+                          isPatientEntry && S.tItemPatient,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            S.tItemSpeaker,
+                            isDoctorEntry && S.tItemSpeakerDoctor,
+                            isPatientEntry && S.tItemSpeakerPatient,
+                          ]}
+                        >
+                          {speakerLabel}
+                        </Text>
+                        <Text style={S.tItemText}>{entry.text}</Text>
+                      </View>
+                    );
+                  })}
+                  {filteredTranscriptEntries.length === 0 && (
+                    <View style={S.tEmpty}>
+                      <Text style={S.tEmptyTxt}>Sem falas para este filtro.</Text>
+                    </View>
+                  )}
                 </ScrollView>
               </View>
             )}
@@ -745,6 +860,16 @@ const S = StyleSheet.create({
   badge: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 8, backgroundColor: 'rgba(44,177,255,0.1)' },
   badgeTxt: { fontSize: 9, fontWeight: '700', color: colors.primary },
   copyBtn: { marginLeft: 'auto', padding: 4, borderRadius: 6, backgroundColor: 'rgba(44,177,255,0.1)' },
+  speakerCountPills: { flexDirection: 'row', gap: 6, marginLeft: 4 },
+  doctorCountPill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(44,177,255,0.16)' },
+  patientCountPill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(34,197,94,0.16)' },
+  doctorCountTxt: { fontSize: 9, fontWeight: '700', color: '#7dd3fc' },
+  patientCountTxt: { fontSize: 9, fontWeight: '700', color: '#86efac' },
+  transcriptFilters: { flexDirection: 'row', gap: 8, marginTop: 2 },
+  transcriptFilterPill: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: 'rgba(51,65,85,0.5)' },
+  transcriptFilterPillActive: { backgroundColor: 'rgba(44,177,255,0.2)', borderWidth: 1, borderColor: 'rgba(44,177,255,0.35)' },
+  transcriptFilterTxt: { fontSize: 10, fontWeight: '700', color: '#94a3b8' },
+  transcriptFilterTxtActive: { color: '#7dd3fc' },
 
   af: { gap: 2, paddingLeft: 4 },
   afL: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -757,8 +882,16 @@ const S = StyleSheet.create({
   sugDng: { backgroundColor: 'rgba(239,68,68,0.1)', borderRadius: 6, padding: 6 },
   sugTxt: { fontSize: 12, color: '#c4b5fd', lineHeight: 18, flex: 1 },
 
-  tBox: { maxHeight: 150, backgroundColor: 'rgba(30,41,59,0.6)', borderRadius: 8, padding: 8 },
-  tBoxTxt: { fontSize: 12, color: '#94a3b8', lineHeight: 19 },
+  tBox: { maxHeight: 190, backgroundColor: 'rgba(30,41,59,0.6)', borderRadius: 8, padding: 8 },
+  tItem: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 7, backgroundColor: 'rgba(51,65,85,0.5)', marginBottom: 6 },
+  tItemDoctor: { backgroundColor: 'rgba(44,177,255,0.14)', borderWidth: 1, borderColor: 'rgba(44,177,255,0.3)' },
+  tItemPatient: { backgroundColor: 'rgba(34,197,94,0.12)', borderWidth: 1, borderColor: 'rgba(34,197,94,0.28)' },
+  tItemSpeaker: { fontSize: 10, fontWeight: '800', color: '#94a3b8', marginBottom: 2, textTransform: 'uppercase' },
+  tItemSpeakerDoctor: { color: '#7dd3fc' },
+  tItemSpeakerPatient: { color: '#86efac' },
+  tItemText: { fontSize: 12, color: '#e2e8f0', lineHeight: 18 },
+  tEmpty: { alignItems: 'center', paddingVertical: 12 },
+  tEmptyTxt: { fontSize: 11, color: '#64748b' },
 
   panelEmpty: { alignItems: 'center', gap: 8, paddingVertical: 40 },
   peTitle: { fontSize: 14, fontWeight: '700', color: '#475569' },

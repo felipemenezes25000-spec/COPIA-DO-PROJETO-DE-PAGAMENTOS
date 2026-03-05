@@ -69,10 +69,10 @@ Paciente: Detalhe → Baixar receita / Visualizar → mark-delivered → status 
 
 ### Detalhe do pedido (paciente) – `request-detail/[id].tsx`
 
-- **Pagar**: se `status` ∈ { pending_payment, approved_pending_payment, approved, consultation_ready }.
+- **Pagar**: se `status` ∈ { pending_payment, approved_pending_payment, approved } (consulta: approved_pending_payment após médico aceitar).
 - **Baixar Receita** / **Visualizar**: se existe `signedDocumentUrl` (e ao usar, chama `mark-delivered` se status ainda for `signed`).
 - **Entrar na Consulta**: apenas para tipo consulta e status paid ou in_consultation.
-- **Cancelar pedido**: se status for cancelável (submitted, in_review, approved_pending_payment, pending_payment, searching_doctor, consultation_ready).
+- **Cancelar pedido**: se status for cancelável (submitted, in_review, approved_pending_payment, pending_payment, searching_doctor).
 
 ### Detalhe do pedido (médico) – `doctor-request/[id].tsx`
 

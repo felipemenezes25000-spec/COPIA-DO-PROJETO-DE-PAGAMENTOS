@@ -1,8 +1,8 @@
-# Teste de Transcrição (Whisper)
+# Teste de Transcrição (Deepgram)
 
 ## Pré-requisitos
 
-- **OpenAI:ApiKey** configurada em `appsettings.Development.json` ou `.env`
+- **Deepgram:ApiKey** configurada em `appsettings.Development.json` ou `.env`
 - **ASPNETCORE_ENVIRONMENT=Development** no `.env` (o endpoint de teste só existe em Development)
 
 ## Formas de executar
@@ -44,19 +44,19 @@ Ou com caminho completo (funciona de qualquer pasta):
 
 ## Logs para diagnóstico
 
-O backend agora emite logs detalhados. Procure por:
+O backend emite logs detalhados. Procure por:
 
 - `[TranscribeTest]` — endpoint de teste
-- `[Whisper]` — serviço de transcrição
+- `[Deepgram]` — serviço de transcrição
 - `[Transcribe]` — endpoint usado durante a consulta
 
-**Se aparecer:** `[Whisper] OpenAI:ApiKey não configurada`
-→ Configure `OpenAI__ApiKey` em variáveis de ambiente ou `appsettings.Development.json`
+**Se aparecer:** `[Deepgram] DEEPGRAM_API_KEY não configurada`
+→ Configure `Deepgram__ApiKey` em variáveis de ambiente ou `appsettings.Development.json`
 
-**Se aparecer:** `[Whisper] API OpenAI erro: StatusCode=401`
-→ Chave inválida ou expirada. Gere nova em platform.openai.com
+**Se aparecer:** `[Deepgram] API erro: StatusCode=401`
+→ Chave inválida ou expirada. Gere nova em deepgram.com
 
-**Se aparecer:** `[Whisper] Resposta JSON sem texto ou vazio`
+**Se aparecer:** `[Deepgram] Resposta sem texto útil`
 → Áudio sem fala detectável ou formato não suportado
 
 ## Arquivo de áudio gerado

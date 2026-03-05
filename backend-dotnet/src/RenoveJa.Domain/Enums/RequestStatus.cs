@@ -10,7 +10,7 @@ namespace RenoveJa.Domain.Enums;
 ///   Qualquer estado → Rejected | Cancelled
 ///
 /// consultation:
-///   Submitted → SearchingDoctor → ConsultationReady → InConsultation → ConsultationFinished
+///   Submitted → SearchingDoctor → ApprovedPendingPayment → Paid → InConsultation → ConsultationFinished
 ///   Qualquer estado → Rejected | Cancelled
 ///
 /// Status marcados com [Obsolete] são legados e não devem ser usados em novas transições.
@@ -47,7 +47,7 @@ public enum RequestStatus
     /// <summary>Aguardando médico disponível aceitar a consulta.</summary>
     SearchingDoctor,
 
-    /// <summary>Médico aceitou; sala de vídeo pronta para o paciente entrar.</summary>
+    /// <summary>[Legado] Médico aceitou sem pagamento prévio. Novo fluxo: ApprovedPendingPayment → Paid.</summary>
     ConsultationReady,
 
     /// <summary>Consulta por vídeo em andamento.</summary>

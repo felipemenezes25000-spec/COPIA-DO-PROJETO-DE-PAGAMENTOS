@@ -839,18 +839,18 @@ public class RequestService(
         }
 
         request.AssignDoctor(doctorId, doctor.Name);
-        request.MarkConsultationReady(effectivePrice > 0 ? effectivePrice : (decimal?)null);
+        request.Approve(effectivePrice > 0 ? effectivePrice : 1m);
         request = await requestRepository.UpdateAsync(request, cancellationToken);
 
         var roomName = $"consultation-{request.Id}";
         var videoRoom = VideoRoom.Create(request.Id, roomName);
         videoRoom = await videoRoomRepository.CreateAsync(videoRoom, cancellationToken);
 
-        await PublishRequestUpdatedAsync(request, "Consulta pronta", cancellationToken);
+        await PublishRequestUpdatedAsync(request, "Médico aceitou — efetue o pagamento", cancellationToken);
         await CreateNotificationAsync(
             request.PatientId,
-            "Consulta Pronta",
-            "Sua consulta está pronta. Entre na sala de vídeo.",
+            "Médico aceitou sua consulta",
+            "Efetue o pagamento para continuar e entrar na sala de vídeo.",
             cancellationToken,
             new Dictionary<string, object> { ["requestId"] = request.Id.ToString() });
 

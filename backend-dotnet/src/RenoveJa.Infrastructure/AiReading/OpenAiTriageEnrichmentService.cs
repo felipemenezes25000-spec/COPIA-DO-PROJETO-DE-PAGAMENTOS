@@ -26,8 +26,9 @@ public class OpenAiTriageEnrichmentService : ITriageEnrichmentService
     /// <summary>Chaves que NUNCA devem ser alteradas pela IA (alertas críticos, conduta médica).</summary>
     private static readonly HashSet<string> NoEnrichKeys = new(StringComparer.OrdinalIgnoreCase)
     {
-        "rx:controlled", "rx:high_risk", "rx:unreadable", "rx:ai_message",
-        "exam:complex", "exam:many", "detail:conduct_available"
+        "rx:controlled", "rx:high_risk", "rx:red_flags", "rx:unreadable", "rx:ai_message",
+        "exam:high_risk", "exam:complex", "exam:many", "exam:red_flags",
+        "consult:red_flags", "doctor:detail:high_risk", "detail:conduct_available"
     };
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -211,7 +212,8 @@ public class OpenAiTriageEnrichmentService : ITriageEnrichmentService
                 "prescrevo", "prescrição", "prescricao",
                 "indico", "indicação", "indicacao",
                 "você tem", "voce tem",
-                "recomendo tratamento", "tratamento recomendado"
+                "recomendo tratamento", "tratamento recomendado",
+                "tome", "inicie", "ajuste de dose", "dose recomendada"
             };
             var lower = text.ToLowerInvariant();
             if (forbidden.Any(f => lower.Contains(f)))

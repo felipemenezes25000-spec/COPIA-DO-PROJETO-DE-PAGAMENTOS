@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Script completo de teste de transcrição (Whisper) - RenoveJa
+    Script completo de teste de transcrição (Deepgram) - RenoveJa
 
 .DESCRIPTION
     Gera áudio falado, verifica/inicia o backend e testa o endpoint de transcrição.
@@ -18,7 +18,7 @@
     .\run-transcription-test.ps1 -AudioFile "C:\meu-audio.wav"
 
 .NOTES
-    Requer: .NET SDK, OpenAI:ApiKey no .env, ASPNETCORE_ENVIRONMENT=Development
+    Requer: .NET SDK, Deepgram:ApiKey no .env, ASPNETCORE_ENVIRONMENT=Development
 #>
 
 [CmdletBinding()]

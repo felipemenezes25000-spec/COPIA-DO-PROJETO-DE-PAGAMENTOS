@@ -654,7 +654,7 @@ public class ExtendedRequestServiceTests
 
         var (resultReq, resultRoom) = await _sut.AcceptConsultationAsync(request.Id, doctorId);
 
-        resultReq.Status.Should().Be("consultation_ready");
+        resultReq.Status.Should().Be("approved_pending_payment");
         resultReq.DoctorId.Should().Be(doctorId);
         resultRoom.Should().NotBeNull();
         resultRoom.RoomName.Should().NotBeNullOrEmpty();

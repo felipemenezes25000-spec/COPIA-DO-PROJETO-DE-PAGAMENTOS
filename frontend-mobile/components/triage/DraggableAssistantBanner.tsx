@@ -1,16 +1,21 @@
 /**
- * DraggableAssistantBanner — Dra. Renova com opção de mover ou acompanhar
+ * DraggableAssistantBanner — Dra. Renoveja com opção de mover
  *
- * Modo fixo: fica no fundo da tela (acompanha o usuário).
- * Modo flutuante: usuário pode arrastar para qualquer canto; encaixa ao soltar.
- * Long-press no avatar para alternar entre modos.
+ * Pensado para idosos e leigos: toque em "Mover" e escolha onde quer que ela fique.
+ * Sem arrastar — apenas tocar na opção desejada.
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet, useWindowDimensions, Pressable } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import {
+  View,
+  StyleSheet,
+  useWindowDimensions,
+  Pressable,
+  Text,
+  Modal,
+  Platform,
+} from 'react-native';
 import Animated, {
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -32,40 +37,52 @@ import type { CTAAction } from '../../lib/triage/triage.types';
 const BANNER_WIDTH = 340;
 const BANNER_HEIGHT_EST = 120;
 const SPRING_CONFIG = { damping: 20, stiffness: 200 };
+const MIN_TOUCH_TARGET = 52; // Acessibilidade: alvos grandes para idosos
 
 type Anchor = 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right';
 
-function snapToAnchor(
-  x: number,
-  y: number,
-  width: number,
-  height: number,
+const POSITION_OPTIONS: { anchor: Anchor | 'fixed'; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { anchor: 'fixed', label: 'Ficar em baixo (padrão)', icon: 'pin' },
+  { anchor: 'top-left', label: 'Em cima à esquerda', icon: 'arrow-up' },
+  { anchor: 'top-right', label: 'Em cima à direita', icon: 'arrow-up' },
+  { anchor: 'bottom-left', label: 'Em baixo à esquerda', icon: 'arrow-down' },
+  { anchor: 'bottom-right', label: 'Em baixo à direita', icon: 'arrow-down' },
+];
+
+function getPositionForAnchor(
+  anchor: Anchor,
+  screenW: number,
+  screenH: number,
+  bannerW: number,
   padding: number,
   topInset: number,
-  bottomInset: number,
-  bannerW: number
-): { x: number; y: number; anchor: Anchor } {
-  const halfW = width / 2;
-  const halfH = height / 2;
-  const cx = x + bannerW / 2;
-  const cy = y + BANNER_HEIGHT_EST / 2;
+  bottomInset: number
+): { x: number; y: number } {
+  const safeW = Math.max(screenW, 200);
+  const safeH = Math.max(screenH, 300);
+  const safePadding = Math.max(0, padding);
+  const safeTop = topInset ?? 0;
+  const safeBottom = bottomInset ?? 0;
 
-  const topY = topInset + padding;
-  const bottomY = height - BANNER_HEIGHT_EST - bottomInset - padding;
+  const topY = Math.max(0, safeTop + safePadding);
+  const bottomY = Math.max(topY, safeH - BANNER_HEIGHT_EST - safeBottom - safePadding);
+  const leftX = safePadding;
+  const rightX = Math.max(leftX, safeW - bannerW - safePadding);
 
-  if (cy < halfH) {
-    return cx < halfW
-      ? { x: padding, y: topY, anchor: 'top-left' }
-      : { x: width - bannerW - padding, y: topY, anchor: 'top-right' };
+  switch (anchor) {
+    case 'top-left':
+      return { x: leftX, y: topY };
+    case 'top-right':
+      return { x: rightX, y: topY };
+    case 'bottom-left':
+      return { x: leftX, y: bottomY };
+    case 'bottom-right':
+      return { x: rightX, y: bottomY };
   }
-  return cx < halfW
-    ? { x: padding, y: bottomY, anchor: 'bottom-left' }
-    : { x: width - bannerW - padding, y: bottomY, anchor: 'bottom-right' };
 }
 
 interface DraggableAssistantBannerProps {
   onAction?: (action: CTAAction) => void;
-  /** Quando o usuário toca no estado companion — ex.: abrir ajuda/FAQ */
   onCompanionPress?: () => void;
   containerStyle?: object;
 }
@@ -74,31 +91,45 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
   const insets = useSafeAreaInsets();
   const { width: screenW, height: screenH } = useWindowDimensions();
 
-  // Mostra imediatamente em modo fixo — posição persistida carrega em background
+  const padding = Math.max(uiTokens.screenPaddingHorizontal, insets?.left ?? 0, insets?.right ?? 0);
+  const bottomFixed = (insets?.bottom ?? 0) + uiTokens.cardGap * 2;
+  const fixedY = Math.max(0, screenH - BANNER_HEIGHT_EST - bottomFixed);
+
   const [mode, setMode] = useState<BannerPositionMode>('fixed');
-  const [floatingPos, setFloatingPos] = useState<BannerFloatingPosition | null>(null);
+  const [showPositionModal, setShowPositionModal] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const startX = useSharedValue(0);
-  const startY = useSharedValue(0);
+  const safePadding = Number.isFinite(padding) ? padding : 16;
+  const safeFixedY = Number.isFinite(fixedY) ? fixedY : 200;
+  const translateX = useSharedValue(safePadding);
+  const translateY = useSharedValue(safeFixedY);
 
-  const padding = Math.max(uiTokens.screenPaddingHorizontal, insets.left, insets.right);
-  const bottomFixed = insets.bottom + uiTokens.cardGap * 2;
+  const bannerWidth = Math.min(screenW - padding * 2, BANNER_WIDTH);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [m, pos] = await Promise.all([
-        getBannerPositionMode(),
-        getBannerFloatingPosition(),
-      ]);
-      if (!cancelled) {
-        setMode(m);
-        setFloatingPos(pos);
-        if (pos && m === 'floating') {
-          translateX.value = pos.x;
-          translateY.value = pos.y;
+      try {
+        const [m, pos] = await Promise.all([
+          getBannerPositionMode(),
+          getBannerFloatingPosition(),
+        ]);
+        if (!cancelled) {
+          setMode(m);
+          if (pos && m === 'floating' && Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
+            translateX.value = pos.x;
+            translateY.value = pos.y;
+          } else {
+            translateX.value = safePadding;
+            translateY.value = safeFixedY;
+          }
+          setInitialized(true);
+        }
+      } catch {
+        if (!cancelled) {
+          translateX.value = safePadding;
+          translateY.value = safeFixedY;
+          setInitialized(true);
         }
       }
     })();
@@ -106,60 +137,43 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
   }, []);
 
   const saveFloating = useCallback(async (x: number, y: number, anchor: Anchor) => {
-    const pos: BannerFloatingPosition = { x, y, anchor };
-    setFloatingPos(pos);
-    await setBannerFloatingPosition(pos);
+    await setBannerFloatingPosition({ x, y, anchor });
   }, []);
 
-  const switchToFloating = useCallback(async () => {
-    setMode('floating');
-    await setBannerPositionMode('floating');
-    const defaultX = padding;
-    const defaultY = screenH - BANNER_HEIGHT_EST - bottomFixed;
-    translateX.value = defaultX;
-    translateY.value = defaultY;
-    runOnJS(saveFloating)(defaultX, defaultY, 'bottom-left');
-  }, [padding, screenH, bottomFixed, saveFloating]);
+  const selectPosition = useCallback(
+    async (option: (typeof POSITION_OPTIONS)[0]) => {
+      setShowPositionModal(false);
 
-  const switchToFixed = useCallback(async () => {
-    setMode('fixed');
-    await setBannerPositionMode('fixed');
-  }, []);
-
-  const bannerWidth = Math.min(screenW - padding * 2, BANNER_WIDTH);
-
-  const panGesture = Gesture.Pan()
-    .minDistance(8)
-    .onStart(() => {
-      startX.value = translateX.value;
-      startY.value = translateY.value;
-    })
-    .onUpdate((e) => {
-      let nx = startX.value + e.translationX;
-      let ny = startY.value + e.translationY;
-      const minX = 0;
-      const maxX = screenW - bannerWidth - padding * 2;
-      const minY = insets.top + 8;
-      const maxY = screenH - BANNER_HEIGHT_EST - insets.bottom - 8;
-      nx = Math.max(minX, Math.min(maxX, nx));
-      ny = Math.max(minY, Math.min(maxY, ny));
-      translateX.value = nx;
-      translateY.value = ny;
-    })
-    .onEnd((e) => {
-      const vx = e.velocityX;
-      const vy = e.velocityY;
-      let nx = translateX.value;
-      let ny = translateY.value;
-      if (Math.abs(vx) > 200 || Math.abs(vy) > 200) {
-        nx += vx * 0.08;
-        ny += vy * 0.08;
+      try {
+        if (option.anchor === 'fixed') {
+          setMode('fixed');
+          await setBannerPositionMode('fixed');
+          translateX.value = withSpring(safePadding, SPRING_CONFIG);
+          translateY.value = withSpring(safeFixedY, SPRING_CONFIG);
+          await saveFloating(safePadding, safeFixedY, 'bottom-left');
+        } else {
+          const { x, y } = getPositionForAnchor(
+            option.anchor,
+            screenW,
+            screenH,
+            bannerWidth,
+            padding,
+            insets.top ?? 0,
+            insets.bottom ?? 0
+          );
+          setMode('floating');
+          await setBannerPositionMode('floating');
+          translateX.value = withSpring(x, SPRING_CONFIG);
+          translateY.value = withSpring(y, SPRING_CONFIG);
+          await saveFloating(x, y, option.anchor);
+        }
+      } catch {
+        // Evita crash: em caso de erro, mantém estado e fecha o modal
+        setShowPositionModal(false);
       }
-      const snapped = snapToAnchor(nx, ny, screenW, screenH, padding, insets.top, insets.bottom, bannerWidth);
-      translateX.value = withSpring(snapped.x, SPRING_CONFIG);
-      translateY.value = withSpring(snapped.y, SPRING_CONFIG);
-      runOnJS(saveFloating)(snapped.x, snapped.y, snapped.anchor);
-    });
+    },
+    [safePadding, safeFixedY, padding, screenW, screenH, bannerWidth, insets, saveFloating]
+  );
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -168,80 +182,93 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
     ],
   }));
 
-  const handleLongPressAvatar = useCallback(() => {
-    if (mode === 'fixed') {
-      switchToFloating();
-    } else {
-      switchToFixed();
-    }
-  }, [mode, switchToFloating, switchToFixed]);
-
-  const isFixed = mode === 'fixed';
+  if (!initialized) return null;
 
   return (
-    <View
-      style={[
-        styles.wrapper,
-        isFixed
-          ? {
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              bottom: bottomFixed,
-            }
-          : {
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 999,
-              marginHorizontal: 0,
-            },
-        containerStyle,
-      ]}
-      pointerEvents="box-none"
-    >
-      {isFixed ? (
-        <View style={styles.fixedInner}>
-          <AssistantBanner onAction={onAction} onCompanionPress={onCompanionPress} />
+    <>
+      <View
+        style={[
+          styles.wrapper,
+          {
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            marginHorizontal: 0,
+          },
+          containerStyle,
+        ]}
+        pointerEvents="box-none"
+      >
+        <Animated.View
+          style={[
+            styles.floatingInner,
+            { top: 0, left: 0, width: bannerWidth },
+            animatedStyle,
+          ]}
+        >
           <Pressable
-            onLongPress={handleLongPressAvatar}
-            delayLongPress={600}
-            style={styles.dragHint}
-            hitSlop={8}
+            onPress={() => setShowPositionModal(true)}
+            style={styles.moveButton}
+            accessibilityLabel="Mover a Dra. Renoveja de posição"
+            accessibilityHint="Toque para escolher onde a assistente aparece na tela"
           >
-            <Ionicons
-              name="move-outline"
-              size={14}
-              color={theme.colors.text.disabled}
-            />
+            <Ionicons name="move-outline" size={22} color={theme.colors.primary.main} />
+            <Text style={styles.moveButtonText}>Mover</Text>
           </Pressable>
-        </View>
-      ) : (
-        <GestureDetector gesture={panGesture}>
-          <Animated.View
-            style={[
-              styles.floatingInner,
-              { top: 0, left: 0, width: bannerWidth },
-              animatedStyle,
-            ]}
-          >
-            <View style={styles.dragHandle}>
-              <Ionicons name="reorder-three" size={18} color={theme.colors.text.tertiary} />
-              <Pressable onPress={switchToFixed} hitSlop={8} style={styles.pinBtn}>
-                <Ionicons name="pin" size={14} color={theme.colors.primary.main} />
+          <AssistantBanner
+            onAction={onAction}
+            onCompanionPress={onCompanionPress}
+            containerStyle={styles.bannerNoMargin}
+          />
+        </Animated.View>
+      </View>
+
+      <Modal
+        visible={showPositionModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPositionModal(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowPositionModal(false)}>
+          <Pressable style={styles.modalContent} onPress={() => {}}>
+            <Text style={styles.modalTitle}>Onde a Dra. Renoveja deve aparecer?</Text>
+            <Text style={styles.modalSubtitle}>Toque na opção desejada</Text>
+
+            {POSITION_OPTIONS.map((option) => (
+              <Pressable
+                key={option.anchor}
+                onPress={() => selectPosition(option)}
+                style={({ pressed }) => [
+                  styles.optionButton,
+                  pressed && styles.optionButtonPressed,
+                ]}
+                accessibilityLabel={option.label}
+                accessibilityRole="button"
+              >
+                <View style={styles.optionIconWrap}>
+                  <Ionicons
+                    name={option.icon}
+                    size={24}
+                    color={theme.colors.primary.main}
+                  />
+                </View>
+                <Text style={styles.optionLabel}>{option.label}</Text>
               </Pressable>
-            </View>
-            <AssistantBanner
-              onAction={onAction}
-              onCompanionPress={onCompanionPress}
-              containerStyle={styles.bannerNoMargin}
-            />
-          </Animated.View>
-        </GestureDetector>
-      )}
-    </View>
+            ))}
+
+            <Pressable
+              onPress={() => setShowPositionModal(false)}
+              style={styles.cancelButton}
+            >
+              <Text style={styles.cancelButtonText}>Cancelar</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
   );
 }
 
@@ -249,35 +276,91 @@ const styles = StyleSheet.create({
   wrapper: {
     marginHorizontal: uiTokens.screenPaddingHorizontal,
   },
-  fixedInner: {
-    position: 'relative',
-  },
-  dragHint: {
-    position: 'absolute',
-    right: 8,
-    top: 8,
-    padding: 4,
-    opacity: 0.7,
-  },
   floatingInner: {
     position: 'absolute',
     width: BANNER_WIDTH,
     marginHorizontal: 0,
   },
-  dragHandle: {
+  moveButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    minHeight: MIN_TOUCH_TARGET,
     backgroundColor: theme.colors.background.paper,
     borderTopLeftRadius: theme.borderRadius.md,
     borderTopRightRadius: theme.borderRadius.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.08)',
   },
-  pinBtn: {
-    padding: 4,
+  moveButtonText: {
+    fontSize: 16,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: theme.colors.primary.main,
   },
   bannerNoMargin: {
     marginHorizontal: 0,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: theme.colors.background.paper,
+    borderTopLeftRadius: theme.borderRadius.xl,
+    borderTopRightRadius: theme.borderRadius.xl,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: theme.colors.text.primary,
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    fontFamily: 'PlusJakartaSans_400Regular',
+    color: theme.colors.text.secondary,
+    marginBottom: 20,
+  },
+  optionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    minHeight: MIN_TOUCH_TARGET,
+    backgroundColor: theme.colors.background.default,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: 10,
+  },
+  optionButtonPressed: {
+    opacity: 0.8,
+    backgroundColor: theme.colors.primary.soft,
+  },
+  optionIconWrap: {
+    width: 32,
+    marginRight: 12,
+    alignItems: 'center',
+  },
+  optionLabel: {
+    fontSize: 16,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: theme.colors.text.primary,
+    flex: 1,
+  },
+  cancelButton: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: theme.colors.text.tertiary,
   },
 });

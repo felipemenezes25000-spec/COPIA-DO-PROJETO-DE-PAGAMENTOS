@@ -332,7 +332,7 @@ export async function transcribeAudioChunk(
 
 /**
  * Testa transcrição sem consulta ativa (apenas backend em Development).
- * Útil para validar Whisper + OpenAI:ApiKey.
+ * Útil para validar transcrição (Deepgram) sem consulta ativa.
  */
 export async function transcribeTestAudio(
   audioBlob: Blob | { uri: string; name: string; type: string }

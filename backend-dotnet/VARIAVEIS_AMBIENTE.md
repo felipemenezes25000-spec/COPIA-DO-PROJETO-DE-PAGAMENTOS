@@ -145,7 +145,7 @@ Expo (celular)                    Backend
 
 | Causa | Verificação | Solução |
 |-------|-------------|---------|
-| `OpenAI:ApiKey` ausente | Log: `Whisper: OpenAI:ApiKey não configurada` | Definir `OpenAI__ApiKey` em appsettings ou variáveis |
+| `Deepgram:ApiKey` ausente | Log: `[Deepgram] DEEPGRAM_API_KEY não configurada` | Definir `Deepgram__ApiKey` em appsettings ou variáveis |
 | Mic do médico mutado | Banner "Gravando · 0 transcrições" após 10s+ | Desmutar o microfone durante a consulta |
 | Chunk muito pequeno (silêncio) | Log: `Chunk ignorado: arquivo muito pequeno` | Falar durante a gravação; os primeiros 10s são enviados após o ciclo |
 | Request não em `InConsultation` | API retorna 400 | Iniciar a consulta com o botão "Iniciar Consulta" antes de falar |
@@ -153,7 +153,7 @@ Expo (celular)                    Backend
 
 **Como testar:**
 
-1. **Teste isolado (backend local em Development):** No app, Perfil → "Testar transcrição IA". Grava 8s e envia para `/api/consultation/transcribe-test`. Valida Whisper + OpenAI. Rode o backend com `ASPNETCORE_ENVIRONMENT=Development`.
+1. **Teste isolado (backend local em Development):** No app, Perfil → "Testar transcrição IA". Grava 8s e envia para `/api/consultation/transcribe-test`. Valida Deepgram. Rode o backend com `ASPNETCORE_ENVIRONMENT=Development`.
 
 2. **Durante a consulta:** Após "Iniciar Consulta", aguarde o primeiro ciclo de 10s. Fale claramente. O indicador mostra "Gravando · N transcrições" (N aumenta a cada chunk enviado). Se aparecer "X falhas", verifique logs do backend e conectividade.
 

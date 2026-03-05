@@ -19,15 +19,40 @@ export interface TriageEnrichResponse {
 const NO_ENRICH_KEYS = [
   'rx:controlled',
   'rx:high_risk',
+  'rx:red_flags',
   'rx:unreadable',
   'rx:ai_message',
+  'exam:high_risk',
   'exam:complex',
   'exam:many',
+  'exam:red_flags',
+  'consult:red_flags',
+  'doctor:detail:high_risk',
   'detail:conduct_available',
 ];
 
 function shouldSkipEnrich(ruleKey: string): boolean {
   return NO_ENRICH_KEYS.some((k) => ruleKey.startsWith(k));
+}
+
+function sanitizeEnrichedText(text: string): string | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  const forbidden = [
+    'diagnostico',
+    'diagnóstico',
+    'prescrevo',
+    'prescricao',
+    'prescrição',
+    'voce tem',
+    'você tem',
+    'recomendo tratamento',
+  ];
+  const lower = trimmed.toLowerCase();
+  if (forbidden.some((word) => lower.includes(word))) return null;
+
+  return trimmed.length <= 140 ? trimmed : trimmed.slice(0, 140).trim();
 }
 
 /**
@@ -66,7 +91,9 @@ export async function enrichTriageMessage(
     try {
       const res = await apiClient.post<TriageEnrichResponse>('/api/triage/enrich', body);
       if (res?.text && res.isPersonalized) {
-        return { text: res.text, isPersonalized: true };
+        const safeText = sanitizeEnrichedText(res.text);
+        if (!safeText) return null;
+        return { text: safeText, isPersonalized: true };
       }
       return null;
     } catch {

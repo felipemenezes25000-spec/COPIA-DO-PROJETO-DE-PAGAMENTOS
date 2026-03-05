@@ -38,11 +38,28 @@ const BLOCKED_STEPS: Set<TriageStep> = new Set(['payment', 'signing']);
 // ── Complex exam detection ──────────────────────────────────
 
 const COMPLEX_EXAM_RE = /ressonancia|rnm|tomografia|pet.scan|cintilografia|marcadores?\s*tumorais?|ca[\s-]?12[5-9]|ca[\s-]?19|cea|psa|afp|biopsia|eletroneuromiografia|cateterismo|angiografia|densitometria|mamografia|colonoscopia|endoscopia|ecocardiograma|holter|mapa/i;
+const RED_FLAG_SYMPTOMS_RE = /dor no peito|falta de ar|desmaio|convuls|sangramento intenso|perda de consciencia|fraqueza de um lado|confusao mental|ideacao suicida|pensamentos suicidas|febre alta persistente|rigidez na nuca|dor de cabeca súbita|dor de cabeca subita/i;
 
 function hasComplexExams(exams: string[]): boolean {
   return exams.some(e =>
     COMPLEX_EXAM_RE.test(e.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
   );
+}
+
+function hasRedFlagSymptoms(symptoms?: string | null): boolean {
+  if (!symptoms) return false;
+  const normalized = symptoms.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return RED_FLAG_SYMPTOMS_RE.test(normalized);
+}
+
+function hasHighMedicationBurden(medications?: string[]): boolean {
+  if (!medications || medications.length < 5) return false;
+  const unique = new Set(
+    medications
+      .map((m) => m.trim().toLowerCase())
+      .filter(Boolean)
+  );
+  return unique.size >= 5;
 }
 
 // ── Main entry point ────────────────────────────────────────
@@ -134,6 +151,17 @@ function rulesHome(i: TriageInput): TriageMessage | null {
     };
   }
 
+  if (hasHighMedicationBurden(i.recentMedications) && (!i.lastConsultationDays || i.lastConsultationDays > 60)) {
+    return {
+      key: 'home:medication_review',
+      text: 'Vi que voce usa varios medicamentos. Uma revisao com medico pode aumentar seguranca e aderencia do tratamento.',
+      severity: 'attention', avatarState: 'alert',
+      cta: 'teleconsulta', ctaLabel: 'Revisar com medico',
+      cooldownMs: MS.PROACTIVE, canMute: true,
+      analyticsEvent: 'triage.home.medication_review',
+    };
+  }
+
   if (i.recentExamCount && i.recentExamCount >= 2) {
     return {
       key: 'home:pending_results',
@@ -222,6 +250,16 @@ function rulesPrescription(i: TriageInput): TriageMessage | null {
           analyticsEvent: 'triage.rx.high_risk',
         };
       }
+      if (hasRedFlagSymptoms(i.symptoms)) {
+        return {
+          key: 'rx:red_flags_symptoms',
+          text: 'Se houver piora ou sinais de alerta, procure atendimento de urgencia. Se preferir, agende teleconsulta agora.',
+          severity: 'attention', avatarState: 'alert',
+          cta: 'teleconsulta', ctaLabel: 'Agendar teleconsulta',
+          cooldownMs: MS.INSIGHT,
+          analyticsEvent: 'triage.rx.red_flags',
+        };
+      }
       if (i.aiReadabilityOk === false) {
         return {
           key: 'rx:unreadable',
@@ -277,6 +315,16 @@ function rulesExam(i: TriageInput): TriageMessage | null {
       return null;
 
     case 'result':
+      if (i.aiRiskLevel === 'high') {
+        return {
+          key: 'exam:high_risk',
+          text: 'Este pedido parece exigir avaliacao prioritaria. Se puder, converse com um medico o quanto antes.',
+          severity: 'attention', avatarState: 'alert',
+          cta: 'teleconsulta', ctaLabel: 'Falar com medico',
+          cooldownMs: MS.INSIGHT,
+          analyticsEvent: 'triage.exam.high_risk',
+        };
+      }
       if (i.exams && hasComplexExams(i.exams)) {
         return {
           key: 'exam:complex',
@@ -294,6 +342,16 @@ function rulesExam(i: TriageInput): TriageMessage | null {
           severity: 'info', avatarState: 'positive',
           cta: 'consulta_breve', ctaLabel: 'Agendar retorno',
           cooldownMs: MS.INSIGHT,
+        };
+      }
+      if (hasRedFlagSymptoms(i.symptoms)) {
+        return {
+          key: 'exam:red_flags_symptoms',
+          text: 'Se os sintomas estiverem intensos ou piorando, procure urgencia. Posso te ajudar a falar com medico agora.',
+          severity: 'attention', avatarState: 'alert',
+          cta: 'teleconsulta', ctaLabel: 'Falar com medico',
+          cooldownMs: MS.INSIGHT,
+          analyticsEvent: 'triage.exam.red_flags',
         };
       }
       if (i.imagesCount && i.imagesCount > 0 && i.exams && i.exams.length > 0) {
@@ -321,6 +379,15 @@ function rulesConsultation(i: TriageInput): TriageMessage | null {
       severity: 'info', avatarState: 'neutral', cta: null,
       cooldownMs: getStepCooldown(i.totalRequests),
       canMute: true,
+    };
+  }
+  if (i.step === 'symptoms_entered' && hasRedFlagSymptoms(i.symptoms)) {
+    return {
+      key: 'consult:red_flags',
+      text: 'Esses sintomas podem merecer avaliacao rapida. Se houver piora, procure urgencia e converse com um medico.',
+      severity: 'attention', avatarState: 'alert', cta: 'teleconsulta', ctaLabel: 'Falar com medico',
+      cooldownMs: MS.INSIGHT,
+      analyticsEvent: 'triage.consult.red_flags',
     };
   }
   if (i.step === 'symptoms_entered' && i.symptoms && i.symptoms.length < 20) {
@@ -386,6 +453,16 @@ function rulesRecord(i: TriageInput): TriageMessage | null {
       text: 'Exames de rotina fazem parte do cuidado. O médico orienta o que solicitar.',
       severity: 'info', avatarState: 'neutral',
       cta: 'pedir_exames', ctaLabel: 'Pedir exames',
+      cooldownMs: MS.INSIGHT, canMute: true,
+    };
+  }
+
+  if (hasHighMedicationBurden(i.recentMedications) && (!i.lastConsultationDays || i.lastConsultationDays > 60)) {
+    return {
+      key: 'record:medication_review',
+      text: 'Seu historico mostra varios medicamentos recentes. Vale revisar com medico para manter seguranca no tratamento.',
+      severity: 'attention', avatarState: 'alert',
+      cta: 'teleconsulta', ctaLabel: 'Revisar com medico',
       cooldownMs: MS.INSIGHT, canMute: true,
     };
   }
@@ -525,6 +602,18 @@ function rulesDoctorDashboard(i: TriageInput): TriageMessage | null {
 // ── DOCTOR DETAIL (pedido específico) ───────────────────────
 
 function rulesDoctorDetail(i: TriageInput): TriageMessage | null {
+  if (i.aiRiskLevel === 'high') {
+    return {
+      key: 'doctor:detail:high_risk',
+      text: 'A IA sinalizou risco elevado neste caso. Priorize revisao clinica detalhada e registre conduta com clareza.',
+      severity: 'attention',
+      avatarState: 'alert',
+      cta: null,
+      cooldownMs: MS.INSIGHT,
+      canMute: true,
+    };
+  }
+
   // Pedido já pago, aguardando ação do médico
   if (i.status === 'paid' && i.requestType && i.requestType !== 'consultation') {
     return {
