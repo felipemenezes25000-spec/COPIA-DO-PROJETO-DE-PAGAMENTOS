@@ -26,7 +26,7 @@ import StatusTracker from '../../components/StatusTracker';
 import { StatusBadge } from '../../components/StatusBadge';
 import { DoctorHeader } from '../../components/ui/DoctorHeader';
 import { DoctorCard } from '../../components/ui/DoctorCard';
-import { PrimaryButton } from '../../components/ui/PrimaryButton';
+import { AppButton } from '../../components/ui/AppButton';
 import { SkeletonList } from '../../components/ui/SkeletonLoader';
 import { showToast } from '../../components/ui/Toast';
 import { useTriageEval } from '../../hooks/useTriageEval';
@@ -438,9 +438,10 @@ function ConsultationPostSection({ request, router }: { request: NonNullable<Ret
           if (meds.length === 0) return null;
           return (
             <View style={[s.cardMargin, { marginBottom: 8 }]}>
-              <PrimaryButton
-                label="Criar Receita Baseada na Consulta"
-                showArrow
+              <AppButton
+                title="Criar Receita Baseada na Consulta"
+                variant="doctorPrimary"
+                trailing={<Ionicons name="chevron-forward" size={20} color="#FFFFFF" />}
                 onPress={() => router.push({ pathname: '/doctor-request/editor/[id]' as never, params: { id: request.id, prefillMeds: JSON.stringify(meds) } })}
                 style={{ width: '100%' }}
               />
@@ -514,7 +515,7 @@ function ConductSection({ request, conductNotes, setConductNotes, includeConduct
         </Text>
       </TouchableOpacity>
       <View style={s.formBtns}>
-        <PrimaryButton label="Salvar no prontuário" onPress={handleSaveConduct} loading={savingConduct} style={s.primaryBtnFlex} />
+        <AppButton title="Salvar no prontuário" variant="doctorPrimary" onPress={handleSaveConduct} loading={savingConduct} style={s.primaryBtnFlex} />
       </View>
     </DoctorCard>
   );

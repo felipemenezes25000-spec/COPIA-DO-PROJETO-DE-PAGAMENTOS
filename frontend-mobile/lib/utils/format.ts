@@ -35,3 +35,28 @@ export function formatDateBR(
     year: 'numeric',
   });
 }
+
+/**
+ * Formata hora em pt-BR (HH:mm).
+ */
+export function formatTimeBR(dateStr: string | Date): string {
+  const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+/**
+ * Formata data e hora em pt-BR (dd/MM/yyyy HH:mm).
+ */
+export function formatDateTimeBR(dateStr: string | Date): string {
+  const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+  if (Number.isNaN(date.getTime())) return '—';
+  return `${date.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })} ${formatTimeBR(date)}`;
+}

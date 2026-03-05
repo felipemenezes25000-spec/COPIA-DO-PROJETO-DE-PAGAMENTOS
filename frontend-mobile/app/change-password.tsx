@@ -6,11 +6,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native';
 import { Card } from '../components/Card';
 import { Input } from '../components/Input';
-import { Button } from '../components/Button';
+import { AppButton } from '../components/ui/AppButton';
 import { changePassword } from '../lib/api';
 import { validate } from '../lib/validation';
 import { changePasswordSchema } from '../lib/validation/schemas';
-import { colors, spacing, typography } from '../constants/theme';
+import { colors, spacing } from '../lib/theme';
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
@@ -86,7 +86,7 @@ export default function ChangePasswordScreen() {
             leftIcon="key-outline"
           />
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
-          <Button title="Alterar Senha" onPress={handleSubmit} loading={loading} fullWidth />
+          <AppButton title="Alterar Senha" onPress={handleSubmit} loading={loading} fullWidth />
         </Card>
       </ScrollView>
     </SafeAreaView>
@@ -94,7 +94,7 @@ export default function ChangePasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.gray50 },
+  container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -102,9 +102,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
-  headerTitle: { ...typography.h4, color: colors.primaryDarker },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.primaryDark },
   scroll: { padding: spacing.lg, paddingBottom: spacing.xxl },
   card: { padding: spacing.lg },
-  hint: { ...typography.bodySmall, color: colors.gray600, marginBottom: spacing.lg },
-  errorText: { ...typography.caption, color: colors.error, marginBottom: spacing.md },
+  hint: { fontSize: 14, color: colors.textSecondary, marginBottom: spacing.lg, lineHeight: 20 },
+  errorText: { fontSize: 12, fontWeight: '500', color: colors.error, marginBottom: spacing.md },
 });

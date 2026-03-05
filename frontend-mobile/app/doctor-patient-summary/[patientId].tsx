@@ -28,6 +28,7 @@ import type { RequestResponseDto, PatientProfileForDoctorDto } from '../../types
 import { DoctorHeader } from '../../components/ui/DoctorHeader';
 import { useTriageEval } from '../../hooks/useTriageEval';
 import { showToast } from '../../components/ui/Toast';
+import { formatDateTimeBR } from '../../lib/utils/format';
 
 // ── Anamnese fields (alinhado com consultation-summary) ──
 
@@ -43,11 +44,7 @@ const ANA_FIELDS = [
 ] as const;
 
 function fmtDateTime(d: string): string {
-  const dt = new Date(d);
-  return `${dt.toLocaleDateString('pt-BR')} ${dt.toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })}`;
+  return formatDateTimeBR(d);
 }
 
 function calcAge(birthDate: string | null | undefined): number | null {

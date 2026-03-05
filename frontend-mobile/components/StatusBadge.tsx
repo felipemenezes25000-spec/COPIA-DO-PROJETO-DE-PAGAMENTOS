@@ -42,7 +42,7 @@ export function StatusBadgeByRequest({
   const { color, bg } = UI_STATUS_COLORS[colorKey];
   const isSm = size === 'sm';
   return (
-    <View style={[styles.badge, { backgroundColor: bg, maxWidth: 120 }, isSm && styles.badgeSm]}>
+    <View style={[styles.badge, { backgroundColor: bg, maxWidth: 180 }, isSm && styles.badgeSm]}>
       <Text style={[styles.text, { color }, isSm && styles.textSm]} numberOfLines={1} ellipsizeMode="tail">
         {label}
       </Text>
@@ -56,7 +56,7 @@ export function StatusBadge({ status, size = 'md' }: StatusBadgeProps) {
   const { color, bg } = UI_STATUS_COLORS[colorKey];
   const isSm = size === 'sm';
   return (
-    <View style={[styles.badge, { backgroundColor: bg, maxWidth: 120 }, isSm && styles.badgeSm]}>
+    <View style={[styles.badge, { backgroundColor: bg, maxWidth: 180 }, isSm && styles.badgeSm]}>
       <Text style={[styles.text, { color }, isSm && styles.textSm]} numberOfLines={1} ellipsizeMode="tail">
         {label}
       </Text>
@@ -70,7 +70,7 @@ export function StatusBadgeVariant({ variant, label, size = 'md' }: StatusBadgeV
   const { color, bg } = UI_STATUS_COLORS[colorKey];
   const isSm = size === 'sm';
   return (
-    <View style={[styles.badge, { backgroundColor: bg, maxWidth: 120 }, isSm && styles.badgeSm]}>
+    <View style={[styles.badge, { backgroundColor: bg, maxWidth: 180 }, isSm && styles.badgeSm]}>
       <Text style={[styles.text, { color }, isSm && styles.textSm]} numberOfLines={1} ellipsizeMode="tail">
         {label}
       </Text>
@@ -100,12 +100,12 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   text: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   textSm: {
-    fontSize: 9,
-    letterSpacing: 0.3,
+    fontSize: 11,
+    letterSpacing: 0.1,
   },
 });

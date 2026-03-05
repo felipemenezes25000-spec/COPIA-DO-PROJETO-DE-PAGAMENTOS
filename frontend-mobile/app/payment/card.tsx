@@ -9,7 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getMercadoPagoPublicKey, fetchRequestById, fetchSavedCards, createPayment, payWithSavedCard } from '../../lib/api';
 import { getApiErrorMessage } from '../../lib/api-client';
 import { getDisplayPrice } from '../../lib/config/pricing';
-import { colors, spacing, typography } from '../../constants/theme';
+import { colors, spacing } from '../../lib/theme';
 
 const TOKEN_KEY = '@renoveja:auth_token';
 
@@ -312,7 +312,7 @@ export default function CardPaymentScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.gray50 },
+  container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -321,19 +321,19 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray200,
+    borderBottomColor: colors.borderLight,
   },
-  headerTitle: { ...typography.h4, color: colors.primaryDarker },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.primaryDark },
   webview: { flex: 1, backgroundColor: 'transparent' },
   loadingBox: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
-  loadingText: { ...typography.body, color: colors.gray600 },
+  loadingText: { fontSize: 16, color: colors.textSecondary },
   errorBox: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
-  errorText: { ...typography.body, color: colors.error, textAlign: 'center', marginTop: spacing.md },
+  errorText: { fontSize: 16, color: colors.error, textAlign: 'center', marginTop: spacing.md },
   backBtn: {
     marginTop: spacing.xl, paddingVertical: 14, paddingHorizontal: spacing.xl,
     backgroundColor: colors.primary, borderRadius: 26,
     shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25, shadowRadius: 12, elevation: 4,
   },
-  backBtnText: { ...typography.bodySemiBold, color: colors.white },
+  backBtnText: { fontSize: 16, fontWeight: '600', color: colors.white },
 });

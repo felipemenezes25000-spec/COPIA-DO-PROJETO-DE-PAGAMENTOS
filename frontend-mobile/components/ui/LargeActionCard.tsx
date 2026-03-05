@@ -1,12 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, borderRadius, shadows } from '../../lib/themeDoctor';
-
-const cardShadow =
-  Platform.OS === 'web'
-    ? { boxShadow: '0px 2px 12px rgba(0,0,0,0.06)' }
-    : shadows.card;
+import { useAppTheme, type AppThemeRole } from '../../lib/ui/useAppTheme';
 
 export type LargeActionCardVariant = 'primary' | 'exam' | 'consultation';
 
@@ -17,6 +12,7 @@ interface LargeActionCardProps {
   onPress: () => void;
   variant?: LargeActionCardVariant;
   accessibilityLabel?: string;
+  role?: AppThemeRole;
 }
 
 export function LargeActionCard({
@@ -26,10 +22,24 @@ export function LargeActionCard({
   onPress,
   variant = 'primary',
   accessibilityLabel,
+  role,
 }: LargeActionCardProps) {
+  const { colors, radius, shadows } = useAppTheme({ role });
+  const cardShadow =
+    Platform.OS === 'web'
+      ? { boxShadow: '0px 2px 12px rgba(0,0,0,0.06)' }
+      : shadows.card;
+  const borderColor =
+    variant === 'exam'
+      ? '#E5E7EB'
+      : variant === 'consultation'
+        ? '#D1FAE5'
+        : '#E9EEF5';
+  const styles = createStyles(colors, radius);
+
   return (
     <Pressable
-      style={({ pressed }) => [styles.card, cardShadow, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.card, { borderColor }, cardShadow, pressed && styles.pressed]}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? title}
@@ -50,7 +60,17 @@ export function LargeActionCard({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (
+  colors: {
+    text: string;
+    textMuted: string;
+    textSecondary: string;
+    white: string;
+  },
+  radius: {
+    card: number;
+  }
+) => StyleSheet.create({
   card: {
     width: '100%',
     flexDirection: 'row',
@@ -58,7 +78,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: '#E9EEF5',
-    borderRadius: borderRadius.card,
+    borderRadius: radius.card,
     paddingVertical: 20,
     paddingHorizontal: 20,
     minHeight: 88,
@@ -87,8 +107,7 @@ const styles = StyleSheet.create({
     fontFamily: 'PlusJakartaSans_700Bold',
     color: colors.text,
     marginBottom: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.1,
   },
   description: {
     fontSize: 14,

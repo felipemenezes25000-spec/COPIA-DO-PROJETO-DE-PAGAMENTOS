@@ -31,7 +31,7 @@ import { RequestResponseDto, PrescriptionKind } from '../../../types/database';
 import { searchCid } from '../../../lib/cid-medications';
 import { DoctorHeader } from '../../../components/ui/DoctorHeader';
 import { DoctorCard } from '../../../components/ui/DoctorCard';
-import { PrimaryButton } from '../../../components/ui/PrimaryButton';
+import { AppButton } from '../../../components/ui/AppButton';
 import { SkeletonList, SkeletonLoader } from '../../../components/ui/SkeletonLoader';
 import { showToast } from '../../../components/ui/Toast';
 import { FormattedAiSummary } from '../../../components/FormattedAiSummary';
@@ -52,6 +52,16 @@ const URGENCY_LABELS_PT: Record<string, string> = {
   urgent: 'Urgente',
   emergency: 'Emergência',
 };
+
+function getRiskLabelPt(level: string | null | undefined): string {
+  if (!level) return 'Risco não classificado';
+  return RISK_LABELS_PT[level.toLowerCase()] ?? 'Risco não classificado';
+}
+
+function getUrgencyLabelPt(level: string | null | undefined): string {
+  if (!level) return 'Não informado';
+  return URGENCY_LABELS_PT[level.toLowerCase()] ?? 'Não informado';
+}
 
 function parseAiMedications(aiExtractedJson: string | null): string[] {
   if (!aiExtractedJson) return [];
@@ -243,6 +253,7 @@ export default function PrescriptionEditorScreen() {
   const [signFormDoctorProfileBlocked, setSignFormDoctorProfileBlocked] = useState(false);
   const [pdfUri, setPdfUri] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [complianceValidation, setComplianceValidation] = useState<{ valid: boolean; messages?: string[]; missingFields?: string[] } | null>(null);
   const pdfBlobUrlRef = useRef<string | null>(null);
   const webViewRef = useRef<WebView | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -606,7 +617,7 @@ export default function PrescriptionEditorScreen() {
                 <Text style={st.complianceTitle}>Campos obrigatórios pendentes</Text>
               </View>
               <Text style={st.complianceHint}>Complete antes de assinar:</Text>
-              {(complianceValidation.messages ?? []).map((msg, i) => (
+              {(complianceValidation.messages ?? []).map((msg: string, i: number) => (
                 <View key={i} style={st.complianceItem}>
                   <Ionicons name="ellipse" size={6} color={colors.textMuted} style={{ marginTop: 6 }} />
                   <Text style={st.complianceItemText}>{msg}</Text>
@@ -750,7 +761,7 @@ export default function PrescriptionEditorScreen() {
                 {request.aiRiskLevel && (
                   <View style={[st.riskBadge, { backgroundColor: RISK_COLORS[request.aiRiskLevel.toLowerCase()]?.bg || colors.muted }]}>
                     <Text style={[st.riskText, { color: RISK_COLORS[request.aiRiskLevel.toLowerCase()]?.text || colors.text }]}>
-                      {RISK_LABELS_PT[request.aiRiskLevel.toLowerCase()] || request.aiRiskLevel}
+                      {getRiskLabelPt(request.aiRiskLevel)}
                     </Text>
                   </View>
                 )}
@@ -763,7 +774,7 @@ export default function PrescriptionEditorScreen() {
               {request.aiUrgency && (
                 <View style={st.urgencyRow}>
                   <Ionicons name="time" size={16} color={colors.textSecondary} />
-                  <Text style={st.urgencyText}>Urgência: {URGENCY_LABELS_PT[request.aiUrgency.toLowerCase()] || request.aiUrgency}</Text>
+                  <Text style={st.urgencyText}>Urgência: {getUrgencyLabelPt(request.aiUrgency)}</Text>
                 </View>
               )}
             </DoctorCard>
@@ -963,7 +974,7 @@ export default function PrescriptionEditorScreen() {
                 >
                   <Text style={st.cancelSignText}>Cancelar</Text>
                 </TouchableOpacity>
-                <PrimaryButton label="Assinar" onPress={handleSign} loading={signing} style={st.signConfirmBtn} />
+                <AppButton title="Assinar" variant="doctorPrimary" onPress={handleSign} loading={signing} style={st.signConfirmBtn} />
               </View>
             </DoctorCard>
           )}
@@ -972,8 +983,9 @@ export default function PrescriptionEditorScreen() {
         {/* Bottom Action Bar — botões em coluna para texto em uma linha. Assinar só após aprovado e pago. */}
         {!showSignForm && (
           <View style={[st.bottomBar, { paddingBottom: bottomBarPadding }]}>
-            <PrimaryButton
-              label="Salvar e atualizar"
+            <AppButton
+              title="Salvar e atualizar"
+              variant="doctorPrimary"
               onPress={handleSave}
               loading={saving}
               style={st.bottomBarButton}
@@ -997,8 +1009,9 @@ export default function PrescriptionEditorScreen() {
                   </Text>
                 </TouchableOpacity>
               ) : (
-                <PrimaryButton
-                  label="Assinar digitalmente"
+                <AppButton
+                  title="Assinar digitalmente"
+                  variant="doctorPrimary"
                   onPress={() => setShowSignForm(true)}
                   style={st.bottomBarButton}
                 />

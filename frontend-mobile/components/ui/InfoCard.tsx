@@ -14,7 +14,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, shadows, borderRadius, spacing } from '../../lib/themeDoctor';
+import { useAppTheme, type AppThemeRole } from '../../lib/ui/useAppTheme';
 
 interface InfoCardProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -25,10 +25,13 @@ interface InfoCardProps {
   /** Se fornecido, mostra botão para fechar/não mostrar novamente */
   onDismiss?: () => void;
   style?: ViewStyle;
+  role?: AppThemeRole;
 }
 
-export function InfoCard({ icon, title, description, badge, onPress, onDismiss, style }: InfoCardProps) {
+export function InfoCard({ icon, title, description, badge, onPress, onDismiss, style, role }: InfoCardProps) {
   const Container = onPress ? Pressable : View;
+  const { colors, shadows, radius, spacing } = useAppTheme({ role });
+  const styles = createStyles(colors, shadows, radius, spacing);
 
   return (
     <View style={[styles.wrapper, style]}>
@@ -75,7 +78,26 @@ export function InfoCard({ icon, title, description, badge, onPress, onDismiss, 
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (
+  colors: {
+    text: string;
+    textMuted: string;
+    textSecondary: string;
+    primary: string;
+    primarySoft: string;
+    surface: string;
+  },
+  shadows: {
+    card: object;
+  },
+  radius: {
+    card: number;
+    cardLg?: number;
+  },
+  spacing: {
+    sm: number;
+  }
+) => StyleSheet.create({
   wrapper: {
     position: 'relative',
   },
@@ -90,7 +112,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.cardLg,
+    borderRadius: radius.cardLg ?? radius.card,
     overflow: 'hidden',
     paddingVertical: 18,
     paddingRight: 18,

@@ -27,6 +27,16 @@ const URGENCY_LABELS_PT: Record<string, string> = {
   emergency: 'Emergência',
 };
 
+function getRiskLabelPt(level: string | null | undefined): string {
+  if (!level) return 'Risco não classificado';
+  return RISK_LABELS_PT[level.toLowerCase()] ?? 'Risco não classificado';
+}
+
+function getUrgencyLabelPt(level: string | null | undefined): string {
+  if (!level) return 'Não informado';
+  return URGENCY_LABELS_PT[level.toLowerCase()] ?? 'Não informado';
+}
+
 export function hasUsefulAiContent(
   aiSummary: string | null | undefined,
   aiRisk?: string | null,
@@ -53,7 +63,7 @@ export function AiCopilotSection({ request, expanded, onToggleExpand, style }: A
     <DoctorCard style={[style, s.aiCard]}>
       <View style={s.aiHeader}>
         <Ionicons name="sparkles" size={18} color={colors.primary} />
-        <Text style={s.aiTitle}>COPILOTO IA</Text>
+        <Text style={s.aiTitle}>Copiloto IA</Text>
         {request.aiRiskLevel && (
           <View style={[s.riskBadge, { backgroundColor: RISK_COLORS[request.aiRiskLevel.toLowerCase()]?.bg || colors.muted }]}>
             <Ionicons
@@ -62,7 +72,7 @@ export function AiCopilotSection({ request, expanded, onToggleExpand, style }: A
               color={RISK_COLORS[request.aiRiskLevel.toLowerCase()]?.text || colors.text}
             />
             <Text style={[s.riskText, { color: RISK_COLORS[request.aiRiskLevel.toLowerCase()]?.text || colors.text }]}>
-              {RISK_LABELS_PT[request.aiRiskLevel.toLowerCase()] || request.aiRiskLevel}
+              {getRiskLabelPt(request.aiRiskLevel)}
             </Text>
           </View>
         )}
@@ -123,7 +133,7 @@ export function AiCopilotSection({ request, expanded, onToggleExpand, style }: A
       {request.aiUrgency && (
         <View style={s.urgencyRow}>
           <Ionicons name="time" size={14} color={colors.textSecondary} />
-          <Text style={s.urgencyText}>Urgência: {URGENCY_LABELS_PT[request.aiUrgency.toLowerCase()] || request.aiUrgency}</Text>
+          <Text style={s.urgencyText}>Urgência: {getUrgencyLabelPt(request.aiUrgency)}</Text>
         </View>
       )}
     </DoctorCard>

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-nativ
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography, doctorDS } from '../../lib/themeDoctor';
 import { DoctorCard } from '../ui/DoctorCard';
-import { PrimaryButton } from '../ui/PrimaryButton';
+import { AppButton } from '../ui/AppButton';
 
 interface DoctorActionButtonsProps {
   canApprove: boolean;
@@ -77,7 +77,7 @@ export function DoctorActionButtons({
             <TouchableOpacity style={s.cancelBtn} onPress={onToggleSignForm}>
               <Text style={s.cancelBtnText}>Cancelar</Text>
             </TouchableOpacity>
-            <PrimaryButton label="Assinar" onPress={onSign} loading={actionLoading} style={s.primaryBtnFlex} />
+            <AppButton title="Assinar" variant="doctorPrimary" onPress={onSign} loading={actionLoading} style={s.primaryBtnFlex} />
           </View>
         </DoctorCard>
       )}
@@ -99,9 +99,9 @@ export function DoctorActionButtons({
             <TouchableOpacity style={s.cancelBtn} onPress={onToggleRejectForm}>
               <Text style={s.cancelBtnText}>Cancelar</Text>
             </TouchableOpacity>
-            <PrimaryButton
-              label="Rejeitar"
-              variant="danger"
+            <AppButton
+              title="Rejeitar"
+              variant="doctorDanger"
               onPress={onReject}
               loading={actionLoading}
               style={s.primaryBtnFlex}
@@ -120,22 +120,34 @@ export function DoctorActionButtons({
       {!showSignForm && !showRejectForm && (
         <View style={s.actions}>
           {canAccept && (
-            <PrimaryButton label="Aceitar Consulta" onPress={onAccept} loading={actionLoading} style={s.actionBtnFull} />
+            <AppButton title="Aceitar Consulta" variant="doctorPrimary" onPress={onAccept} loading={actionLoading} style={s.actionBtnFull} />
           )}
           {canApprove && (
-            <PrimaryButton label="Aprovar" onPress={onApprove} loading={actionLoading} style={s.actionBtnFull} />
+            <AppButton title="Aprovar" variant="doctorPrimary" onPress={onApprove} loading={actionLoading} style={s.actionBtnFull} />
           )}
           {canSign && isPrescription && (
-            <PrimaryButton label="Visualizar e Assinar" showArrow onPress={onNavigateEditor} style={s.actionBtnFull} />
+            <AppButton
+              title="Visualizar e Assinar"
+              variant="doctorPrimary"
+              trailing={<Ionicons name="chevron-forward" size={20} color="#FFFFFF" />}
+              onPress={onNavigateEditor}
+              style={s.actionBtnFull}
+            />
           )}
           {canSign && !isPrescription && (
-            <PrimaryButton label="Assinar Digitalmente" onPress={onToggleSignForm} style={s.actionBtnFull} />
+            <AppButton title="Assinar Digitalmente" variant="doctorPrimary" onPress={onToggleSignForm} style={s.actionBtnFull} />
           )}
           {canVideo && (
-            <PrimaryButton label="Iniciar Consulta" showArrow onPress={onStartVideo} style={s.actionBtnFull} />
+            <AppButton
+              title="Iniciar Consulta"
+              variant="doctorPrimary"
+              trailing={<Ionicons name="chevron-forward" size={20} color="#FFFFFF" />}
+              onPress={onStartVideo}
+              style={s.actionBtnFull}
+            />
           )}
           {canReject && (
-            <PrimaryButton label="Rejeitar" variant="outline-danger" onPress={onToggleRejectForm} style={s.actionBtnFull} />
+            <AppButton title="Rejeitar" variant="doctorOutlineDanger" onPress={onToggleRejectForm} style={s.actionBtnFull} />
           )}
         </View>
       )}

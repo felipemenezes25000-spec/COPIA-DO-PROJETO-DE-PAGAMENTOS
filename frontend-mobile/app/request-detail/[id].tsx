@@ -20,11 +20,11 @@ import { colors, spacing, borderRadius, shadows } from '../../lib/theme';
 import { fetchRequestById, markRequestDelivered, cancelRequest } from '../../lib/api';
 import { apiClient } from '../../lib/api-client';
 import { getDisplayPrice } from '../../lib/config/pricing';
-import { formatBRL, formatDateBR } from '../../lib/utils/format';
+import { formatBRL, formatDateTimeBR } from '../../lib/utils/format';
 import { RequestResponseDto } from '../../types/database';
 import { StatusBadge } from '../../components/StatusBadge';
 import StatusTracker from '../../components/StatusTracker';
-import { PrimaryButton } from '../../components/ui/PrimaryButton';
+import { AppButton } from '../../components/ui/AppButton';
 import { ZoomableImage } from '../../components/ZoomableImage';
 import { CompatibleImage } from '../../components/CompatibleImage';
 import { FormattedAiSummary } from '../../components/FormattedAiSummary';
@@ -46,6 +46,16 @@ function getPrescriptionTypeLabel(type: string | null): string {
     case 'controlado': return 'Receita Controlada';
     case 'azul': return 'Receita Azul';
     default: return '';
+  }
+}
+
+function getRiskLabelPt(level: string | null | undefined): string {
+  if (!level) return 'Risco não classificado';
+  switch (level.toLowerCase()) {
+    case 'high': return 'Risco alto';
+    case 'medium': return 'Risco médio';
+    case 'low': return 'Risco baixo';
+    default: return 'Risco não classificado';
   }
 }
 
@@ -323,7 +333,7 @@ export default function RequestDetailScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Status Tracker */}
         <View style={styles.card}>
-          <Text style={styles.cardLabel}>STATUS DO PEDIDO</Text>
+          <Text style={styles.cardLabel}>Status do pedido</Text>
           <StatusTracker currentStatus={request.status} requestType={request.requestType} />
         </View>
 
@@ -379,7 +389,7 @@ export default function RequestDetailScreen() {
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Criado em</Text>
             <Text style={styles.detailValue}>
-              {formatDateBR(request.createdAt)} {new Date(request.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+              {formatDateTimeBR(request.createdAt)}
             </Text>
           </View>
         </View>
@@ -482,7 +492,7 @@ export default function RequestDetailScreen() {
               {request.aiRiskLevel && (
                 <View style={[styles.riskBadge, { backgroundColor: request.aiRiskLevel === 'high' ? '#FEE2E2' : request.aiRiskLevel === 'medium' ? '#FEF3C7' : '#D1FAE5' }]}>
                   <Text style={[styles.riskText, { color: request.aiRiskLevel === 'high' ? '#EF4444' : request.aiRiskLevel === 'medium' ? '#D97706' : '#059669' }]}>
-                    {request.aiRiskLevel === 'high' ? 'ALTO RISCO' : request.aiRiskLevel === 'medium' ? 'RISCO MÉDIO' : 'BAIXO RISCO'}
+                    {getRiskLabelPt(request.aiRiskLevel)}
                   </Text>
                 </View>
               )}
@@ -505,8 +515,8 @@ export default function RequestDetailScreen() {
         {/* Action Buttons */}
         <View style={styles.actions}>
           {canPay && (
-            <PrimaryButton
-              label="Pagar"
+            <AppButton
+              title="Pagar"
               icon="qr-code"
               onPress={handlePay}
               loading={actionLoading}
@@ -516,13 +526,13 @@ export default function RequestDetailScreen() {
 
           {canDownload && (
             <>
-              <PrimaryButton
-                label={request.requestType === 'exam' ? 'Baixar Pedido de Exame' : request.requestType === 'consultation' ? 'Baixar Documento' : 'Baixar Receita'}
+              <AppButton
+                title={request.requestType === 'exam' ? 'Baixar Pedido de Exame' : request.requestType === 'consultation' ? 'Baixar Documento' : 'Baixar Receita'}
                 icon="download"
                 onPress={handleDownload}
               />
-              <PrimaryButton
-                label="Visualizar"
+              <AppButton
+                title="Visualizar"
                 icon="eye"
                 variant="outline"
                 onPress={handleViewDocument}
@@ -531,8 +541,8 @@ export default function RequestDetailScreen() {
           )}
 
           {canJoinVideo && (
-            <PrimaryButton
-              label="Entrar na Consulta"
+            <AppButton
+              title="Entrar na Consulta"
               icon="videocam"
               onPress={handleEnterConsultation}
               style={{ backgroundColor: colors.success, borderColor: colors.success }}
@@ -540,8 +550,8 @@ export default function RequestDetailScreen() {
           )}
 
           {canCancel && (
-            <PrimaryButton
-              label="Cancelar pedido"
+            <AppButton
+              title="Cancelar pedido"
               icon="close-circle-outline"
               variant="outline"
               onPress={handleCancel}
@@ -606,7 +616,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     ...shadows.card,
   },
-  cardLabel: { fontSize: 11, fontWeight: '700', color: colors.textMuted, letterSpacing: 1, marginBottom: spacing.xs },
+  cardLabel: { fontSize: 11, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.2, marginBottom: spacing.xs },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
   cardTitle: { fontSize: 16, fontWeight: '700', color: colors.text, flex: 1 },
   detailRow: {

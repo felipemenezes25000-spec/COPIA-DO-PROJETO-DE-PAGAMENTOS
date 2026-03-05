@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { DoctorHeader } from '../../components/ui/DoctorHeader';
 import { DoctorCard } from '../../components/ui/DoctorCard';
-import { PrimaryButton } from '../../components/ui/PrimaryButton';
+import { AppButton } from '../../components/ui/AppButton';
 import { Input } from '../../components/Input';
 import { Loading } from '../../components/Loading';
 import { uploadCertificate, getActiveCertificate, revokeCertificate } from '../../lib/api';
@@ -156,7 +156,7 @@ export default function CertificateUploadScreen() {
               leftIcon="lock-closed-outline"
             />
 
-            <PrimaryButton label="Enviar Certificado" onPress={handleUpload} loading={uploading} style={styles.uploadBtn} />
+            <AppButton title="Enviar Certificado" variant="doctorPrimary" onPress={handleUpload} loading={uploading} style={styles.uploadBtn} />
           </DoctorCard>
         )}
 

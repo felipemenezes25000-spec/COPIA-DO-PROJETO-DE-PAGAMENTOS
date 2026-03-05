@@ -8,7 +8,7 @@ import {
   TextInputProps,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, borderRadius, typography } from '../constants/theme';
+import { colors, spacing, borderRadius } from '../lib/theme';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -47,13 +47,13 @@ export function Input({
           <Ionicons
             name={leftIcon}
             size={20}
-            color={focused ? colors.primary : colors.gray400}
+            color={focused ? colors.primary : colors.textMuted}
             style={styles.leftIcon}
           />
         )}
         <TextInput
           style={[styles.input, style]}
-          placeholderTextColor={colors.gray400}
+          placeholderTextColor={colors.textMuted}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           secureTextEntry={hidden}
@@ -67,7 +67,7 @@ export function Input({
             <Ionicons
               name={hidden ? 'eye-off-outline' : 'eye-outline'}
               size={20}
-              color={colors.gray400}
+              color={colors.textMuted}
             />
           </TouchableOpacity>
         )}
@@ -76,7 +76,7 @@ export function Input({
             onPress={onRightIconPress}
             style={styles.rightIcon}
           >
-            <Ionicons name={rightIcon} size={20} color={colors.gray400} />
+            <Ionicons name={rightIcon} size={20} color={colors.textMuted} />
           </TouchableOpacity>
         )}
       </View>
@@ -91,17 +91,18 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   label: {
-    ...typography.bodySmallMedium,
-    color: colors.gray700,
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textSecondary,
     marginBottom: 6,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.background,
     borderRadius: borderRadius.lg,
     borderWidth: 1.5,
-    borderColor: colors.gray200,
+    borderColor: colors.border,
     minHeight: 52,
     paddingHorizontal: spacing.md,
   },
@@ -122,18 +123,20 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    ...typography.body,
-    color: colors.gray900,
+    fontSize: 16,
+    color: colors.text,
     paddingVertical: 12,
   },
   errorText: {
-    ...typography.caption,
+    fontSize: 12,
+    fontWeight: '500',
     color: colors.error,
     marginTop: 4,
   },
   hintText: {
-    ...typography.caption,
-    color: colors.gray500,
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textMuted,
     marginTop: 4,
   },
 });

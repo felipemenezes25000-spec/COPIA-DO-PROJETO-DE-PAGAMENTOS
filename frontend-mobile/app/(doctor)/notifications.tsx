@@ -191,7 +191,7 @@ export default function DoctorNotifications() {
       >
         <View style={styles.headerRow}>
           <View style={styles.headerText}>
-            <Text style={styles.title}>ALERTAS</Text>
+            <Text style={styles.title}>Alertas</Text>
             <Text style={styles.subtitle}>Notificações e atualizações</Text>
           </View>
           {unreadCount > 0 && (
@@ -201,7 +201,7 @@ export default function DoctorNotifications() {
               accessibilityRole="button"
               accessibilityLabel="Marcar todas como lidas"
             >
-              <Text style={styles.markAllText}>MARCAR LIDAS</Text>
+              <Text style={styles.markAllText}>Marcar lidas</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -249,7 +249,7 @@ export default function DoctorNotifications() {
               <View style={styles.emptyIconWrap}>
                 <Ionicons name="notifications-off-outline" size={36} color={colors.textMuted} />
               </View>
-              <Text style={styles.emptyTitle}>VOCÊ ESTÁ EM DIA</Text>
+              <Text style={styles.emptyTitle}>Você está em dia</Text>
               <Text style={styles.emptySubtitle}>Nenhuma novidade no momento</Text>
             </View>
           }
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.bold,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: 0.8,
+    letterSpacing: 0.2,
   },
   subtitle: {
     fontSize: 12,
@@ -285,7 +285,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.7)',
     marginTop: 4,
     letterSpacing: 0.2,
-    textTransform: 'uppercase',
   },
   categoryRow: {
     flexDirection: 'row',
@@ -313,7 +312,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 10,
   },
-  markAllText: { fontSize: 10, fontFamily: typography.fontFamily.bold, color: '#fff', fontWeight: '700', letterSpacing: 0.5 },
+  markAllText: { fontSize: 10, fontFamily: typography.fontFamily.bold, color: '#fff', fontWeight: '700', letterSpacing: 0.2 },
   listContent: {
     paddingHorizontal: doctorDS.screenPaddingHorizontal,
   },
@@ -353,8 +352,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: colors.textMuted,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+    letterSpacing: 0.2,
     marginTop: spacing.md,
     marginBottom: spacing.sm,
   },
@@ -374,6 +372,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyTitle: { fontSize: 14, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.8 },
+  emptyTitle: { fontSize: 14, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.2 },
   emptySubtitle: { fontSize: 13, fontFamily: typography.fontFamily.regular, color: colors.textMuted },
 });

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../../lib/themeDoctor';
 import { DoctorCard } from '../ui/DoctorCard';
 import { RequestResponseDto, PatientProfileForDoctorDto } from '../../types/database';
+import { formatDateTimeBR } from '../../lib/utils/format';
 
 interface PatientInfoCardProps {
   request: RequestResponseDto;
@@ -17,11 +18,6 @@ function getInitials(name: string | null | undefined): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   return (parts[0][0] || '?').toUpperCase();
-}
-
-function formatDateTime(d: string): string {
-  const dt = new Date(d);
-  return `${dt.toLocaleDateString('pt-BR')} ${dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
 }
 
 function calcAge(birthDate: string | null | undefined): number | null {
@@ -53,7 +49,7 @@ export function PatientInfoCard({ request, profile, onViewRecord, style }: Patie
         </View>
         <View style={s.patientInfo}>
           <Text style={s.patientName}>{request.patientName || 'Paciente'}</Text>
-          <Text style={s.patientDate}>{formatDateTime(request.createdAt)}</Text>
+          <Text style={s.patientDate}>{formatDateTimeBR(request.createdAt)}</Text>
           {hasExtraInfo && (
             <Text style={s.patientMetaText} numberOfLines={2}>{metaParts.join(' · ')}</Text>
           )}

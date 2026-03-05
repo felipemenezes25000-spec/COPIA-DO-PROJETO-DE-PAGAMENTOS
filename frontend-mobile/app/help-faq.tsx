@@ -5,7 +5,7 @@ import { useTriageEval } from '../hooks/useTriageEval';
 import { useAuth } from '../contexts/AuthContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../constants/theme';
+import { colors, spacing } from '../lib/theme';
 import { COMPANY } from '../lib/company';
 
 export default function HelpFaqScreen() {
@@ -60,7 +60,7 @@ export default function HelpFaqScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.gray50 },
+  container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -68,15 +68,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
-  headerTitle: { ...typography.h4, color: colors.primaryDarker },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.primaryDark },
   scroll: { padding: spacing.lg, paddingBottom: spacing.xxl },
   sectionTitle: {
-    ...typography.bodySemiBold,
-    color: colors.gray800,
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
   },
-  question: { ...typography.bodySmallMedium, color: colors.gray800, marginTop: spacing.md },
-  answer: { ...typography.bodySmall, color: colors.gray600, marginTop: 4, marginBottom: spacing.md, lineHeight: 20 },
-  paragraph: { ...typography.bodySmall, color: colors.gray700, marginBottom: spacing.md, lineHeight: 22 },
+  question: { fontSize: 14, fontWeight: '500', color: colors.text, marginTop: spacing.md },
+  answer: { fontSize: 14, color: colors.textSecondary, marginTop: 4, marginBottom: spacing.md, lineHeight: 20 },
+  paragraph: { fontSize: 14, color: colors.textSecondary, marginBottom: spacing.md, lineHeight: 22 },
 });

@@ -54,10 +54,9 @@ export default function PatientLayout() {
           }),
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: '700',
-          letterSpacing: 0.8,
-          textTransform: 'uppercase',
+          letterSpacing: 0.2,
         },
         tabBarBadgeStyle: {
           backgroundColor: colors.error,

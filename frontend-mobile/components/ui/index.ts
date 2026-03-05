@@ -9,5 +9,3 @@ export { BottomActionBar } from './BottomActionBar';
 export { SkeletonLoader, SkeletonCard, SkeletonList } from './SkeletonLoader';
 export { ToastProvider, showToast } from './Toast';
 export { InfoCard } from './InfoCard';
-export { PrimaryButton } from './PrimaryButton';
-export type { PrimaryButtonVariant, PrimaryButtonProps } from './PrimaryButton';

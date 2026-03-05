@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, shadows } from '../lib/themeDoctor';
+import { useAppTheme, type AppThemeRole } from '../lib/ui/useAppTheme';
 
 interface StatsCardProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -10,23 +10,28 @@ interface StatsCardProps {
   iconColor?: string;
   iconBgColor?: string;
   onPress?: () => void;
+  role?: AppThemeRole;
 }
 
 export function StatsCard({
   icon,
   label,
   value,
-  iconColor = colors.primary,
+  iconColor,
   iconBgColor,
   onPress,
+  role,
 }: StatsCardProps) {
-  const softBg = iconBgColor || (iconColor + '18');
+  const { colors, shadows } = useAppTheme({ role });
+  const resolvedIconColor = iconColor ?? colors.primary;
+  const softBg = iconBgColor || (resolvedIconColor + '18');
   const displayValue = value;
+  const styles = createStyles(colors, shadows);
 
   const content = (
     <>
       <View style={[styles.iconWrap, { backgroundColor: softBg }]}>
-        <Ionicons name={icon} size={22} color={iconColor} />
+        <Ionicons name={icon} size={22} color={resolvedIconColor} />
       </View>
       <Text style={styles.value}>{displayValue}</Text>
       <Text style={styles.label} numberOfLines={2}>{label}</Text>
@@ -49,7 +54,16 @@ export function StatsCard({
   return <View style={styles.card}>{content}</View>;
 }
 
-const styles = StyleSheet.create({
+const createStyles = (
+  colors: {
+    surface: string;
+    text: string;
+    textMuted: string;
+  },
+  shadows: {
+    card: object;
+  }
+) => StyleSheet.create({
   card: {
     flex: 1,
     minWidth: 0,
@@ -82,12 +96,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   label: {
-    fontSize: 9,
+    fontSize: 12,
     fontFamily: 'PlusJakartaSans_700Bold',
     fontWeight: '700',
     color: colors.textMuted,
     textAlign: 'center',
-    minHeight: 24,
-    letterSpacing: 0.8,
+    minHeight: 28,
+    letterSpacing: 0.2,
+    lineHeight: 16,
   },
 });

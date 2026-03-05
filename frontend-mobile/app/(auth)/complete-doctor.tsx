@@ -5,12 +5,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { Card } from '../../components/Card';
-import { Button } from '../../components/Button';
+import { AppButton } from '../../components/ui/AppButton';
 import { Input } from '../../components/Input';
 import { Loading } from '../../components/Loading';
 import { uploadCertificate, getActiveCertificate } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { colors, spacing, typography, borderRadius } from '../../constants/theme';
+import { colors, spacing, borderRadius } from '../../lib/theme';
 
 /**
  * Tela obrigatória para médicos concluírem o cadastro com certificado digital.
@@ -125,7 +125,7 @@ export default function CompleteDoctorScreen() {
         <View style={{ width: 40 }} />
       </View>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Card style={{ ...styles.infoBanner, backgroundColor: colors.primaryPaler }}>
+        <Card style={{ ...styles.infoBanner, backgroundColor: colors.primarySoft }}>
           <Ionicons name="shield-checkmark" size={32} color={colors.primary} />
           <Text style={styles.infoTitle}>Certificado digital obrigatório</Text>
           <Text style={styles.infoDesc}>
@@ -200,12 +200,12 @@ export default function CompleteDoctorScreen() {
             leftIcon="lock-closed-outline"
           />
 
-          <Button
+          <AppButton
             title="Enviar e concluir cadastro"
             onPress={handleUpload}
             loading={uploading}
             fullWidth
-            icon={<Ionicons name="shield-checkmark" size={20} color={colors.white} />}
+            leading={<Ionicons name="shield-checkmark" size={20} color={colors.white} />}
           />
         </Card>
 
@@ -223,7 +223,7 @@ export default function CompleteDoctorScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.gray50 },
+  container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -231,28 +231,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
-  headerTitle: { ...typography.h4, color: colors.primaryDarker },
-  signOutText: { ...typography.bodySmall, color: colors.error },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.primaryDark },
+  signOutText: { fontSize: 14, color: colors.error },
   scroll: { padding: spacing.lg, paddingBottom: spacing.xxl },
   infoBanner: {
     alignItems: 'center',
     paddingVertical: spacing.xl,
     marginBottom: spacing.md,
   },
-  infoTitle: { ...typography.h4, color: colors.primaryDark, marginTop: spacing.sm },
+  infoTitle: { fontSize: 18, fontWeight: '700', color: colors.primaryDark, marginTop: spacing.sm },
   infoDesc: {
-    ...typography.bodySmall,
-    color: colors.gray600,
+    fontSize: 14,
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: spacing.xs,
     paddingHorizontal: spacing.md,
+    lineHeight: 20,
   },
   uploadCard: { marginBottom: spacing.md },
-  uploadTitle: { ...typography.h4, color: colors.primaryDarker, marginBottom: spacing.md },
+  uploadTitle: { fontSize: 18, fontWeight: '700', color: colors.primaryDark, marginBottom: spacing.md },
   fileBtn: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primaryPaler,
+    backgroundColor: colors.primarySoft,
     borderWidth: 2,
     borderColor: colors.primary,
     borderStyle: 'dashed',
@@ -260,23 +261,24 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     marginBottom: spacing.md,
   },
-  fileText: { ...typography.bodySmallMedium, color: colors.primary, marginTop: spacing.sm },
-  fileSize: { ...typography.caption, color: colors.gray500, marginTop: 2 },
+  fileText: { fontSize: 14, fontWeight: '500', color: colors.primary, marginTop: spacing.sm },
+  fileSize: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
   helpCard: { marginBottom: spacing.md },
-  helpTitle: { ...typography.bodySemiBold, color: colors.primaryDarker, marginBottom: spacing.sm },
-  helpText: { ...typography.bodySmall, color: colors.gray600, marginBottom: 4 },
+  helpTitle: { fontSize: 16, fontWeight: '600', color: colors.primaryDark, marginBottom: spacing.sm },
+  helpText: { fontSize: 14, color: colors.textSecondary, marginBottom: 4, lineHeight: 20 },
   disclaimerCard: {
     marginBottom: spacing.md,
     padding: spacing.md,
   },
   disclaimerTitle: {
-    ...typography.bodySemiBold,
-    color: colors.primaryDarker,
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primaryDark,
     marginBottom: spacing.sm,
   },
   disclaimerText: {
-    ...typography.bodySmall,
-    color: colors.gray600,
+    fontSize: 14,
+    color: colors.textSecondary,
     marginBottom: spacing.sm,
     lineHeight: 20,
   },
@@ -293,7 +295,7 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: colors.gray400,
+    borderColor: colors.border,
     marginRight: spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
@@ -304,15 +306,15 @@ const styles = StyleSheet.create({
   },
   termsCheckText: {
     flex: 1,
-    ...typography.bodySmall,
-    color: colors.gray700,
+    fontSize: 14,
+    color: colors.text,
     lineHeight: 20,
   },
   termsLinkWrap: {
     marginTop: spacing.sm,
   },
   termsLink: {
-    ...typography.bodySmall,
+    fontSize: 14,
     color: colors.primary,
     fontWeight: '600',
     textDecorationLine: 'underline',

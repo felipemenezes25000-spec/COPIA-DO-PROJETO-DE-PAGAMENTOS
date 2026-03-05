@@ -1,16 +1,16 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle, Platform } from 'react-native';
-import { colors, spacing, borderRadius, shadows } from '../constants/theme';
+import { colors, spacing, borderRadius, theme } from '../lib/theme';
 
 // Web: react-native-web deprecia shadow*; usar boxShadow.
 const shadowDefault =
   Platform.OS === 'web'
     ? { boxShadow: '0px 1px 3px rgba(0,0,0,0.04)' }
-    : shadows.sm;
+    : theme.shadows.sm;
 const shadowElevated =
   Platform.OS === 'web'
     ? { boxShadow: '0px 4px 16px rgba(0,0,0,0.08)' }
-    : shadows.lg;
+    : theme.shadows.lg;
 
 interface CardProps {
   children: React.ReactNode;
@@ -47,6 +47,6 @@ const styles = StyleSheet.create({
   },
   outlined: {
     borderWidth: 1,
-    borderColor: colors.gray200,
+    borderColor: colors.borderLight,
   },
 });

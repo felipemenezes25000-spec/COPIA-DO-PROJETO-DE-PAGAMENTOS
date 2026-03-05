@@ -403,8 +403,7 @@ const styles = StyleSheet.create({
     fontFamily: 'PlusJakartaSans_700Bold',
     fontWeight: '800',
     color: '#fff',
-    letterSpacing: -0.3,
-    textTransform: 'uppercase',
+    letterSpacing: -0.2,
   },
   avatarBtn: {
     width: 52,
@@ -457,8 +456,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
     marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 0.2,
   },
   sectionHint: {
     fontSize: 13,

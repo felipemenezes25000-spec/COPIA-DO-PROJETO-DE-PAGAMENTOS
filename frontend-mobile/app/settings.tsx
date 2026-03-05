@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../components/Card';
 import { fetchPushTokens, setPushPreference } from '../lib/api';
-import { colors, spacing, typography } from '../constants/theme';
+import { colors, spacing } from '../lib/theme';
 import { getMutedKeys, unmuteAll } from '../lib/triage/triagePersistence';
 
 /**
@@ -93,7 +93,7 @@ export default function SettingsScreen() {
               <Switch
                 value={pushEnabled}
                 onValueChange={handlePushToggle}
-                trackColor={{ true: colors.success, false: colors.gray300 }}
+                trackColor={{ true: colors.success, false: colors.border }}
                 thumbColor={colors.white}
               />
             }
@@ -106,7 +106,7 @@ export default function SettingsScreen() {
               <Switch
                 value={emailEnabled}
                 onValueChange={setEmailEnabled}
-                trackColor={{ true: colors.success, false: colors.gray300 }}
+                trackColor={{ true: colors.success, false: colors.border }}
                 thumbColor={colors.white}
               />
             }
@@ -118,7 +118,7 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.gray50 },
+  container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -126,12 +126,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
-  headerTitle: { ...typography.h4, color: colors.primaryDarker },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.primaryDark },
   scroll: { padding: spacing.lg, paddingBottom: spacing.xxl },
   section: { marginBottom: spacing.md },
   sectionTitle: {
-    ...typography.captionSmall,
-    color: colors.gray400,
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: spacing.md,
@@ -141,13 +142,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: colors.primaryPaler,
+    backgroundColor: colors.primarySoft,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,
   },
-  itemLabel: { flex: 1, ...typography.bodySmallMedium, color: colors.gray800 },
-  divider: { height: 1, backgroundColor: colors.gray100, marginVertical: spacing.xs },
-  linkText: { ...typography.bodySmallMedium, color: colors.primary, fontWeight: '600' },
-  mutedText: { ...typography.bodySmallMedium, color: colors.gray400 },
+  itemLabel: { flex: 1, fontSize: 14, fontWeight: '500', color: colors.text },
+  divider: { height: 1, backgroundColor: colors.borderLight, marginVertical: spacing.xs },
+  linkText: { fontSize: 14, fontWeight: '600', color: colors.primary },
+  mutedText: { fontSize: 14, fontWeight: '500', color: colors.textMuted },
 });

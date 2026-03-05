@@ -9,18 +9,18 @@ import { formatBRL, formatDateBR } from '../lib/utils/format';
 import { RequestResponseDto } from '../types/database';
 
 const RISK_CONFIG: Record<string, { label: string; color: string; bg: string; icon: keyof typeof Ionicons.glyphMap }> = {
-  high: { label: 'ALTO RISCO', color: '#DC2626', bg: '#FEE2E2', icon: 'alert-circle' },
-  medium: { label: 'RISCO MÉDIO', color: '#D97706', bg: '#FEF3C7', icon: 'warning' },
-  low: { label: 'BAIXO RISCO', color: '#059669', bg: '#D1FAE5', icon: 'shield-checkmark' },
+  high: { label: 'Risco alto', color: '#DC2626', bg: '#FEE2E2', icon: 'alert-circle' },
+  medium: { label: 'Risco médio', color: '#D97706', bg: '#FEF3C7', icon: 'warning' },
+  low: { label: 'Risco baixo', color: '#059669', bg: '#D1FAE5', icon: 'shield-checkmark' },
 };
 
 const TYPE_CONFIG: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string; bg: string; label: string }> = {
-  prescription: { icon: 'document-text', color: '#3B82F6', bg: '#DBEAFE', label: 'RECEITA' },
-  exam: { icon: 'flask', color: '#6B7280', bg: '#F3F4F6', label: 'EXAME' },
-  consultation: { icon: 'videocam', color: '#059669', bg: '#D1FAE5', label: 'CONSULTA' },
+  prescription: { icon: 'document-text', color: '#3B82F6', bg: '#DBEAFE', label: 'Receita' },
+  exam: { icon: 'flask', color: '#6B7280', bg: '#F3F4F6', label: 'Exame' },
+  consultation: { icon: 'videocam', color: '#059669', bg: '#D1FAE5', label: 'Consulta' },
 };
 
-const FALLBACK_TYPE = { icon: 'document' as keyof typeof Ionicons.glyphMap, color: '#3B82F6', bg: '#DBEAFE', label: 'SOLICITAÇÃO' };
+const FALLBACK_TYPE = { icon: 'document' as keyof typeof Ionicons.glyphMap, color: '#3B82F6', bg: '#DBEAFE', label: 'Solicitação' };
 
 function getRequestSubtitle(request: RequestResponseDto, showPatientName?: boolean): string {
   if (showPatientName && request.patientName) {
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.text,
-    letterSpacing: 0.3,
+    letterSpacing: 0.1,
   },
   subtitle: {
     fontSize: 13,
@@ -212,9 +212,9 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   riskText: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.3,
+    letterSpacing: 0.1,
   },
   spacer: {
     flex: 1,

@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   ViewStyle,
+  StyleProp,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,33 +13,45 @@ import { theme } from '../../lib/theme';
 import { colors as doctorColors } from '../../lib/themeDoctor';
 
 const c = theme.colors;
-const r = theme.borderRadius;
 // Usar tom mais escuro para melhor contraste e visibilidade
 const PRIMARY_MAIN = c.primary?.dark ?? '#1A9DE0';
 const PRIMARY_BORDER = '#1583C7';
 
-type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'doctorPrimary' | 'doctorSecondary';
-type ButtonSize = 'sm' | 'md' | 'lg';
+export type AppButtonVariant =
+  | 'primary'
+  | 'secondary'
+  | 'outline'
+  | 'ghost'
+  | 'danger'
+  | 'doctorPrimary'
+  | 'doctorSecondary'
+  | 'doctorOutline'
+  | 'doctorDanger'
+  | 'doctorOutlineDanger';
+export type AppButtonSize = 'sm' | 'md' | 'lg';
 
-interface AppButtonProps {
+export interface AppButtonProps {
   title: string;
   onPress: () => void;
-  variant?: ButtonVariant;
-  size?: ButtonSize;
+  variant?: AppButtonVariant;
+  size?: AppButtonSize;
   loading?: boolean;
   disabled?: boolean;
   fullWidth?: boolean;
   icon?: keyof typeof Ionicons.glyphMap;
-  style?: ViewStyle;
+  leading?: React.ReactNode;
+  trailing?: React.ReactNode;
+  onPressIn?: () => void;
+  style?: StyleProp<ViewStyle>;
 }
 
-const SIZE_CONFIG: Record<ButtonSize, { height: number; fontSize: number; fontWeight: '600' | '700'; iconSize: number }> = {
+const SIZE_CONFIG: Record<AppButtonSize, { height: number; fontSize: number; fontWeight: '600' | '700'; iconSize: number }> = {
   sm: { height: 44, fontSize: 14, fontWeight: '600', iconSize: 18 },
-  md: { height: 54, fontSize: 16, fontWeight: '700', iconSize: 20 },
+  md: { height: 52, fontSize: 16, fontWeight: '700', iconSize: 20 },
   lg: { height: 60, fontSize: 17, fontWeight: '700', iconSize: 22 },
 };
 
-const VARIANT_CONFIG: Record<ButtonVariant, {
+const VARIANT_CONFIG: Record<AppButtonVariant, {
   bg: string; text: string; border?: string;
   shadow: { shadowColor: string; shadowOffset: { width: number; height: number }; shadowOpacity: number; shadowRadius: number; elevation: number };
 }> = {
@@ -59,15 +72,39 @@ const VARIANT_CONFIG: Record<ButtonVariant, {
   ghost: { bg: 'transparent', text: c.primary?.main ?? '#2CB1FF', shadow: theme.shadows.none },
   danger: { bg: c.status?.error ?? '#EF4444', text: '#FFFFFF', shadow: theme.shadows.buttonDanger },
   doctorPrimary: {
-    bg: '#1B4965',
+    bg: doctorColors.primary,
     text: '#FFFFFF',
-    border: '#0F2D44',
-    shadow: { shadowColor: '#0F172A', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6, elevation: 6 },
+    border: doctorColors.primaryDark,
+    shadow: { shadowColor: doctorColors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10, elevation: 6 },
   },
   doctorSecondary: {
     bg: '#2EC4B6',
     text: '#FFFFFF',
     shadow: { shadowColor: '#2EC4B6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 4 },
+  },
+  doctorOutline: {
+    bg: doctorColors.surface,
+    text: doctorColors.primary,
+    border: doctorColors.primary,
+    shadow: theme.shadows.none,
+  },
+  doctorDanger: {
+    bg: doctorColors.error,
+    text: '#FFFFFF',
+    border: doctorColors.destructive,
+    shadow: {
+      shadowColor: doctorColors.error,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.25,
+      shadowRadius: 6,
+      elevation: 6,
+    },
+  },
+  doctorOutlineDanger: {
+    bg: doctorColors.errorLight,
+    text: doctorColors.error,
+    border: doctorColors.error,
+    shadow: theme.shadows.none,
   },
 };
 
@@ -80,6 +117,9 @@ export function AppButton({
   disabled = false,
   fullWidth = false,
   icon,
+  leading,
+  trailing,
+  onPressIn,
   style,
 }: AppButtonProps) {
   const isDisabled = disabled || loading;
@@ -89,6 +129,7 @@ export function AppButton({
   return (
     <Pressable
       onPress={onPress}
+      onPressIn={onPressIn}
       disabled={isDisabled}
       style={({ pressed }) => [
         styles.base,
@@ -107,11 +148,12 @@ export function AppButton({
     >
       {loading ? (
         <ActivityIndicator
-          color={variant === 'outline' || variant === 'ghost' ? PRIMARY_MAIN : '#FFFFFF'}
+          color={variant === 'outline' || variant === 'ghost' || variant === 'doctorOutline' || variant === 'doctorOutlineDanger' ? varConf.text : '#FFFFFF'}
           size="small"
         />
       ) : (
         <View style={styles.content}>
+          {leading}
           {icon && (
             <Ionicons
               name={icon}
@@ -132,6 +174,7 @@ export function AppButton({
           >
             {title}
           </Text>
+          {trailing}
         </View>
       )}
     </Pressable>
@@ -168,7 +211,6 @@ const styles = StyleSheet.create({
   text: {
     textAlign: 'center',
     fontFamily: 'PlusJakartaSans_700Bold',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 0.1,
   },
 });

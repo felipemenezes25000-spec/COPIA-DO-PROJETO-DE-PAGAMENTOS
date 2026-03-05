@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../lib/theme';
 import { RequestType, RequestStatus } from '../types/database';
@@ -10,25 +10,26 @@ const c = theme.colors;
 interface Step {
   key: string;
   label: string;
+  shortLabel?: string;
   icon: keyof typeof Ionicons.glyphMap;
   statuses: RequestStatus[];
 }
 
 const PRESCRIPTION_STEPS: Step[] = [
-  { key: 'submitted', label: 'Enviado', icon: 'paper-plane-outline', statuses: ['submitted'] },
-  { key: 'analysis', label: 'Análise IA', icon: 'scan-outline', statuses: ['analyzing'] },
-  { key: 'review', label: STATUS_LABELS_PT.in_review, icon: 'eye-outline', statuses: ['in_review'] },
-  { key: 'payment', label: 'Pagamento', icon: 'card-outline', statuses: ['approved_pending_payment', 'pending_payment'] },
-  { key: 'signed', label: 'Assinado', icon: 'shield-checkmark-outline', statuses: ['paid', 'signed'] },
-  { key: 'delivered', label: 'Entregue', icon: 'checkmark-done-circle-outline', statuses: ['delivered'] },
+  { key: 'submitted', label: 'Enviado', shortLabel: 'Enviado', icon: 'paper-plane-outline', statuses: ['submitted'] },
+  { key: 'review', label: STATUS_LABELS_PT.in_review, shortLabel: 'Em análise', icon: 'eye-outline', statuses: ['analyzing', 'in_review'] },
+  { key: 'waiting_payment', label: 'Aguardando pagamento', shortLabel: 'Pag. pendente', icon: 'card-outline', statuses: ['approved_pending_payment', 'pending_payment'] },
+  { key: 'paid', label: 'Pago', shortLabel: 'Pago', icon: 'wallet-outline', statuses: ['paid'] },
+  { key: 'signed', label: 'Assinado', shortLabel: 'Assinado', icon: 'shield-checkmark-outline', statuses: ['signed'] },
+  { key: 'delivered', label: 'Entregue', shortLabel: 'Entregue', icon: 'checkmark-done-circle-outline', statuses: ['delivered', 'completed'] },
 ];
 
 const CONSULTATION_STEPS: Step[] = [
-  { key: 'searching', label: 'Buscando', icon: 'search-outline', statuses: ['searching_doctor'] },
-  { key: 'ready', label: 'Pronta', icon: 'checkmark-circle-outline', statuses: ['consultation_ready'] },
-  { key: 'payment', label: 'Pagamento', icon: 'card-outline', statuses: ['approved_pending_payment', 'pending_payment'] },
-  { key: 'in_consultation', label: 'Em Consulta', icon: 'videocam-outline', statuses: ['paid', 'in_consultation'] },
-  { key: 'finished', label: 'Finalizada', icon: 'checkmark-done-circle-outline', statuses: ['consultation_finished'] },
+  { key: 'searching', label: 'Buscando médico', shortLabel: 'Buscando', icon: 'search-outline', statuses: ['searching_doctor'] },
+  { key: 'ready', label: 'Consulta pronta', shortLabel: 'Pronta', icon: 'checkmark-circle-outline', statuses: ['consultation_ready'] },
+  { key: 'payment', label: 'Aguardando pagamento', shortLabel: 'Pag. pendente', icon: 'card-outline', statuses: ['approved_pending_payment', 'pending_payment'] },
+  { key: 'in_consultation', label: 'Em consulta', shortLabel: 'Em consulta', icon: 'videocam-outline', statuses: ['paid', 'in_consultation'] },
+  { key: 'finished', label: 'Finalizada', shortLabel: 'Finalizada', icon: 'checkmark-done-circle-outline', statuses: ['consultation_finished'] },
 ];
 
 function getStepIndex(steps: Step[], status: RequestStatus): number {
@@ -50,6 +51,8 @@ const CURRENT_COLOR = c.primary.main;
 const PENDING_COLOR = c.border.main;
 
 export default function StatusTracker({ currentStatus, requestType }: Props) {
+  const { width } = useWindowDimensions();
+  const isCompact = width < 360;
   const steps = requestType === 'consultation' ? CONSULTATION_STEPS : PRESCRIPTION_STEPS;
 
   if (currentStatus === 'rejected' || currentStatus === 'cancelled') {
@@ -64,7 +67,7 @@ export default function StatusTracker({ currentStatus, requestType }: Props) {
           />
         </View>
         <Text style={[styles.terminalText, { color: isRejected ? c.status.error : c.text.tertiary }]}>
-          {isRejected ? 'SOLICITAÇÃO REJEITADA' : 'SOLICITAÇÃO CANCELADA'}
+          {isRejected ? 'Solicitação rejeitada' : 'Solicitação cancelada'}
         </Text>
       </View>
     );
@@ -104,12 +107,12 @@ export default function StatusTracker({ currentStatus, requestType }: Props) {
             {/* Label */}
             <View style={styles.labelWrap}>
               <Text style={[styles.label, { color: textColor, fontWeight: textWeight as any }]}>
-                {step.label}
+                {isCompact ? (step.shortLabel ?? step.label) : step.label}
               </Text>
               {isCurrent && (
                 <View style={styles.currentBadge}>
                   <View style={styles.pulsingDot} />
-                  <Text style={styles.currentText}>ETAPA ATUAL</Text>
+                  <Text style={styles.currentText}>Etapa atual</Text>
                 </View>
               )}
             </View>
@@ -173,10 +176,10 @@ const styles = StyleSheet.create({
     backgroundColor: c.primary.main,
   },
   currentText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
     color: c.primary.main,
-    letterSpacing: 0.8,
+    letterSpacing: 0.2,
   },
   terminalContainer: {
     alignItems: 'center',
@@ -194,6 +197,6 @@ const styles = StyleSheet.create({
   terminalText: {
     fontSize: 13,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
   },
 });

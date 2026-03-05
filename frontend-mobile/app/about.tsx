@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import { colors, spacing, typography } from '../constants/theme';
+import { colors, spacing } from '../lib/theme';
 import { Logo } from '../components/Logo';
 import { COMPANY } from '../lib/company';
 
@@ -55,7 +55,7 @@ export default function AboutScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.primaryDarker,
+    color: colors.primaryDark,
     letterSpacing: 0.5,
   },
   scroll: { padding: spacing.lg, paddingBottom: spacing.xxl },
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
   tagline: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.gray600,
+    color: colors.textSecondary,
     textAlign: 'center',
     letterSpacing: 0.8,
     marginBottom: 4,
@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
   version: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.gray400,
+    color: colors.textMuted,
     textAlign: 'center',
     letterSpacing: 0.5,
     marginBottom: spacing.md,

@@ -18,7 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { colors, spacing, borderRadius, shadows } from '../../lib/theme';
 import { fetchPayment, fetchPixCode, syncPaymentStatus } from '../../lib/api';
-import { formatBRL } from '../../lib/utils/format';
+import { formatBRL, formatTimeBR } from '../../lib/utils/format';
 import { PaymentResponseDto } from '../../types/database';
 
 type PayScreen = 'selection' | 'pix';
@@ -31,13 +31,15 @@ export default function PaymentScreen() {
   const [pixCode, setPixCode] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [screen, setScreen] = useState<PayScreen>('selection');
-  const [polling, setPolling] = useState(false);
+  const [autoPolling, setAutoPolling] = useState(false);
+  const [checkingNow, setCheckingNow] = useState(false);
   const [copied, setCopied] = useState(false);
   const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollCountRef = useRef(0);
   const paymentRef = useRef<PaymentResponseDto | null>(null);
   const MAX_POLLS = 180; // 180 × 5s = 15 min
+  const PIX_EXPIRATION_MINUTES = 30;
 
   useEffect(() => {
     paymentRef.current = payment;
@@ -58,7 +60,7 @@ export default function PaymentScreen() {
       setLastCheckedAt(new Date());
       if (synced.status === 'approved') {
         if (pollRef.current) clearInterval(pollRef.current);
-        setPolling(false);
+        setAutoPolling(false);
       }
     } catch { /* ignora erro silenciosamente */ }
   }, [paymentId]);
@@ -132,12 +134,12 @@ export default function PaymentScreen() {
   const startPolling = () => {
     if (pollRef.current) clearInterval(pollRef.current);
     pollCountRef.current = 0;
-    setPolling(true);
+    setAutoPolling(true);
     pollRef.current = setInterval(async () => {
       pollCountRef.current += 1;
       if (pollCountRef.current >= MAX_POLLS) {
         if (pollRef.current) clearInterval(pollRef.current);
-        setPolling(false);
+        setAutoPolling(false);
         return;
       }
       const currentPayment = paymentRef.current;
@@ -151,7 +153,7 @@ export default function PaymentScreen() {
         setPayment(updated);
         if (updated.status === 'approved') {
           if (pollRef.current) clearInterval(pollRef.current);
-          setPolling(false);
+          setAutoPolling(false);
           setPayment(updated); // Mostra card com botão "Ver Pedido"
         }
       } catch {}
@@ -167,9 +169,17 @@ export default function PaymentScreen() {
     }
   };
 
+  const handleOpenBankApp = () => {
+    Alert.alert(
+      'Abrir app do banco',
+      'Abra o aplicativo do seu banco e use a opção PIX com QR Code ou código copia e cola. Se preferir, copie o código e cole direto no banco.',
+      [{ text: 'OK' }]
+    );
+  };
+
   const handleCheckStatus = async () => {
-    if (!payment?.requestId) return;
-    setPolling(true);
+    if (!payment?.requestId || checkingNow) return;
+    setCheckingNow(true);
     try {
       // Sincroniza com Mercado Pago (resolve caso webhook tenha falhado)
       const synced = await syncPaymentStatus(payment.requestId);
@@ -177,6 +187,7 @@ export default function PaymentScreen() {
       setLastCheckedAt(new Date());
       if (synced.status === 'approved') {
         if (pollRef.current) clearInterval(pollRef.current);
+        setAutoPolling(false);
         setPayment(synced); // Mostra card com botão "Ver Pedido"
       } else {
         Alert.alert('Aguardando', 'Pagamento ainda não confirmado pelo Mercado Pago. Tente novamente em alguns segundos.');
@@ -188,13 +199,14 @@ export default function PaymentScreen() {
         setPayment(updated);
         if (updated.status === 'approved') {
           if (pollRef.current) clearInterval(pollRef.current);
+          setAutoPolling(false);
           setPayment(updated); // Mostra card com botão "Ver Pedido"
           return;
         }
       } catch { /* ignore fallback error */ }
       Alert.alert('Erro', (e as Error)?.message || String(e) || 'Erro ao verificar status');
     } finally {
-      setPolling(false);
+      setCheckingNow(false);
     }
   };
 
@@ -258,6 +270,8 @@ export default function PaymentScreen() {
   // PIX screen
   const pixCopyPaste = payment?.pixCopyPaste || pixCode;
   const isApproved = payment?.status === 'approved';
+  const pixExpiresAt = payment ? new Date(new Date(payment.createdAt).getTime() + PIX_EXPIRATION_MINUTES * 60 * 1000) : null;
+  const expiresInMinutes = pixExpiresAt ? Math.floor((pixExpiresAt.getTime() - Date.now()) / 60000) : null;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -290,8 +304,13 @@ export default function PaymentScreen() {
         ) : (
           <>
         <View style={styles.pixCard}>
-          <Text style={styles.pixLabel}>PAGUE VIA PIX</Text>
+          <Text style={styles.pixLabel}>Pague via PIX</Text>
           <Text style={styles.pixAmount}>{formatBRL(payment?.amount ?? 0)}</Text>
+          {expiresInMinutes != null && (
+            <Text style={styles.expirationText}>
+              {expiresInMinutes >= 0 ? `Expira em ${expiresInMinutes} min (estimado)` : 'Código possivelmente expirado (estimado)'}
+            </Text>
+          )}
 
           {/* QR Code */}
           {payment?.pixQrCodeBase64 ? (
@@ -318,6 +337,14 @@ export default function PaymentScreen() {
                 <Ionicons name={copied ? 'checkmark' : 'copy'} size={20} color={copied ? colors.success : colors.primary} />
               </TouchableOpacity>
               {copied && <Text style={styles.copiedText}>Código copiado!</Text>}
+              <TouchableOpacity style={styles.copyButton} onPress={handleCopyPix} activeOpacity={0.8}>
+                <Ionicons name="copy-outline" size={18} color="#fff" />
+                <Text style={styles.copyButtonText}>Copiar código PIX</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.bankButton} onPress={handleOpenBankApp} activeOpacity={0.8}>
+                <Ionicons name="open-outline" size={18} color={colors.primary} />
+                <Text style={styles.bankButtonText}>Abrir app do banco</Text>
+              </TouchableOpacity>
             </>
           )}
 
@@ -332,23 +359,31 @@ export default function PaymentScreen() {
 
         <View style={styles.securityRow}>
           <Ionicons name="shield-checkmark" size={16} color={colors.success} />
-          <Text style={styles.securityText}>PAGAMENTO 100% SEGURO</Text>
+          <Text style={styles.securityText}>Pagamento 100% seguro</Text>
         </View>
 
         {/* Check button */}
-        <TouchableOpacity style={styles.checkButton} onPress={handleCheckStatus} disabled={polling} activeOpacity={0.8}>
-          {polling ? (
+        <TouchableOpacity style={styles.checkButton} onPress={handleCheckStatus} disabled={checkingNow} activeOpacity={0.8}>
+          {checkingNow ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <>
               <Ionicons name="refresh" size={20} color="#fff" />
-              <Text style={styles.checkButtonText}>Já Paguei — Verificar Status</Text>
+              <Text style={styles.checkButtonText}>Já paguei</Text>
             </>
           )}
         </TouchableOpacity>
+        {checkingNow && (
+          <Text style={styles.checkingText}>Verificando pagamento...</Text>
+        )}
+        {!checkingNow && autoPolling && !isApproved && (
+          <Text style={styles.lastCheckedText}>
+            Acompanhamento automático ativo. A confirmação pode levar alguns segundos.
+          </Text>
+        )}
         {lastCheckedAt && (
           <Text style={styles.lastCheckedText}>
-            Última verificação: {lastCheckedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            Última verificação: {formatTimeBR(lastCheckedAt)}
           </Text>
         )}
           </>
@@ -407,8 +442,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface, borderRadius: borderRadius.lg,
     padding: spacing.lg, alignItems: 'center', ...shadows.card, marginBottom: spacing.md,
   },
-  pixLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted, letterSpacing: 1 },
+  pixLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.3 },
   pixAmount: { fontSize: 32, fontWeight: '700', color: colors.text, marginVertical: spacing.sm },
+  expirationText: { fontSize: 12, color: colors.textSecondary, marginBottom: spacing.sm },
   qrContainer: {
     width: 200, height: 200, borderRadius: borderRadius.md,
     borderWidth: 2, borderColor: colors.primary, borderStyle: 'dashed',
@@ -426,6 +462,32 @@ const styles = StyleSheet.create({
   },
   copyCode: { flex: 1, fontSize: 13, color: colors.textSecondary, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
   copiedText: { fontSize: 12, color: colors.success, marginTop: spacing.xs },
+  copyButton: {
+    marginTop: spacing.sm,
+    width: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: 22,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+  },
+  copyButtonText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  bankButton: {
+    marginTop: spacing.xs,
+    width: '100%',
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderRadius: 22,
+    paddingVertical: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.surface,
+  },
+  bankButtonText: { fontSize: 14, fontWeight: '700', color: colors.primary },
   instructionRow: {
     flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md,
     backgroundColor: colors.primaryLight, borderRadius: borderRadius.sm, padding: spacing.sm,
@@ -463,6 +525,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25, shadowRadius: 12, elevation: 4,
   },
   checkButtonText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  checkingText: {
+    marginTop: spacing.sm,
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
   lastCheckedText: {
     marginTop: spacing.sm,
     fontSize: 12,

@@ -37,11 +37,11 @@ const TYPE_FILTER_ITEMS: { key: string; label: string; type?: string }[] = [
 
 function getHeaderLabel(activeKey: string): { title: string; subtitle: string } {
   const item = TYPE_FILTER_ITEMS.find((c) => c.key === activeKey);
-  if (item?.key === 'all') return { title: 'DASHBOARD', subtitle: 'Atendimentos e pedidos' };
-  if (item?.type === 'prescription') return { title: 'RECEITAS', subtitle: 'Pedidos de receita' };
-  if (item?.type === 'exam') return { title: 'EXAMES', subtitle: 'Pedidos de exame' };
-  if (item?.type === 'consultation') return { title: 'CONSULTAS', subtitle: 'Solicitacoes de consulta' };
-  return { title: 'DASHBOARD', subtitle: 'Atendimentos e pedidos' };
+  if (item?.key === 'all') return { title: 'Painel', subtitle: 'Atendimentos e pedidos' };
+  if (item?.type === 'prescription') return { title: 'Receitas', subtitle: 'Pedidos de receita' };
+  if (item?.type === 'exam') return { title: 'Exames', subtitle: 'Pedidos de exame' };
+  if (item?.type === 'consultation') return { title: 'Consultas', subtitle: 'Solicitações de consulta' };
+  return { title: 'Painel', subtitle: 'Atendimentos e pedidos' };
 }
 
 export default function DoctorQueue() {
@@ -244,9 +244,9 @@ export default function DoctorQueue() {
             empty ? (
               <EmptyState
                 icon="checkmark-done-circle"
-                title={searchText.trim() ? 'NENHUM RESULTADO' : 'NENHUM PEDIDO AQUI'}
+                title={searchText.trim() ? 'Nenhum resultado' : 'Nenhum pedido aqui'}
                 subtitle={searchText.trim() ? `Nenhum paciente encontrado para "${searchText.trim()}"` : 'Ajuste os filtros ou volte ao painel para ver todos os pedidos'}
-                actionLabel="VOLTAR AO PAINEL"
+                actionLabel="Voltar ao painel"
                 onAction={() => router.push('/(doctor)/dashboard')}
               />
             ) : null
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.bold,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: 0.8,
+    letterSpacing: 0.2,
   },
   subtitle: {
     fontSize: 12,
@@ -284,7 +284,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.7)',
     marginTop: 4,
     letterSpacing: 0.2,
-    textTransform: 'uppercase',
   },
   countBadge: {
     backgroundColor: 'rgba(255,255,255,0.2)',
@@ -343,13 +342,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   periodChipLabel: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '700',
     color: colors.textMuted,
     marginBottom: 4,
     textAlign: 'center',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
   },
   periodChipCount: {
     fontSize: 18,
