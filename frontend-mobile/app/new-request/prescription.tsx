@@ -224,9 +224,6 @@ export default function NewPrescription() {
 
           {/* Type Selection */}
           <Text style={styles.sectionLabel}>TIPO DE RECEITA</Text>
-          {currentStep === 1 && (
-            <Text style={styles.stepHint}>Passo 1 — Selecione o tipo de receita tocando em um dos cards abaixo.</Text>
-          )}
           {TYPES.map(type => {
             const isComingSoon = 'comingSoon' in type && type.comingSoon;
             const isSelectable = !isComingSoon && (type.key === 'simples' || type.key === 'controlado');
