@@ -21,7 +21,7 @@ import React, {
   useEffect,
 } from 'react';
 import { evaluateTriageRules } from '../lib/triage/triageRulesEngine';
-import { canShow, markShown, muteKey, resetSessionCounts, resetSessionCountForKey } from '../lib/triage/triagePersistence';
+import { canShow, markShown, muteKey, resetSessionCounts, resetSessionCountForKey, getJourneyStatus, setJourneyStatus } from '../lib/triage/triagePersistence';
 import { trackTriageEvent } from '../lib/triage/triageAnalytics';
 import { enrichTriageMessage } from '../lib/triage/triageEnrichmentApi';
 import { getMessagePriority, getMessageTopic } from '../lib/triage/triagePriority';
@@ -35,7 +35,7 @@ const IS_AI_ENABLED = process.env.EXPO_PUBLIC_TRIAGE_AI_ENABLED !== 'false';
 const SAME_TOPIC_COOLDOWN_MS = 15_000;   // 15s – permite trocar de tópico mais rápido (Dra. sempre presente)
 const MIN_REPLACE_INTERVAL_MS = 12_000; // 12s – permite trocar mensagens mais frequentemente
 
-function buildFallbackJourneyMessage(input: TriageInput): TriageMessage | null {
+async function buildFallbackJourneyMessage(input: TriageInput): Promise<TriageMessage | null> {
   if (input.role !== 'patient' || !input.status) return null;
   const next = getNextBestActionForRequest({
     status: input.status as any,
@@ -43,12 +43,32 @@ function buildFallbackJourneyMessage(input: TriageInput): TriageMessage | null {
     signedDocumentUrl: null,
   });
 
-  const cta = next.intent === 'pay' || next.intent === 'download' || next.intent === 'track' ? 'ver_servicos' : null;
-  const ctaLabel = cta ? 'Abrir meus pedidos' : undefined;
+  const previousStatus = input.requestId ? await getJourneyStatus(input.requestId) : null;
+  const transitionPrefix = previousStatus && previousStatus !== input.status
+    ? `Seu pedido evoluiu de ${previousStatus} para ${input.status}. `
+    : '';
+
+  const cta = next.intent === 'pay'
+    ? 'abrir_pagamento'
+    : next.intent === 'download'
+      ? 'abrir_documento'
+      : next.intent === 'track'
+        ? 'acompanhar_pedido'
+        : next.intent === 'wait'
+          ? 'acompanhar_pedido'
+          : null;
+  const ctaLabel =
+    cta === 'abrir_pagamento' ? 'Ir para pagamento' :
+    cta === 'abrir_documento' ? 'Ver documento' :
+    cta ? 'Acompanhar pedido' : undefined;
+
+  if (input.requestId) {
+    await setJourneyStatus(input.requestId, input.status);
+  }
 
   return {
-    key: `fallback:${input.context}:${input.requestType ?? 'request'}:${input.status}`,
-    text: `${next.statusSummary} ${next.whatToDo}`,
+    key: `fallback:${input.context}:${input.requestType ?? 'request'}:${input.status}:${input.requestId ?? 'na'}`,
+    text: `${transitionPrefix}${next.statusSummary} ${next.whatToDo}`,
     severity: next.intent === 'pay' ? 'attention' : next.intent === 'download' ? 'positive' : 'info',
     avatarState: next.intent === 'pay' ? 'alert' : next.intent === 'download' ? 'positive' : 'thinking',
     cta,
@@ -56,6 +76,8 @@ function buildFallbackJourneyMessage(input: TriageInput): TriageMessage | null {
     cooldownMs: 8_000,
     analyticsEvent: 'triage.fallback.journey',
     canMute: false,
+    requestId: input.requestId,
+    status: input.status,
   };
 }
 
@@ -106,7 +128,7 @@ export function TriageAssistantProvider({ children }: { children: React.ReactNod
     if (!IS_ENABLED) return;
 
     const ruleMessage = evaluateTriageRules(input);
-    const message = ruleMessage ?? buildFallbackJourneyMessage(input);
+    const message = ruleMessage ?? await buildFallbackJourneyMessage(input);
     if (!message) return;
 
     // Dedupe removido: Dra. Renoveja sempre ajuda, mesmo ao voltar à mesma tela

@@ -227,6 +227,7 @@ export default function RequestDetailScreen() {
     step: 'idle',
     role: 'patient',
     status: request?.status ?? undefined,
+    requestId: request?.id ?? undefined,
     doctorConductNotes: request?.doctorConductNotes ?? undefined,
   });
 

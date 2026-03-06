@@ -48,7 +48,7 @@ const COMPANION_TIPS = [
 
 interface AssistantBannerProps {
   /** Callback quando o CTA é pressionado */
-  onAction?: (action: CTAAction) => void;
+  onAction?: (action: CTAAction, message?: { requestId?: string; status?: string | null }) => void;
   /** Callback quando o usuário toca no estado companion (Tire dúvidas) */
   onCompanionPress?: () => void;
   /** Estilo extra para posicionamento */
@@ -63,7 +63,7 @@ export function AssistantBanner({ onAction, onCompanionPress, containerStyle, hi
 
   const handleCTA = useCallback(() => {
     if (current?.cta) {
-      onAction?.(current.cta);
+      onAction?.(current.cta, { requestId: current.requestId, status: current.status });
       dismiss();
     }
   }, [current, onAction, dismiss]);

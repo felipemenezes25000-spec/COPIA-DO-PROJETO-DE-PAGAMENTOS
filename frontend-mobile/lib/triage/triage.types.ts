@@ -49,6 +49,9 @@ export type CTAAction =
   | 'renovar_receita'
   | 'pedir_exames'
   | 'tire_duvidas'
+  | 'abrir_pagamento'
+  | 'abrir_documento'
+  | 'acompanhar_pedido'
   | 'dismiss'
   | null;
 
@@ -67,6 +70,10 @@ export interface TriageMessage {
   ctaLabel?: string;
   /** Cooldown antes de poder mostrar novamente (ms) */
   cooldownMs: number;
+  /** Opcional: pedido associado para CTA contextual */
+  requestId?: string;
+  /** Opcional: status associado para narrativa de jornada */
+  status?: string | null;
   /** Evento de analytics (ex: "triage.rx.controlled") */
   analyticsEvent?: string;
   /** Se true, pode ser mutado permanentemente pelo usuário */
@@ -89,6 +96,7 @@ export interface TriageInput {
   exams?: string[];
   symptoms?: string | null;
   status?: string | null;
+  requestId?: string;
   imagesCount?: number;
 
   // AI analysis results
@@ -152,6 +160,8 @@ export interface TriagePersistedState {
   bannerPositionMode?: BannerPositionMode;
   /** Posição quando flutuante (persistida entre sessões) */
   bannerFloatingPosition?: BannerFloatingPosition;
+  /** Memória de jornada por pedido (último status orientado) */
+  journeyByRequest?: Record<string, { status: string; at: number }>;
   /** Versão do schema (para migrações futuras) */
   version: number;
 }

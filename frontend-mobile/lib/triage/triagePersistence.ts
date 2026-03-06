@@ -19,7 +19,7 @@ let _dirty = false;
 let _saveTimer: ReturnType<typeof setTimeout> | null = null;
 
 function defaultState(): TriagePersistedState {
-  return { cooldowns: {}, mutedKeys: [], sessionCounts: {}, version: CURRENT_VERSION };
+  return { cooldowns: {}, mutedKeys: [], sessionCounts: {}, journeyByRequest: {}, version: CURRENT_VERSION };
 }
 
 // ── Load / Save ─────────────────────────────────────────────
@@ -202,5 +202,27 @@ export async function getBannerFloatingPosition(): Promise<BannerFloatingPositio
 export async function setBannerFloatingPosition(pos: BannerFloatingPosition): Promise<void> {
   const state = await load();
   state.bannerFloatingPosition = pos;
+  scheduleSave();
+}
+
+/** Último status orientado por pedido (memória de jornada). */
+export async function getJourneyStatus(requestId: string): Promise<string | null> {
+  if (!requestId) return null;
+  const state = await load();
+  return state.journeyByRequest?.[requestId]?.status ?? null;
+}
+
+/** Atualiza memória de jornada por pedido. */
+export async function setJourneyStatus(requestId: string, status: string): Promise<void> {
+  if (!requestId || !status) return;
+  const state = await load();
+  if (!state.journeyByRequest) state.journeyByRequest = {};
+  state.journeyByRequest[requestId] = { status, at: Date.now() };
+  // Limita mapa para evitar crescimento infinito
+  const entries = Object.entries(state.journeyByRequest);
+  if (entries.length > 300) {
+    const trimmed = entries.sort((a, b) => (b[1].at ?? 0) - (a[1].at ?? 0)).slice(0, 300);
+    state.journeyByRequest = Object.fromEntries(trimmed);
+  }
   scheduleSave();
 }

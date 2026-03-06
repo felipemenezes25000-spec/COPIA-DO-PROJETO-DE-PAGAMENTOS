@@ -44,7 +44,7 @@ const SPRING_CONFIG = { damping: 22, stiffness: 200 };
 const DRAG_THRESHOLD = 16; // Maior para evitar conflito com tap — tap expande, arraste move
 
 interface DraggableAssistantBannerProps {
-  onAction?: (action: CTAAction) => void;
+  onAction?: (action: CTAAction, message?: { requestId?: string; status?: string | null }) => void;
   onCompanionPress?: () => void;
   containerStyle?: object;
 }

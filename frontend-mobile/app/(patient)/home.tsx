@@ -238,6 +238,9 @@ export default function PatientHome() {
     lastExamDaysAgo,
     patientAge,
     recentMedications: recentMedications.length ? recentMedications : undefined,
+    requestId: followUpRequest?.id,
+    status: followUpRequest?.status,
+    requestType: followUpRequest?.requestType as any,
   });
 
   return (

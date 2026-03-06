@@ -52,7 +52,7 @@ export function GlobalAssistantBanner() {
 
   if (shouldHideBanner(pathname, isLoggedIn, user?.role)) return null;
 
-  const handleAction: (action: CTAAction) => void = (action) => {
+  const handleAction: (action: CTAAction, message?: { requestId?: string; status?: string | null }) => void = (action, message) => {
     if (!action) return;
     if (action === 'teleconsulta' || action === 'consulta_breve' || action === 'agendar_retorno') {
       router.push('/new-request/consultation');
@@ -69,6 +69,23 @@ export function GlobalAssistantBanner() {
     }
     if (action === 'tire_duvidas') {
       router.push('/help-faq');
+    }
+    if (action === 'acompanhar_pedido') {
+      router.push('/(patient)/requests');
+    }
+    if (action === 'abrir_pagamento') {
+      if (message?.requestId) {
+        router.push(`/payment/request/${message.requestId}` as any);
+      } else {
+        router.push('/(patient)/requests');
+      }
+    }
+    if (action === 'abrir_documento') {
+      if (message?.requestId) {
+        router.push(`/request-detail/${message.requestId}` as any);
+      } else {
+        router.push('/(patient)/requests');
+      }
     }
   };
 
