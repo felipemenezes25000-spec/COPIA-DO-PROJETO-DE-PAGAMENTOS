@@ -559,7 +559,7 @@ export default function VideoCallScreenInner() {
   const timerStr = contractedMinutes ? `${fmt(callSeconds)} / ${fmt(contractedMinutes * 60)}` : fmt(callSeconds);
   const hasAna = anamnesis && Object.keys(anamnesis).length > 0;
   const hasSug = suggestions.length > 0;
-  const hasEv = evidence.length > 0;
+  const hasEv = evidence.some((e) => e.translatedAbstract);
   const hasT = transcript.length > 0;
   const panelHas = hasAna || hasSug || hasEv || hasT;
 
@@ -737,10 +737,10 @@ export default function VideoCallScreenInner() {
                   <Text style={[S.secT, { color: colors.primaryLight }]}>EVIDÊNCIAS</Text>
                   <View style={S.badge}><Ionicons name="book" size={10} color={colors.primaryLight} /><Text style={S.badgeTxt}>PubMed</Text></View>
                 </View>
-                {evidence.map((e, i) => (
+                {evidence.filter((e) => e.translatedAbstract).map((e, i) => (
                   <View key={i} style={S.evItem}>
                     <Text style={S.evTitle}>{e.title}</Text>
-                    <Text style={S.evAbstract}>{e.translatedAbstract || e.abstract}</Text>
+                    <Text style={S.evAbstract}>{e.translatedAbstract}</Text>
                     <Text style={S.evSource}>{e.source}</Text>
                   </View>
                 ))}

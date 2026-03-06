@@ -313,7 +313,7 @@ REGRAS:
         using var requestContent = new StringContent(json, Encoding.UTF8, "application/json");
         var response = await client.PostAsync($"{ApiBaseUrl}/chat/completions", requestContent, cancellationToken);
         if (!response.IsSuccessStatusCode)
-            return items;
+            return Array.Empty<EvidenceItemDto>(); // Só envia evidências traduzidas
 
         var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
         List<string>? translations = null;
@@ -333,10 +333,16 @@ REGRAS:
         catch { /* ignore */ }
 
         if (translations == null || translations.Count != items.Count)
-            return items;
+            return Array.Empty<EvidenceItemDto>(); // Só envia evidências traduzidas
 
-        return items.Select((e, i) =>
-            new EvidenceItemDto(e.Title, e.Abstract, e.Source,
-                i < translations.Count ? translations[i] : null)).ToList();
+        // Só inclui itens com tradução válida
+        var result = new List<EvidenceItemDto>();
+        for (var i = 0; i < items.Count && i < translations.Count; i++)
+        {
+            var translated = translations[i]?.Trim();
+            if (!string.IsNullOrEmpty(translated))
+                result.Add(new EvidenceItemDto(items[i].Title, items[i].Abstract, items[i].Source, translated));
+        }
+        return result;
     }
 }
