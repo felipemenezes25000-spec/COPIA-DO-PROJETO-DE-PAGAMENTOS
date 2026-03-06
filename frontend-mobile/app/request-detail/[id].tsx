@@ -132,7 +132,7 @@ export default function RequestDetailScreen() {
   const payInFlightRef = useRef(false);
 
   /** Statuses em que o pagamento pode ser confirmado pelo webhook enquanto o usuário está na tela. */
-  const AWAITING_PAYMENT_STATUSES = ['consultation_ready', 'approved_pending_payment', 'pending_payment'];
+  const AWAITING_PAYMENT_STATUSES = ['approved_pending_payment', 'pending_payment'];
 
   const load = useCallback(async () => {
     if (!requestId) { setLoading(false); return; }
@@ -267,8 +267,7 @@ export default function RequestDetailScreen() {
     payInFlightRef.current = true;
     try {
       if (!request) return;
-      const allowedToPay = ['approved_pending_payment', 'pending_payment'].includes(request.status) ||
-        (request.requestType === 'consultation' && request.status === 'consultation_ready');
+      const allowedToPay = ['approved_pending_payment', 'pending_payment'].includes(request.status);
       if (!allowedToPay) {
         Alert.alert(
           'Pagamento indisponível',
@@ -439,13 +438,12 @@ export default function RequestDetailScreen() {
 
   if (!request) return null;
 
-  // Backend aceita: ApprovedPendingPayment/PendingPayment (receita/exame) ou ConsultationReady (consulta)
+  // Backend aceita pagamento quando status está aguardando pagamento.
   const canPay =
-    ['approved_pending_payment', 'pending_payment'].includes(request.status) ||
-    (request.requestType === 'consultation' && request.status === 'consultation_ready');
+    ['approved_pending_payment', 'pending_payment'].includes(request.status);
   const canDownload = !!request.signedDocumentUrl;
   const canJoinVideo = ['paid', 'in_consultation'].includes(request.status) && request.requestType === 'consultation';
-  const canCancel = ['submitted', 'in_review', 'approved_pending_payment', 'pending_payment', 'searching_doctor', 'consultation_ready'].includes(request.status);
+  const canCancel = ['submitted', 'in_review', 'approved_pending_payment', 'pending_payment', 'searching_doctor'].includes(request.status);
   const stickyBottomOffset = canPay ? 132 : 0;
   const nextActionLocal = getNextBestActionForRequest(request);
   const nextAction = nextActionFromApi ?? {

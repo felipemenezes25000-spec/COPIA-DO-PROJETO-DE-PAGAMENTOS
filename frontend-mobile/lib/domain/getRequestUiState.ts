@@ -95,7 +95,6 @@ export function isPendingForPanel(request: RequestResponseDto): boolean {
   const s = request.status;
   return [
     'searching_doctor',
-    'consultation_ready',
     'in_consultation',
     'submitted',
     'in_review',
@@ -117,7 +116,7 @@ export function countNaFila(requests: RequestResponseDto[]): number {
 
 /** Conta para card "Consulta pronta" (azul) */
 export function countConsultaPronta(requests: RequestResponseDto[]): number {
-  return requests.filter((r) => r.status === 'consultation_ready').length;
+  return requests.filter((r) => r.status === 'paid').length;
 }
 
 /** Conta para card "Em consulta" (verde) */

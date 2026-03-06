@@ -171,7 +171,7 @@ export default function PatientHome() {
     const priorityMap: Record<string, number> = {
       approved_pending_payment: 100,
       pending_payment: 100,
-      consultation_ready: 95,
+      paid: 95,
       signed: 90,
       in_review: 80,
       submitted: 70,

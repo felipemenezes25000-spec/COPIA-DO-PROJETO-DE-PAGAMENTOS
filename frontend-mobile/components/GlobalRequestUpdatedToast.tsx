@@ -15,7 +15,7 @@ export function getMessageForUser(payload: RequestUpdatedPayload, isDoctor?: boo
     signed: 'Documento assinado. Baixe em Meus pedidos.',
     delivered: 'Documento recebido.',
     approved_pending_payment: 'Solicitação aprovada. Realize o pagamento.',
-    consultation_ready: 'Consulta pronta. Entre na sala de vídeo.', // legado: novo fluxo usa paid
+    paid: 'Consulta pronta. Entre na sala de vídeo.',
     in_consultation: 'Médico na sala. Entre na chamada.',
     consultation_finished: 'Consulta encerrada.',
     cancelled: 'Pedido cancelado.',

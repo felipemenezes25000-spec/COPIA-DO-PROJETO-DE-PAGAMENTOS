@@ -6,7 +6,7 @@
  * Regras principais:
  * - Paciente NUNCA tem ação em status `paid` (deve ser "aguardando médico").
  * - Paciente só pode pagar em `approved_pending_payment` e legado `pending_payment`.
- * - Para consulta: também em `consultation_ready`.
+ * - Para consulta: status canônico de entrada é `paid`.
  * - Médico pode aprovar/rejeitar em `submitted`, `in_review`, legados `pending`, `analyzing`.
  */
 

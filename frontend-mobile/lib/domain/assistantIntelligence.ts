@@ -198,7 +198,7 @@ export function getNextBestActionForRequest(
     };
   }
 
-  if (status === 'approved_pending_payment' || status === 'consultation_ready') {
+  if (status === 'approved_pending_payment') {
     return {
       title: 'Aprovado, falta pagamento',
       statusSummary: 'Seu pedido foi aprovado e esta pronto para liberar a etapa final.',

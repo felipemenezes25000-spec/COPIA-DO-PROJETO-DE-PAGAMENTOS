@@ -599,7 +599,7 @@ function rulesDetail(i: TriageInput): TriageMessage | null {
   if (
     i.step === 'entry' &&
     i.status &&
-    ['approved_pending_payment', 'pending_payment', 'consultation_ready'].includes(i.status)
+    ['approved_pending_payment', 'pending_payment'].includes(i.status)
   ) {
     const kind = i.requestType ?? 'generic';
     if (kind === 'consultation') {
@@ -715,9 +715,9 @@ function rulesDoctorDetail(i: TriageInput): TriageMessage | null {
   }
 
   // Consulta pronta para iniciar
-  if (i.requestType === 'consultation' && i.status === 'consultation_ready') {
+  if (i.requestType === 'consultation' && i.status === 'paid') {
     return {
-      key: 'doctor:detail:consultation_ready',
+      key: 'doctor:detail:paid',
       text: 'Consulta pronta para iniciar. Ao terminar, lembre-se de registrar a conduta e o resumo no prontuário.',
       severity: 'info',
       avatarState: 'neutral',

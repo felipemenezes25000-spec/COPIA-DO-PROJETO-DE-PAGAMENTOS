@@ -1994,12 +1994,11 @@ public class RequestService(
 #pragma warning disable CS0618 // Status legado: permitir cancelamento de pedidos antigos
         RequestStatus.PendingPayment,
 #pragma warning restore CS0618
-        RequestStatus.SearchingDoctor,
-        RequestStatus.ConsultationReady
+        RequestStatus.SearchingDoctor
     ];
 
     /// <summary>
-    /// Paciente cancela o pedido. Só é permitido antes do pagamento (submitted, in_review, approved_pending_payment, searching_doctor, consultation_ready).
+    /// Paciente cancela o pedido. Só é permitido antes do pagamento (submitted, in_review, approved_pending_payment, searching_doctor).
     /// </summary>
     public async Task<RequestResponseDto> CancelAsync(Guid id, Guid userId, CancellationToken cancellationToken = default)
     {
