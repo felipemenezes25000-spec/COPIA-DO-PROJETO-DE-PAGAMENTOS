@@ -153,6 +153,9 @@ export default function PatientNotifications() {
 
   const renderItem = ({ item }: { item: NotificationResponseDto }) => {
     const icon = getIcon(item.notificationType);
+    const hours = Math.floor((Date.now() - new Date(item.createdAt).getTime()) / 3600000);
+    const urgency = !item.read && hours <= 6 ? 'Urgente' : hours <= 24 ? 'Hoje' : 'Recente';
+
     return (
       <TouchableOpacity
         style={[styles.card, !item.read && styles.cardUnread]}
@@ -167,7 +170,12 @@ export default function PatientNotifications() {
         <View style={styles.cardContent}>
           <Text style={[styles.cardTitle, !item.read && styles.cardTitleUnread]}>{item.title}</Text>
           <Text style={styles.cardMessage} numberOfLines={3}>{item.message}</Text>
-          <Text style={styles.cardDate}>{formatDate(item.createdAt)}</Text>
+          <View style={styles.metaRow}>
+            <Text style={styles.cardDate}>{formatDate(item.createdAt)}</Text>
+            <View style={[styles.urgencyBadge, urgency === 'Urgente' && styles.urgencyBadgeHigh]}>
+              <Text style={[styles.urgencyText, urgency === 'Urgente' && styles.urgencyTextHigh]}>{urgency}</Text>
+            </View>
+          </View>
         </View>
         {!item.read && <View style={styles.unreadDot} />}
       </TouchableOpacity>
@@ -181,6 +189,8 @@ export default function PatientNotifications() {
     const other = notifications.filter((n) => getNotificationFilterType(n) === 'other').length;
     return { all, payment, request, other };
   }, [notifications]);
+
+  const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
 
   const filteredNotifications = useMemo(() => {
     if (activeFilter === 'all') return notifications;
@@ -223,6 +233,21 @@ export default function PatientNotifications() {
           />
         </View>
       </View>
+      <View style={styles.summaryRow}>
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryValue}>{counts.all}</Text>
+          <Text style={styles.summaryLabel}>Total</Text>
+        </View>
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryValue}>{unreadCount}</Text>
+          <Text style={styles.summaryLabel}>Não lidas</Text>
+        </View>
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryValue}>{counts.payment}</Text>
+          <Text style={styles.summaryLabel}>Pagamentos</Text>
+        </View>
+      </View>
+
       <AppSegmentedControl
         items={FILTER_ITEMS.map((item) => ({
           key: item.key,
@@ -290,6 +315,32 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     overflow: 'hidden',
   },
+  summaryRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: uiTokens.screenPaddingHorizontal,
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  summaryCard: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+  },
+  summaryValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  summaryLabel: {
+    marginTop: 2,
+    fontSize: 11,
+    color: colors.textMuted,
+  },
   markAllBtn: { paddingVertical: spacing.xs, paddingHorizontal: spacing.sm },
   markAll: { fontSize: 13, color: colors.white, fontWeight: '600' },
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -345,7 +396,32 @@ const styles = StyleSheet.create({
   cardDate: {
     fontSize: 12,
     color: colors.textMuted,
-    marginTop: 4,
+  },
+  metaRow: {
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  urgencyBadge: {
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  urgencyBadgeHigh: {
+    backgroundColor: colors.errorLight,
+    borderColor: colors.error,
+  },
+  urgencyText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  urgencyTextHigh: {
+    color: colors.error,
   },
   unreadDot: {
     width: 8,

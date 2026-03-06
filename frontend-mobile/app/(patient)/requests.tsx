@@ -172,6 +172,21 @@ export default function PatientRequests() {
         </View>
       </View>
 
+      <View style={styles.summaryRow}>
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryValue}>{counts.all}</Text>
+          <Text style={styles.summaryLabel}>Total</Text>
+        </View>
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryValue}>{toPayCount}</Text>
+          <Text style={styles.summaryLabel}>Pend. pagamento</Text>
+        </View>
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryValue}>{filteredRequests.length}</Text>
+          <Text style={styles.summaryLabel}>No filtro</Text>
+        </View>
+      </View>
+
       <View style={styles.searchWrap}>
         <Ionicons name="search" size={20} color={colors.textMuted} style={styles.searchIcon} />
         <TextInput
@@ -254,6 +269,31 @@ const styles = StyleSheet.create({
   headerClip: {
     borderRadius: 22,
     overflow: 'hidden',
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: uiTokens.screenPaddingHorizontal,
+    marginTop: 4,
+  },
+  summaryCard: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+  },
+  summaryValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  summaryLabel: {
+    marginTop: 2,
+    fontSize: 11,
+    color: colors.textMuted,
   },
   searchWrap: {
     flexDirection: 'row',
