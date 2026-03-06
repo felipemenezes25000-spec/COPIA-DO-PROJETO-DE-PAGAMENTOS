@@ -57,6 +57,7 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
   const padding = 16;
   const [expanded, setExpanded] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [lastAutoExpandKey, setLastAutoExpandKey] = useState<string | null>(null);
 
   const translateX = useSharedValue(screenW - padding - FAB_SIZE);
   const translateY = useSharedValue(screenH - (insets.bottom ?? 0) - padding - FAB_SIZE);
@@ -138,6 +139,17 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
   const handleCollapse = useCallback(() => {
     setExpanded(false);
   }, []);
+
+  // Auto-expande para mensagens de maior urgência/relevância e evita “sumir”
+  useEffect(() => {
+    if (!current?.key) return;
+    if (expanded) return;
+    if (lastAutoExpandKey === current.key) return;
+    if (current.severity === 'attention' || current.severity === 'positive') {
+      handleExpand();
+      setLastAutoExpandKey(current.key);
+    }
+  }, [current?.key, current?.severity, expanded, lastAutoExpandKey, handleExpand]);
 
   const topLimit = (insets.top ?? 0) + padding;
   const bottomLimitFab = screenH - FAB_SIZE - (insets.bottom ?? 0) - padding;

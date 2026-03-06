@@ -1,7 +1,7 @@
 /**
- * GlobalAssistantBanner — Dra. Renoveja em todas as telas (exceto pagamento)
+ * GlobalAssistantBanner — Dra. Renoveja em todas as telas do paciente
  *
- * Renderiza no layout raiz. Esconde em: /payment, auth (login/registro), splash.
+ * Renderiza no layout raiz. Esconde em: auth/splash e áreas médicas sensíveis.
  * Integra "Tire dúvidas" no estado companion.
  */
 
@@ -24,14 +24,11 @@ function shouldHideBanner(
   if (userRole === 'doctor') return true;
   // Pathname vazio/undefined — pode ser hidratação inicial; mostra por segurança
   if (!pathname || typeof pathname !== 'string') return false;
-  // Telas de pagamento (dados privados)
-  if (pathname.includes('/payment')) return true;
   // Vídeo e telas de resumo/plano: evitar sobreposição com controles críticos e modais
   if (
     pathname.includes('/video') ||
     pathname.includes('/consultation-summary') ||
-    pathname.includes('/care-plans') ||
-    pathname.includes('/request-detail/')
+    pathname.includes('/care-plans')
   ) return true;
   // Auth: login, registro, etc.
   if (pathname.includes('(auth)') || pathname.includes('login') || pathname.includes('register') ||

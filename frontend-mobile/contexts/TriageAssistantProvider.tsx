@@ -25,6 +25,7 @@ import { canShow, markShown, muteKey, resetSessionCounts, resetSessionCountForKe
 import { trackTriageEvent } from '../lib/triage/triageAnalytics';
 import { enrichTriageMessage } from '../lib/triage/triageEnrichmentApi';
 import { getMessagePriority, getMessageTopic } from '../lib/triage/triagePriority';
+import { getNextBestActionForRequest } from '../lib/domain/assistantIntelligence';
 import type { TriageMessage, TriageInput } from '../lib/triage/triage.types';
 
 // ── Feature flags ──────────────────────────────────────────
@@ -33,6 +34,30 @@ const IS_ENABLED = process.env.EXPO_PUBLIC_TRIAGE_ENABLED !== 'false';
 const IS_AI_ENABLED = process.env.EXPO_PUBLIC_TRIAGE_AI_ENABLED !== 'false';
 const SAME_TOPIC_COOLDOWN_MS = 15_000;   // 15s – permite trocar de tópico mais rápido (Dra. sempre presente)
 const MIN_REPLACE_INTERVAL_MS = 12_000; // 12s – permite trocar mensagens mais frequentemente
+
+function buildFallbackJourneyMessage(input: TriageInput): TriageMessage | null {
+  if (input.role !== 'patient' || !input.status) return null;
+  const next = getNextBestActionForRequest({
+    status: input.status as any,
+    requestType: input.requestType ?? 'prescription',
+    signedDocumentUrl: null,
+  });
+
+  const cta = next.intent === 'pay' || next.intent === 'download' || next.intent === 'track' ? 'ver_servicos' : null;
+  const ctaLabel = cta ? 'Abrir meus pedidos' : undefined;
+
+  return {
+    key: `fallback:${input.context}:${input.requestType ?? 'request'}:${input.status}`,
+    text: `${next.statusSummary} ${next.whatToDo}`,
+    severity: next.intent === 'pay' ? 'attention' : next.intent === 'download' ? 'positive' : 'info',
+    avatarState: next.intent === 'pay' ? 'alert' : next.intent === 'download' ? 'positive' : 'thinking',
+    cta,
+    ctaLabel,
+    cooldownMs: 8_000,
+    analyticsEvent: 'triage.fallback.journey',
+    canMute: false,
+  };
+}
 
 // ── Context types ───────────────────────────────────────────
 
@@ -80,7 +105,8 @@ export function TriageAssistantProvider({ children }: { children: React.ReactNod
   const evaluate = useCallback(async (input: TriageInput) => {
     if (!IS_ENABLED) return;
 
-    const message = evaluateTriageRules(input);
+    const ruleMessage = evaluateTriageRules(input);
+    const message = ruleMessage ?? buildFallbackJourneyMessage(input);
     if (!message) return;
 
     // Dedupe removido: Dra. Renoveja sempre ajuda, mesmo ao voltar à mesma tela
