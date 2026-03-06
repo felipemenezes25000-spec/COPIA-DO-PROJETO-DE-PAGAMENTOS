@@ -5,7 +5,7 @@
  *
  * State machine canônica (backend):
  *   prescription/exam: submitted → in_review → approved_pending_payment → paid → signed → delivered
- *   consultation:      submitted → searching_doctor → consultation_ready → in_consultation → consultation_finished
+ *   consultation:      submitted → searching_doctor → approved_pending_payment → paid → in_consultation → consultation_finished
  *   Qualquer estado:   → rejected | cancelled
  *
  * Status legados (retrocompatibilidade com dados históricos):

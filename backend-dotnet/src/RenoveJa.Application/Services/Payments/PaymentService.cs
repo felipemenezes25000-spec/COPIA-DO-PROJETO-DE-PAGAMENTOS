@@ -58,8 +58,8 @@ public class PaymentService(
         var existingPayment = await paymentRepository.GetByRequestIdAsync(request.RequestId, cancellationToken);
         if (existingPayment != null && existingPayment.Status == PaymentStatus.Approved)
         {
-#pragma warning disable CS0618 // Status legado: aceitar PendingPayment e ConsultationReady para dados antigos
-            if (medicalRequest.Status == RequestStatus.ApprovedPendingPayment || medicalRequest.Status == RequestStatus.PendingPayment || medicalRequest.Status == RequestStatus.ConsultationReady)
+#pragma warning disable CS0618 // Status legado: aceitar PendingPayment para dados antigos
+            if (medicalRequest.Status == RequestStatus.ApprovedPendingPayment || medicalRequest.Status == RequestStatus.PendingPayment)
 #pragma warning restore CS0618
             {
                 medicalRequest.MarkAsPaid();

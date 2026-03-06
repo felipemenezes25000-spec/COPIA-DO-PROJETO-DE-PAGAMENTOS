@@ -37,7 +37,7 @@ public static class PushNotificationRules
         var cat = category ?? (status switch
         {
             RequestStatus.ApprovedPendingPayment or RequestStatus.Paid => PushCategory.Payments,
-            RequestStatus.InConsultation or RequestStatus.ConsultationReady or RequestStatus.SearchingDoctor => PushCategory.Consultations,
+            RequestStatus.InConsultation or RequestStatus.SearchingDoctor => PushCategory.Consultations,
             _ => PushCategory.Requests
         });
 
@@ -162,7 +162,7 @@ public static class PushNotificationRules
             category: PushCategory.Consultations);
 
     public static PushNotificationRequest ConsultationStartingSoon(Guid userId, Guid requestId, int minutesLeft, bool isDoctor) =>
-        BuildRequest(userId, "consultation_starting_soon", requestId, RequestType.Consultation, RequestStatus.ConsultationReady,
+        BuildRequest(userId, "consultation_starting_soon", requestId, RequestType.Consultation, RequestStatus.Paid,
             $"Sua consulta começa em {minutesLeft} min",
             "Toque para entrar na sala.",
             deepLinkSuffix: $"consultation/{requestId}?action=join",
@@ -172,7 +172,7 @@ public static class PushNotificationRules
             bypassQuietHours: minutesLeft <= 10);
 
     public static PushNotificationRequest DoctorReady(Guid patientId, Guid requestId) =>
-        BuildRequest(patientId, "doctor_ready", requestId, RequestType.Consultation, RequestStatus.ConsultationReady,
+        BuildRequest(patientId, "doctor_ready", requestId, RequestType.Consultation, RequestStatus.Paid,
             "Seu médico já está pronto",
             "Toque para entrar na consulta.",
             deepLinkSuffix: $"consultation/{requestId}?action=join",

@@ -1064,8 +1064,7 @@ public class RequestService(
             throw new UnauthorizedAccessException("Only the assigned doctor can finish this consultation");
 
         var canFinish = request.Status == RequestStatus.InConsultation
-            || request.Status == RequestStatus.Paid
-            || request.Status == RequestStatus.ConsultationReady;
+            || request.Status == RequestStatus.Paid;
         if (!canFinish)
             throw new InvalidOperationException("Consultation must be in progress to be finished");
 
@@ -2531,8 +2530,7 @@ public class RequestService(
             throw new UnauthorizedAccessException("Only the patient or assigned doctor can auto-finish this consultation");
 
         var canFinish = request.Status == RequestStatus.InConsultation
-            || request.Status == RequestStatus.Paid
-            || request.Status == RequestStatus.ConsultationReady;
+            || request.Status == RequestStatus.Paid;
         if (!canFinish)
             throw new InvalidOperationException($"Consultation is not in a state that can be finished (current: {request.Status})");
 

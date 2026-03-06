@@ -97,6 +97,7 @@ const LEGACY_TO_NORMALIZED: Record<string, NormalizedStatus> = {
   pending_payment: 'approved_pending_payment',
   payment_pending: 'approved_pending_payment',
   in_queue: 'searching_doctor',
+  consultation_ready: 'approved_pending_payment',
   approved: 'paid',
   awaiting_signature: 'paid',
   completed: 'delivered',
@@ -533,7 +534,7 @@ export function getCountersForDoctor(requests: RequestResponseDto[]) {
     if (['submitted', 'in_review', 'approved_pending_payment', 'searching_doctor'].includes(norm)) {
       naFila++;
     }
-    if (norm === 'consultation_ready') consultaPronta++;
+    if (norm === 'paid') consultaPronta++;
     if (norm === 'in_consultation') emConsulta++;
     if (ui.countersBucket !== 'historical' && ui.phase !== 'finished') pendentesCount++;
   }
