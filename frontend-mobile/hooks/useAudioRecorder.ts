@@ -50,6 +50,8 @@ interface UseAudioRecorderReturn {
   chunksSent: number;
   /** Number of chunks that failed to send */
   chunksFailed: number;
+  /** Segundos até o próximo envio de chunk (0–10). Útil para mostrar "Próximo envio em Xs" ao paciente. */
+  secondsUntilNextChunk: number;
   /** Last error message (permissão, gravação) */
   error: string | null;
   /** Último erro de envio (API/rede) — útil quando chunksFailed > 0 */
@@ -64,6 +66,7 @@ export function useAudioRecorder(requestId: string, stream: 'local' | 'remote' =
   const [isRecording, setIsRecording] = useState(false);
   const [chunksSent, setChunksSent] = useState(0);
   const [chunksFailed, setChunksFailed] = useState(0);
+  const [secondsUntilNextChunk, setSecondsUntilNextChunk] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [lastChunkError, setLastChunkError] = useState<string | null>(null);
 
@@ -71,6 +74,7 @@ export function useAudioRecorder(requestId: string, stream: 'local' | 'remote' =
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeRef = useRef(false);
   const chunkIndexRef = useRef(0);
+  const chunkCountdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Send a recorded chunk to the transcription API ──
 
@@ -102,6 +106,10 @@ export function useAudioRecorder(requestId: string, stream: 'local' | 'remote' =
         await transcribeAudioChunk(requestId, fileObject as any, stream);
         setChunksSent((c) => c + 1);
         setLastChunkError(null);
+        setSecondsUntilNextChunk(CHUNK_DURATION_MS / 1000);
+        if (__DEV__) {
+          console.log(`[AudioRecorder] Chunk enviado OK (total: ${chunkIndexRef.current})`);
+        }
       } catch (e: any) {
         const msg = e?.message ?? String(e);
         const status = e?.status;
@@ -208,6 +216,12 @@ export function useAudioRecorder(requestId: string, stream: 'local' | 'remote' =
       // Set up chunk cycle interval
       intervalRef.current = setInterval(cycleChunk, CHUNK_DURATION_MS);
 
+      // Countdown para próximo envio (paciente vê "Próximo envio em Xs")
+      setSecondsUntilNextChunk(CHUNK_DURATION_MS / 1000);
+      chunkCountdownRef.current = setInterval(() => {
+        setSecondsUntilNextChunk((s) => (s <= 1 ? CHUNK_DURATION_MS / 1000 : s - 1));
+      }, 1000);
+
       console.log('[AudioRecorder] Started recording, chunk interval:', CHUNK_DURATION_MS);
       return true;
     } catch (e: any) {
@@ -226,11 +240,16 @@ export function useAudioRecorder(requestId: string, stream: 'local' | 'remote' =
     console.log('[AudioRecorder] Stopping...');
     activeRef.current = false;
     setIsRecording(false);
+    setSecondsUntilNextChunk(0);
 
-    // Clear interval
+    // Clear intervals
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
+    }
+    if (chunkCountdownRef.current) {
+      clearInterval(chunkCountdownRef.current);
+      chunkCountdownRef.current = null;
     }
 
     // Stop and send final chunk
@@ -275,6 +294,10 @@ export function useAudioRecorder(requestId: string, stream: 'local' | 'remote' =
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
+      if (chunkCountdownRef.current) {
+        clearInterval(chunkCountdownRef.current);
+        chunkCountdownRef.current = null;
+      }
       const rec = recordingRef.current;
       if (rec) {
         rec.stopAndUnloadAsync().catch(() => {});
@@ -287,6 +310,7 @@ export function useAudioRecorder(requestId: string, stream: 'local' | 'remote' =
     isRecording,
     chunksSent,
     chunksFailed,
+    secondsUntilNextChunk,
     error,
     lastChunkError,
     start,

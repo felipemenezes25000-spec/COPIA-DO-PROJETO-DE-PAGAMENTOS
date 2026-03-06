@@ -439,24 +439,31 @@ export default function VideoCallScreenInner() {
   }, [isDoctor, rid, consultationStartedAt]);
 
   // Patient: iniciar gravação para transcrição quando a consulta começar (paciente fala, médico vê ao vivo)
-  // Inicia quando: (1) consultationStartedAt definido OU (2) status in_consultation — evita depender de ambos reportarem "call connected"
+  // Inicia quando: (1) consultationStartedAt OU (2) status in_consultation OU (3) status paid (backend aceita ambos para transcribe)
   const patientRecordingStartedRef = useRef(false);
-  const canStartRecording = consultationStartedAt || requestStatus === 'in_consultation';
+  const canStartRecording = consultationStartedAt || requestStatus === 'in_consultation' || requestStatus === 'paid';
   useEffect(() => {
-    if (isDoctor || !rid || !canStartRecording || callState !== 'joined') return;
+    if (isDoctor || !rid || callState !== 'joined') return;
+    if (__DEV__) {
+      console.log('[Patient] Transcrição: canStartRecording=', canStartRecording, 'consultationStartedAt=', !!consultationStartedAt, 'requestStatus=', requestStatus);
+    }
+    if (!canStartRecording) return;
     if (patientRecordingStartedRef.current) return;
     patientRecordingStartedRef.current = true;
     (async () => {
       await new Promise(r => setTimeout(r, 500));
+      if (__DEV__) console.log('[Patient] Transcrição: iniciando gravação...');
       const started = await audioRecorder.start();
       if (!started) {
-        console.warn('[Patient] Transcrição: falha ao iniciar gravação');
+        console.warn('[Patient] Transcrição: falha ao iniciar gravação. Verifique permissão de microfone.');
         await new Promise(r => setTimeout(r, 1500));
         const retried = await audioRecorder.start();
         if (!retried) console.warn('[Patient] Transcrição: retry falhou');
+      } else if (__DEV__) {
+        console.log('[Patient] Transcrição: gravação iniciada');
       }
     })();
-  }, [isDoctor, rid, canStartRecording, callState, audioRecorder]);
+  }, [isDoctor, rid, canStartRecording, callState, audioRecorder, consultationStartedAt, requestStatus]);
 
   // Countdown / Auto-finish
   useEffect(() => {
@@ -697,15 +704,22 @@ export default function VideoCallScreenInner() {
         </View>
       )}
 
-      {/* Patient: indicador de transcrição — oculto em PiP */}
+      {/* Patient: indicador de transcrição + contador 10s — oculto em PiP */}
       {!isInPipMode && !isDoctor && callState === 'joined' && (
         <View style={[S.recIndicator, { top: insets.top + 60 + (bankBalance && bankBalance.minutes > 0 ? 44 : 0) }]}>
           {audioRecorder.isRecording ? (
             <>
               <View style={S.recDot} />
-              <Text style={S.recText}>
-                Transcrição ativa{audioRecorder.chunksSent > 0 ? ` • ${audioRecorder.chunksSent} envios` : ''}
-              </Text>
+              <View>
+                <Text style={S.recText}>
+                  Transcrição ativa{audioRecorder.chunksSent > 0 ? ` • ${audioRecorder.chunksSent} envios` : ''}
+                </Text>
+                {audioRecorder.secondsUntilNextChunk >= 0 && (
+                  <Text style={S.recCountdownText}>
+                    Próximo envio em {audioRecorder.secondsUntilNextChunk}s
+                  </Text>
+                )}
+              </View>
             </>
           ) : audioRecorder.error ? (
             <>
@@ -720,7 +734,9 @@ export default function VideoCallScreenInner() {
           ) : canStartRecording ? (
             <Text style={[S.recText, { opacity: 0.7 }]}>Iniciando transcrição...</Text>
           ) : (
-            <Text style={[S.recText, { opacity: 0.7 }]}>Aguardando médico iniciar a consulta</Text>
+            <Text style={[S.recText, { opacity: 0.7 }]}>
+              {requestStatus === 'paid' ? 'Aguardando médico na chamada...' : 'Aguardando médico iniciar a consulta'}
+            </Text>
           )}
         </View>
       )}
@@ -1116,9 +1132,10 @@ const S = StyleSheet.create({
   startTimerSub: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 1 },
 
   // Recording indicator
-  recIndicator: { position: 'absolute', left: 12, zIndex: 25, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: 'rgba(220,38,38,0.8)' },
+  recIndicator: { position: 'absolute', left: 12, zIndex: 25, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, backgroundColor: 'rgba(220,38,38,0.8)' },
   recDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.white },
   recText: { color: colors.white, fontSize: 12, fontWeight: '600' },
+  recCountdownText: { color: 'rgba(255,255,255,0.95)', fontSize: 13, fontWeight: '700', marginTop: 2, fontVariant: ['tabular-nums'] },
 
   // Patient: Time Bank Badge
   bankBadge: { position: 'absolute', left: 12, zIndex: 25, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: 'rgba(22,163,74,0.2)' },

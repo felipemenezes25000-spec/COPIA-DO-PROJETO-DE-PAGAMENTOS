@@ -1,11 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Modal } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { useRequestsEvents } from '../contexts/RequestsEventsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { showToast } from './ui/Toast';
 import type { RequestUpdatedPayload } from '../lib/requestsEvents';
 import { colors } from '../lib/theme';
+
+/** Normaliza status para comparação (in_consultation, InConsultation, etc.) */
+function normalizeStatus(s: string | undefined): string {
+  if (!s) return '';
+  return s.toLowerCase().replace(/-/g, '_');
+}
 
 export function getMessageForUser(payload: RequestUpdatedPayload, isDoctor?: boolean): string {
   if (payload.message && payload.message.trim()) return payload.message.trim();
@@ -62,8 +68,9 @@ export function GlobalRequestUpdatedToast() {
       const message = getMessageForUser(payload, isDoctor);
       const requestId = payload.requestId || '';
 
-      // Paciente: quando médico inicia consulta (in_consultation), mostra countdown e entra automaticamente
-      if (payload.status === 'in_consultation' && !isDoctor && requestId) {
+      // Paciente: quando médico inicia consulta (in_consultation), mostra popup com countdown e botão "Entrar agora"
+      const statusNorm = normalizeStatus(payload.status);
+      if (statusNorm === 'in_consultation' && !isDoctor && requestId) {
         const currentPath = pathnameRef.current ?? '';
         if (currentPath.includes(`/video/${requestId}`)) return; // já está na tela de vídeo
         setPendingUpdate(null);
@@ -116,6 +123,14 @@ export function GlobalRequestUpdatedToast() {
     return () => clearInterval(t);
   }, [countdownRequestId]);
 
+  const enterNow = () => {
+    if (countdownRequestId) {
+      const rid = countdownRequestId;
+      setCountdownRequestId(null);
+      routerRef.current.push(`/video/${rid}` as any);
+    }
+  };
+
   return countdownRequestId ? (
     <Modal visible transparent animationType="fade">
       <View style={styles.countdownOverlay}>
@@ -123,6 +138,9 @@ export function GlobalRequestUpdatedToast() {
           <Text style={styles.countdownTitle}>Sua consulta vai começar em</Text>
           <Text style={styles.countdownNumber}>{countdownSeconds}</Text>
           <Text style={styles.countdownSub}>segundos</Text>
+          <TouchableOpacity style={styles.enterNowBtn} onPress={enterNow} activeOpacity={0.8}>
+            <Text style={styles.enterNowBtnText}>Entrar agora</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -160,5 +178,17 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 14,
     marginTop: 4,
+  },
+  enterNowBtn: {
+    marginTop: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+  },
+  enterNowBtnText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

@@ -123,6 +123,9 @@ export default function RequestDetailScreen() {
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
   const [documentActionLoading, setDocumentActionLoading] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const videoModalShownRef = useRef(false);
+  const lastVideoModalRequestIdRef = useRef<string | null>(null);
   const { isConnected } = useNetworkStatus();
 
   const fetchIdRef = useRef(0);
@@ -184,12 +187,31 @@ export default function RequestDetailScreen() {
 
   useFocusEffect(useCallback(() => { if (requestId) load(); }, [requestId, load]));
 
-  /** Polling: enquanto o pedido está aguardando pagamento, atualiza a cada 5s para refletir webhook. Máx 180 polls (~15 min). */
+  /** Popup de vídeo: ao carregar com consulta pronta, mostra modal. Se status mudar para in_consultation (médico entrou), mostra de novo. */
+  useEffect(() => {
+    if (!request || request.requestType !== 'consultation') return;
+    if (request.id !== lastVideoModalRequestIdRef.current) {
+      lastVideoModalRequestIdRef.current = request.id;
+      videoModalShownRef.current = false;
+    }
+    const canJoin = ['paid', 'in_consultation'].includes(request.status);
+    if (!canJoin) return;
+    const shouldShow = request.status === 'in_consultation' || !videoModalShownRef.current;
+    if (shouldShow) {
+      videoModalShownRef.current = true;
+      setShowVideoModal(true);
+    }
+  }, [request?.id, request?.status, request?.requestType]);
+
+  /** Polling: aguardando pagamento OU consulta pronta (paid) — para detectar webhook de pagamento ou médico iniciando. */
   const MAX_POLLS = 180;
   const pollCountRef = useRef(0);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
-    const awaiting = request && AWAITING_PAYMENT_STATUSES.includes(request.status);
+    const awaiting = request && (
+      AWAITING_PAYMENT_STATUSES.includes(request.status) ||
+      (request.requestType === 'consultation' && request.status === 'paid')
+    );
     if (!awaiting) {
       pollCountRef.current = 0;
       if (pollIntervalRef.current) {
@@ -210,7 +232,8 @@ export default function RequestDetailScreen() {
       }
       loadSilent();
     };
-    pollIntervalRef.current = setInterval(tick, 5000);
+    const isConsultationWaiting = request.requestType === 'consultation' && request.status === 'paid';
+    pollIntervalRef.current = setInterval(tick, isConsultationWaiting ? 3000 : 5000);
     return () => {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
@@ -452,6 +475,24 @@ export default function RequestDetailScreen() {
             <Ionicons name="cloud-offline-outline" size={16} color={colors.warning} />
             <Text style={styles.offlineText}>Você está offline. Algumas ações estão temporariamente indisponíveis.</Text>
           </View>
+        )}
+
+        {/* Popup/banner de vídeo: consulta pronta para entrar */}
+        {canJoinVideo && (
+          <TouchableOpacity
+            style={styles.videoReadyBanner}
+            onPress={() => { setShowVideoModal(false); router.push(`/video/${request.id}` as any); }}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="videocam" size={28} color={colors.white} />
+            <View style={styles.videoReadyBannerText}>
+              <Text style={styles.videoReadyBannerTitle}>
+                {request.status === 'in_consultation' ? 'Médico na sala — entre agora!' : 'Sua consulta está pronta'}
+              </Text>
+              <Text style={styles.videoReadyBannerSub}>Toque para entrar na videoconsulta</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="rgba(255,255,255,0.8)" />
+          </TouchableOpacity>
         )}
 
         {/* Status Tracker */}
@@ -723,6 +764,51 @@ export default function RequestDetailScreen() {
         />
       )}
 
+      {/* Modal popup de vídeo: "Entre na consulta" */}
+      <Modal
+        visible={showVideoModal && canJoinVideo}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowVideoModal(false)}
+        statusBarTranslucent
+      >
+        <TouchableOpacity
+          style={styles.videoModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowVideoModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.videoModalCard}
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Ionicons name="videocam" size={48} color={colors.primary} style={{ marginBottom: spacing.md }} />
+            <Text style={styles.videoModalTitle}>
+              {request.status === 'in_consultation' ? 'Médico na sala!' : 'Sua consulta está pronta'}
+            </Text>
+            <Text style={styles.videoModalSub}>
+              {request.status === 'in_consultation'
+                ? 'Entre na videoconsulta agora.'
+                : 'Entre na sala e aguarde o médico.'}
+            </Text>
+            <TouchableOpacity
+              style={styles.videoModalBtn}
+              onPress={() => { setShowVideoModal(false); router.push(`/video/${request.id}` as any); }}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.videoModalBtnText}>Entrar agora</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.videoModalBtnSec}
+              onPress={() => setShowVideoModal(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.videoModalBtnSecText}>Depois</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
       {/* Modal com zoom nas imagens */}
       <Modal
         visible={selectedImageUri !== null}
@@ -783,6 +869,48 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   offlineText: { flex: 1, fontSize: 12, color: colors.textSecondary },
+  videoReadyBanner: {
+    marginBottom: spacing.md,
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    ...shadows.card,
+  },
+  videoReadyBannerText: { flex: 1 },
+  videoReadyBannerTitle: { fontSize: 16, fontWeight: '700', color: colors.white },
+  videoReadyBannerSub: { fontSize: 13, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
+  videoModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  videoModalCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: spacing.xl,
+    alignItems: 'center',
+    minWidth: 280,
+    maxWidth: 340,
+    ...shadows.card,
+  },
+  videoModalTitle: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: spacing.sm, textAlign: 'center' },
+  videoModalSub: { fontSize: 15, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.lg },
+  videoModalBtn: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  videoModalBtnText: { color: colors.white, fontSize: 16, fontWeight: '700' },
+  videoModalBtnSec: { paddingVertical: 8, paddingHorizontal: 16 },
+  videoModalBtnSecText: { color: colors.textMuted, fontSize: 14, fontWeight: '600' },
   formSection: { marginHorizontal: -spacing.md },
   formSectionFirst: { marginTop: 0 },
   formSectionContent: {
