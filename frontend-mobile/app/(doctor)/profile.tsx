@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,15 +9,21 @@ import {
   Platform,
   TouchableOpacity,
   InteractionManager,
+  ActivityIndicator,
+  Modal,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 import { colors, typography, gradients, doctorDS } from '../../lib/themeDoctor';
 const pad = doctorDS.screenPaddingHorizontal;
 import { useAuth } from '../../contexts/AuthContext';
+import { updateAvatar } from '../../lib/api';
+import { showToast } from '../../components/ui/Toast';
 import { haptics } from '../../lib/haptics';
 import { FadeIn } from '../../components/ui/FadeIn';
 import { motionTokens } from '../../lib/ui/motion';
@@ -25,7 +31,10 @@ import { motionTokens } from '../../lib/ui/motion';
 export default function DoctorProfile() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user, doctorProfile: doctor, signOut } = useAuth();
+  const { user, doctorProfile: doctor, signOut, refreshUser } = useAuth();
+  const [avatarLoading, setAvatarLoading] = useState(false);
+  const [avatarPreviewUri, setAvatarPreviewUri] = useState<string | null>(null);
+  const [avatarImageError, setAvatarImageError] = useState(false);
 
   const doLogout = () => {
     signOut()
@@ -58,6 +67,62 @@ export default function DoctorProfile() {
   const initials = user?.name
     ? user.name.split(' ').slice(0, 2).map(n => n[0]?.toUpperCase()).join('')
     : '?';
+
+  const pickAvatarFromGallery = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permissão necessária', 'Precisamos de acesso à galeria para escolher sua foto.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.9,
+      selectionLimit: 1,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    setAvatarPreviewUri(result.assets[0].uri);
+  };
+
+  const takeAvatarPhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permissão necessária', 'Precisamos de acesso à câmera para tirar sua foto.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.9,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    setAvatarPreviewUri(result.assets[0].uri);
+  };
+
+  const pickAvatar = async () => {
+    Alert.alert('Foto de perfil', 'Como você quer atualizar sua foto?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Câmera', onPress: () => { void takeAvatarPhoto(); } },
+      { text: 'Galeria', onPress: () => { void pickAvatarFromGallery(); } },
+    ]);
+  };
+
+  const saveAvatar = async () => {
+    if (!avatarPreviewUri) return;
+    setAvatarLoading(true);
+    try {
+      await updateAvatar(avatarPreviewUri);
+      await refreshUser();
+      setAvatarPreviewUri(null);
+      setAvatarImageError(false);
+      showToast({ message: 'Foto atualizada!', type: 'success' });
+    } catch (e: unknown) {
+      showToast({ message: (e as Error)?.message ?? 'Erro ao atualizar foto.', type: 'error' });
+    } finally {
+      setAvatarLoading(false);
+    }
+  };
 
   const menuSections = [
     {
@@ -94,9 +159,38 @@ export default function DoctorProfile() {
         end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: insets.top + 24 }]}
       >
-        <View style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>{initials}</Text>
-        </View>
+        <Pressable
+          style={({ pressed }) => [styles.avatarWrap, pressed && styles.avatarWrapPressed]}
+          onPress={() => {
+            haptics.selection();
+            void pickAvatar();
+          }}
+          disabled={avatarLoading}
+          accessibilityRole="button"
+          accessibilityLabel="Alterar foto de perfil"
+        >
+          <View style={styles.avatarCircle}>
+            {user?.avatarUrl && !avatarImageError ? (
+              <Image
+                source={{ uri: user.avatarUrl }}
+                style={styles.avatarImage}
+                resizeMode="cover"
+                onError={() => setAvatarImageError(true)}
+              />
+            ) : (
+              <Text style={styles.avatarText}>{initials}</Text>
+            )}
+          </View>
+          {avatarLoading ? (
+            <View style={styles.avatarOverlay}>
+              <ActivityIndicator size="small" color={colors.white} />
+            </View>
+          ) : (
+            <View style={styles.avatarBadge}>
+              <Ionicons name="camera" size={16} color={colors.white} />
+            </View>
+          )}
+        </Pressable>
         <Text style={styles.headerName} numberOfLines={1} ellipsizeMode="tail">Dr(a). {firstName}</Text>
         <Text style={styles.headerEmail} numberOfLines={1} ellipsizeMode="tail">{user?.email || ''}</Text>
         {doctor && (
@@ -166,6 +260,63 @@ export default function DoctorProfile() {
       <Text style={styles.version}>RenoveJa+ v1.0.0</Text>
       <View style={{ height: insets.bottom + 24 }} />
       </FadeIn>
+
+      <Modal
+        visible={!!avatarPreviewUri}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAvatarPreviewUri(null)}
+      >
+        <View style={styles.previewOverlay}>
+          <View style={styles.previewCard}>
+            <Text style={styles.previewTitle}>Pré-visualizar foto</Text>
+            <Text style={styles.previewSubtitle}>Confira como sua foto ficará no perfil.</Text>
+
+            <View style={styles.previewAvatarCircle}>
+              {avatarPreviewUri ? (
+                <Image source={{ uri: avatarPreviewUri }} style={styles.previewAvatarImage} resizeMode="cover" />
+              ) : null}
+            </View>
+
+            <View style={styles.previewActions}>
+              <TouchableOpacity
+                style={[styles.previewBtn, styles.previewBtnGhost]}
+                onPress={() => {
+                  setAvatarPreviewUri(null);
+                  void pickAvatar();
+                }}
+                disabled={avatarLoading}
+              >
+                <Text style={styles.previewBtnGhostText}>Recortar / escolher outra</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.previewBtn, styles.previewBtnPrimary, avatarLoading && { opacity: 0.7 }]}
+                onPress={() => { void saveAvatar(); }}
+                disabled={avatarLoading}
+              >
+                {avatarLoading ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Text style={styles.previewBtnPrimaryText}>Salvar foto</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.previewInlineCamera}
+              onPress={() => {
+                setAvatarPreviewUri(null);
+                void takeAvatarPhoto();
+              }}
+              disabled={avatarLoading}
+            >
+              <Ionicons name="camera-outline" size={16} color={colors.primary} />
+              <Text style={styles.previewInlineCameraText}>Tirar nova foto agora</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -179,6 +330,13 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
+  avatarWrap: {
+    position: 'relative',
+    marginBottom: 14,
+  },
+  avatarWrapPressed: {
+    opacity: 0.9,
+  },
   avatarCircle: {
     width: 68,
     height: 68,
@@ -188,7 +346,31 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.35)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.9)',
   },
   avatarText: {
     fontSize: 24,
@@ -316,5 +498,90 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
     letterSpacing: 1,
+  },
+
+  previewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  previewCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    padding: 18,
+  },
+  previewTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  previewSubtitle: {
+    marginTop: 4,
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  previewAvatarCircle: {
+    alignSelf: 'center',
+    marginTop: 16,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    overflow: 'hidden',
+    borderWidth: 3,
+    borderColor: colors.primarySoft,
+    backgroundColor: colors.background,
+  },
+  previewAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  previewActions: {
+    marginTop: 18,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  previewBtn: {
+    flex: 1,
+    borderRadius: 12,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  previewBtnGhost: {
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.background,
+  },
+  previewBtnGhostText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textMuted,
+  },
+  previewBtnPrimary: {
+    backgroundColor: colors.primary,
+  },
+  previewBtnPrimaryText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.white,
+  },
+  previewInlineCamera: {
+    marginTop: 10,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+  },
+  previewInlineCameraText: {
+    fontSize: 13,
+    color: colors.primary,
+    fontWeight: '600',
   },
 });
