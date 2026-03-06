@@ -1626,8 +1626,41 @@ public class RequestService(
             {
                 logger.LogInformation("IA reanálise exame (médico): request {RequestId}", id);
                 var result = await aiReadingService.AnalyzeExamAsync(imageUrls, textDescription, cancellationToken);
-                request.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, null, result.Urgency, result.ReadabilityOk, result.MessageToUser);
-                logger.LogInformation("IA reanálise exame (médico): sucesso para request {RequestId}", id);
+                var hasImages = imageUrls != null && imageUrls.Count > 0;
+                if (hasImages && !result.ReadabilityOk)
+                {
+                    var msg = result.MessageToUser ?? "A imagem não parece ser de pedido de exame.";
+                    request.Reject(msg);
+                    logger.LogInformation("IA reanálise exame (médico): request {RequestId} REJEITADO - imagens inválidas", id);
+                }
+                else if (hasImages && result.HasDoubts == true)
+                {
+                    request.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, null, result.Urgency, true, null);
+                    logger.LogInformation("IA reanálise exame (médico): request {RequestId} - dúvidas documentadas para avaliação", id);
+                }
+                else if (hasImages && result.SignsOfTampering == true)
+                {
+                    var msg = "O documento apresenta sinais de adulteração. Envie uma foto completa e original do pedido de exame.";
+                    request.Reject(msg);
+                    logger.LogInformation("IA reanálise exame (médico): request {RequestId} REJEITADO - adulteração", id);
+                }
+                else if (hasImages && result.PatientNameVisible == false)
+                {
+                    var msg = "O nome do paciente não está visível no documento. Envie uma foto completa onde o nome esteja legível.";
+                    request.Reject(msg);
+                    logger.LogInformation("IA reanálise exame (médico): request {RequestId} REJEITADO - nome não visível", id);
+                }
+                else if (hasImages && !string.IsNullOrEmpty(result.ExtractedPatientName) && !PatientNamesMatch(request.PatientName, result.ExtractedPatientName))
+                {
+                    var msg = $"O nome no documento ({result.ExtractedPatientName}) não corresponde ao cadastro ({request.PatientName ?? "cadastro"}).";
+                    request.Reject(msg);
+                    logger.LogInformation("IA reanálise exame (médico): request {RequestId} REJEITADO - nome não confere", id);
+                }
+                else
+                {
+                    request.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, null, result.Urgency, result.ReadabilityOk, result.MessageToUser);
+                    logger.LogInformation("IA reanálise exame (médico): sucesso para request {RequestId}", id);
+                }
             }
             catch (Exception ex)
             {
@@ -1662,12 +1695,49 @@ public class RequestService(
         {
             logger.LogInformation("IA reanálise exame (paciente): request {RequestId}, Imagens={ImageCount}, TextoLen={TextLen}", id, imageUrls.Count, textDescription?.Length ?? 0);
             var result = await aiReadingService.AnalyzeExamAsync(imageUrls, textDescription, cancellationToken);
-            if (imageUrls.Count > 0 && !result.ReadabilityOk)
+            var hasImages = imageUrls.Count > 0;
+            if (hasImages && !result.ReadabilityOk)
             {
                 var msg = result.MessageToUser ?? "As imagens não parecem ser de pedido de exame. Envie apenas imagens do documento médico.";
                 request.Reject(msg);
                 request = await requestRepository.UpdateAsync(request, cancellationToken);
                 logger.LogInformation("IA reanálise exame: request {RequestId} REJEITADO - imagens inválidas", id);
+            }
+            else if (hasImages && result.HasDoubts == true)
+            {
+                request.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, null, result.Urgency, true, null);
+                request = await requestRepository.UpdateAsync(request, cancellationToken);
+                logger.LogInformation("IA reanálise exame: request {RequestId} encaminhado ao médico com dúvidas", id);
+                if (request.DoctorId.HasValue)
+                {
+                    await CreateNotificationAsync(
+                        request.DoctorId.Value,
+                        "Reanálise Solicitada",
+                        "O paciente solicitou reanálise do pedido de exame. Nova análise da IA disponível (com dúvidas para sua avaliação).",
+                        cancellationToken,
+                        new Dictionary<string, object?> { ["requestId"] = request.Id.ToString() });
+                }
+            }
+            else if (hasImages && result.SignsOfTampering == true)
+            {
+                var msg = "O documento apresenta sinais de adulteração ou recorte. Envie uma foto completa e original do pedido de exame.";
+                request.Reject(msg);
+                request = await requestRepository.UpdateAsync(request, cancellationToken);
+                logger.LogInformation("IA reanálise exame: request {RequestId} REJEITADO - adulteração", id);
+            }
+            else if (hasImages && result.PatientNameVisible == false)
+            {
+                var msg = "O nome do paciente não está visível no documento. Envie uma foto completa onde o nome esteja legível.";
+                request.Reject(msg);
+                request = await requestRepository.UpdateAsync(request, cancellationToken);
+                logger.LogInformation("IA reanálise exame: request {RequestId} REJEITADO - nome não visível", id);
+            }
+            else if (hasImages && !string.IsNullOrEmpty(result.ExtractedPatientName) && !PatientNamesMatch(request.PatientName, result.ExtractedPatientName))
+            {
+                var msg = $"O nome no documento ({result.ExtractedPatientName}) não corresponde ao cadastro ({request.PatientName ?? "cadastro"}). O pedido deve ser do titular da conta.";
+                request.Reject(msg);
+                request = await requestRepository.UpdateAsync(request, cancellationToken);
+                logger.LogInformation("IA reanálise exame: request {RequestId} REJEITADO - nome não confere", id);
             }
             else
             {
@@ -2215,12 +2285,44 @@ public class RequestService(
         try
         {
             var result = await aiReadingService.AnalyzeExamAsync(imageUrls, textDescription, cancellationToken);
-            if (imageUrls != null && imageUrls.Count > 0 && !result.ReadabilityOk)
+            var hasImages = imageUrls != null && imageUrls.Count > 0;
+            if (hasImages && !result.ReadabilityOk)
             {
                 var msg = result.MessageToUser ?? "A imagem não parece ser de pedido de exame ou documento médico. Envie apenas imagens do documento.";
                 medicalRequest.Reject(msg);
                 await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
                 logger.LogInformation("IA exame: request {RequestId} REJEITADO - imagens inválidas. Mensagem: {Msg}", medicalRequest.Id, msg);
+                return;
+            }
+            if (hasImages && result.HasDoubts == true)
+            {
+                medicalRequest.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, null, result.Urgency, true, null);
+                await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
+                logger.LogInformation("IA exame: request {RequestId} encaminhado ao médico com dúvidas documentadas", medicalRequest.Id);
+                return;
+            }
+            if (hasImages && result.SignsOfTampering == true)
+            {
+                var msg = "O documento enviado apresenta sinais de adulteração, edição ou recorte para ocultar informações. Envie uma foto completa e original do pedido de exame, sem alterações.";
+                medicalRequest.Reject(msg);
+                await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
+                logger.LogInformation("IA exame: request {RequestId} REJEITADO - adulteração detectada", medicalRequest.Id);
+                return;
+            }
+            if (hasImages && result.PatientNameVisible == false)
+            {
+                var msg = "O nome do paciente não está visível no documento (recortado, em branco ou ilegível). Envie uma foto completa onde o nome do paciente esteja claramente legível.";
+                medicalRequest.Reject(msg);
+                await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
+                logger.LogInformation("IA exame: request {RequestId} REJEITADO - nome do paciente não visível", medicalRequest.Id);
+                return;
+            }
+            if (hasImages && !string.IsNullOrEmpty(result.ExtractedPatientName) && !PatientNamesMatch(medicalRequest.PatientName, result.ExtractedPatientName))
+            {
+                var msg = $"O nome do paciente no documento ({result.ExtractedPatientName}) não corresponde ao nome cadastrado no app ({medicalRequest.PatientName ?? "cadastro"}). O pedido deve ser do próprio titular da conta.";
+                medicalRequest.Reject(msg);
+                await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
+                logger.LogInformation("IA exame: request {RequestId} REJEITADO - nome do paciente não confere", medicalRequest.Id);
                 return;
             }
             medicalRequest.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, null, result.Urgency, result.ReadabilityOk, result.MessageToUser);

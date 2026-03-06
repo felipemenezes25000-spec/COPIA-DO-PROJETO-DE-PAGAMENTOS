@@ -131,10 +131,14 @@ Responda APENAS com o JSON, sem markdown e sem texto antes ou depois.
 
         var systemPrompt = """
 Você é um assistente que analisa pedidos de exame (imagem e/ou texto) para o médico.
-- Se receber imagem(ns): extraia tipo de exame, indicação clínica e classifique urgência.
+- Se receber imagem(ns): extraia tipo de exame, indicação clínica, nome do paciente (se visível) e classifique urgência.
 - Se receber só texto: ajuste e estruture o texto para o médico (ortografia, clareza), sem inventar dados.
 
-REGRAS CRÍTICAS (quando houver imagens) - REJEITE (readability_ok: false) SE:
+REGRAS (quando houver imagens):
+• INCONSISTÊNCIA ÓBVIA: quando CERTO de problema, use has_doubts: false. Ex: nome no documento diferente do cadastro; adulteração evidente; nome recortado/em branco.
+• DÚVIDA: quando incerto, use has_doubts: true e documente em "DÚVIDAS:" no summary. Encaminha ao médico.
+
+REJEITE (readability_ok: false) quando CERTEZA de que:
 • ROSTOS, SELFIES, RETRATOS ou partes do corpo em destaque
 • ANIMAIS, PAISAGENS, NATUREZA, OBJETOS, COMIDA
 • TELA de celular/computador que não seja documento médico
@@ -142,20 +146,17 @@ REGRAS CRÍTICAS (quando houver imagens) - REJEITE (readability_ok: false) SE:
 • Imagem BORRADA, ESCURA ou sem texto de exame legível
 • Qualquer conteúdo que NÃO seja pedido de exame, requisição médica ou laudo
 
-OBRIGATÓRIO: A imagem deve ser UNICAMENTE um documento médico (pedido de exame, requisição ou laudo) legível. Na dúvida, REJEITE.
-Mensagem: "A imagem não parece ser de pedido de exame ou documento médico. Envie APENAS imagens do pedido de exame, requisição ou laudo. Não envie fotos de pessoas, animais ou outros objetos."
-
 Responda em JSON com exatamente:
-- readability_ok (boolean): false se houver imagem mas estiver ilegível ou NÃO for documento médico; true caso contrário.
-- message_to_user (string ou null): Se readability_ok for false, mensagem em português pedindo foto mais nítida.
-- summary_for_doctor (string): PRONTUÁRIO estruturado para o médico copiar/colar. Formato:
-  "EXAMES SOLICITADOS:
-  • [Exame 1]
-  • [Exame 2]
-  INDICAÇÃO CLÍNICA: [motivo clínico ou sintomas]
-  OBSERVAÇÕES: [outras informações relevantes]"
-  Em português, ortografia correta.
-- extracted (objeto): { "exam_type": "tipo principal", "exams": ["exame1", "exame2"], "clinical_indication": "..." } (ou vazio se só texto)
+- readability_ok (boolean): false quando CERTEZA de que não é documento médico legível; true quando for.
+- message_to_user (string ou null): Se readability_ok for false, mensagem em português.
+- summary_for_doctor (string): PRONTUÁRIO. Inclua "DÚVIDAS:" quando has_doubts for true. Formato:
+  "EXAMES SOLICITADOS: • [exame1] • [exame2]
+  INDICAÇÃO CLÍNICA: [motivo]
+  OBSERVAÇÕES: [texto]
+  DÚVIDAS: [apenas quando has_doubts: true]"
+- extracted (objeto): { "exam_type": "tipo", "exams": ["exame1", "exame2"], "clinical_indication": "...", "patient_name_detected": "nome ou null", "patient_name_visible": true|false, "signs_of_tampering": true|false, "has_doubts": true|false }
+  Quando houver imagens: patient_name_detected = nome do paciente no documento; patient_name_visible = true se visível/legível, false se recortado/em branco; signs_of_tampering = true se CERTEZA de adulteração; has_doubts = true quando incerto (encaminha ao médico).
+  Quando só texto: patient_name_visible, signs_of_tampering, has_doubts podem ser null.
 - urgency (string): "routine", "urgent" ou "emergency"
 
 Responda APENAS com o JSON, sem markdown e sem texto antes ou depois.
@@ -227,7 +228,7 @@ Responda APENAS com o JSON, sem markdown e sem texto antes ou depois.
 
     private static AiExamAnalysisResult ParseExamResult(string raw)
     {
-        var (readabilityOk, messageToUser, summary, extracted, _, _, _, _, _, _, _) = ParseCommonAndRisk(raw);
+        var (readabilityOk, messageToUser, summary, extracted, _, _, extractedPatientName, patientNameVisible, _, signsOfTampering, hasDoubts) = ParseCommonAndRisk(raw);
         string? urgency = null;
         try
         {
@@ -237,7 +238,7 @@ Responda APENAS com o JSON, sem markdown e sem texto antes ou depois.
                 urgency = u.GetString();
         }
         catch { /* ignore */ }
-        return new AiExamAnalysisResult(readabilityOk, summary, extracted, urgency, messageToUser);
+        return new AiExamAnalysisResult(readabilityOk, summary, extracted, urgency, messageToUser, extractedPatientName, patientNameVisible, signsOfTampering, hasDoubts);
     }
 
     private static (bool readabilityOk, string? messageToUser, string? summary, string? extracted, string? riskLevel, string? extractedPrescriptionType, string? extractedPatientName, bool? patientNameVisible, bool? prescriptionTypeVisible, bool? signsOfTampering, bool? hasDoubts) ParseCommonAndRisk(string raw)

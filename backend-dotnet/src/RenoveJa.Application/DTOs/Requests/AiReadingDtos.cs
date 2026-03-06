@@ -20,12 +20,16 @@ public record AiPrescriptionAnalysisResult(
 
 /// <summary>
 /// Resultado da análise por IA de pedido de exame (imagem e/ou texto).
-/// Se ReadabilityOk é false (quando houve imagem), o usuário deve enviar imagem mais legível.
+/// HasDoubts: quando true, encaminha ao médico. PatientNameVisible, SignsOfTampering: validação quando há imagens.
 /// </summary>
 public record AiExamAnalysisResult(
     bool ReadabilityOk,
     string? SummaryForDoctor,
     string? ExtractedJson,
     string? Urgency,
-    string? MessageToUser
+    string? MessageToUser,
+    string? ExtractedPatientName = null,
+    bool? PatientNameVisible = null,
+    bool? SignsOfTampering = null,
+    bool? HasDoubts = null
 );
