@@ -71,7 +71,7 @@
 |----------|----------|
 | `c.cid.toLowerCase()`, `m.toLowerCase()` — crash com dados malformados | `(c.cid ?? '').toLowerCase()`, `(m ?? '').toLowerCase()` |
 
-### 9. SegmentedControl (`components/ui/SegmentedControl.tsx`)
+### 9. AppSegmentedControl (`components/ui/AppSegmentedControl.tsx`)
 
 | Problema | Correção |
 |----------|----------|
@@ -145,7 +145,7 @@
 - `app/(doctor)/dashboard.tsx`
 - `app/doctor-request/[id].tsx`
 - `components/CompatibleImage.tsx`
-- `components/ui/SegmentedControl.tsx`
+- `components/ui/AppSegmentedControl.tsx`
 - `components/ui/ErrorBoundary.tsx` (novo)
 - `components/StatusBadge.tsx`
 - `components/video/VideoCallScreenInner.tsx`
