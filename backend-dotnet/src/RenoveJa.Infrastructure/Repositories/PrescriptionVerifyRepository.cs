@@ -64,6 +64,33 @@ public class PrescriptionVerifyRepository(
         return string.Equals(codeHash, row.VerifyCodeHash, StringComparison.OrdinalIgnoreCase);
     }
 
+    public async Task<bool> IsDispensedAsync(Guid requestId, CancellationToken ct = default)
+    {
+        var row = await supabase.GetSingleAsync<PrescriptionDispenseRow>(
+            TableName,
+            "dispensed_at",
+            $"id=eq.{requestId}",
+            ct);
+
+        return row?.DispensedAt != null;
+    }
+
+    public async Task<bool> MarkAsDispensedAsync(Guid requestId, string pharmacyName, string pharmacistName, CancellationToken ct = default)
+    {
+        if (await IsDispensedAsync(requestId, ct))
+            return false;
+
+        var patch = new
+        {
+            dispensed_at = DateTime.UtcNow,
+            dispensed_pharmacy = pharmacyName,
+            dispensed_pharmacist = pharmacistName
+        };
+
+        await supabase.UpdateAsync<PrescriptionDispenseRow>(TableName, $"id=eq.{requestId}", patch, ct);
+        return true;
+    }
+
     private static string Sha256Hex(string input)
     {
         var bytes = Encoding.UTF8.GetBytes(input);
@@ -75,6 +102,12 @@ public class PrescriptionVerifyRepository(
     {
         [JsonPropertyName("verify_code_hash")]
         public string? VerifyCodeHash { get; init; }
+    }
+
+    private sealed class PrescriptionDispenseRow
+    {
+        [JsonPropertyName("dispensed_at")]
+        public DateTime? DispensedAt { get; init; }
     }
 
     private sealed class PrescriptionVerifyModel

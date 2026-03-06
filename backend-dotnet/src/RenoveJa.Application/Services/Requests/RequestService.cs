@@ -292,11 +292,14 @@ public class RequestService(
         var prescriptionType = ParsePrescriptionType(request.PrescriptionType);
         var prescriptionKind = ParsePrescriptionKind(request.PrescriptionKind);
 
+        var medications = request.Medications ?? new List<string>();
+        var controlledDuplicateWarning = await BuildControlledDuplicateWarningAsync(userId, prescriptionKind, medications, cancellationToken);
+
         var medicalRequest = MedicalRequest.CreatePrescription(
             userId,
             user.Name,
             prescriptionType,
-            request.Medications ?? new List<string>(),
+            medications,
             request.PrescriptionImages,
             prescriptionKind);
 
@@ -307,6 +310,9 @@ public class RequestService(
         try
         {
             var autoObs = GenerateAutoObservation(RequestType.Prescription, prescriptionType);
+            if (!string.IsNullOrWhiteSpace(controlledDuplicateWarning))
+                autoObs = string.IsNullOrWhiteSpace(autoObs) ? controlledDuplicateWarning : $"{autoObs}\n\n{controlledDuplicateWarning}";
+
             medicalRequest.SetAutoObservation(autoObs);
             medicalRequest = await requestRepository.UpdateAsync(medicalRequest, cancellationToken) ?? medicalRequest;
         }
@@ -2590,6 +2596,36 @@ public class RequestService(
         for (var i = 0; i < urls.Count; i++)
             result.Add($"{baseUrl}/{i}?token={Uri.EscapeDataString(docToken)}");
         return result;
+    }
+
+    private async Task<string?> BuildControlledDuplicateWarningAsync(
+        Guid patientUserId,
+        PrescriptionKind? kind,
+        IReadOnlyList<string> medications,
+        CancellationToken cancellationToken)
+    {
+        if (kind != PrescriptionKind.ControlledSpecial || medications == null || medications.Count == 0)
+            return null;
+
+        var all = await requestRepository.GetByPatientIdAsync(patientUserId, cancellationToken);
+        var fromDate = DateTime.UtcNow.AddDays(-30);
+        var medsNormalized = medications
+            .Where(m => !string.IsNullOrWhiteSpace(m))
+            .Select(m => m.Trim().ToLowerInvariant())
+            .ToList();
+
+        var hasPotentialDuplicate = all.Any(r =>
+            r.RequestType == RequestType.Prescription &&
+            r.PrescriptionKind == PrescriptionKind.ControlledSpecial &&
+            r.CreatedAt >= fromDate &&
+            r.Status != RequestStatus.Rejected &&
+            r.Status != RequestStatus.Cancelled &&
+            (r.Medications?.Any(m => medsNormalized.Any(n => m != null && m.ToLowerInvariant().Contains(n))) ?? false));
+
+        if (!hasPotentialDuplicate)
+            return null;
+
+        return "⚠️ Atenção: paciente com potencial prescrição controlada similar nos últimos 30 dias. Revisar histórico antes de assinar.";
     }
 
     private static VideoRoomResponseDto MapVideoRoomToDto(VideoRoom room)

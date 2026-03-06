@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -6,6 +7,8 @@ using Microsoft.Extensions.Options;
 using RenoveJa.Application.Configuration;
 using RenoveJa.Application.DTOs.Requests;
 using RenoveJa.Application.Interfaces;
+using RenoveJa.Domain.Entities;
+using RenoveJa.Domain.Interfaces;
 using ImageMagick;
 
 namespace RenoveJa.Infrastructure.AiReading;
@@ -20,17 +23,20 @@ public class OpenAiReadingService : IAiReadingService
     private readonly IOptions<OpenAIConfig> _config;
     private readonly IStorageService _storageService;
     private readonly ILogger<OpenAiReadingService> _logger;
+    private readonly IAiInteractionLogRepository _aiInteractionLogRepository;
 
     public OpenAiReadingService(
         IHttpClientFactory httpClientFactory,
         IOptions<OpenAIConfig> config,
         IStorageService storageService,
-        ILogger<OpenAiReadingService> logger)
+        ILogger<OpenAiReadingService> logger,
+        IAiInteractionLogRepository aiInteractionLogRepository)
     {
         _httpClientFactory = httpClientFactory;
         _config = config;
         _storageService = storageService;
         _logger = logger;
+        _aiInteractionLogRepository = aiInteractionLogRepository;
     }
     private const string ApiBaseUrl = "https://api.openai.com/v1";
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -192,32 +198,69 @@ Responda APENAS com o JSON, sem markdown e sem texto antes ou depois.
             max_tokens = 2000
         };
 
+        var startedAt = DateTime.UtcNow;
         var json = JsonSerializer.Serialize(requestBody, JsonOptions);
+        var promptHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(json))).ToLowerInvariant();
+
         var client = _httpClientFactory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         client.Timeout = TimeSpan.FromSeconds(60);
 
-        using var requestContent = new StringContent(json, Encoding.UTF8, "application/json");
-        var response = await client.PostAsync($"{ApiBaseUrl}/chat/completions", requestContent, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
+        try
         {
-            var err = await response.Content.ReadAsStringAsync(cancellationToken);
-            _logger.LogError("OpenAI API error: StatusCode={StatusCode}, Response={Response}", response.StatusCode, err);
-            throw new InvalidOperationException($"OpenAI API error: {response.StatusCode}. {err}");
-        }
+            using var requestContent = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await client.PostAsync($"{ApiBaseUrl}/chat/completions", requestContent, cancellationToken);
 
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-        var choices = doc.RootElement.GetProperty("choices");
-        if (choices.GetArrayLength() == 0)
-        {
-            _logger.LogWarning("OpenAI retornou choices vazio. Resposta raw pode conter erro.");
-            throw new InvalidOperationException("OpenAI retornou resposta vazia.");
+            if (!response.IsSuccessStatusCode)
+            {
+                var err = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError("OpenAI API error: StatusCode={StatusCode}, Response={Response}", response.StatusCode, err);
+
+                await _aiInteractionLogRepository.LogAsync(AiInteractionLog.Create(
+                    serviceName: nameof(OpenAiReadingService),
+                    modelName: _config.Value?.Model ?? "gpt-4o",
+                    promptHash: promptHash,
+                    success: false,
+                    responseSummary: null,
+                    durationMs: (long)(DateTime.UtcNow - startedAt).TotalMilliseconds,
+                    errorMessage: err?.Length > 500 ? err[..500] : err), cancellationToken);
+
+                throw new InvalidOperationException($"OpenAI API error: {response.StatusCode}. {err}");
+            }
+
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+            var choices = doc.RootElement.GetProperty("choices");
+            if (choices.GetArrayLength() == 0)
+            {
+                _logger.LogWarning("OpenAI retornou choices vazio. Resposta raw pode conter erro.");
+                throw new InvalidOperationException("OpenAI retornou resposta vazia.");
+            }
+            var message = choices[0].GetProperty("message");
+            var contentEl = message.GetProperty("content");
+            var content = contentEl.GetString() ?? "";
+
+            await _aiInteractionLogRepository.LogAsync(AiInteractionLog.Create(
+                serviceName: nameof(OpenAiReadingService),
+                modelName: _config.Value?.Model ?? "gpt-4o",
+                promptHash: promptHash,
+                success: true,
+                responseSummary: content.Length > 500 ? content[..500] : content,
+                durationMs: (long)(DateTime.UtcNow - startedAt).TotalMilliseconds), cancellationToken);
+
+            return content;
         }
-        var message = choices[0].GetProperty("message");
-        var contentEl = message.GetProperty("content");
-        return contentEl.GetString() ?? "";
+        catch (Exception ex) when (ex is not InvalidOperationException)
+        {
+            await _aiInteractionLogRepository.LogAsync(AiInteractionLog.Create(
+                serviceName: nameof(OpenAiReadingService),
+                modelName: _config.Value?.Model ?? "gpt-4o",
+                promptHash: promptHash,
+                success: false,
+                durationMs: (long)(DateTime.UtcNow - startedAt).TotalMilliseconds,
+                errorMessage: ex.Message.Length > 500 ? ex.Message[..500] : ex.Message), cancellationToken);
+            throw;
+        }
     }
 
     private static AiPrescriptionAnalysisResult ParsePrescriptionResult(string raw)

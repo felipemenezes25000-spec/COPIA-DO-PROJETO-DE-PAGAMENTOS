@@ -30,4 +30,14 @@ public interface IPrescriptionVerifyRepository
     /// Valida o código de 6 dígitos contra verify_code_hash (SHA256) na tabela prescriptions.
     /// </summary>
     Task<bool> ValidateVerifyCodeAsync(Guid requestId, string code, CancellationToken ct = default);
+
+    /// <summary>
+    /// Marca a prescrição como dispensada.
+    /// </summary>
+    Task<bool> MarkAsDispensedAsync(Guid requestId, string pharmacyName, string pharmacistName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Retorna true se a prescrição já foi dispensada.
+    /// </summary>
+    Task<bool> IsDispensedAsync(Guid requestId, CancellationToken ct = default);
 }

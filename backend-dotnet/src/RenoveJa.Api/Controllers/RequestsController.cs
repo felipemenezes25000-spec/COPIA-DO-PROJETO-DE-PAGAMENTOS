@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using RenoveJa.Application.DTOs.Requests;
 using RenoveJa.Application.Interfaces;
 using RenoveJa.Domain.Interfaces;
+using RenoveJa.Infrastructure.Data.Supabase;
 using System.Security.Claims;
 
 namespace RenoveJa.Api.Controllers;
@@ -23,6 +24,7 @@ public class RequestsController(
     IClinicalSummaryService clinicalSummaryService,
     IConsultationEncounterService consultationEncounterService,
     IDoctorPatientNotesRepository doctorPatientNotesRepository,
+    SupabaseClient supabaseClient,
     ILogger<RequestsController> logger) : ControllerBase
 {
     private static readonly string[] AllowedImageContentTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"];
@@ -663,7 +665,12 @@ public class RequestsController(
     {
         var doctorId = GetUserId();
         var request = await requestService.StartConsultationAsync(id, doctorId, cancellationToken);
-        return Ok(request);
+        var chronicWarning = await BuildChronic180DaysWarningAsync(request.PatientId, cancellationToken);
+        return Ok(new
+        {
+            request,
+            chronicWarning
+        });
     }
 
     /// <summary>
@@ -1035,6 +1042,44 @@ public class RequestsController(
         var doctorId = GetUserId();
         var result = await requestService.UpdateConductAsync(id, dto, doctorId, cancellationToken);
         return Ok(result);
+    }
+
+    private sealed class PatientChronicRow
+    {
+        public Guid Id { get; set; }
+        public bool HasChronicCondition { get; set; }
+    }
+
+    private sealed class EncounterPresentialRow
+    {
+        public DateTime? StartedAt { get; set; }
+    }
+
+    private async Task<string?> BuildChronic180DaysWarningAsync(Guid patientUserId, CancellationToken cancellationToken)
+    {
+        var patient = await supabaseClient.GetSingleAsync<PatientChronicRow>(
+            "patients",
+            "id,has_chronic_condition",
+            $"user_id=eq.{patientUserId}",
+            cancellationToken);
+
+        if (patient == null || !patient.HasChronicCondition)
+            return null;
+
+        var lastPresential = await supabaseClient.GetSingleAsync<EncounterPresentialRow>(
+            "encounters",
+            "started_at",
+            $"patient_id=eq.{patient.Id}&is_presential=eq.true&order=started_at.desc&limit=1",
+            cancellationToken);
+
+        if (lastPresential?.StartedAt == null)
+            return "Atenção: paciente crônico sem registro de consulta presencial (Art. 6º, §2º, Res. CFM 2.314/2022).";
+
+        var days = (DateTime.UtcNow - lastPresential.StartedAt.Value).TotalDays;
+        if (days <= 180)
+            return null;
+
+        return $"Atenção: paciente crônico sem consulta presencial há {Math.Floor(days)} dias (Art. 6º, §2º, Res. CFM 2.314/2022).";
     }
 
     private Guid GetUserId()

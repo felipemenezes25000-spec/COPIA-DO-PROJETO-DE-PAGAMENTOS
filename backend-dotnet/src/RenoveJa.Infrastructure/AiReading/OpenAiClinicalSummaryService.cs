@@ -1,10 +1,13 @@
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RenoveJa.Application.Configuration;
 using RenoveJa.Application.Interfaces;
+using RenoveJa.Domain.Entities;
+using RenoveJa.Domain.Interfaces;
 
 namespace RenoveJa.Infrastructure.AiReading;
 
@@ -17,17 +20,20 @@ public class OpenAiClinicalSummaryService : IClinicalSummaryService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IOptions<OpenAIConfig> _config;
     private readonly ILogger<OpenAiClinicalSummaryService> _logger;
+    private readonly IAiInteractionLogRepository _aiInteractionLogRepository;
 
     private const string ApiBaseUrl = "https://api.openai.com/v1";
 
     public OpenAiClinicalSummaryService(
         IHttpClientFactory httpClientFactory,
         IOptions<OpenAIConfig> config,
-        ILogger<OpenAiClinicalSummaryService> logger)
+        ILogger<OpenAiClinicalSummaryService> logger,
+        IAiInteractionLogRepository aiInteractionLogRepository)
     {
         _httpClientFactory = httpClientFactory;
         _config = config;
         _logger = logger;
+        _aiInteractionLogRepository = aiInteractionLogRepository;
     }
 
     public async Task<ClinicalSummaryStructured?> GenerateStructuredAsync(
@@ -81,7 +87,9 @@ public class OpenAiClinicalSummaryService : IClinicalSummaryService
                 }
             };
 
+            var startedAt = DateTime.UtcNow;
             var json = JsonSerializer.Serialize(requestBody);
+            var promptHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(json))).ToLowerInvariant();
             var client = _httpClientFactory.CreateClient();
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
             client.Timeout = TimeSpan.FromSeconds(50);
@@ -92,6 +100,13 @@ public class OpenAiClinicalSummaryService : IClinicalSummaryService
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("OpenAI clinical summary structured failed: {StatusCode}", response.StatusCode);
+                await _aiInteractionLogRepository.LogAsync(AiInteractionLog.Create(
+                    serviceName: nameof(OpenAiClinicalSummaryService),
+                    modelName: _config.Value?.Model ?? "gpt-4o",
+                    promptHash: promptHash,
+                    success: false,
+                    durationMs: (long)(DateTime.UtcNow - startedAt).TotalMilliseconds,
+                    errorMessage: $"HTTP {(int)response.StatusCode}"), cancellationToken);
                 return null;
             }
 
@@ -104,6 +119,14 @@ public class OpenAiClinicalSummaryService : IClinicalSummaryService
                 .GetString();
 
             if (string.IsNullOrWhiteSpace(message)) return null;
+
+            await _aiInteractionLogRepository.LogAsync(AiInteractionLog.Create(
+                serviceName: nameof(OpenAiClinicalSummaryService),
+                modelName: _config.Value?.Model ?? "gpt-4o",
+                promptHash: promptHash,
+                success: true,
+                responseSummary: message.Length > 500 ? message[..500] : message,
+                durationMs: (long)(DateTime.UtcNow - startedAt).TotalMilliseconds), cancellationToken);
 
             return ParseStructuredSummary(message);
         }

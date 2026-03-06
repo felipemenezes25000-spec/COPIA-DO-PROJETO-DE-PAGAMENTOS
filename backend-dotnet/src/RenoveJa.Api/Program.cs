@@ -293,6 +293,7 @@ builder.Services.AddScoped<IMedicalDocumentRepository, MedicalDocumentRepository
 builder.Services.AddScoped<IConsentRepository, ConsentRepository>();
 builder.Services.AddScoped<IAuditEventRepository, AuditEventRepository>();
 builder.Services.AddScoped<IAiSuggestionRepository, AiSuggestionRepository>();
+builder.Services.AddScoped<IAiInteractionLogRepository, AiInteractionLogRepository>();
 builder.Services.AddScoped<IDoctorPatientNotesRepository, DoctorPatientNotesRepository>();
 builder.Services.AddScoped<ICarePlanRepository, CarePlanRepository>();
 builder.Services.AddScoped<ICarePlanTaskRepository, CarePlanTaskRepository>();
@@ -520,6 +521,20 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1),
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                 QueueLimit = 2
+            }));
+
+    // Exportação de dados do paciente: 1 req/h por usuário
+    options.AddPolicy("export", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 1,
+                Window = TimeSpan.FromHours(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
             }));
 });
 

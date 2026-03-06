@@ -1,10 +1,13 @@
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RenoveJa.Application.Configuration;
 using RenoveJa.Application.Interfaces;
+using RenoveJa.Domain.Entities;
+using RenoveJa.Domain.Interfaces;
 
 namespace RenoveJa.Infrastructure.AiReading;
 
@@ -18,6 +21,7 @@ public class OpenAiTriageEnrichmentService : ITriageEnrichmentService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IOptions<OpenAIConfig> _config;
     private readonly ILogger<OpenAiTriageEnrichmentService> _logger;
+    private readonly IAiInteractionLogRepository _aiInteractionLogRepository;
 
     private const string ApiBaseUrl = "https://api.openai.com/v1";
     private const int MaxOutputChars = 140;
@@ -40,11 +44,13 @@ public class OpenAiTriageEnrichmentService : ITriageEnrichmentService
     public OpenAiTriageEnrichmentService(
         IHttpClientFactory httpClientFactory,
         IOptions<OpenAIConfig> config,
-        ILogger<OpenAiTriageEnrichmentService> logger)
+        ILogger<OpenAiTriageEnrichmentService> logger,
+        IAiInteractionLogRepository aiInteractionLogRepository)
     {
         _httpClientFactory = httpClientFactory;
         _config = config;
         _logger = logger;
+        _aiInteractionLogRepository = aiInteractionLogRepository;
     }
 
     public async Task<TriageEnrichmentResult?> EnrichAsync(
@@ -82,7 +88,9 @@ public class OpenAiTriageEnrichmentService : ITriageEnrichmentService
                 }
             };
 
+            var startedAt = DateTime.UtcNow;
             var json = JsonSerializer.Serialize(requestBody, JsonOptions);
+            var promptHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(json))).ToLowerInvariant();
             var client = _httpClientFactory.CreateClient();
             client.Timeout = Timeout;
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
@@ -93,6 +101,13 @@ public class OpenAiTriageEnrichmentService : ITriageEnrichmentService
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("Triage IA: falhou {StatusCode}", response.StatusCode);
+                await _aiInteractionLogRepository.LogAsync(AiInteractionLog.Create(
+                    serviceName: nameof(OpenAiTriageEnrichmentService),
+                    modelName: _config.Value?.Model ?? "gpt-4o",
+                    promptHash: promptHash,
+                    success: false,
+                    durationMs: (long)(DateTime.UtcNow - startedAt).TotalMilliseconds,
+                    errorMessage: $"HTTP {(int)response.StatusCode}"), cts.Token);
                 return null;
             }
 
@@ -108,6 +123,13 @@ public class OpenAiTriageEnrichmentService : ITriageEnrichmentService
                 return null;
 
             var result = ParseAndValidate(message, input.RuleText);
+            await _aiInteractionLogRepository.LogAsync(AiInteractionLog.Create(
+                serviceName: nameof(OpenAiTriageEnrichmentService),
+                modelName: _config.Value?.Model ?? "gpt-4o",
+                promptHash: promptHash,
+                success: true,
+                responseSummary: message.Length > 500 ? message[..500] : message,
+                durationMs: (long)(DateTime.UtcNow - startedAt).TotalMilliseconds), cts.Token);
             return result;
         }
         catch (OperationCanceledException)

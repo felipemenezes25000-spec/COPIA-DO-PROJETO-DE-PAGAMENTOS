@@ -7,6 +7,7 @@ public enum LegalBasis
 {
     HealthCareProvision = 1,
     ContractExecution = 2,
-    LegitimateInterest = 3
+    LegitimateInterest = 3,
+    ExplicitConsent = 4
 }
 

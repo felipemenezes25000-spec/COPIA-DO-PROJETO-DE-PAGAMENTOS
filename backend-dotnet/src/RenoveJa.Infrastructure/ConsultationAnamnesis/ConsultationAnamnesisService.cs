@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -7,6 +8,8 @@ using Microsoft.Extensions.Options;
 using RenoveJa.Application.Configuration;
 using RenoveJa.Application.DTOs.Consultation;
 using RenoveJa.Application.Interfaces;
+using RenoveJa.Domain.Entities;
+using RenoveJa.Domain.Interfaces;
 
 namespace RenoveJa.Infrastructure.ConsultationAnamnesis;
 
@@ -29,17 +32,20 @@ public class ConsultationAnamnesisService : IConsultationAnamnesisService
     private readonly IOptions<OpenAIConfig> _config;
     private readonly ILogger<ConsultationAnamnesisService> _logger;
     private readonly IEvidenceSearchService _evidenceSearchService;
+    private readonly IAiInteractionLogRepository _aiInteractionLogRepository;
 
     public ConsultationAnamnesisService(
         IHttpClientFactory httpClientFactory,
         IOptions<OpenAIConfig> config,
         ILogger<ConsultationAnamnesisService> logger,
-        IEvidenceSearchService evidenceSearchService)
+        IEvidenceSearchService evidenceSearchService,
+        IAiInteractionLogRepository aiInteractionLogRepository)
     {
         _httpClientFactory = httpClientFactory;
         _config = config;
         _logger = logger;
         _evidenceSearchService = evidenceSearchService;
+        _aiInteractionLogRepository = aiInteractionLogRepository;
     }
 
     public async Task<ConsultationAnamnesisResult?> UpdateAnamnesisAndSuggestionsAsync(
@@ -116,7 +122,9 @@ REGRAS:
             temperature = 0.3
         };
 
+        var startedAt = DateTime.UtcNow;
         var json = JsonSerializer.Serialize(requestBody, JsonOptions);
+        var promptHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(json))).ToLowerInvariant();
         var client = _httpClientFactory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         client.Timeout = TimeSpan.FromSeconds(45);
@@ -128,6 +136,13 @@ REGRAS:
         {
             var err = await response.Content.ReadAsStringAsync(cancellationToken);
             _logger.LogWarning("Anamnese IA API error: {StatusCode}, {Body}", response.StatusCode, err);
+            await _aiInteractionLogRepository.LogAsync(AiInteractionLog.Create(
+                serviceName: nameof(ConsultationAnamnesisService),
+                modelName: _config.Value?.Model ?? "gpt-4o",
+                promptHash: promptHash,
+                success: false,
+                durationMs: (long)(DateTime.UtcNow - startedAt).TotalMilliseconds,
+                errorMessage: err.Length > 500 ? err[..500] : err), cancellationToken);
             return null;
         }
 
@@ -201,6 +216,14 @@ REGRAS:
 
             // Evidências PubMed: busca por CID, sintomas e queixa; traduz abstracts para português
             var evidence = await FetchAndTranslateEvidenceAsync(root, apiKey, cancellationToken);
+
+            await _aiInteractionLogRepository.LogAsync(AiInteractionLog.Create(
+                serviceName: nameof(ConsultationAnamnesisService),
+                modelName: _config.Value?.Model ?? "gpt-4o",
+                promptHash: promptHash,
+                success: true,
+                responseSummary: cleaned.Length > 500 ? cleaned[..500] : cleaned,
+                durationMs: (long)(DateTime.UtcNow - startedAt).TotalMilliseconds), cancellationToken);
 
             return new ConsultationAnamnesisResult(enrichedJson, suggestions, evidence);
         }

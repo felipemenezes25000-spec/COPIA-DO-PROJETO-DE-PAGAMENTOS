@@ -21,6 +21,7 @@ namespace RenoveJa.Api.Controllers;
 ///   1. GET  /api/verify/{id}              — protocolo ITI + redirect para frontend.
 ///   2. POST /api/verify/{id}/full         — retrocompatibilidade (código de 4 dígitos).
 ///   3. GET  /api/verify/{id}/document     — stream do PDF após validar código.
+///   4. POST /api/verify/{id}/dispense     — marca receita como dispensada (controle especial).
 /// </summary>
 [ApiController]
 [Route("api/verify")]
@@ -184,5 +185,45 @@ public class VerificationController(
             logger.LogWarning(ex, "Falha ao buscar PDF para verificação requestId={RequestId}", id);
             return StatusCode(500, new { error = "Erro ao obter o documento. Tente novamente." });
         }
+    }
+
+    public sealed class DispenseRequest
+    {
+        public string? AccessCode { get; set; }
+        public string? PharmacyName { get; set; }
+        public string? PharmacistName { get; set; }
+    }
+
+    /// <summary>
+    /// Marca uma prescrição como dispensada (uso único para controlados).
+    /// </summary>
+    [HttpPost("{id:guid}/dispense")]
+    public async Task<IActionResult> MarkDispensed(
+        Guid id,
+        [FromBody] DispenseRequest request,
+        CancellationToken cancellationToken)
+    {
+        var code = request.AccessCode?.Trim() ?? string.Empty;
+        if (code.Length != 4 && code.Length != 6)
+            return BadRequest(new { error = "Código de verificação inválido." });
+
+        var valid = await prescriptionVerifyRepository.ValidateVerifyCodeAsync(id, code, cancellationToken);
+        if (!valid)
+            return Unauthorized(new { error = "Código inválido ou expirado." });
+
+        if (await prescriptionVerifyRepository.IsDispensedAsync(id, cancellationToken))
+            return Conflict(new { error = "Prescrição já dispensada." });
+
+        var pharmacy = (request.PharmacyName ?? string.Empty).Trim();
+        var pharmacist = (request.PharmacistName ?? string.Empty).Trim();
+
+        if (string.IsNullOrWhiteSpace(pharmacy) || string.IsNullOrWhiteSpace(pharmacist))
+            return BadRequest(new { error = "Informe nome da farmácia e farmacêutico(a)." });
+
+        var ok = await prescriptionVerifyRepository.MarkAsDispensedAsync(id, pharmacy, pharmacist, cancellationToken);
+        if (!ok)
+            return Conflict(new { error = "Prescrição já dispensada." });
+
+        return Ok(new { success = true, dispensedAt = DateTime.UtcNow, pharmacy, pharmacist });
     }
 }

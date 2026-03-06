@@ -183,6 +183,7 @@ public class PrescriptionPdfService : IPrescriptionPdfService
             // Patient
             AddSectionLabel(doc, "PACIENTE", fb);
             AddPatientBlockExam(doc, data, fb, f);
+            AddTelemedicineNotice(doc, fi);
 
             // Clinical indication
             if (!string.IsNullOrWhiteSpace(data.ClinicalIndication))
@@ -354,6 +355,7 @@ public class PrescriptionPdfService : IPrescriptionPdfService
                 AddWarningBanner(doc, warningBanner, fb, f);
             AddSectionLabel(doc, "PACIENTE", fb);
             AddPatientBlock(doc, data, fb, f, includeGenderAge);
+            AddTelemedicineNotice(doc, fi);
 
             AddSectionLabel(doc, "PRESCRIÇÃO", fb);
             AddMedicationBlock(doc, meds[i], fb, f, fi);
@@ -649,6 +651,16 @@ public class PrescriptionPdfService : IPrescriptionPdfService
             doc.Add(new Paragraph($"Endereço: {address}").SetFont(f).SetFontSize(8).SetFontColor(TextMedium).SetMarginBottom(1));
         if (!string.IsNullOrWhiteSpace(phone))
             doc.Add(new Paragraph($"Telefone: {phone}").SetFont(f).SetFontSize(8).SetFontColor(TextMedium).SetMarginBottom(1));
+    }
+
+    private static void AddTelemedicineNotice(Document doc, PdfFont fi)
+    {
+        doc.Add(new Paragraph("Documento emitido por telemedicina (Resolução CFM nº 2.314/2022)")
+            .SetFont(fi)
+            .SetFontSize(9)
+            .SetFontColor(TextLight)
+            .SetMarginTop(2)
+            .SetMarginBottom(8));
     }
 
     /// <summary>Legal footer</summary>
