@@ -120,43 +120,45 @@ export function AssistantBanner({ onAction, onCompanionPress, containerStyle, hi
             {current?.isPersonalized && (
               <View style={styles.personalizedBadge}>
                 <Ionicons name="sparkles" size={9} color={theme.colors.accent.main} />
-                <Text style={styles.personalizedText}>personalizado</Text>
+                <Text style={styles.personalizedText} numberOfLines={1}>personalizado</Text>
               </View>
             )}
           </View>
           <Text style={styles.message} numberOfLines={2}>
             {isCompanion ? COMPANION_TIPS[companionTipIndex] : current!.text}
           </Text>
-        </View>
 
-        {/* Action — só quando há mensagem ativa */}
-        {!isCompanion && (
-          current?.cta && current.ctaLabel ? (
-            <Pressable
-              style={({ pressed }) => [
-                styles.ctaBtn,
-                { backgroundColor: accent },
-                pressed && styles.btnPressed,
-              ]}
-              onPress={handleCTA}
-              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-              accessibilityRole="button"
-              accessibilityLabel={current.ctaLabel}
-            >
-              <Text style={styles.ctaText}>{current.ctaLabel}</Text>
-            </Pressable>
-          ) : (
-            <Pressable
-              onPress={dismiss}
-              hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
-              style={({ pressed }) => [styles.dismissBtn, pressed && styles.btnPressed]}
-              accessibilityRole="button"
-              accessibilityLabel="Fechar mensagem"
-            >
-              <Text style={styles.dismissText}>Entendi</Text>
-            </Pressable>
-          )
-        )}
+          {/* Action — sempre abaixo do texto para evitar sobreposição */}
+          {!isCompanion && (
+            <View style={styles.actionRow}>
+              {current?.cta && current.ctaLabel ? (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.ctaBtn,
+                    { backgroundColor: accent },
+                    pressed && styles.btnPressed,
+                  ]}
+                  onPress={handleCTA}
+                  hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={current.ctaLabel}
+                >
+                  <Text style={styles.ctaText} numberOfLines={1}>{current.ctaLabel}</Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  onPress={dismiss}
+                  hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+                  style={({ pressed }) => [styles.dismissBtn, pressed && styles.btnPressed]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Fechar mensagem"
+                >
+                  <Text style={styles.dismissText}>Entendi</Text>
+                </Pressable>
+              )}
+            </View>
+          )}
+        </View>
       </Pressable>
 
       {/* Disclaimer + hint de mute — só quando há mensagem ativa */}
@@ -252,13 +254,17 @@ const styles = StyleSheet.create({
   labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    flexWrap: 'wrap',
+    columnGap: 6,
+    rowGap: 2,
     marginBottom: 2,
   },
   personalizedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    maxWidth: '100%',
+    flexShrink: 1,
   },
   personalizedText: {
     fontSize: 12,
@@ -280,12 +286,17 @@ const styles = StyleSheet.create({
     fontFamily: 'PlusJakartaSans_400Regular',
     color: theme.colors.text.secondary,
   },
+  actionRow: {
+    marginTop: 8,
+    alignItems: 'flex-start',
+  },
   ctaBtn: {
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: theme.borderRadius.pill,
-    flexShrink: 0,
+    flexShrink: 1,
     minHeight: 32,
+    maxWidth: '100%',
     justifyContent: 'center',
   },
   ctaText: {
