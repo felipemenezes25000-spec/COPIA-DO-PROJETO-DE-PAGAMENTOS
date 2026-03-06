@@ -28,18 +28,18 @@ public class ConsultationAnamnesisService : IConsultationAnamnesisService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IOptions<OpenAIConfig> _config;
     private readonly ILogger<ConsultationAnamnesisService> _logger;
-    private readonly IPubMedService _pubmedService;
+    private readonly IEvidenceSearchService _evidenceSearchService;
 
     public ConsultationAnamnesisService(
         IHttpClientFactory httpClientFactory,
         IOptions<OpenAIConfig> config,
         ILogger<ConsultationAnamnesisService> logger,
-        IPubMedService pubmedService)
+        IEvidenceSearchService evidenceSearchService)
     {
         _httpClientFactory = httpClientFactory;
         _config = config;
         _logger = logger;
-        _pubmedService = pubmedService;
+        _evidenceSearchService = evidenceSearchService;
     }
 
     public async Task<ConsultationAnamnesisResult?> UpdateAnamnesisAndSuggestionsAsync(
@@ -269,80 +269,151 @@ REGRAS:
             if (searchTerms.Count == 0)
                 return Array.Empty<EvidenceItemDto>();
 
-            var rawEvidence = await _pubmedService.SearchAsync(searchTerms, 5, cancellationToken);
+            var rawEvidence = await _evidenceSearchService.SearchAsync(searchTerms, 7, cancellationToken);
             if (rawEvidence.Count == 0)
                 return rawEvidence;
 
-            return await TranslateEvidenceAsync(rawEvidence, apiKey, cancellationToken);
+            return await ExtractRelevantEvidenceAsync(rawEvidence, root, apiKey, cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Evidências PubMed: falha na busca ou tradução.");
+            _logger.LogDebug(ex, "Evidências: falha na busca ou extração.");
             return Array.Empty<EvidenceItemDto>();
         }
     }
 
-    private async Task<IReadOnlyList<EvidenceItemDto>> TranslateEvidenceAsync(
+    private static string BuildClinicalContextForPrompt(JsonElement root)
+    {
+        var parts = new List<string>();
+        if (root.TryGetProperty("cid_sugerido", out var cidEl))
+        {
+            var cid = cidEl.GetString()?.Trim() ?? "";
+            if (!string.IsNullOrEmpty(cid))
+                parts.Add($"Hipótese diagnóstica (CID): {cid}");
+        }
+        if (root.TryGetProperty("anamnesis", out var anaEl) && anaEl.ValueKind == JsonValueKind.Object)
+        {
+            if (anaEl.TryGetProperty("queixa_principal", out var qpEl))
+            {
+                var qp = (qpEl.ValueKind == JsonValueKind.String ? qpEl.GetString() : qpEl.GetRawText())?.Trim('"').Trim() ?? "";
+                if (!string.IsNullOrEmpty(qp))
+                    parts.Add($"Queixa principal: {qp}");
+            }
+            if (anaEl.TryGetProperty("sintomas", out var sintEl))
+            {
+                var sint = sintEl.ValueKind == JsonValueKind.String
+                    ? sintEl.GetString()?.Trim('"').Trim()
+                    : sintEl.ValueKind == JsonValueKind.Array
+                        ? string.Join(", ", sintEl.EnumerateArray().Select(e => e.GetString() ?? ""))
+                        : "";
+                if (!string.IsNullOrWhiteSpace(sint))
+                    parts.Add($"Sintomas: {sint}");
+            }
+        }
+        return parts.Count > 0 ? string.Join("\n", parts) : "Contexto clínico não especificado.";
+    }
+
+    private async Task<IReadOnlyList<EvidenceItemDto>> ExtractRelevantEvidenceAsync(
         IReadOnlyList<EvidenceItemDto> items,
+        JsonElement root,
         string apiKey,
         CancellationToken cancellationToken)
     {
         if (items.Count == 0)
             return items;
 
-        var toTranslate = items.Select((e, i) => $"[{i}]\nTítulo: {e.Title}\nAbstract: {e.Abstract}").ToList();
-        var combined = string.Join("\n\n---\n\n", toTranslate);
+        var context = BuildClinicalContextForPrompt(root);
+        var articlesBlock = string.Join("\n\n---\n\n",
+            items.Select((e, i) => $"[{i}]\nTítulo: {e.Title}\nAbstract: {e.Abstract}"));
 
-        var prompt = "Traduza os abstracts abaixo para português brasileiro. Mantenha o tom técnico/científico.\n" +
-            "Responda em JSON com um array de strings na mesma ordem: [\"tradução1\", \"tradução2\", ...].\n" +
-            "Apenas o JSON, sem markdown.\n\n" + combined;
+        var prompt = """
+Você é um assistente de apoio ao diagnóstico médico. Com base no contexto clínico do paciente e nos abstracts dos artigos, extraia o que REALMENTE ajuda o médico a entender o caso e tomar decisão.
+
+CONTEXTO CLÍNICO DO PACIENTE:
+""" + context + """
+
+ARTIGOS (abstracts em inglês):
+""" + articlesBlock + """
+
+Para CADA artigo [0], [1], etc., faça:
+1. Selecione 2-3 trechos (citações) do abstract que sejam RELEVANTES para o caso — frases que apoiam diagnóstico, conduta ou critérios clínicos.
+2. Traduza esses trechos para português brasileiro.
+3. Escreva em 1-2 frases a RELEVÂNCIA CLÍNICA: como este artigo ajuda o médico neste caso específico (ex: "Corrobora o uso de X em Y"; "Atenção aos critérios de Z").
+
+Responda APENAS um JSON válido, array de objetos na mesma ordem dos artigos:
+[
+  { "excerpts": ["trecho1 traduzido", "trecho2 traduzido"], "clinicalRelevance": "Como este artigo ajuda neste caso." },
+  ...
+]
+Se um artigo não for relevante ao caso, use excerpts: [] e clinicalRelevance: "Pouca relevância direta para este caso."
+Apenas o JSON, sem markdown.
+""";
 
         var requestBody = new
         {
             model = _config.Value?.Model ?? "gpt-4o",
             messages = new object[] { new { role = "user", content = (object)prompt } },
-            max_tokens = 3000,
+            max_tokens = 4000,
             temperature = 0.2
         };
 
         var json = JsonSerializer.Serialize(requestBody, JsonOptions);
         var client = _httpClientFactory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-        client.Timeout = TimeSpan.FromSeconds(30);
+        client.Timeout = TimeSpan.FromSeconds(45);
 
         using var requestContent = new StringContent(json, Encoding.UTF8, "application/json");
         var response = await client.PostAsync($"{ApiBaseUrl}/chat/completions", requestContent, cancellationToken);
         if (!response.IsSuccessStatusCode)
-            return Array.Empty<EvidenceItemDto>(); // Só envia evidências traduzidas
+            return Array.Empty<EvidenceItemDto>();
 
         var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
-        List<string>? translations = null;
         try
         {
             using var doc = JsonDocument.Parse(responseJson);
             var content = doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
-            if (!string.IsNullOrWhiteSpace(content))
+            if (string.IsNullOrWhiteSpace(content))
+                return Array.Empty<EvidenceItemDto>();
+
+            var cleaned = CleanJsonResponse(content);
+            using var arr = JsonDocument.Parse(cleaned);
+            var result = new List<EvidenceItemDto>();
+            var idx = 0;
+            foreach (var el in arr.RootElement.EnumerateArray())
             {
-                var cleaned = CleanJsonResponse(content);
-                using var arr = JsonDocument.Parse(cleaned);
-                translations = new List<string>();
-                foreach (var el in arr.RootElement.EnumerateArray())
-                    translations.Add(el.GetString() ?? "");
+                if (idx >= items.Count) break;
+                var item = items[idx];
+                var excerpts = new List<string>();
+                var relevance = "";
+
+                if (el.TryGetProperty("excerpts", out var exEl) && exEl.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var e in exEl.EnumerateArray())
+                    {
+                        var s = e.GetString()?.Trim();
+                        if (!string.IsNullOrEmpty(s))
+                            excerpts.Add(s);
+                    }
+                }
+                if (el.TryGetProperty("clinicalRelevance", out var relEl))
+                    relevance = relEl.GetString()?.Trim() ?? "";
+
+                result.Add(new EvidenceItemDto(
+                    item.Title,
+                    item.Abstract,
+                    item.Source,
+                    TranslatedAbstract: excerpts.Count > 0 ? string.Join("\n\n", excerpts) : null,
+                    RelevantExcerpts: excerpts.Count > 0 ? excerpts : null,
+                    ClinicalRelevance: !string.IsNullOrEmpty(relevance) ? relevance : null,
+                    Provider: item.Provider));
+                idx++;
             }
+            return result;
         }
-        catch { /* ignore */ }
-
-        if (translations == null || translations.Count != items.Count)
-            return Array.Empty<EvidenceItemDto>(); // Só envia evidências traduzidas
-
-        // Só inclui itens com tradução válida
-        var result = new List<EvidenceItemDto>();
-        for (var i = 0; i < items.Count && i < translations.Count; i++)
+        catch (Exception ex)
         {
-            var translated = translations[i]?.Trim();
-            if (!string.IsNullOrEmpty(translated))
-                result.Add(new EvidenceItemDto(items[i].Title, items[i].Abstract, items[i].Source, translated));
+            _logger.LogDebug(ex, "Evidências: falha ao parsear resposta de extração de trechos.");
+            return Array.Empty<EvidenceItemDto>();
         }
-        return result;
     }
 }

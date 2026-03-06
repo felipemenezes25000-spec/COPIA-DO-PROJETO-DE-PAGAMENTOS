@@ -19,6 +19,7 @@ public class RequestsController(
     IStorageService storageService,
     IPrescriptionPdfService pdfService,
     IAuditEventService auditEventService,
+    IAuditService auditService,
     IClinicalSummaryService clinicalSummaryService,
     IConsultationEncounterService consultationEncounterService,
     IDoctorPatientNotesRepository doctorPatientNotesRepository,
@@ -481,6 +482,16 @@ public class RequestsController(
 
         var entity = await doctorPatientNotesRepository.AddNoteAsync(doctorId, patientId, noteType, content, requestId, cancellationToken);
         var note = new DoctorNoteDto(entity.Id, entity.NoteType, entity.Content, entity.RequestId, entity.CreatedAt, entity.UpdatedAt);
+
+        var newValues = new Dictionary<string, object?>
+        {
+            ["note_type"] = entity.NoteType,
+            ["content"] = entity.Content,
+            ["request_id"] = entity.RequestId,
+            ["patient_id"] = patientId,
+            ["created_at"] = entity.CreatedAt
+        };
+        _ = auditService.LogModificationAsync(doctorId, "Create", "DoctorPatientNote", entity.Id, oldValues: null, newValues: newValues, cancellationToken: cancellationToken);
         _ = auditEventService.LogReadAsync(doctorId, "DoctorPatientNote", patientId, "api", HttpContext.Connection.RemoteIpAddress?.ToString(), HttpContext.Request.Headers.UserAgent.ToString(), cancellationToken: cancellationToken);
         return Ok(note);
     }

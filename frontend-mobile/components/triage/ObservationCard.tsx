@@ -54,9 +54,21 @@ interface ObservationCardProps {
   mode: CardMode;
   text: string;
   doctorName?: string | null;
+  /** Última edição da conduta (audit) */
+  conductUpdatedAt?: string | null;
 }
 
-export function ObservationCard({ mode, text, doctorName }: ObservationCardProps) {
+function fmtDateTime(d: string): string {
+  return new Date(d).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+export function ObservationCard({ mode, text, doctorName, conductUpdatedAt }: ObservationCardProps) {
   if (!text?.trim()) return null;
 
   const c = CONFIG[mode];
@@ -88,6 +100,11 @@ export function ObservationCard({ mode, text, doctorName }: ObservationCardProps
 
         {/* Body text */}
         <Text style={styles.bodyText}>{text}</Text>
+
+        {/* Audit: última edição da conduta */}
+        {mode === 'conduct' && conductUpdatedAt && (
+          <Text style={styles.auditMeta}>Editado em {fmtDateTime(conductUpdatedAt)}</Text>
+        )}
 
         {/* Disclaimer for auto mode */}
         {mode === 'auto' && (
@@ -168,5 +185,11 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 8,
     lineHeight: 16,
+  },
+  auditMeta: {
+    fontSize: 11,
+    color: theme.colors.text.disabled,
+    marginTop: 6,
+    lineHeight: 14,
   },
 });

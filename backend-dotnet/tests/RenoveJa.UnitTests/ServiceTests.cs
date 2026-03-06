@@ -507,6 +507,7 @@ public class ExtendedRequestServiceTests
             new Mock<INewRequestBatchService>().Object,
             _signedRequestClinicalSyncMock.Object,
             _consultationEncounterServiceMock.Object,
+            new Mock<IAuditService>().Object,
             _loggerMock.Object);
     }
 

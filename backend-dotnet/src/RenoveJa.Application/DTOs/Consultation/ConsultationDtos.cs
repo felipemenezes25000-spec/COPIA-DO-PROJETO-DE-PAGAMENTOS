@@ -12,8 +12,23 @@ public record SuggestionUpdateDto(IReadOnlyList<string> Items);
 /// <summary>Payload enviado via SignalR para atualização das evidências (artigos PubMed) no painel do médico.</summary>
 public record EvidenceUpdateDto(IReadOnlyList<EvidenceItemDto> Items);
 
-/// <summary>Item de evidência: artigo científico com resumo em português.</summary>
-public record EvidenceItemDto(string Title, string Abstract, string Source, string? TranslatedAbstract);
+/// <summary>Provedor da evidência: PubMed, Europe PMC ou Semantic Scholar.</summary>
+public static class EvidenceProvider
+{
+    public const string PubMed = "PubMed";
+    public const string EuropePmc = "Europe PMC";
+    public const string SemanticScholar = "Semantic Scholar";
+}
+
+/// <summary>Item de evidência: artigo científico com trechos relevantes e relevância clínica para apoio ao diagnóstico.</summary>
+public record EvidenceItemDto(
+    string Title,
+    string Abstract,
+    string Source,
+    string? TranslatedAbstract,
+    IReadOnlyList<string>? RelevantExcerpts = null,
+    string? ClinicalRelevance = null,
+    string? Provider = null);
 
 /// <summary>Resultado do serviço de anamnese: JSON estruturado + sugestões + evidências (apoio à decisão).</summary>
 public record ConsultationAnamnesisResult(string AnamnesisJson, IReadOnlyList<string> Suggestions, IReadOnlyList<EvidenceItemDto> Evidence);

@@ -97,7 +97,8 @@ public record RequestResponseDto(
     bool IncludeConductInPdf = true,
     string? AiConductSuggestion = null,
     string? AiSuggestedExams = null,
-    DateTime? ConductUpdatedAt = null
+    DateTime? ConductUpdatedAt = null,
+    Guid? ConductUpdatedBy = null
 );
 
 /// <summary>Médico atualiza medicamentos, notas e tipo de receita antes da assinatura.</summary>

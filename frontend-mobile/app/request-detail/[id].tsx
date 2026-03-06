@@ -539,6 +539,7 @@ export default function RequestDetailScreen() {
               mode="conduct"
               text={request.doctorConductNotes}
               doctorName={request.doctorName}
+              conductUpdatedAt={request.conductUpdatedAt ?? undefined}
             />
           </View>
         )}

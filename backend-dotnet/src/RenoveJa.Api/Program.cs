@@ -348,6 +348,9 @@ builder.Services.AddScoped<IPrescriptionVerifyRepository, RenoveJa.Infrastructur
 builder.Services.AddSingleton<IConsultationSessionStore, RenoveJa.Infrastructure.ConsultationAnamnesis.ConsultationSessionStore>();
 builder.Services.AddScoped<ITranscriptionService, RenoveJa.Infrastructure.Transcription.DeepgramTranscriptionService>();
 builder.Services.AddScoped<IPubMedService, RenoveJa.Infrastructure.PubMed.PubMedService>();
+builder.Services.AddScoped<RenoveJa.Infrastructure.Evidence.EuropePmcEvidenceService>();
+builder.Services.AddScoped<RenoveJa.Infrastructure.Evidence.SemanticScholarEvidenceService>();
+builder.Services.AddScoped<IEvidenceSearchService, RenoveJa.Infrastructure.Evidence.UnifiedEvidenceSearchService>();
 builder.Services.AddScoped<IConsultationAnamnesisService, RenoveJa.Infrastructure.ConsultationAnamnesis.ConsultationAnamnesisService>();
 
 // Configure Authentication

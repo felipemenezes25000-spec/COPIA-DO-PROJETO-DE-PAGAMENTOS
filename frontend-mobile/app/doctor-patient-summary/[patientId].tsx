@@ -850,6 +850,11 @@ export default function DoctorPatientClinicalSummary() {
                   >
                     {c.doctorConductNotes || c.aiConductSuggestion}
                   </Text>
+                  {c.doctorConductNotes && c.conductUpdatedAt && (
+                    <Text style={[styles.fieldMeta, { marginTop: 4, color: colors.textMuted, fontSize: 12 }]}>
+                      Editado em {fmtDateTime(c.conductUpdatedAt)}
+                    </Text>
+                  )}
                 </View>
               )}
 

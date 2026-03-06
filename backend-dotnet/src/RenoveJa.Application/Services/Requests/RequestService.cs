@@ -51,6 +51,7 @@ public class RequestService(
     INewRequestBatchService newRequestBatchService,
     ISignedRequestClinicalSyncService signedRequestClinicalSync,
     IConsultationEncounterService consultationEncounterService,
+    IAuditService auditService,
     ILogger<RequestService> logger) : IRequestService
 {
     private readonly string _apiBaseUrl = (apiConfig?.Value?.BaseUrl ?? "").Trim();
@@ -1117,8 +1118,21 @@ public class RequestService(
                 var existing = await consultationAnamnesisRepository.GetByRequestIdAsync(id, cancellationToken);
                 if (existing != null)
                 {
+                    var oldValues = new Dictionary<string, object?>
+                    {
+                        ["transcript"] = existing.TranscriptText,
+                        ["anamnesis_json"] = existing.AnamnesisJson,
+                        ["ai_suggestions_json"] = existing.AiSuggestionsJson
+                    };
                     existing.Update(sessionData.TranscriptText, sessionData.AnamnesisJson, sessionData.AiSuggestionsJson);
                     await consultationAnamnesisRepository.UpdateAsync(existing, cancellationToken);
+                    var newValues = new Dictionary<string, object?>
+                    {
+                        ["transcript"] = existing.TranscriptText,
+                        ["anamnesis_json"] = existing.AnamnesisJson,
+                        ["ai_suggestions_json"] = existing.AiSuggestionsJson
+                    };
+                    await auditService.LogModificationAsync(doctorId, "Update", "ConsultationAnamnesis", existing.Id, oldValues, newValues, cancellationToken: cancellationToken);
                 }
                 else
                 {
@@ -1129,6 +1143,14 @@ public class RequestService(
                         sessionData.AnamnesisJson,
                         sessionData.AiSuggestionsJson);
                     await consultationAnamnesisRepository.CreateAsync(entity, cancellationToken);
+                    var newValues = new Dictionary<string, object?>
+                    {
+                        ["request_id"] = id,
+                        ["transcript"] = entity.TranscriptText,
+                        ["anamnesis_json"] = entity.AnamnesisJson,
+                        ["ai_suggestions_json"] = entity.AiSuggestionsJson
+                    };
+                    await auditService.LogModificationAsync(doctorId, "Create", "ConsultationAnamnesis", entity.Id, oldValues: null, newValues: newValues, cancellationToken: cancellationToken);
                 }
             }
             catch (Exception ex)
@@ -1777,9 +1799,22 @@ public class RequestService(
         if (request.RequestType != RequestType.Prescription) throw new InvalidOperationException("Apenas receitas podem ter medicamentos atualizados.");
         if (request.Status != RequestStatus.Paid)
             throw new InvalidOperationException("Só é possível editar medicamentos/notas após o pagamento. O paciente deve pagar antes de editar e assinar.");
+        var oldValues = new Dictionary<string, object?>
+        {
+            ["medications"] = request.Medications,
+            ["notes"] = request.Notes,
+            ["prescription_kind"] = request.PrescriptionKind?.ToString()
+        };
         var pk = prescriptionKind != null ? ParsePrescriptionKind(prescriptionKind) : null;
         request.UpdatePrescriptionContent(medications, notes, pk);
         request = await requestRepository.UpdateAsync(request, cancellationToken);
+        var newValues = new Dictionary<string, object?>
+        {
+            ["medications"] = request.Medications,
+            ["notes"] = request.Notes,
+            ["prescription_kind"] = request.PrescriptionKind?.ToString()
+        };
+        await auditService.LogModificationAsync(doctorId, "Update", "Request", id, oldValues, newValues, cancellationToken: cancellationToken);
         await CreateNotificationAsync(
             request.PatientId,
             "Receita atualizada",
@@ -1797,8 +1832,19 @@ public class RequestService(
         if (request.RequestType != RequestType.Exam) throw new InvalidOperationException("Apenas pedidos de exame podem ter exames atualizados.");
         if (request.Status != RequestStatus.Paid)
             throw new InvalidOperationException("Só é possível editar exames/notas após o pagamento. O paciente deve pagar antes de editar e assinar.");
+        var oldValues = new Dictionary<string, object?>
+        {
+            ["exams"] = request.Exams,
+            ["notes"] = request.Notes
+        };
         request.UpdateExamContent(exams, notes);
         request = await requestRepository.UpdateAsync(request, cancellationToken);
+        var newValues = new Dictionary<string, object?>
+        {
+            ["exams"] = request.Exams,
+            ["notes"] = request.Notes
+        };
+        await auditService.LogModificationAsync(doctorId, "Update", "Request", id, oldValues, newValues, cancellationToken: cancellationToken);
         await CreateNotificationAsync(
             request.PatientId,
             "Pedido de exame atualizado",
@@ -2411,12 +2457,39 @@ public class RequestService(
         if (request.DoctorId.HasValue && request.DoctorId.Value != doctorId)
             throw new UnauthorizedAccessException("Somente o médico responsável pode atualizar a conduta.");
 
+        var oldValues = new Dictionary<string, object?>
+        {
+            ["doctor_conduct_notes"] = request.DoctorConductNotes,
+            ["include_conduct_in_pdf"] = request.IncludeConductInPdf,
+            ["auto_observation"] = request.AutoObservation,
+            ["conduct_updated_at"] = request.ConductUpdatedAt,
+            ["conduct_updated_by"] = request.ConductUpdatedBy
+        };
+
         request.UpdateConduct(dto.ConductNotes, dto.IncludeConductInPdf, doctorId);
 
         if (dto.ApplyObservationOverride)
             request.OverrideAutoObservation(dto.AutoObservationOverride, doctorId);
 
         await requestRepository.UpdateAsync(request, cancellationToken);
+
+        var newValues = new Dictionary<string, object?>
+        {
+            ["doctor_conduct_notes"] = request.DoctorConductNotes,
+            ["include_conduct_in_pdf"] = request.IncludeConductInPdf,
+            ["auto_observation"] = request.AutoObservation,
+            ["conduct_updated_at"] = request.ConductUpdatedAt,
+            ["conduct_updated_by"] = request.ConductUpdatedBy
+        };
+
+        await auditService.LogModificationAsync(
+            doctorId,
+            action: "Update",
+            entityType: "Request",
+            entityId: requestId,
+            oldValues: oldValues,
+            newValues: newValues,
+            cancellationToken: cancellationToken);
 
         return MapRequestToDto(request);
     }
@@ -2483,7 +2556,8 @@ public class RequestService(
             request.IncludeConductInPdf,
             request.AiConductSuggestion,
             request.AiSuggestedExams,
-            request.ConductUpdatedAt);
+            request.ConductUpdatedAt,
+            request.ConductUpdatedBy);
     }
 
     private List<string> ToProxyImageUrls(Guid requestId, List<string> urls, string imageType)

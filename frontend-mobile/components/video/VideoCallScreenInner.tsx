@@ -164,7 +164,15 @@ export default function VideoCallScreenInner() {
   const [transcript, setTranscript] = useState('');
   const [anamnesis, setAnamnesis] = useState<Record<string, any> | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [evidence, setEvidence] = useState<Array<{ title: string; abstract: string; source: string; translatedAbstract?: string }>>([]);
+  const [evidence, setEvidence] = useState<Array<{
+    title: string;
+    abstract: string;
+    source: string;
+    translatedAbstract?: string;
+    relevantExcerpts?: string[];
+    clinicalRelevance?: string;
+    provider?: string;
+  }>>([]);
   const [transcriptFilter, setTranscriptFilter] = useState<TranscriptFilter>('todos');
   const [isAiActive, setIsAiActive] = useState(false);
   const tScrollRef = useRef<ScrollView>(null);
@@ -263,6 +271,9 @@ export default function VideoCallScreenInner() {
             abstract: e?.abstract ?? e?.Abstract ?? '',
             source: e?.source ?? e?.Source ?? '',
             translatedAbstract: e?.translatedAbstract ?? e?.TranslatedAbstract,
+            relevantExcerpts: e?.relevantExcerpts ?? e?.RelevantExcerpts ?? undefined,
+            clinicalRelevance: e?.clinicalRelevance ?? e?.ClinicalRelevance ?? undefined,
+            provider: e?.provider ?? e?.Provider ?? 'PubMed',
           })));
         }
       });
@@ -584,7 +595,9 @@ export default function VideoCallScreenInner() {
   const timerStr = contractedMinutes ? `${fmt(callSeconds)} / ${fmt(contractedMinutes * 60)}` : fmt(callSeconds);
   const hasAna = anamnesis && Object.keys(anamnesis).length > 0;
   const hasSug = suggestions.length > 0;
-  const hasEv = evidence.some((e) => e.translatedAbstract);
+  const hasEv = evidence.some((e) =>
+    (e.relevantExcerpts && e.relevantExcerpts.length > 0) || e.clinicalRelevance || e.translatedAbstract
+  );
   const hasT = transcript.length > 0;
   const panelHas = hasAna || hasSug || hasEv || hasT;
 
@@ -756,21 +769,50 @@ export default function VideoCallScreenInner() {
               </View>
             )}
 
-            {/* Evidências PubMed */}
+            {/* Evidências científicas — PubMed, Europe PMC, Semantic Scholar */}
             {hasEv && (
               <View style={S.sec}>
                 <View style={S.secH}>
                   <Ionicons name="library" size={16} color={colors.primaryLight} />
                   <Text style={[S.secT, { color: colors.primaryLight }]}>EVIDÊNCIAS</Text>
-                  <View style={S.badge}><Ionicons name="book" size={10} color={colors.primaryLight} /><Text style={S.badgeTxt}>PubMed</Text></View>
-                </View>
-                {evidence.filter((e) => e.translatedAbstract).map((e, i) => (
-                  <View key={i} style={S.evItem}>
-                    <Text style={S.evTitle}>{e.title}</Text>
-                    <Text style={S.evAbstract}>{e.translatedAbstract}</Text>
-                    <Text style={S.evSource}>{e.source}</Text>
+                  <View style={S.evProviderBadges}>
+                    <View style={[S.evProviderBadge, S.evProviderPubMed]}><Text style={S.evProviderBadgeTxt}>PubMed</Text></View>
+                    <View style={[S.evProviderBadge, S.evProviderEuropePmc]}><Text style={S.evProviderBadgeTxt}>Europe PMC</Text></View>
+                    <View style={[S.evProviderBadge, S.evProviderSemantic]}><Text style={S.evProviderBadgeTxt}>Semantic Scholar</Text></View>
                   </View>
-                ))}
+                </View>
+                {evidence.filter((e) =>
+                  (e.relevantExcerpts && e.relevantExcerpts.length > 0) || e.clinicalRelevance || e.translatedAbstract
+                ).map((e, i) => {
+                  const prov = e.provider ?? 'PubMed';
+                  const badgeStyle = prov === 'Europe PMC' ? S.evProviderEuropePmc : prov === 'Semantic Scholar' ? S.evProviderSemantic : S.evProviderPubMed;
+                  return (
+                    <View key={i} style={S.evItem}>
+                      <View style={S.evItemHeader}>
+                        <Text style={S.evTitle} numberOfLines={2}>{e.title}</Text>
+                        <View style={[S.evProviderBadge, badgeStyle, S.evProviderBadgeSmall]}>
+                          <Text style={S.evProviderBadgeTxt}>{prov}</Text>
+                        </View>
+                      </View>
+                      {e.clinicalRelevance && (
+                        <View style={S.evRelevance}>
+                          <Ionicons name="medical" size={12} color={colors.primary} />
+                          <Text style={S.evRelevanceTxt}>{e.clinicalRelevance}</Text>
+                        </View>
+                      )}
+                      {(e.relevantExcerpts && e.relevantExcerpts.length > 0) ? (
+                        e.relevantExcerpts.map((excerpt, j) => (
+                          <View key={j} style={S.evExcerpt}>
+                            <Text style={S.evExcerptTxt}>"{excerpt}"</Text>
+                          </View>
+                        ))
+                      ) : e.translatedAbstract ? (
+                        <Text style={S.evAbstract}>{e.translatedAbstract}</Text>
+                      ) : null}
+                      <Text style={S.evSource}>{e.source}</Text>
+                    </View>
+                  );
+                })}
               </View>
             )}
 
@@ -1009,8 +1051,20 @@ const S = StyleSheet.create({
   sugDng: { backgroundColor: 'rgba(239,68,68,0.1)', borderRadius: 6, padding: 6 },
   sugTxt: { fontSize: 12, color: colors.primaryLight, lineHeight: 18, flex: 1 },
 
-  evItem: { backgroundColor: 'rgba(51,65,85,0.5)', borderRadius: 8, padding: 10, gap: 4 },
-  evTitle: { fontSize: 12, fontWeight: '700', color: colors.primaryLight, lineHeight: 16 },
+  evItem: { backgroundColor: 'rgba(51,65,85,0.5)', borderRadius: 8, padding: 10, gap: 6 },
+  evItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
+  evTitle: { fontSize: 12, fontWeight: '700', color: colors.primaryLight, lineHeight: 16, flex: 1 },
+  evProviderBadges: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+  evProviderBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  evProviderBadgeSmall: { paddingHorizontal: 5, paddingVertical: 1 },
+  evProviderBadgeTxt: { fontSize: 9, fontWeight: '600', color: colors.white },
+  evProviderPubMed: { backgroundColor: 'rgba(34,139,34,0.85)' },
+  evProviderEuropePmc: { backgroundColor: 'rgba(59,130,246,0.9)' },
+  evProviderSemantic: { backgroundColor: 'rgba(139,92,246,0.85)' },
+  evRelevance: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: 'rgba(59,130,246,0.15)', borderRadius: 6, padding: 8 },
+  evRelevanceTxt: { fontSize: 11, color: colors.primary, lineHeight: 15, flex: 1 },
+  evExcerpt: { borderLeftWidth: 3, borderLeftColor: colors.primaryLight, paddingLeft: 8 },
+  evExcerptTxt: { fontSize: 11, color: colors.border, fontStyle: 'italic', lineHeight: 15 },
   evAbstract: { fontSize: 11, color: colors.border, lineHeight: 16 },
   evSource: { fontSize: 10, color: colors.textMuted },
 

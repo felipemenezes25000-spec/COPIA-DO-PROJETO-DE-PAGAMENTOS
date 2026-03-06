@@ -62,15 +62,33 @@ public class ConsultationEncounterService(
             return;
         }
 
+        var oldValues = new Dictionary<string, object?>
+        {
+            ["anamnesis"] = encounter.Anamnesis,
+            ["plan"] = encounter.Plan,
+            ["mainIcd10Code"] = encounter.MainIcd10Code,
+            ["status"] = encounter.Status
+        };
         encounter.UpdateClinicalNotes(anamnesis: anamnesis, plan: plan, mainIcd10Code: mainIcd10Code);
         encounter.FinalizeEncounter();
         encounter = await encounterRepository.UpdateAsync(encounter, cancellationToken);
+
+        var newValues = new Dictionary<string, object?>
+        {
+            ["anamnesis"] = encounter.Anamnesis,
+            ["plan"] = encounter.Plan,
+            ["mainIcd10Code"] = encounter.MainIcd10Code,
+            ["status"] = encounter.Status,
+            ["finishedAt"] = encounter.FinishedAt
+        };
 
         await auditService.LogModificationAsync(
             encounter.PractitionerId,
             action: "Update",
             entityType: "Encounter",
             entityId: encounter.Id,
+            oldValues: oldValues,
+            newValues: newValues,
             cancellationToken: cancellationToken);
 
         logger.LogInformation(
@@ -96,14 +114,27 @@ public class ConsultationEncounterService(
             throw new UnauthorizedAccessException("Apenas o médico da consulta pode atualizar as notas clínicas.");
         }
 
+        var oldValues = new Dictionary<string, object?>
+        {
+            ["anamnesis"] = encounter.Anamnesis,
+            ["plan"] = encounter.Plan
+        };
         encounter.UpdateClinicalNotes(anamnesis: anamnesis, plan: plan);
         await encounterRepository.UpdateAsync(encounter, cancellationToken);
+
+        var newValues = new Dictionary<string, object?>
+        {
+            ["anamnesis"] = encounter.Anamnesis,
+            ["plan"] = encounter.Plan
+        };
 
         await auditService.LogModificationAsync(
             doctorId,
             action: "Update",
             entityType: "Encounter",
             entityId: encounter.Id,
+            oldValues: oldValues,
+            newValues: newValues,
             cancellationToken: cancellationToken);
 
         logger.LogInformation(

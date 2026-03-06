@@ -117,7 +117,7 @@ public class PubMedService : IPubMedService
                 var pmid = article.Descendants().FirstOrDefault(e => e.Name.LocalName == "PMID")?.Value ?? "";
                 var source = string.IsNullOrEmpty(pmid) ? "PubMed" : $"PubMed PMID:{pmid}";
 
-                items.Add(new EvidenceItemDto(title, abstractStr, source, null));
+                items.Add(new EvidenceItemDto(title, abstractStr, source, null, Provider: EvidenceProvider.PubMed));
             }
         }
         catch (Exception)

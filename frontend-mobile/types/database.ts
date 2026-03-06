@@ -144,6 +144,8 @@ export interface RequestResponseDto {
   aiSuggestedExams?: string | null;
   /** Última atualização da conduta (audit) */
   conductUpdatedAt?: string | null;
+  /** Médico que atualizou a conduta (audit) */
+  conductUpdatedBy?: string | null;
 }
 
 // ============================================

@@ -65,6 +65,7 @@ public class RequestServiceTests
         var newRequestBatchServiceMock = new Mock<INewRequestBatchService>();
         var signedRequestClinicalSyncMock = new Mock<ISignedRequestClinicalSyncService>();
         var consultationEncounterServiceMock = new Mock<IConsultationEncounterService>();
+        var auditServiceMock = new Mock<IAuditService>();
 
         _sut = new RequestService(
             _requestRepoMock.Object,
@@ -92,6 +93,7 @@ public class RequestServiceTests
             newRequestBatchServiceMock.Object,
             signedRequestClinicalSyncMock.Object,
             consultationEncounterServiceMock.Object,
+            auditServiceMock.Object,
             _loggerMock.Object);
     }
 
