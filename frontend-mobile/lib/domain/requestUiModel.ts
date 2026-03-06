@@ -95,7 +95,10 @@ const LEGACY_TO_NORMALIZED: Record<string, NormalizedStatus> = {
   pending: 'submitted',
   analyzing: 'in_review',
   pending_payment: 'approved_pending_payment',
+  payment_pending: 'approved_pending_payment',
+  in_queue: 'searching_doctor',
   approved: 'paid',
+  awaiting_signature: 'paid',
   completed: 'delivered',
 };
 

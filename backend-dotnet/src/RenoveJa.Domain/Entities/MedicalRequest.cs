@@ -363,7 +363,13 @@ public class MedicalRequest : AggregateRoot
 
         DoctorId = doctorId;
         DoctorName = doctorName;
-        Status = RequestStatus.InReview;
+
+        // Consulta não passa por InReview no fluxo canônico.
+        if (RequestType != Enums.RequestType.Consultation)
+        {
+            Status = RequestStatus.InReview;
+        }
+
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -371,6 +377,21 @@ public class MedicalRequest : AggregateRoot
     {
         if (price <= 0)
             throw new DomainException("Price must be greater than zero");
+
+        if (RequestType == Enums.RequestType.Consultation)
+        {
+            // Fluxo de consulta: SearchingDoctor -> ApprovedPendingPayment
+            if (Status != RequestStatus.SearchingDoctor && Status != RequestStatus.InReview)
+                throw new DomainException("Consultation must be searching doctor before approval");
+        }
+        else
+        {
+#pragma warning disable CS0618 // compatibilidade com status legados
+            if (Status != RequestStatus.Submitted && Status != RequestStatus.InReview &&
+                Status != RequestStatus.Pending && Status != RequestStatus.Analyzing)
+                throw new DomainException("Request must be under review before approval");
+#pragma warning restore CS0618
+        }
 
         Price = Money.Create(price);
         Notes = notes;
