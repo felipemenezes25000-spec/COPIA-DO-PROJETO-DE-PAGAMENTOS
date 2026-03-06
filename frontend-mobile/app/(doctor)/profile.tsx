@@ -11,6 +11,7 @@ import {
   InteractionManager,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -86,6 +87,7 @@ export default function DoctorProfile() {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <StatusBar style="light" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[...gradients.doctorHeader]}
         start={{ x: 0, y: 0 }}
@@ -95,7 +97,7 @@ export default function DoctorProfile() {
         <View style={styles.avatarCircle}>
           <Text style={styles.avatarText}>{initials}</Text>
         </View>
-        <Text style={styles.headerName} numberOfLines={1} ellipsizeMode="tail">DR(A). {firstName.toUpperCase()}</Text>
+        <Text style={styles.headerName} numberOfLines={1} ellipsizeMode="tail">Dr(a). {firstName}</Text>
         <Text style={styles.headerEmail} numberOfLines={1} ellipsizeMode="tail">{user?.email || ''}</Text>
         {doctor && (
           <View style={styles.crmBadge}>
@@ -158,10 +160,10 @@ export default function DoctorProfile() {
         accessibilityLabel="Sair da conta"
       >
         <Ionicons name="log-out-outline" size={18} color={colors.error} />
-        <Text style={styles.logoutText}>SAIR DA CONTA</Text>
+        <Text style={styles.logoutText}>Sair da conta</Text>
       </TouchableOpacity>
 
-      <Text style={styles.version}>RENOVEJA+ V1.0.0</Text>
+      <Text style={styles.version}>RenoveJa+ v1.0.0</Text>
       <View style={{ height: insets.bottom + 24 }} />
       </FadeIn>
     </ScrollView>

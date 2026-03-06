@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useListBottomPadding } from '../../lib/ui/responsive';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,7 +18,7 @@ import { colors, spacing, borderRadius, typography, gradients, doctorDS } from '
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../../lib/api';
 import { NotificationResponseDto } from '../../types/database';
 import { useNotifications } from '../../contexts/NotificationContext';
-import { AppSegmentedControl, AppEmptyState } from '../../components/ui';
+import { AppSegmentedControl, AppEmptyState, TopSummaryStrip } from '../../components/ui';
 import { showToast } from '../../components/ui/Toast';
 import { haptics } from '../../lib/haptics';
 
@@ -207,6 +208,7 @@ export default function DoctorNotifications() {
 
   return (
     <View style={styles.container}>
+      <StatusBar style="light" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[...gradients.doctorHeader]}
         start={{ x: 0, y: 0 }}
@@ -230,6 +232,15 @@ export default function DoctorNotifications() {
           )}
         </View>
       </LinearGradient>
+
+      <TopSummaryStrip
+        compact
+        items={[
+          { label: 'Total', value: notifications.length },
+          { label: 'Não lidas', value: unreadCount },
+          { label: 'Pagamentos', value: categoryCounts.payment },
+        ]}
+      />
 
       <AppSegmentedControl
         items={[
