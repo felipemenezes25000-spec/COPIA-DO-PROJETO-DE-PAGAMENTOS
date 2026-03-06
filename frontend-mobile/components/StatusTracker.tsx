@@ -26,9 +26,9 @@ const PRESCRIPTION_STEPS: Step[] = [
 
 const CONSULTATION_STEPS: Step[] = [
   { key: 'searching', label: 'Buscando médico', shortLabel: 'Buscando', icon: 'search-outline', statuses: ['searching_doctor'] },
-  { key: 'ready', label: 'Consulta pronta', shortLabel: 'Pronta', icon: 'checkmark-circle-outline', statuses: ['paid'] },
   { key: 'payment', label: 'Aguardando pagamento', shortLabel: 'Pag. pendente', icon: 'card-outline', statuses: ['approved_pending_payment', 'pending_payment'] },
-  { key: 'in_consultation', label: 'Em consulta', shortLabel: 'Em consulta', icon: 'videocam-outline', statuses: ['paid', 'in_consultation'] },
+  { key: 'ready', label: 'Consulta pronta', shortLabel: 'Pronta', icon: 'checkmark-circle-outline', statuses: ['paid'] },
+  { key: 'in_consultation', label: 'Em consulta', shortLabel: 'Em consulta', icon: 'videocam-outline', statuses: ['in_consultation'] },
   { key: 'finished', label: 'Finalizada', shortLabel: 'Finalizada', icon: 'checkmark-done-circle-outline', statuses: ['consultation_finished'] },
 ];
 
