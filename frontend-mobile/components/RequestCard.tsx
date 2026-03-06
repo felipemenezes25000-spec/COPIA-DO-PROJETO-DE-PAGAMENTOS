@@ -144,6 +144,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     backgroundColor: colors.surface,
     borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
     marginHorizontal: uiTokens.screenPaddingHorizontal,
     marginBottom: 10,
     overflow: 'hidden',
@@ -196,12 +198,12 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 13,
     color: colors.textSecondary,
-    marginBottom: 4,
+    marginBottom: 5,
   },
   preview: {
     fontSize: 12,
-    color: colors.textMuted,
-    marginBottom: 6,
+    color: colors.textSecondary,
+    marginBottom: 7,
   },
   bottomRow: {
     flexDirection: 'row',
@@ -213,6 +215,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
     gap: 3,
   },
   riskText: {

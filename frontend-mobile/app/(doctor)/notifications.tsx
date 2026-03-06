@@ -349,6 +349,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
     padding: spacing.md,
   },
   cardUnread: {
