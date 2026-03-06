@@ -10,6 +10,7 @@ import {
   TextInput,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useListBottomPadding } from '../../lib/ui/responsive';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,7 +23,7 @@ import { cacheRequest } from '../doctor-request/[id]';
 import { useRequestsEvents } from '../../contexts/RequestsEventsContext';
 import { getHistoricalGroupedByPeriod } from '../../lib/domain/getRequestUiState';
 import RequestCard from '../../components/RequestCard';
-import { AppSegmentedControl, AppEmptyState } from '../../components/ui';
+import { AppSegmentedControl, AppEmptyState, TopSummaryStrip } from '../../components/ui';
 import { SkeletonList } from '../../components/ui/SkeletonLoader';
 import { FadeIn } from '../../components/ui/FadeIn';
 import { showToast } from '../../components/ui/Toast';
@@ -187,6 +188,7 @@ export default function DoctorQueue() {
 
   return (
     <View style={styles.container}>
+      <StatusBar style="light" translucent backgroundColor="transparent" />
       {/* Ocean Blue gradient header */}
       <LinearGradient
         colors={gradients.doctorHeader as unknown as [string, string, ...string[]]}
@@ -214,6 +216,15 @@ export default function DoctorQueue() {
           </View>
         ))}
       </View>
+
+      <TopSummaryStrip
+        compact
+        items={[
+          { label: 'Total', value: counts.all },
+          { label: 'Consultas', value: counts.consultation },
+          { label: 'No filtro', value: filteredRequests.length },
+        ]}
+      />
 
       {/* Segmented control premium */}
       <AppSegmentedControl

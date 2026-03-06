@@ -8,6 +8,7 @@ import {
   Pressable,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useListBottomPadding } from '../../lib/ui/responsive';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,7 +21,7 @@ import { getRequests, getActiveCertificate } from '../../lib/api';
 import { RequestResponseDto } from '../../types/database';
 import { cacheRequest } from '../doctor-request/[id]';
 import { StatsCard } from '../../components/StatsCard';
-import { AppEmptyState } from '../../components/ui';
+import { AppEmptyState, TopSummaryStrip } from '../../components/ui';
 import { SkeletonList } from '../../components/ui/SkeletonLoader';
 import { FadeIn } from '../../components/ui/FadeIn';
 import { DoctorCard } from '../../components/ui/DoctorCard';
@@ -145,6 +146,7 @@ export default function DoctorDashboard() {
 
   return (
     <View style={styles.container}>
+      <StatusBar style="light" translucent backgroundColor="transparent" />
       <FadeIn visible={!loading} {...motionTokens.fade.doctor}>
       <ScrollView
         style={styles.container}
@@ -167,6 +169,15 @@ export default function DoctorDashboard() {
           </Text>
         </View>
       </LinearGradient>
+
+      <TopSummaryStrip
+        compact
+        items={[
+          { label: 'Pendentes', value: pendentesCount },
+          { label: 'Na fila', value: naFila },
+          { label: 'Em consulta', value: emConsulta },
+        ]}
+      />
 
       <FadeIn visible={!loading} {...motionTokens.fade.doctorSection} delay={40} fill={false}>
       <View style={styles.statsRow}>
