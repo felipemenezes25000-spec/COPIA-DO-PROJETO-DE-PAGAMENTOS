@@ -10,6 +10,8 @@ import {
   TouchableOpacity,
   InteractionManager,
   ActivityIndicator,
+  Modal,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,7 +27,6 @@ import { FadeIn } from '../../components/ui/FadeIn';
 import { motionTokens } from '../../lib/ui/motion';
 import { updateAvatar } from '../../lib/api';
 import { showToast } from '../../components/ui/Toast';
-import { CompatibleImage } from '../../components/CompatibleImage';
 
 export default function PatientProfile() {
   const router = useRouter();
@@ -34,6 +35,8 @@ export default function PatientProfile() {
   const { user, signOut, refreshUser } = useAuth();
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
+  const [avatarPreviewUri, setAvatarPreviewUri] = useState<string | null>(null);
+  const [avatarImageError, setAvatarImageError] = useState(false);
 
   const doLogout = () => {
     setLogoutLoading(true);
@@ -79,14 +82,22 @@ export default function PatientProfile() {
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.8,
+      quality: 0.9,
+      selectionLimit: 1,
     });
     if (result.canceled || !result.assets[0]) return;
     const { uri } = result.assets[0];
+    setAvatarPreviewUri(uri);
+  };
+
+  const saveAvatar = async () => {
+    if (!avatarPreviewUri) return;
     setAvatarLoading(true);
     try {
-      await updateAvatar(uri);
+      await updateAvatar(avatarPreviewUri);
       await refreshUser();
+      setAvatarPreviewUri(null);
+      setAvatarImageError(false);
       showToast({ message: 'Foto atualizada!', type: 'success' });
     } catch (e: unknown) {
       showToast({ message: (e as Error)?.message ?? 'Erro ao atualizar foto.', type: 'error' });
@@ -140,8 +151,13 @@ export default function PatientProfile() {
           accessibilityLabel="Alterar foto de perfil"
         >
           <View style={styles.avatarCircle}>
-            {user?.avatarUrl ? (
-              <CompatibleImage uri={user.avatarUrl} style={styles.avatarImage} resizeMode="cover" />
+            {user?.avatarUrl && !avatarImageError ? (
+              <Image
+                source={{ uri: user.avatarUrl }}
+                style={styles.avatarImage}
+                resizeMode="cover"
+                onError={() => setAvatarImageError(true)}
+              />
             ) : (
               <Text style={styles.avatarText}>{initials}</Text>
             )}
@@ -234,6 +250,51 @@ export default function PatientProfile() {
 
       <View style={{ height: insets.bottom + 24 }} />
       </FadeIn>
+
+      <Modal
+        visible={!!avatarPreviewUri}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAvatarPreviewUri(null)}
+      >
+        <View style={styles.previewOverlay}>
+          <View style={styles.previewCard}>
+            <Text style={styles.previewTitle}>Pré-visualizar foto</Text>
+            <Text style={styles.previewSubtitle}>Confira como sua foto ficará no perfil.</Text>
+
+            <View style={styles.previewAvatarCircle}>
+              {avatarPreviewUri ? (
+                <Image source={{ uri: avatarPreviewUri }} style={styles.previewAvatarImage} resizeMode="cover" />
+              ) : null}
+            </View>
+
+            <View style={styles.previewActions}>
+              <TouchableOpacity
+                style={[styles.previewBtn, styles.previewBtnGhost]}
+                onPress={() => {
+                  setAvatarPreviewUri(null);
+                  void pickAvatar();
+                }}
+                disabled={avatarLoading}
+              >
+                <Text style={styles.previewBtnGhostText}>Escolher outra</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.previewBtn, styles.previewBtnPrimary, avatarLoading && { opacity: 0.7 }]}
+                onPress={() => { void saveAvatar(); }}
+                disabled={avatarLoading}
+              >
+                {avatarLoading ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Text style={styles.previewBtnPrimaryText}>Salvar foto</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -432,5 +493,78 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
     marginTop: 16,
+  },
+
+  // Avatar preview modal
+  previewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  previewCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    padding: 18,
+    ...shadows.card,
+  },
+  previewTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  previewSubtitle: {
+    marginTop: 4,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  previewAvatarCircle: {
+    alignSelf: 'center',
+    marginTop: 16,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    overflow: 'hidden',
+    borderWidth: 3,
+    borderColor: colors.primarySoft,
+    backgroundColor: colors.background,
+  },
+  previewAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  previewActions: {
+    marginTop: 18,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  previewBtn: {
+    flex: 1,
+    borderRadius: 12,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  previewBtnGhost: {
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.background,
+  },
+  previewBtnGhostText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  previewBtnPrimary: {
+    backgroundColor: colors.primary,
+  },
+  previewBtnPrimaryText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.white,
   },
 });
