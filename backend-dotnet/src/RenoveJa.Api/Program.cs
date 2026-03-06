@@ -365,7 +365,7 @@ builder.Services.AddSignalR();
 // Add CORS - configurado por ambiente
 builder.Services.AddCors(options =>
 {
-    // Origens permitidas (fallback quando Cors:AllowedOrigins não está definido)
+    // Origens permitidas (fallback quando Cors:AllowedOrigins não está definido) — só prod: renovejasaude + iti
     var defaultOrigins = new[]
     {
         "https://renovejasaude.com.br",
@@ -373,12 +373,10 @@ builder.Services.AddCors(options =>
         "https://app.renovejasaude.com.br",
         "https://validar.iti.gov.br",
         "https://h-validar.iti.gov.br",
-        "https://www.validar.iti.gov.br",
-        "https://lovable.app",
-        "https://www.lovable.app"
+        "https://www.validar.iti.gov.br"
     };
 
-    // Permite lovable.dev, lovable.app, iti.gov.br (validador) e qualquer subdomínio
+    // Produção: só origens explícitas do config + iti.gov.br (validador). Lovable só em Development.
     static bool IsAllowedOrigin(string? origin, IReadOnlyCollection<string> explicitOrigins)
     {
         if (string.IsNullOrEmpty(origin)) return false;
@@ -387,10 +385,6 @@ builder.Services.AddCors(options =>
             var uri = new Uri(origin);
             var host = uri.Host;
             if (explicitOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase)) return true;
-            if (host.Equals("lovable.app", StringComparison.OrdinalIgnoreCase) || host.EndsWith(".lovable.app", StringComparison.OrdinalIgnoreCase))
-                return true;
-            if (host.Equals("lovable.dev", StringComparison.OrdinalIgnoreCase) || host.Equals("www.lovable.dev", StringComparison.OrdinalIgnoreCase))
-                return true;
             if (host.Equals("validar.iti.gov.br", StringComparison.OrdinalIgnoreCase) || host.Equals("h-validar.iti.gov.br", StringComparison.OrdinalIgnoreCase)
                 || host.EndsWith(".iti.gov.br", StringComparison.OrdinalIgnoreCase))
                 return true;
