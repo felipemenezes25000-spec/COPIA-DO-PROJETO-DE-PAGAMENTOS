@@ -155,6 +155,51 @@ public class VideoController(
         return Ok(room);
     }
 
+    /// <summary>
+    /// Cria sala de teste para transcrição via Daily.co (sem consulta ativa).
+    /// Retorna roomUrl e token para o médico testar a transcrição nativa do Daily.
+    /// </summary>
+    [Authorize]
+    [HttpPost("transcription-test-room")]
+    public async Task<IActionResult> CreateTranscriptionTestRoom(CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        var user = await userRepository.GetByIdAsync(userId, cancellationToken);
+        if (user == null)
+            return Unauthorized();
+
+        var roomName = $"transcription-test-{Guid.NewGuid():N}";
+        try
+        {
+            var dailyRoom = await dailyVideoService.CreateRoomAsync(
+                roomName,
+                maxParticipants: 2,
+                expiryMinutes: 15,
+                cancellationToken);
+
+            var token = await dailyVideoService.CreateMeetingTokenAsync(
+                roomName,
+                userId.ToString(),
+                user.Name,
+                isOwner: true,
+                ejectAfterSeconds: null,
+                cancellationToken);
+
+            return Ok(new
+            {
+                roomUrl = dailyRoom.Url,
+                token,
+                roomName,
+                expiresInMinutes = 15,
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to create Daily transcription test room for user {UserId}", userId);
+            return StatusCode(502, new { message = "Falha ao criar sala de teste. Verifique DAILY_API_KEY." });
+        }
+    }
+
     private Guid GetUserId()
     {
         var claim = User.FindFirstValue(ClaimTypes.NameIdentifier);

@@ -1,10 +1,10 @@
 /**
- * Tela de teste de transcrição — valida Deepgram sem consulta ativa.
- * Acesse via: router.push('/(doctor)/transcription-test')
- * Requer backend em ASPNETCORE_ENVIRONMENT=Development.
+ * Tela de teste de transcrição — usa Daily.co (transcrição nativa).
+ * Cria sala temporária, entra na chamada, inicia transcrição e exibe o texto em tempo real.
+ * Requer: backend com DAILY_API_KEY, development build (não Expo Go).
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,105 +13,159 @@ import {
   ScrollView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
-import { transcribeTestAudio } from '../../lib/api';
+import { fetchTranscriptionTestRoom } from '../../lib/api-daily';
+import { useDailyCall } from '../../hooks/useDailyCall';
 import { colors } from '../../lib/themeDoctor';
-
-const RECORD_SECONDS = 8;
-const RECORDING_OPTIONS: Audio.RecordingOptions = {
-  isMeteringEnabled: false,
-  android: {
-    extension: '.m4a',
-    outputFormat: 2,
-    audioEncoder: 3,
-    sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 64000,
-  },
-  ios: {
-    extension: '.m4a',
-    audioQuality: 0x40,
-    sampleRate: 16000,
-    numberOfChannels: 1,
-    bitRate: 64000,
-  },
-  web: {
-    mimeType: 'audio/webm',
-    bitsPerSecond: 64000,
-  },
-};
+import { isExpoGo } from '../../lib/expo-go';
 
 export default function TranscriptionTestScreen() {
-  const [status, setStatus] = useState<'idle' | 'recording' | 'sending' | 'done' | 'error'>('idle');
-  const [result, setResult] = useState<{ transcribed: boolean; text?: string; fileSize?: number; error?: string } | null>(null);
+  const [phase, setPhase] = useState<'idle' | 'loading' | 'joined' | 'error'>('idle');
+  const [roomUrl, setRoomUrl] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [transcript, setTranscript] = useState<string[]>([]);
+  const transcriptRef = useRef<string[]>([]);
+  const startedTranscriptionRef = useRef(false);
 
-  const runTest = useCallback(async () => {
+  const {
+    callState,
+    join,
+    leave,
+    callRef,
+  } = useDailyCall({
+    roomUrl: roomUrl ?? '',
+    token: token ?? '',
+    onCallEnded: () => {
+      setPhase('idle');
+      setRoomUrl(null);
+      setToken(null);
+      setTranscript([]);
+      transcriptRef.current = [];
+    },
+    onError: (msg) => {
+      setError(msg);
+      setPhase('error');
+    },
+  });
+
+  // Iniciar transcrição ao entrar na chamada
+  useEffect(() => {
+    const call = callRef.current;
+    if (!call || callState !== 'joined' || startedTranscriptionRef.current) return;
+
+    const startTranscription = async () => {
+      try {
+        await call.startTranscription?.({ language: 'pt-BR' });
+        startedTranscriptionRef.current = true;
+        if (__DEV__) console.warn('[TranscriptionTest] Transcrição Daily.co iniciada');
+      } catch (e) {
+        if (__DEV__) console.warn('[TranscriptionTest] Falha ao iniciar transcrição:', e);
+      }
+    };
+
+    startTranscription();
+  }, [callRef, callState]);
+
+  // Ouvir eventos de transcrição
+  useEffect(() => {
+    const call = callRef.current;
+    if (!call) return;
+
+    const handleMessage = (event: { text?: string; message?: { text?: string } }) => {
+      const text = event?.text ?? event?.message?.text ?? '';
+      if (!text?.trim()) return;
+      transcriptRef.current = [...transcriptRef.current, text.trim()];
+      setTranscript([...transcriptRef.current]);
+    };
+
+    call.on?.('transcription-message' as any, handleMessage);
+    return () => {
+      call.off?.('transcription-message' as any, handleMessage);
+    };
+  }, [callRef, callState]);
+
+  const joinRequestedRef = useRef(false);
+
+  // Entrar na sala quando roomUrl e token estiverem disponíveis
+  useEffect(() => {
+    if (!roomUrl || !token || !joinRequestedRef.current) return;
+    joinRequestedRef.current = false;
+    join()
+      .then(() => setPhase('joined'))
+      .catch((e: unknown) => {
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(msg);
+        setPhase('error');
+      });
+  }, [roomUrl, token, join]);
+
+  const handleStart = useCallback(async () => {
+    if (isExpoGo) {
+      Alert.alert(
+        'Módulo indisponível',
+        'O teste de transcrição requer um build de desenvolvimento (não funciona no Expo Go).'
+      );
+      return;
+    }
     try {
-      setStatus('recording');
-      setResult(null);
+      setPhase('loading');
+      setError(null);
+      setTranscript([]);
+      transcriptRef.current = [];
+      startedTranscriptionRef.current = false;
 
-      const permission = await Audio.requestPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert('Permissão necessária', 'Permissão de microfone necessária para o teste.');
-        setStatus('error');
-        setResult({ transcribed: false, error: 'Permissão de microfone negada' });
-        return;
-      }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-        interruptionModeIOS: InterruptionModeIOS.DoNotMix,
-        interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
-      });
-
-      const { recording } = await Audio.Recording.createAsync(RECORDING_OPTIONS);
-      await new Promise((r) => setTimeout(r, RECORD_SECONDS * 1000));
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-      if (!uri) {
-        setStatus('error');
-        setResult({ transcribed: false, error: 'Falha ao obter gravação' });
-        return;
-      }
-
-      const fileInfo = await FileSystem.getInfoAsync(uri);
-      const fileSize = fileInfo.exists ? ((fileInfo as unknown as { size?: number }).size ?? 0) : 0;
-      if (!fileInfo.exists || (fileSize ?? 0) < 500) {
-        setStatus('error');
-        setResult({ transcribed: false, error: `Arquivo muito pequeno (${fileSize ?? 0} bytes). Fale durante a gravação.` });
-        return;
-      }
-
-      setStatus('sending');
-      const extension = Platform.OS === 'web' ? 'webm' : 'm4a';
-      const mimeType = Platform.OS === 'web' ? 'audio/webm' : 'audio/mp4';
-      const res = await transcribeTestAudio({
-        uri,
-        name: `test_${Date.now()}.${extension}`,
-        type: mimeType,
-      });
-
-      setResult({
-        transcribed: res.transcribed ?? false,
-        text: res.text,
-        fileSize: res.fileSize,
-      });
-      setStatus('done');
-    } catch (e: any) {
-      const msg = e?.message || 'Erro desconhecido';
-      setStatus('error');
-      setResult({ transcribed: false, error: msg });
+      const { roomUrl: url, token: t } = await fetchTranscriptionTestRoom();
+      setRoomUrl(url);
+      setToken(t);
+      joinRequestedRef.current = true;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(msg);
+      setPhase('error');
       if (__DEV__) console.warn('[TranscriptionTest]', e);
     }
   }, []);
+
+  const handleLeave = useCallback(async () => {
+    joinRequestedRef.current = false;
+    startedTranscriptionRef.current = false;
+    await leave();
+    setPhase('idle');
+    setRoomUrl(null);
+    setToken(null);
+    setTranscript([]);
+    transcriptRef.current = [];
+  }, [leave]);
+
+  if (isExpoGo) {
+    return (
+      <>
+        <Stack.Screen
+          options={{
+            title: 'Teste de Transcrição',
+            headerBackTitle: 'Voltar',
+            headerStyle: { backgroundColor: colors.surface },
+            headerTintColor: colors.text,
+          }}
+        />
+        <View style={styles.container}>
+          <View style={styles.card}>
+            <Ionicons name="mic" size={48} color={colors.primary} />
+            <Text style={styles.title}>Teste de Transcrição</Text>
+            <Text style={styles.subtitle}>
+              O teste usa transcrição nativa do Daily.co.{'\n'}
+              No Expo Go o módulo de vídeo não está disponível.{'\n'}
+              Use um build de desenvolvimento para testar.
+            </Text>
+          </View>
+        </View>
+      </>
+    );
+  }
 
   return (
     <>
@@ -128,53 +182,64 @@ export default function TranscriptionTestScreen() {
           <Ionicons name="mic" size={48} color={colors.primary} />
           <Text style={styles.title}>Teste de Transcrição</Text>
           <Text style={styles.subtitle}>
-            Grava {RECORD_SECONDS}s de áudio e envia para o backend (Deepgram).{'\n'}
-            Requer backend em <Text style={styles.code}>Development</Text> e <Text style={styles.code}>OpenAI:ApiKey</Text> configurada.
+            Transcrição via Daily.co (em tempo real).{'\n'}
+            Entra em uma sala de teste, fale no microfone e veja o texto aparecer.
           </Text>
 
-          {status === 'idle' && (
-            <TouchableOpacity style={styles.btn} onPress={runTest} activeOpacity={0.8}>
-              <Ionicons name="mic" size={20} color={colors.surface} />
-              <Text style={styles.btnText}>Gravar e testar</Text>
+          {phase === 'idle' && (
+            <TouchableOpacity style={styles.btn} onPress={handleStart} activeOpacity={0.8}>
+              <Ionicons name="videocam" size={20} color={colors.surface} />
+              <Text style={styles.btnText}>Iniciar teste</Text>
             </TouchableOpacity>
           )}
 
-          {status === 'recording' && (
-            <View style={styles.recording}>
-              <View style={styles.recDot} />
-              <Text style={styles.recText}>Gravando... fale durante {RECORD_SECONDS}s</Text>
+          {phase === 'loading' && (
+            <View style={styles.loading}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.loadingText}>Criando sala e entrando...</Text>
             </View>
           )}
 
-          {status === 'sending' && (
-            <View style={styles.sending}>
-              <Text style={styles.sendingText}>Enviando para transcrição...</Text>
-            </View>
-          )}
-
-          {result && (
-            <View style={[styles.result, result.error && styles.resultError]}>
-              {result.error ? (
-                <>
-                  <Ionicons name="alert-circle" size={24} color={colors.error} />
-                  <Text style={styles.resultTitle}>Erro</Text>
-                  <Text style={styles.resultText}>{result.error}</Text>
-                  {result.error.includes('404') && (
-                    <Text style={styles.hint}>
-                      O endpoint /transcribe-test só existe em Development. Rode o backend localmente com ASPNETCORE_ENVIRONMENT=Development.
+          {phase === 'joined' && (
+            <View style={styles.joined}>
+              <View style={styles.statusRow}>
+                <View style={styles.statusDot} />
+                <Text style={styles.statusText}>Conectado · Fale no microfone</Text>
+              </View>
+              <ScrollView
+                style={styles.transcriptBox}
+                contentContainerStyle={styles.transcriptContent}
+                nestedScrollEnabled
+              >
+                {transcript.length === 0 ? (
+                  <Text style={styles.transcriptPlaceholder}>
+                    Aguardando transcrição... Fale claramente no microfone.
+                  </Text>
+                ) : (
+                  transcript.map((line, i) => (
+                    <Text key={i} style={styles.transcriptLine}>
+                      {line}
                     </Text>
-                  )}
-                </>
-              ) : (
-                <>
-                  <Ionicons name={result.transcribed ? 'checkmark-circle' : 'close-circle'} size={24} color={result.transcribed ? colors.success : colors.error} />
-                  <Text style={styles.resultTitle}>{result.transcribed ? 'Transcrição OK' : 'Sem texto detectado'}</Text>
-                  {result.fileSize && <Text style={styles.meta}>Tamanho: {Math.round(result.fileSize / 1024)} KB</Text>}
-                  {result.text && <Text style={styles.resultText}>{result.text}</Text>}
-                </>
-              )}
-              <TouchableOpacity style={styles.btnSecondary} onPress={() => { setStatus('idle'); setResult(null); }}>
-                <Text style={styles.btnSecondaryText}>Testar novamente</Text>
+                  ))
+                )}
+              </ScrollView>
+              <TouchableOpacity style={styles.btnLeave} onPress={handleLeave} activeOpacity={0.8}>
+                <Ionicons name="exit" size={20} color={colors.surface} />
+                <Text style={styles.btnLeaveText}>Sair da sala</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {phase === 'error' && (
+            <View style={styles.resultError}>
+              <Ionicons name="alert-circle" size={24} color={colors.error} />
+              <Text style={styles.resultTitle}>Erro</Text>
+              <Text style={styles.resultText}>{error ?? 'Erro desconhecido'}</Text>
+              <Text style={styles.hint}>
+                Verifique se o backend está rodando e se DAILY_API_KEY está configurada.
+              </Text>
+              <TouchableOpacity style={styles.btnSecondary} onPress={() => { setPhase('idle'); setError(null); }}>
+                <Text style={styles.btnSecondaryText}>Tentar novamente</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -195,7 +260,6 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 20, fontWeight: '700', color: colors.text, marginTop: 12 },
   subtitle: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginTop: 8, lineHeight: 22 },
-  code: { fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', fontSize: 13 },
   btn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -207,23 +271,45 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   btnText: { color: colors.surface, fontWeight: '600', fontSize: 16 },
-  recording: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 24 },
-  recDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.error },
-  recText: { color: colors.textSecondary, fontSize: 14 },
-  sending: { marginTop: 24 },
-  sendingText: { color: colors.textSecondary, fontSize: 14 },
-  result: {
+  loading: { marginTop: 24, alignItems: 'center', gap: 12 },
+  loadingText: { color: colors.textSecondary, fontSize: 14 },
+  joined: { marginTop: 24, width: '100%', alignItems: 'center' },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  statusDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.success },
+  statusText: { fontSize: 14, color: colors.textSecondary },
+  transcriptBox: {
+    width: '100%',
+    maxHeight: 200,
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    padding: 12,
+  },
+  transcriptContent: { paddingBottom: 8 },
+  transcriptPlaceholder: { fontSize: 14, color: colors.textMuted, fontStyle: 'italic' },
+  transcriptLine: { fontSize: 14, color: colors.text, marginBottom: 4, lineHeight: 20 },
+  btnLeave: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.error,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  btnLeaveText: { color: colors.surface, fontWeight: '600', fontSize: 14 },
+  resultError: {
     marginTop: 24,
     padding: 16,
     backgroundColor: colors.background,
     borderRadius: 12,
     width: '100%',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.error + '40',
   },
-  resultError: { borderWidth: 1, borderColor: colors.error + '40' },
   resultTitle: { fontSize: 16, fontWeight: '600', color: colors.text, marginTop: 8 },
   resultText: { fontSize: 14, color: colors.textSecondary, marginTop: 8, textAlign: 'center' },
-  meta: { fontSize: 12, color: colors.textMuted, marginTop: 4 },
   hint: { fontSize: 12, color: colors.textMuted, marginTop: 12, textAlign: 'center', fontStyle: 'italic' },
   btnSecondary: { marginTop: 16 },
   btnSecondaryText: { color: colors.primary, fontWeight: '600', fontSize: 14 },

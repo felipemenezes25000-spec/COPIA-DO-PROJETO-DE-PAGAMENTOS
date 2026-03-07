@@ -14,7 +14,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { Platform, Alert } from 'react-native';
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { transcribeAudioChunk } from '../lib/api';
 
 const CHUNK_DURATION_MS = 10_000; // 10 segundos por chunk

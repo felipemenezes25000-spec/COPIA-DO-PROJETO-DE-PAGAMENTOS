@@ -40,3 +40,13 @@ export async function fetchVideoRoomByRequest(requestId: string): Promise<DailyR
     return null;
   }
 }
+
+/** Cria sala de teste para transcrição via Daily.co (sem consulta ativa). */
+export async function fetchTranscriptionTestRoom(): Promise<{
+  roomUrl: string;
+  token: string;
+  roomName: string;
+  expiresInMinutes: number;
+}> {
+  return apiClient.post('/api/video/transcription-test-room');
+}
