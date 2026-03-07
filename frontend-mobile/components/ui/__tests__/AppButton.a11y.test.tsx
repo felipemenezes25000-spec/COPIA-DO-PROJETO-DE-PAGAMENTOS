@@ -6,6 +6,19 @@ jest.mock('@expo/vector-icons', () => ({
   Ionicons: 'Ionicons',
 }));
 
+jest.mock('../../../lib/ui/useAppTheme', () => ({
+  useAppTheme: () => ({
+    colors: {
+      primary: '#2CB1FF',
+      secondary: '#10B981',
+      error: '#EF4444',
+      white: '#FFFFFF',
+      textMuted: '#94A3B8',
+      borderLight: '#E2E8F0',
+    },
+  }),
+}));
+
 jest.mock('../../../lib/theme', () => ({
   theme: {
     colors: {

@@ -13,6 +13,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { theme, gradients } from '../../lib/theme';
 import { colors as doctorColors, gradients as doctorGradients } from '../../lib/themeDoctor';
 import { uiTokens } from '../../lib/ui/tokens';
+import { useColorSchemeContext } from '../../contexts/ColorSchemeContext';
+import { createTokens } from '../../lib/designSystem';
 
 interface ScreenProps extends ScrollViewProps {
   children: React.ReactNode;
@@ -35,6 +37,10 @@ export function Screen({
   ...scrollViewProps
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
+  const { colorScheme } = useColorSchemeContext();
+  const isDark = colorScheme === 'dark';
+  const tokens = createTokens('patient', colorScheme);
+
   const paddingTopContent = insets.top;
   const paddingStyle = padding
     ? { paddingHorizontal: uiTokens.screenPaddingHorizontal }
@@ -44,13 +50,13 @@ export function Screen({
   const isGradient = variant === 'gradient' || variant === 'doctor-gradient';
   const isDoctor = variant === 'doctor' || variant === 'doctor-gradient';
 
-  const gradientColors = isDoctor
+  const gradientColors: [string, string, ...string[]] = isDoctor
     ? (doctorGradients.doctorHeader as unknown as [string, string, ...string[]])
-    : (gradients.auth as any);
+    : (isDark ? [...tokens.gradients.auth] as [string, string, ...string[]] : [...gradients.auth] as [string, string, ...string[]]);
 
   const bgColor = isDoctor
     ? doctorColors.background
-    : theme.colors.background.default;
+    : (isDark ? tokens.colors.background : theme.colors.background.default);
 
   if (isGradient) {
     return (

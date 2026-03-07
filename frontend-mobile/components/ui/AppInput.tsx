@@ -207,7 +207,7 @@ const createStyles = (
     paddingVertical: 12,
   },
   errorContainer: {
-    minHeight: 20,
+    minHeight: 36,
     justifyContent: 'flex-end',
   },
   errorText: {
@@ -223,5 +223,6 @@ const createStyles = (
     color: colors.textMuted,
     marginTop: 4,
     marginLeft: 4,
+    lineHeight: 18,
   },
 });

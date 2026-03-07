@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../lib/theme';
+import { useAppTheme } from '../../lib/ui/useAppTheme';
 
 export type AppButtonVariant =
   | 'primary'
@@ -62,19 +63,18 @@ export function AppButton({
   style,
   pulse = false,
 }: AppButtonProps) {
+  const { colors } = useAppTheme();
   const isDisabled = disabled || loading;
   const sizeConf = SIZE_CONFIG[size];
 
-  // Map variants to new theme tokens
+  // Map variants to theme tokens (usa useAppTheme para dark mode)
   const getVariantStyles = () => {
-    const c = theme.colors;
-    
     switch (variant) {
       case 'secondary':
       case 'doctorSecondary':
         return {
-          bg: c.secondary.main,
-          text: c.secondary.contrast,
+          bg: colors.secondary,
+          text: colors.white,
           border: 'transparent',
           shadow: theme.shadows.button,
         };
@@ -82,22 +82,22 @@ export function AppButton({
       case 'doctorOutline':
         return {
           bg: 'transparent',
-          text: c.primary.main,
-          border: c.primary.main,
+          text: colors.primary,
+          border: colors.primary,
           shadow: theme.shadows.none,
         };
       case 'ghost':
         return {
           bg: 'transparent',
-          text: c.primary.main,
+          text: colors.primary,
           border: 'transparent',
           shadow: theme.shadows.none,
         };
       case 'danger':
       case 'doctorDanger':
         return {
-          bg: c.status.error,
-          text: c.text.inverse,
+          bg: colors.error,
+          text: colors.white,
           border: 'transparent',
           shadow: theme.shadows.button,
         };
@@ -105,8 +105,8 @@ export function AppButton({
       case 'doctorPrimary':
       default:
         return {
-          bg: c.primary.main,
-          text: c.primary.contrast,
+          bg: colors.primary,
+          text: colors.white,
           border: 'transparent',
           shadow: theme.shadows.button,
         };
@@ -156,8 +156,8 @@ export function AppButton({
           styles.base,
           {
             height: sizeConf.height,
-            backgroundColor: isDisabled ? theme.colors.text.disabled : stylesConf.bg,
-            borderColor: isDisabled ? 'transparent' : stylesConf.border,
+            backgroundColor: isDisabled ? colors.textMuted : stylesConf.bg,
+            borderColor: isDisabled ? colors.borderLight : stylesConf.border,
             borderWidth: stylesConf.border !== 'transparent' ? 1.5 : 0,
             paddingHorizontal: sizeConf.padding,
           },
@@ -170,7 +170,7 @@ export function AppButton({
       >
         {loading ? (
           <ActivityIndicator
-            color={variant.includes('outline') || variant === 'ghost' ? stylesConf.text : theme.colors.text.inverse}
+            color={variant.includes('outline') || variant === 'ghost' ? stylesConf.text : colors.white}
             size="small"
           />
         ) : (
@@ -180,7 +180,7 @@ export function AppButton({
               <Ionicons
                 name={icon}
                 size={sizeConf.iconSize}
-                color={isDisabled ? theme.colors.text.inverse : stylesConf.text}
+                color={isDisabled ? colors.textMuted : stylesConf.text}
                 style={[styles.icon, { marginRight: title ? 8 : 0 }]}
               />
             )}
@@ -189,7 +189,7 @@ export function AppButton({
                 style={[
                   styles.text,
                   {
-                    color: isDisabled ? theme.colors.text.inverse : stylesConf.text,
+                    color: isDisabled ? colors.textMuted : stylesConf.text,
                     fontSize: sizeConf.fontSize,
                   },
                 ]}

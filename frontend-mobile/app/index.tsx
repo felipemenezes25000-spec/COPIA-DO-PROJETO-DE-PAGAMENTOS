@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Logo } from '../components/Logo';
 import { Loading } from '../components/Loading';
 import { useAuth } from '../contexts/AuthContext';
-import { gradients } from '../lib/theme';
+import { useAppTheme } from '../lib/ui/useAppTheme';
 import { isOnboardingDone } from '../lib/onboarding';
 
 // Se após esse tempo ainda estiver na splash, força ir para login (evita tela travada)
@@ -13,6 +13,7 @@ const SPLASH_MAX_MS = 4000;
 
 export default function SplashScreen() {
   const { user, loading } = useAuth();
+  const { gradients } = useAppTheme();
   const router = useRouter();
   const hasNavigated = useRef(false);
 
@@ -33,8 +34,7 @@ export default function SplashScreen() {
         } else {
           // Primeiro acesso: mostrar onboarding para pacientes
           const done = await isOnboardingDone();
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          router.replace((done ? '/(auth)/login' : '/onboarding') as any);
+          router.replace(done ? '/(auth)/login' : '/onboarding');
         }
       }, delay);
       return () => clearTimeout(t);
@@ -53,7 +53,7 @@ export default function SplashScreen() {
 
   return (
     <LinearGradient
-      colors={gradients.splash as any}
+      colors={gradients.splash as [string, string, ...string[]]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.container}

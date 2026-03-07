@@ -867,16 +867,15 @@ export default function Register() {
             activeOpacity={0.8}
           >
             <View style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}>
-              {acceptedTerms ? <Ionicons name="checkmark" size={16} color={colors.white} /> : null}
+              {acceptedTerms ? <Ionicons name="checkmark" size={14} color={colors.white} /> : null}
             </View>
-            <Text style={styles.termsLabel}>Li e aceito os </Text>
-            <TouchableOpacity
-              onPress={() => router.push('/terms' as any)}
-              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-            >
-              <Text style={styles.termsLink}>Termos de Uso da RenoveJá Saúde</Text>
-            </TouchableOpacity>
-            <Text style={styles.termsLabel}>.</Text>
+            <Text style={styles.termsLabel} numberOfLines={0}>
+              Li e aceito os{' '}
+              <Text style={styles.termsLink} onPress={() => router.push('/terms')}>
+                Termos de Uso da RenoveJá Saúde
+              </Text>
+              .
+            </Text>
           </TouchableOpacity>
           {fieldErrors.terms ? (
             <Text style={styles.fieldErrorText}>{fieldErrors.terms}</Text>
@@ -888,16 +887,15 @@ export default function Register() {
             activeOpacity={0.8}
           >
             <View style={[styles.checkbox, acceptedPrivacy && styles.checkboxChecked]}>
-              {acceptedPrivacy ? <Ionicons name="checkmark" size={16} color={colors.white} /> : null}
+              {acceptedPrivacy ? <Ionicons name="checkmark" size={14} color={colors.white} /> : null}
             </View>
-            <Text style={styles.termsLabel}>Li e aceito a </Text>
-            <TouchableOpacity
-              onPress={() => router.push('/privacy' as any)}
-              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-            >
-              <Text style={styles.termsLink}>Política de Privacidade da RenoveJá Saúde</Text>
-            </TouchableOpacity>
-            <Text style={styles.termsLabel}>.</Text>
+            <Text style={styles.termsLabel} numberOfLines={0}>
+              Li e aceito a{' '}
+              <Text style={styles.termsLink} onPress={() => router.push('/privacy')}>
+                Política de Privacidade da RenoveJá Saúde
+              </Text>
+              .
+            </Text>
           </TouchableOpacity>
           {fieldErrors.privacy ? (
             <Text style={styles.fieldErrorText}>{fieldErrors.privacy}</Text>
@@ -1299,16 +1297,17 @@ function makeStyles(colors: DesignColors) {
   },
   termsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
+    alignItems: 'flex-start',
   },
   checkbox: {
     width: 22,
     height: 22,
-    borderRadius: 7,
-    borderWidth: 2,
+    minWidth: 22,
+    borderRadius: 6,
+    borderWidth: 2.5,
     borderColor: colors.border,
-    marginRight: 10,
+    marginRight: 12,
+    marginTop: 2,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface,
@@ -1318,7 +1317,9 @@ function makeStyles(colors: DesignColors) {
     borderColor: colors.primary,
   },
   termsLabel: {
+    flex: 1,
     fontSize: 14,
+    lineHeight: 22,
     color: colors.textSecondary,
   },
   termsLink: {

@@ -303,7 +303,7 @@ export default function NewPrescription() {
                   )}
                 </View>
                 {isSelectable && selectedType === type.key && (
-                  <View style={styles.checkIcon}>
+                  <View style={styles.checkIcon} pointerEvents="none">
                     <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
                   </View>
                 )}
@@ -500,7 +500,8 @@ function makeStyles(colors: DesignColors) {
     },
     typeTextContainer: {
       flex: 1,
-      marginRight: s.sm,
+      marginRight: 36,
+      minWidth: 0,
     },
     typeTitleRow: {
       flexDirection: 'row',
@@ -682,6 +683,7 @@ function makeStyles(colors: DesignColors) {
       flexDirection: 'row',
       backgroundColor: colors.infoLight,
       marginTop: s.lg,
+      marginBottom: s.md,
       padding: s.md,
       borderRadius: r.lg,
       gap: s.sm,
@@ -689,9 +691,10 @@ function makeStyles(colors: DesignColors) {
     },
     infoText: {
       flex: 1,
-      ...typo.variants.caption,
+      fontSize: 13,
       color: colors.textSecondary,
-      lineHeight: 18,
-    } as any,
+      lineHeight: 20,
+      minWidth: 0,
+    },
   });
 }

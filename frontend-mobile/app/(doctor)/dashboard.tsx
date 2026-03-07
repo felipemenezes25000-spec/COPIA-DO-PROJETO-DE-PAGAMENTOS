@@ -30,6 +30,7 @@ import {
   getPendingForPanel,
   getRequestUiState,
 } from '../../lib/domain/getRequestUiState';
+import { formatRelativeTime } from '../../lib/utils/format';
 import { haptics } from '../../lib/haptics';
 import { showToast } from '../../components/ui/Toast';
 import type { DesignColors } from '../../lib/designSystem';
@@ -63,7 +64,7 @@ const QueueItem = ({ request, onPress, colors }: { request: RequestResponseDto; 
       
       <View style={styles.queueContent}>
         <View style={styles.queueHeader}>
-          <Text style={[styles.queueType, { color: colors.textMuted }]}>
+          <Text style={[styles.queueType, { color: colors.textSecondary }]}>
             {request.requestType === 'prescription' ? 'Receita' : 'Exame/Consulta'}
           </Text>
           {isHighRisk && (
@@ -80,7 +81,7 @@ const QueueItem = ({ request, onPress, colors }: { request: RequestResponseDto; 
         
         <View style={styles.queueFooter}>
           <Text style={[styles.queueTime, { color: colors.textSecondary }]}>
-            Há {Math.floor(Math.random() * 50) + 2} min
+            {formatRelativeTime(request.createdAt)}
           </Text>
           <View style={[styles.statusDot, { backgroundColor: colors.textMuted }]} />
           <Text style={[styles.queueStatus, { color: statusColor }]}>{label}</Text>
@@ -150,9 +151,12 @@ export default function DoctorDashboard() {
   const pendingList = useMemo(() => getPendingForPanel(queue, 10), [queue]);
   const pendentesCount = countPendentes(queue);
   
-  // Sanitização do nome (Dr. Dr.)
-  const rawNames = (user?.name || '').split(' ');
-  const displayFirst = rawNames[0];
+  // Sanitização do nome: evita "Dr(a). Dr" quando nome começa com Dr/Dr./Dra
+  const rawNames = (user?.name || '').trim().split(/\s+/).filter(Boolean);
+  const titlePrefixes = ['dr', 'dr.', 'dra', 'dra.'];
+  const firstPart = rawNames[0] ?? '';
+  const isTitle = titlePrefixes.includes(firstPart.toLowerCase().replace(/\.$/, ''));
+  const displayFirst = isTitle && rawNames.length > 1 ? rawNames[1] : firstPart || 'Médico';
   const greetingName = displayFirst.toLowerCase().startsWith('dr') ? displayFirst : `Dr(a). ${displayFirst}`;
 
   if (loading) {
@@ -189,7 +193,7 @@ export default function DoctorDashboard() {
               </Text>
             </View>
             <TouchableOpacity style={styles.profileButton} onPress={() => router.push('/(doctor)/profile')}>
-               <Text style={styles.profileInitials}>{displayFirst[0]}</Text>
+               <Text style={styles.profileInitials}>{(displayFirst[0] ?? user?.name?.[0] ?? 'M').toUpperCase()}</Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>

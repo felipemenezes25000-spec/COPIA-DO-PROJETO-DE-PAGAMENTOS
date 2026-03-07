@@ -85,7 +85,7 @@ export function AppSegmentedControl({
                   {
                     fontSize: conf.fontSize,
                     fontFamily: typography.fontFamily.bold,
-                    color: isSelected ? colors.primary : colors.textMuted,
+                    color: isSelected ? colors.primary : colors.textSecondary,
                   },
                 ]}
                 numberOfLines={1}
@@ -108,7 +108,7 @@ export function AppSegmentedControl({
                     style={{
                       fontSize: conf.badgeFontSize,
                       fontFamily: typography.fontFamily.bold,
-                      color: isSelected ? colors.primary : colors.textMuted,
+                      color: isSelected ? colors.primary : colors.textSecondary,
                     }}
                   >
                     {String(item.count)}
@@ -129,8 +129,42 @@ export function AppSegmentedControl({
 
   return (
     <View style={s.wrapper}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
-        {content}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[s.scrollContent, { flexGrow: 0 }]}>
+        <View style={[s.container, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
+          {items.map((item) => {
+            const isSelected = value === item.key;
+            const showCount = typeof item.count === 'number';
+            const muted = (colors as { muted?: string }).muted ?? colors.surfaceSecondary;
+            return (
+              <Pressable
+                key={item.key}
+                onPress={() => !disabled && onValueChange(item.key)}
+                disabled={disabled}
+                style={({ pressed }) => [
+                  s.segmentScrollable,
+                  { minHeight: Math.max(MIN_TOUCH, conf.height), borderRadius: conf.borderRadius - 2, paddingVertical: conf.padV },
+                  isSelected && [s.segmentActive, { backgroundColor: colors.surface, borderColor: colors.borderLight }, (shadows as { sm?: object })?.sm],
+                  pressed && !disabled && s.pressed,
+                  disabled && s.disabled,
+                ]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isSelected, disabled }}
+                accessibilityLabel={item.label}
+              >
+                <View style={s.labelRow}>
+                  <Text style={[s.label, { fontSize: conf.fontSize, fontFamily: typography.fontFamily.bold, color: isSelected ? colors.primary : colors.textSecondary }]} numberOfLines={1}>
+                    {item.label}
+                  </Text>
+                  {showCount && (
+                    <View style={[s.badge, { backgroundColor: isSelected ? colors.primaryGhost : muted, borderColor: isSelected ? colors.primary : colors.border }]}>
+                      <Text style={{ fontSize: conf.badgeFontSize, fontFamily: typography.fontFamily.bold, color: isSelected ? colors.primary : colors.textSecondary }}>{String(item.count)}</Text>
+                    </View>
+                  )}
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
       </ScrollView>
     </View>
   );
@@ -155,8 +189,18 @@ const s = StyleSheet.create({
   },
   segment: {
     flex: 1,
-    minWidth: 88,
+    minWidth: 72,
     paddingHorizontal: 10,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  segmentScrollable: {
+    flex: 0,
+    minWidth: 80,
+    paddingHorizontal: 12,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',

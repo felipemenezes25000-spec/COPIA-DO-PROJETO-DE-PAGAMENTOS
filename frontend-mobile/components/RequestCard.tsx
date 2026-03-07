@@ -1,26 +1,29 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, shadows } from '../lib/theme';
 import { uiTokens } from '../lib/ui/tokens';
+import { useAppTheme } from '../lib/ui/useAppTheme';
+import type { DesignColors, DesignTokens } from '../lib/designSystem';
 import { StatusBadge } from './StatusBadge';
 import { getDisplayPrice } from '../lib/config/pricing';
 import { formatBRL, formatDateBR } from '../lib/utils/format';
 import { RequestResponseDto } from '../types/database';
 
-const RISK_CONFIG: Record<string, { label: string; color: string; bg: string; icon: keyof typeof Ionicons.glyphMap }> = {
-  high: { label: 'Risco alto', color: colors.error, bg: colors.errorLight, icon: 'alert-circle' },
-  medium: { label: 'Risco médio', color: colors.warning, bg: colors.warningLight, icon: 'warning' },
-  low: { label: 'Risco baixo', color: colors.success, bg: colors.successLight, icon: 'shield-checkmark' },
-};
+function getRiskConfig(colors: DesignColors): Record<string, { label: string; color: string; bg: string; icon: keyof typeof Ionicons.glyphMap }> {
+  return {
+    high: { label: 'Risco alto', color: colors.error, bg: colors.errorLight, icon: 'alert-circle' },
+    medium: { label: 'Risco médio', color: colors.warning, bg: colors.warningLight, icon: 'warning' },
+    low: { label: 'Risco baixo', color: colors.success, bg: colors.successLight, icon: 'shield-checkmark' },
+  };
+}
 
-const TYPE_CONFIG: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string; bg: string; label: string }> = {
-  prescription: { icon: 'document-text', color: colors.info, bg: colors.infoLight, label: 'Receita' },
-  exam: { icon: 'flask', color: colors.textMuted, bg: colors.surfaceSecondary, label: 'Exame' },
-  consultation: { icon: 'videocam', color: colors.success, bg: colors.successLight, label: 'Consulta' },
-};
-
-const FALLBACK_TYPE = { icon: 'document' as keyof typeof Ionicons.glyphMap, color: colors.info, bg: colors.infoLight, label: 'Solicitação' };
+function getTypeConfig(colors: DesignColors): Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string; bg: string; label: string }> {
+  return {
+    prescription: { icon: 'document-text', color: colors.info, bg: colors.infoLight, label: 'Receita' },
+    exam: { icon: 'flask', color: colors.textMuted, bg: colors.surfaceSecondary, label: 'Exame' },
+    consultation: { icon: 'videocam', color: colors.success, bg: colors.successLight, label: 'Consulta' },
+  };
+}
 
 function getRequestSubtitle(request: RequestResponseDto, showPatientName?: boolean): string {
   if (showPatientName && request.patientName) {
@@ -45,7 +48,7 @@ function getMedicationPreview(request: RequestResponseDto): string | null {
     return first + more;
   }
   if (request.requestType === 'consultation' && request.symptoms) {
-    return request.symptoms.length > 40 ? request.symptoms.slice(0, 40) + '…' : request.symptoms;
+    return request.symptoms.length > 65 ? request.symptoms.slice(0, 65) + '…' : request.symptoms;
   }
   return null;
 }
@@ -72,11 +75,16 @@ function RequestCardInner({
   suppressHorizontalMargin = false,
   accessibilityLabel,
 }: Props) {
-  const typeConf = TYPE_CONFIG[request.requestType] || FALLBACK_TYPE;
+  const { colors, shadows } = useAppTheme();
+  const riskConfig = useMemo(() => getRiskConfig(colors), [colors]);
+  const typeConfig = useMemo(() => getTypeConfig(colors), [colors]);
+  const fallbackType = useMemo(() => ({ icon: 'document' as keyof typeof Ionicons.glyphMap, color: colors.info, bg: colors.infoLight, label: 'Solicitação' }), [colors]);
+  const typeConf = typeConfig[request.requestType] || fallbackType;
   const preview = getMedicationPreview(request);
   const price = getDisplayPrice(request.price, request.requestType, request.prescriptionType ?? undefined);
-  const riskConf = showRisk && request.aiRiskLevel ? RISK_CONFIG[request.aiRiskLevel] : null;
+  const riskConf = showRisk && request.aiRiskLevel ? riskConfig[request.aiRiskLevel] : null;
   const defaultLabel = `${typeConf.label}${request.patientName ? ` de ${request.patientName}` : ''}`;
+  const styles = useMemo(() => makeStyles(colors, shadows), [colors, shadows]);
 
   return (
     <Pressable
@@ -118,7 +126,7 @@ function RequestCardInner({
           {showPrice && price > 0 && (
             <Text style={styles.price}>{formatBRL(price)}</Text>
           )}
-          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} style={styles.chevron} />
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} style={styles.chevron} importantForAccessibility="no" />
         </View>
       </View>
     </Pressable>
@@ -138,102 +146,104 @@ const RequestCard = React.memo(RequestCardInner, (prev, next) =>
 
 export default RequestCard;
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    marginHorizontal: uiTokens.screenPaddingHorizontal,
-    marginBottom: 10,
-    overflow: 'hidden',
-    ...shadows.card,
-  },
-  containerNoHorizontalMargin: {
-    marginHorizontal: 0,
-  },
-  pressed: {
-    transform: [{ scale: 0.98 }],
-    opacity: 0.92,
-  },
-  accentStrip: {
-    width: 3,
-    alignSelf: 'stretch',
-    borderTopLeftRadius: 14,
-    borderBottomLeftRadius: 14,
-  },
-  iconContainer: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 14,
-    marginRight: 12,
-    marginTop: 14,
-    alignSelf: 'flex-start',
-  },
-  content: {
-    flex: 1,
-    paddingVertical: 14,
-    paddingRight: 18,
-    minHeight: 56,
-    minWidth: 0,
-  },
-  topRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
-  title: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.text,
-    letterSpacing: 0.1,
-    marginRight: 8,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginBottom: 5,
-  },
-  preview: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginBottom: 7,
-  },
-  bottomRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  riskBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    gap: 3,
-  },
-  riskText: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.1,
-  },
-  spacer: {
-    flex: 1,
-  },
-  price: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.primary,
-  },
-  chevron: {
-    marginLeft: 10,
-    flexShrink: 0,
-  },
-});
+function makeStyles(colors: DesignColors, shadows: DesignTokens['shadows']) {
+  return StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      backgroundColor: colors.surface,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      marginHorizontal: uiTokens.screenPaddingHorizontal,
+      marginBottom: 10,
+      overflow: 'hidden',
+      ...shadows.card,
+    },
+    containerNoHorizontalMargin: {
+      marginHorizontal: 0,
+    },
+    pressed: {
+      transform: [{ scale: 0.98 }],
+      opacity: 0.92,
+    },
+    accentStrip: {
+      width: 3,
+      alignSelf: 'stretch',
+      borderTopLeftRadius: 14,
+      borderBottomLeftRadius: 14,
+    },
+    iconContainer: {
+      width: 38,
+      height: 38,
+      borderRadius: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginLeft: 14,
+      marginRight: 12,
+      marginTop: 14,
+      alignSelf: 'flex-start',
+    },
+    content: {
+      flex: 1,
+      paddingVertical: 14,
+      paddingRight: 18,
+      minHeight: 56,
+      minWidth: 0,
+    },
+    topRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 2,
+    },
+    title: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.text,
+      letterSpacing: 0.1,
+      marginRight: 8,
+    },
+    subtitle: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginBottom: 5,
+    },
+    preview: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginBottom: 7,
+    },
+    bottomRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    riskBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      gap: 3,
+    },
+    riskText: {
+      fontSize: 12,
+      fontWeight: '700',
+      letterSpacing: 0.1,
+    },
+    spacer: {
+      flex: 1,
+    },
+    price: {
+      fontSize: 14,
+      fontWeight: '800',
+      color: colors.primary,
+    },
+    chevron: {
+      marginLeft: 10,
+      flexShrink: 0,
+    },
+  });
+}

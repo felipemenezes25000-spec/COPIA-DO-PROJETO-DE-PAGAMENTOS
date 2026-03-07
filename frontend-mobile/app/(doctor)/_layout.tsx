@@ -4,7 +4,6 @@ import { Tabs, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
-import { useColorSchemeContext } from '../../contexts/ColorSchemeContext';
 import { haptics } from '../../lib/haptics';
 import { TabBarIcon } from '../../components/ui/TabBarIcon';
 import { useNotifications } from '../../contexts/NotificationContext';
@@ -20,8 +19,8 @@ export default function DoctorLayout() {
   const { user, loading } = useAuth();
   const { unreadCount } = useNotifications();
   const hasUnread = unreadCount > 0;
-  const { colors } = useAppTheme({ role: 'doctor' });
-  const { isDark } = useColorSchemeContext();
+  const { colors, scheme } = useAppTheme({ role: 'doctor' });
+  const isDark = scheme === 'dark';
 
   const tabBarHeight = Math.max(72, TAB_BAR_BASE_HEIGHT + TAB_BAR_PADDING_TOP + insets.bottom);
   const tabBarPaddingBottom = Math.max(10, insets.bottom + (Platform.OS === 'ios' ? 4 : 8));
@@ -42,7 +41,7 @@ export default function DoctorLayout() {
         screenOptions={{
           headerShown: false,
           tabBarActiveTintColor: colors.primaryLight,
-          tabBarInactiveTintColor: colors.textMuted,
+          tabBarInactiveTintColor: isDark ? colors.textSecondary : colors.textMuted,
           tabBarStyle: {
             backgroundColor: colors.surface,
             borderTopColor: colors.borderLight,

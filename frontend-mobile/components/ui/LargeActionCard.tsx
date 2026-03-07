@@ -65,7 +65,7 @@ const createStyles = (
     text: string;
     textMuted: string;
     textSecondary: string;
-    white: string;
+    surface: string;
     borderLight: string;
   },
   radius: {
@@ -76,7 +76,7 @@ const createStyles = (
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.borderLight,
     borderRadius: radius.card,

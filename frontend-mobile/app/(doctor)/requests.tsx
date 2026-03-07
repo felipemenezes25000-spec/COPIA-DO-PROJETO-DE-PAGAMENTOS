@@ -39,7 +39,7 @@ const TYPE_FILTER_ITEMS: { key: string; label: string; type?: string }[] = [
   { key: 'all', label: 'Todos' },
   { key: 'prescription', label: 'Receitas', type: 'prescription' },
   { key: 'exam', label: 'Exames', type: 'exam' },
-  { key: 'consultation', label: 'Consulta', type: 'consultation' },
+  { key: 'consultation', label: 'Consultas', type: 'consultation' },
 ];
 
 function getHeaderLabel(activeKey: string): { title: string; subtitle: string } {
@@ -188,7 +188,7 @@ export default function DoctorQueue() {
         items={[
           { label: 'Total', value: counts.all },
           { label: 'Consultas', value: counts.consultation },
-          { label: 'No filtro', value: filteredRequests.length },
+          { label: 'Exibidos', value: filteredRequests.length },
         ]}
       />
 

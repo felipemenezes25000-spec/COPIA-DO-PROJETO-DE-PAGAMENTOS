@@ -16,7 +16,8 @@ export default function PatientLayout() {
   const insets = useSafeAreaInsets();
   const { user, loading } = useAuth();
   const { unreadCount } = useNotifications();
-  const { colors } = useAppTheme();
+  const { colors, scheme } = useAppTheme();
+  const isDark = scheme === 'dark';
 
   const tabBarHeight = Math.max(72, TAB_BAR_BASE_HEIGHT + TAB_BAR_PADDING_TOP + insets.bottom);
   const tabBarPaddingBottom = Math.max(10, insets.bottom + (Platform.OS === 'ios' ? 4 : 8));
@@ -35,7 +36,7 @@ export default function PatientLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
+        tabBarInactiveTintColor: isDark ? colors.textSecondary : colors.textMuted,
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.borderLight,

@@ -306,7 +306,7 @@ export default function NewExam() {
         {/* Exams List */}
         <Text style={styles.overline}>EXAMES DESEJADOS</Text>
         {currentStep === 2 && (
-          <Text style={styles.stepHint} numberOfLines={3}>Passo 2 — Digite o nome do exame e toque no botão + para adicionar. Faça isso para cada exame que você precisa.</Text>
+          <Text style={styles.stepHint}>Passo 2 — Digite o nome do exame e toque no botão + para adicionar. Faça isso para cada exame que você precisa.</Text>
         )}
         <View style={styles.inputRow}>
           <AppInput
@@ -347,6 +347,9 @@ export default function NewExam() {
           numberOfLines={4}
           textAlignVertical="top"
         />
+        {!isFormValid && symptoms.trim().length === 0 && (
+          <Text style={styles.inputErrorHint}>Descreva seus sintomas para continuar</Text>
+        )}
 
         {/* Photo */}
         <Text style={styles.overline}>FOTO DO PEDIDO (SE TIVER)</Text>
@@ -557,6 +560,12 @@ function makeStyles(colors: DesignColors) {
     inputError: {
       borderColor: colors.error,
       borderWidth: 1.5,
+    },
+    inputErrorHint: {
+      marginTop: s.xs,
+      fontSize: 12,
+      color: colors.error,
+      lineHeight: 16,
     },
     photoHint: {
       fontSize: 12,

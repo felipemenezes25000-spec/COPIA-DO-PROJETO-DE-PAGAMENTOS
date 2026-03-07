@@ -60,3 +60,21 @@ export function formatDateTimeBR(dateStr: string | Date): string {
     year: 'numeric',
   })} ${formatTimeBR(date)}`;
 }
+
+/**
+ * Formata tempo relativo em pt-BR: "Agora", "Há X min", "Há X h", "Há X dias".
+ */
+export function formatRelativeTime(dateStr: string | Date): string {
+  const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+  if (Number.isNaN(date.getTime())) return '—';
+  const now = Date.now();
+  const ms = now - date.getTime();
+  const min = Math.floor(ms / 60_000);
+  const h = Math.floor(ms / 3_600_000);
+  const days = Math.floor(ms / 86_400_000);
+  if (min < 1) return 'Agora';
+  if (min < 60) return `Há ${min} min`;
+  if (h < 24) return `Há ${h} h`;
+  if (days < 7) return `Há ${days} dias`;
+  return formatDateBR(date, { short: true });
+}

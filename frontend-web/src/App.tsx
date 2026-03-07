@@ -1,6 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
-import Verify from './pages/Verify';
-import Cookies from './pages/Cookies';
+import Verify from '@/pages/Verify';
+import Cookies from '@/pages/Cookies';
 
 export default function App() {
   return (

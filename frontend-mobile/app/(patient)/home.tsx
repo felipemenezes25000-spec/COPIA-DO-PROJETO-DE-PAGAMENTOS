@@ -453,7 +453,7 @@ export default function PatientHome() {
               <Ionicons name="chevron-forward" size={14} color={colors.primary} />
             </Pressable>
           </View>
-          <Text style={styles.sectionHint} numberOfLines={2} ellipsizeMode="tail">Toque em um pedido para ver os detalhes. Use "Ver todos" para ver a lista completa.</Text>
+          <Text style={styles.sectionHint} numberOfLines={3}>Toque em um pedido para ver os detalhes. Use "Ver todos" para ver a lista completa.</Text>
           {recentRequests.map((req) => (
             <RequestCard
               key={req.id}

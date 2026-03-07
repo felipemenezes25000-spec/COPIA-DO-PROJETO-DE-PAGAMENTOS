@@ -450,8 +450,9 @@ function makeStyles(colors: DesignColors) {
       textAlign: 'center',
     },
     bannerDesc: {
-      ...t.variants.body2,
-      color: colors.textSecondary,
+      fontSize: t.fontSize.sm,
+      lineHeight: 20,
+      color: colors.text,
       textAlign: 'center',
       marginTop: s.xs,
     },
@@ -462,7 +463,7 @@ function makeStyles(colors: DesignColors) {
     },
     stepHint: {
       fontSize: 13,
-      color: colors.textSecondary,
+      color: colors.text,
       marginBottom: s.sm,
       lineHeight: 20,
     },
@@ -537,7 +538,7 @@ function makeStyles(colors: DesignColors) {
       textAlign: 'center',
     },
     textArea: {
-      backgroundColor: colors.surfaceSecondary,
+      backgroundColor: colors.surface,
       borderRadius: r.md,
       borderWidth: 1,
       borderColor: colors.border,

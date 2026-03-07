@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { verifyReceita, type VerifySuccess } from '../api/verify';
+import { verifyReceita, type VerifySuccess } from '@/api/verify';
 
 type VerifyState = 'idle' | 'loading' | 'success' | 'error';
 
