@@ -486,9 +486,9 @@ function ConductSection({ request, conductNotes, setConductNotes, includeConduct
 }) {
   const { colors } = useAppTheme();
   const s = useMemo(() => makeStyles(colors), [colors]);
-  if (request.requestType !== 'consultation') return null;
   const [sheetOpen, setSheetOpen] = useState(false);
   const suggestion = request.aiConductSuggestion || '';
+  if (request.requestType !== 'consultation') return null;
 
   return (
     <DoctorCard style={[s.cardMargin, s.formCard]}>

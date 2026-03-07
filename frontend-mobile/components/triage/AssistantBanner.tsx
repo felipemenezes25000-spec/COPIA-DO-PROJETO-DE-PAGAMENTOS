@@ -76,8 +76,6 @@ export function AssistantBanner({ onAction, onCompanionPress, containerStyle, hi
     }
   }, [current, muteCurrent]);
 
-  if (hidden) return null;
-
   // Estado companion: Dra. Renoveja sempre visível — dicas rotativas para manter interação
   const isCompanion = !current;
   const [companionTipIndex, setCompanionTipIndex] = useState(0);
@@ -88,6 +86,9 @@ export function AssistantBanner({ onAction, onCompanionPress, containerStyle, hi
     }, 6000); // Rotaciona a cada 6s
     return () => clearInterval(t);
   }, [isCompanion]);
+
+  if (hidden) return null;
+
   const av = current ? AVATAR[current.avatarState] : AVATAR.neutral;
   const accent = current ? ACCENT[current.severity] : theme.colors.primary.main;
 

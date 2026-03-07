@@ -1,3 +1,4 @@
+/* eslint-env node */
 import { existsSync } from "fs";
 import { join } from "path";
 

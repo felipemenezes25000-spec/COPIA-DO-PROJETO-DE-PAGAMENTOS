@@ -56,15 +56,9 @@ interface AiCopilotSectionProps {
 }
 
 export function AiCopilotSection({ request, expanded, onToggleExpand, style }: AiCopilotSectionProps) {
-  if (!hasUsefulAiContent(request.aiSummaryForDoctor, request.aiRiskLevel, request.aiUrgency)) {
-    return null;
-  }
-
   const [sheetOpen, setSheetOpen] = useState(false);
   const summaryText = request.aiSummaryForDoctor?.trim() ?? '';
   const blocks = useMemo(() => parseAiSummary(summaryText), [summaryText]);
-  const shouldTruncate = !expanded && blocks.length > 6;
-  const displayBlocks = shouldTruncate ? blocks.slice(0, 6) : blocks;
   const sheetActions = useMemo<AIActionSheetAction[]>(() => {
     const actions: AIActionSheetAction[] = [
       {
@@ -87,6 +81,13 @@ export function AiCopilotSection({ request, expanded, onToggleExpand, style }: A
     }
     return actions;
   }, [blocks.length, expanded, onToggleExpand, summaryText]);
+
+  if (!hasUsefulAiContent(request.aiSummaryForDoctor, request.aiRiskLevel, request.aiUrgency)) {
+    return null;
+  }
+
+  const shouldTruncate = !expanded && blocks.length > 6;
+  const displayBlocks = shouldTruncate ? blocks.slice(0, 6) : blocks;
 
   return (
     <DoctorCard style={[style, s.aiCard]}>
