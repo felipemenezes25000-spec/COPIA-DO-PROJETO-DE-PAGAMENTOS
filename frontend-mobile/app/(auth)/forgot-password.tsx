@@ -124,6 +124,8 @@ function makeStyles(colors: DesignColors) {
   },
   centerContent: {
     alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    overflow: 'visible',
   },
   brandTitle: {
     fontSize: theme.typography.variants.h1.fontSize,
@@ -148,6 +150,7 @@ function makeStyles(colors: DesignColors) {
     color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.lg,
+    flexWrap: 'wrap',
   },
   successCircle: {
     width: 72,

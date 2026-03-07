@@ -1,10 +1,13 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using RenoveJa.Application.Configuration;
 using RenoveJa.Application.DTOs.Requests;
 using RenoveJa.Application.Interfaces;
 using RenoveJa.Domain.Interfaces;
 using RenoveJa.Infrastructure.Data.Supabase;
+using RenoveJa.Infrastructure.Video;
 using System.Security.Claims;
 
 namespace RenoveJa.Api.Controllers;
@@ -25,6 +28,9 @@ public class RequestsController(
     IConsultationEncounterService consultationEncounterService,
     IDoctorPatientNotesRepository doctorPatientNotesRepository,
     IDocumentTokenService documentTokenService,
+    IRequestRepository requestRepository,
+    IDailyVideoService dailyVideoService,
+    IOptions<DailyConfig> dailyConfig,
     SupabaseClient supabaseClient,
     ILogger<RequestsController> logger) : ControllerBase
 {
@@ -581,6 +587,33 @@ public class RequestsController(
         var request = await requestService.GetRequestByIdAsync(id, userId, cancellationToken);
         _ = auditEventService.LogReadAsync(userId, "Request", id, "api", HttpContext.Connection.RemoteIpAddress?.ToString(), HttpContext.Request.Headers.UserAgent.ToString(), cancellationToken: cancellationToken);
         return Ok(request);
+    }
+
+    /// <summary>
+    /// Lista gravações da consulta (Daily). Paciente, médico da consulta ou admin.
+    /// room_name = consult-{requestId:N} permite identificar qual gravação pertence a qual request.
+    /// </summary>
+    [HttpGet("{id}/recordings")]
+    public async Task<IActionResult> GetRecordings(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        var request = await requestRepository.GetByIdAsync(id, cancellationToken);
+        if (request == null)
+            return NotFound();
+
+        var isPatient = request.PatientId == userId;
+        var isDoctor = request.DoctorId.HasValue && request.DoctorId.Value == userId;
+        var isAdmin = User.IsInRole("admin");
+
+        if (!isPatient && !isDoctor && !isAdmin)
+            return Forbid();
+
+        var roomName = dailyConfig.Value.GetRoomName(id);
+        var recordings = await dailyVideoService.ListRecordingsByRoomAsync(roomName, cancellationToken);
+
+        return Ok(new { requestId = id, roomName, recordings });
     }
 
     /// <summary>

@@ -298,7 +298,7 @@ export default function ConsultationScreen() {
           <Text style={styles.stepHint}>Passo 2 — Toque no − para diminuir ou no + para aumentar os minutos. O preço atualiza na hora.</Text>
         )}
         <Text style={styles.minutesHint}>
-          A chamada encerra automaticamente ao atingir o tempo. Minutos não usados viram saldo em banco de horas.
+          A chamada encerra automaticamente ao atingir o tempo. Minutos não usados viram saldo em banco de{'\u00A0'}horas.
         </Text>
         <View style={styles.minutesStepperRow}>
           <TouchableOpacity
@@ -542,7 +542,8 @@ function makeStyles(colors: DesignColors) {
       borderRadius: r.md,
       borderWidth: 1,
       borderColor: colors.border,
-      padding: s.md,
+      paddingHorizontal: s.md,
+      paddingVertical: s.md,
       fontSize: t.fontSize.md,
       color: colors.text,
       minHeight: 120,

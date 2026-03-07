@@ -473,6 +473,7 @@ public class RequestServiceFullTests
     private readonly Mock<IRequestEventsPublisher> _requestEventsPublisherMock = new();
     private readonly Mock<ISignedRequestClinicalSyncService> _signedRequestClinicalSyncMock = new();
     private readonly Mock<IConsultationEncounterService> _consultationEncounterServiceMock = new();
+    private readonly Mock<IPaymentRepository> _paymentRepoMock = new();
     private readonly Mock<ILogger<RequestService>> _loggerMock = new();
     private readonly RequestService _sut;
 
@@ -498,6 +499,7 @@ public class RequestServiceFullTests
             new Mock<INewRequestBatchService>().Object,
             _signedRequestClinicalSyncMock.Object,
             _consultationEncounterServiceMock.Object,
+            _paymentRepoMock.Object,
             new Mock<IAuditService>().Object,
             _loggerMock.Object);
     }
@@ -680,6 +682,30 @@ public class RequestServiceFullTests
 
         Func<Task> act = () => _sut.StartConsultationAsync(request.Id, Guid.NewGuid());
         await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task StartConsultationAsync_ShouldHealAndStart_WhenPaymentApprovedButRequestNotPaid()
+    {
+        SetupNotifications();
+        var doctorId = Guid.NewGuid();
+        var request = MedicalRequest.CreateConsultation(Guid.NewGuid(), "P", "Symptoms");
+        request.AssignDoctor(doctorId, "Dr. Test");
+        request.Approve(100);
+        // Request ainda ApprovedPendingPayment; pagamento já aprovado (ex.: webhook atrasado/falhou).
+        var payment = Payment.CreatePixPayment(request.Id, request.PatientId, 100);
+        payment.Approve();
+
+        _requestRepoMock.Setup(r => r.GetByIdAsync(request.Id, It.IsAny<CancellationToken>())).ReturnsAsync(request);
+        _requestRepoMock.Setup(r => r.UpdateAsync(It.IsAny<MedicalRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((MedicalRequest req, CancellationToken _) => req);
+        _paymentRepoMock.Setup(p => p.GetByRequestIdAsync(request.Id, It.IsAny<CancellationToken>())).ReturnsAsync(payment);
+
+        var result = await _sut.StartConsultationAsync(request.Id, doctorId);
+
+        result.Status.Should().Be("in_consultation");
+        _requestRepoMock.Verify(r => r.UpdateAsync(It.Is<MedicalRequest>(rq => rq.Status == RequestStatus.Paid), It.IsAny<CancellationToken>()), Times.Once);
+        _requestRepoMock.Verify(r => r.UpdateAsync(It.Is<MedicalRequest>(rq => rq.Status == RequestStatus.InConsultation), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // --- FinishConsultationAsync ---

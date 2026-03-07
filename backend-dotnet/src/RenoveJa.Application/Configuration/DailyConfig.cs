@@ -19,6 +19,11 @@ public class DailyConfig
     /// <summary>Minutos até a sala expirar automaticamente (padrão: 120 = 2h).</summary>
     public int DefaultRoomExpiryMinutes { get; set; } = 120;
 
-    /// <summary>Gera o nome da sala dado o requestId.</summary>
+    /// <summary>
+    /// Gera o nome da sala dado o requestId.
+    /// Convenção: room_name = "consult-{requestId:N}" (ex: consult-550e8400e29b41d4a716446655440000).
+    /// Para obter request_id a partir de room_name: remover prefixo "consult-", inserir hífens nas posições 8,12,16,20 e Guid.Parse.
+    /// Usado para identificar gravações na auditoria (GET /recordings?room_name=...).
+    /// </summary>
     public string GetRoomName(Guid requestId) => $"{RoomPrefix}-{requestId:N}";
 }

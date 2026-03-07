@@ -51,6 +51,7 @@ public class RequestService(
     INewRequestBatchService newRequestBatchService,
     ISignedRequestClinicalSyncService signedRequestClinicalSync,
     IConsultationEncounterService consultationEncounterService,
+    IPaymentRepository paymentRepository,
     IAuditService auditService,
     ILogger<RequestService> logger) : IRequestService
 {
@@ -972,7 +973,25 @@ public class RequestService(
         }
 
         if (request.Status != RequestStatus.Paid)
-            throw new InvalidOperationException("Consultation can only be started after payment is confirmed");
+        {
+            // Cura dessincronia: webhook/confirm pode ter falhado mas o pagamento já estar aprovado no banco.
+            var payment = await paymentRepository.GetByRequestIdAsync(id, cancellationToken);
+            if (payment != null && payment.IsApproved())
+            {
+#pragma warning disable CS0618 // Status legado: aceitar PendingPayment para dados antigos
+                if (request.Status == RequestStatus.ApprovedPendingPayment || request.Status == RequestStatus.PendingPayment)
+#pragma warning restore CS0618
+                {
+                    request.MarkAsPaid();
+                    request = await requestRepository.UpdateAsync(request, cancellationToken);
+                    logger.LogInformation("[START-CONSULTATION] Request {RequestId} estava com pagamento aprovado e status desatualizado; corrigido para paid.", id);
+                }
+                else
+                    throw new InvalidOperationException($"Consultation can only be started after payment is confirmed. Current status: {request.Status}.");
+            }
+            else
+                throw new InvalidOperationException($"Consultation can only be started after payment is confirmed. Current status: {request.Status}.");
+        }
 
         request.StartConsultation();
         request = await requestRepository.UpdateAsync(request, cancellationToken);

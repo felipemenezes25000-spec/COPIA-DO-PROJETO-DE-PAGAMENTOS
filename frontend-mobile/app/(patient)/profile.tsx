@@ -35,8 +35,9 @@ import { motionTokens } from '../../lib/ui/motion';
 import { updateAvatar } from '../../lib/api';
 import { showToast } from '../../components/ui/Toast';
 
-// Habilitar LayoutAnimation no Android
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+// Habilitar LayoutAnimation no Android (no-op na New Architecture — evita warning)
+const isNewArch = typeof (global as unknown as { __turboModuleRegistry?: unknown }).__turboModuleRegistry !== 'undefined';
+if (Platform.OS === 'android' && !isNewArch && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 

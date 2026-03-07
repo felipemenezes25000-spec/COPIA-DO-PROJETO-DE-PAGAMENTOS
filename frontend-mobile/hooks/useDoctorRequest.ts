@@ -88,10 +88,6 @@ export function useDoctorRequest(): UseDoctorRequestReturn {
     try {
       setLoadError(false);
       const fresh = await getRequestById(requestId);
-      if (__DEV__) {
-        console.warn('[DOCTOR_DETAIL] prescriptionImages:', JSON.stringify(fresh.prescriptionImages));
-        console.warn('[DOCTOR_DETAIL] examImages:', JSON.stringify(fresh.examImages));
-      }
       setRequest(fresh);
       _requestCache.set(requestId, fresh);
     } catch {

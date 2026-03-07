@@ -22,7 +22,19 @@ public interface IDailyVideoService
 
     /// <summary>Gera um meeting token para um participante específico.</summary>
     Task<string> CreateMeetingTokenAsync(string roomName, string userId, string userName, bool isOwner = false, int? ejectAfterSeconds = null, CancellationToken ct = default);
+
+    /// <summary>Lista gravações de uma sala (room_name = consult-{requestId:N}). Usado para auditoria.</summary>
+    Task<IReadOnlyList<DailyRecordingInfo>> ListRecordingsByRoomAsync(string roomName, CancellationToken ct = default);
 }
+
+/// <summary>Metadados de uma gravação Daily (para auditoria).</summary>
+public record DailyRecordingInfo(
+    string Id,
+    string RoomName,
+    string Status,
+    int? DurationSeconds,
+    long? StartTs
+);
 
 public record DailyRoomResult(
     string Name,
@@ -157,6 +169,7 @@ public class DailyVideoService : IDailyVideoService
             ["user_id"] = userId,
             ["is_owner"] = isOwner,
             ["enable_recording"] = isOwner ? "cloud" : (object)false,
+            ["start_cloud_recording"] = isOwner,
             ["start_audio_off"] = false,
             ["start_video_off"] = false,
         };
@@ -185,6 +198,28 @@ public class DailyVideoService : IDailyVideoService
 
         _logger.LogInformation("Daily meeting token created for user {UserId} in room {RoomName}", userId, roomName);
         return result!.Token;
+    }
+
+    public async Task<IReadOnlyList<DailyRecordingInfo>> ListRecordingsByRoomAsync(string roomName, CancellationToken ct = default)
+    {
+        var response = await _httpClient.GetAsync($"recordings?room_name={Uri.EscapeDataString(roomName)}&limit=100", ct);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogWarning("Daily API error listing recordings for room {RoomName}: {Status} {Body}", roomName, response.StatusCode, errorBody);
+            return Array.Empty<DailyRecordingInfo>();
+        }
+
+        var result = await JsonSerializer.DeserializeAsync<DailyRecordingsListResponse>(
+            await response.Content.ReadAsStreamAsync(ct), JsonOptions, ct);
+
+        if (result?.Data == null)
+            return Array.Empty<DailyRecordingInfo>();
+
+        return result.Data
+            .Select(r => new DailyRecordingInfo(r.Id, r.RoomName ?? roomName, r.Status ?? "unknown", r.Duration, r.StartTs))
+            .ToList();
     }
 
     private async Task<DailyRoomResult> GetRoomAsync(string roomName, CancellationToken ct)
@@ -225,5 +260,19 @@ public class DailyVideoService : IDailyVideoService
     private class DailyTokenResponse
     {
         [JsonPropertyName("token")] public string Token { get; set; } = "";
+    }
+
+    private class DailyRecordingsListResponse
+    {
+        [JsonPropertyName("data")] public List<DailyRecordingItem>? Data { get; set; }
+    }
+
+    private class DailyRecordingItem
+    {
+        [JsonPropertyName("id")] public string Id { get; set; } = "";
+        [JsonPropertyName("room_name")] public string? RoomName { get; set; }
+        [JsonPropertyName("status")] public string? Status { get; set; }
+        [JsonPropertyName("duration")] public int? Duration { get; set; }
+        [JsonPropertyName("start_ts")] public long? StartTs { get; set; }
     }
 }

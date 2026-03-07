@@ -123,7 +123,7 @@ const s = StyleSheet.create({
     borderTopWidth: 1,
     paddingTop: uiTokens.spacing.md,
     paddingHorizontal: uiTokens.screenPaddingHorizontal,
-    gap: uiTokens.spacing.sm,
+    gap: uiTokens.spacing.md,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -131,7 +131,7 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
-  summaryTextWrap: { flex: 1 },
+  summaryTextWrap: { flex: 1, minWidth: 0 },
   summaryTitle: { fontSize: 13, fontWeight: '600' },
   summaryHint: { marginTop: 2, fontSize: 12, lineHeight: 16 },
   summaryValue: { fontSize: 16, fontWeight: '800', letterSpacing: -0.2 },

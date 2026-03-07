@@ -42,12 +42,17 @@ export async function startRequestsEventsConnection(): Promise<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic SignalR
     const signalR = require('@microsoft/signalr');
     const url = getHubUrl();
-    const conn = new signalR.HubConnectionBuilder()
+    const builder = new signalR.HubConnectionBuilder()
       .withUrl(url, {
         accessTokenFactory: async () => (await getToken()) ?? '',
       })
-      .withAutomaticReconnect()
-      .build();
+      .withAutomaticReconnect();
+    // Reduz ruído: "Connection closed with an error" em disconnect não vira ERROR no console
+    if (signalR.LogLevel != null) {
+      const logLevel = __DEV__ ? signalR.LogLevel.Information : signalR.LogLevel.Warning;
+      builder.configureLogging(logLevel);
+    }
+    const conn = builder.build();
 
     conn.on(EVENT_NAME, (payload: RequestUpdatedPayload) => {
       const normalized: RequestUpdatedPayload = {

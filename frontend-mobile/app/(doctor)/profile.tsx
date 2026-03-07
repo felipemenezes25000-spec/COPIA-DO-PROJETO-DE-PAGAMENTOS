@@ -32,7 +32,9 @@ import { haptics } from '../../lib/haptics';
 import { FadeIn } from '../../components/ui/FadeIn';
 import { motionTokens } from '../../lib/ui/motion';
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+// No-op na New Architecture — evita warning
+const isNewArch = typeof (global as unknown as { __turboModuleRegistry?: unknown }).__turboModuleRegistry !== 'undefined';
+if (Platform.OS === 'android' && !isNewArch && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 

@@ -254,12 +254,16 @@ export default function VideoCallScreenInner() {
         return;
       }
 
-      const conn = new signalR.HubConnectionBuilder()
+      const builder = new signalR.HubConnectionBuilder()
         .withUrl(`${apiBase}/hubs/video`, {
           accessTokenFactory: () => authToken,
         })
-        .withAutomaticReconnect()
-        .build();
+        .withAutomaticReconnect();
+      if (signalR.LogLevel != null) {
+        const logLevel = __DEV__ ? signalR.LogLevel.Information : signalR.LogLevel.Warning;
+        builder.configureLogging(logLevel);
+      }
+      const conn = builder.build();
 
       conn.on('TranscriptUpdate', (data: any) => {
         const text = data?.fullText ?? data?.FullText ?? '';

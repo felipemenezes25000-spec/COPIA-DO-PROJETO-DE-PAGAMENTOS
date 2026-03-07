@@ -380,8 +380,10 @@ export default function PaymentScreen() {
             <>
               <Text style={styles.copyLabel}>Código PIX Copia e Cola:</Text>
               <TouchableOpacity style={styles.copyRow} onPress={handleCopyPix} activeOpacity={0.7}>
-                <Text style={styles.copyCode} numberOfLines={1}>{pixCopyPaste}</Text>
-                <Ionicons name={copied ? 'checkmark' : 'copy'} size={20} color={copied ? colors.success : colors.primary} />
+                <Text style={styles.copyCode} numberOfLines={2} ellipsizeMode="middle">{pixCopyPaste}</Text>
+                <View style={styles.copyIconWrap}>
+                  <Ionicons name={copied ? 'checkmark' : 'copy'} size={20} color={copied ? colors.success : colors.primary} />
+                </View>
               </TouchableOpacity>
               {copied && <Text style={styles.copiedText}>Código copiado!</Text>}
               <TouchableOpacity style={styles.copyButton} onPress={handleCopyPix} activeOpacity={0.8}>
@@ -397,9 +399,9 @@ export default function PaymentScreen() {
 
           {/* Instructions */}
           <View style={styles.instructionRow}>
-            <Ionicons name="information-circle" size={18} color={colors.textMuted} />
+            <Ionicons name="information-circle" size={18} color={colors.textMuted} style={styles.instructionIcon} />
             <Text style={styles.instructionText}>
-              Abra o app do seu banco, escolha a opção PIX, e selecione "Ler QR Code" ou "Copia e Cola". O pagamento é confirmado instantaneamente.
+              Abra o app do seu banco, escolha PIX e selecione Ler QR Code ou Copia e Cola. O pagamento é confirmado na hora.
             </Text>
           </View>
         </View>
@@ -484,10 +486,13 @@ function makeStyles(colors: DesignColors) {
   copyLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, alignSelf: 'flex-start', marginBottom: spacing.xs },
   copyRow: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceSecondary,
-    borderRadius: borderRadius.sm, padding: spacing.sm, width: '100%', gap: spacing.sm,
+    borderRadius: borderRadius.sm, padding: spacing.sm, width: '100%', gap: spacing.md,
     borderWidth: 1, borderColor: colors.border,
   },
-  copyCode: { flex: 1, fontSize: 13, color: colors.textSecondary, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+  copyIconWrap: {
+    minWidth: 28, alignItems: 'center', justifyContent: 'center',
+  },
+  copyCode: { flex: 1, fontSize: 12, color: colors.textSecondary, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', minWidth: 0 },
   copiedText: { fontSize: 12, color: colors.success, marginTop: spacing.xs },
   copyButton: {
     marginTop: spacing.sm,
@@ -516,10 +521,11 @@ function makeStyles(colors: DesignColors) {
   },
   bankButtonText: { fontSize: 14, fontWeight: '700', color: colors.primary },
   instructionRow: {
-    flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md,
+    flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginTop: spacing.md,
     backgroundColor: colors.primaryLight, borderRadius: borderRadius.sm, padding: spacing.sm,
   },
-  instructionText: { flex: 1, fontSize: 12, color: colors.textSecondary, lineHeight: 18 },
+  instructionIcon: { marginTop: 2 },
+  instructionText: { flex: 1, fontSize: 12, color: colors.textSecondary, lineHeight: 18, minWidth: 0 },
   securityRow: {
     marginTop: spacing.md,
     flexDirection: 'row',

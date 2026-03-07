@@ -14,6 +14,7 @@ public class ConsultationEncounterService(
     IUserRepository userRepository,
     IPatientRepository patientRepository,
     IEncounterRepository encounterRepository,
+    IRequestRepository requestRepository,
     IAuditService auditService,
     ILogger<ConsultationEncounterService> logger) : IConsultationEncounterService
 {
@@ -106,7 +107,24 @@ public class ConsultationEncounterService(
         var encounter = await encounterRepository.GetBySourceRequestIdAsync(requestId, cancellationToken);
         if (encounter == null)
         {
-            throw new InvalidOperationException($"Encounter não encontrado para a consulta {requestId}");
+            // Encounter pode não existir se ReportCallConnected não foi chamado (ex.: chamada não conectou).
+            // Cria on-demand para permitir salvar notas no prontuário.
+            var request = await requestRepository.GetByIdAsync(requestId, cancellationToken);
+            if (request == null)
+                throw new InvalidOperationException($"Request não encontrado para a consulta {requestId}");
+            if (request.RequestType != RequestType.Consultation)
+                throw new InvalidOperationException("Apenas consultas suportam salvar resumo no prontuário.");
+            if (!request.DoctorId.HasValue || request.DoctorId != doctorId)
+                throw new UnauthorizedAccessException("Apenas o médico da consulta pode atualizar as notas clínicas.");
+
+            encounter = await StartEncounterForConsultationAsync(
+                requestId,
+                request.PatientId,
+                doctorId,
+                request.Symptoms,
+                cancellationToken);
+            if (encounter == null)
+                throw new InvalidOperationException($"Não foi possível criar o prontuário para a consulta {requestId}");
         }
 
         if (encounter.PractitionerId != doctorId)
