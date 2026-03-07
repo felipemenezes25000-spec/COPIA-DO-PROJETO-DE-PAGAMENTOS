@@ -35,7 +35,7 @@ export default function CompleteProfileScreen() {
   const [loading, setLoading] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const { user, completeProfile, cancelRegistration } = useAuth();
+  const { completeProfile, cancelRegistration } = useAuth();
   const router = useRouter();
   const addressRequired = true; // Endereço obrigatório para paciente e médico
 

@@ -74,7 +74,6 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
 
   useEffect(() => {
     let cancelled = false;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- init runs once, shared values are refs
     (async () => {
       try {
         const pos = await getBannerFloatingPosition();
@@ -98,6 +97,7 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
       }
     })();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- init runs once, shared values/insets are refs
   }, []);
 
   // Bolinha pisca quando há recomendação relevante (pulse suave)

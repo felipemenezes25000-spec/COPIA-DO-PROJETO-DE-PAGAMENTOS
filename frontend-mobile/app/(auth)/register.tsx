@@ -333,7 +333,7 @@ export default function Register() {
             setTimeout(() => router.replace('/(doctor)/dashboard' as any), 0);
             return;
           }
-        } catch (_uploadErr: unknown) {
+        } catch {
           Alert.alert(
             'Cadastro concluído',
             'Conta criada. O certificado não pôde ser enviado. Você será direcionado para concluir o cadastro.',

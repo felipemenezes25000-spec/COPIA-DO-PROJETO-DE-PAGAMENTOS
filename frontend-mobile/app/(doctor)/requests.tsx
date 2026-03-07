@@ -19,8 +19,6 @@ import { spacing, typography, borderRadius, doctorDS } from '../../lib/themeDoct
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../lib/designSystem';
 import { RequestResponseDto } from '../../types/database';
-
-const pad = doctorDS.screenPaddingHorizontal;
 import { cacheRequest } from '../doctor-request/[id]';
 import { useRequestsEvents } from '../../contexts/RequestsEventsContext';
 import { getHistoricalGroupedByPeriod } from '../../lib/domain/getRequestUiState';
@@ -32,6 +30,8 @@ import { FadeIn } from '../../components/ui/FadeIn';
 import { showToast } from '../../components/ui/Toast';
 import { haptics } from '../../lib/haptics';
 import { motionTokens } from '../../lib/ui/motion';
+
+const pad = doctorDS.screenPaddingHorizontal;
 
 const ListSeparator = () => null;
 

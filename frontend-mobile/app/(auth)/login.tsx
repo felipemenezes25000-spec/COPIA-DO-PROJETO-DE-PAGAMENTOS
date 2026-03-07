@@ -33,7 +33,6 @@ import { loginSchema } from '../../lib/validation/schemas';
 const LOG_RENDER = __DEV__ && false;
 const WHATSAPP_NUMBER = '5511986318000';
 const SMALL_SCREEN_HEIGHT = 700;
-const EXTRA_SMALL_SCREEN_HEIGHT = 560;
 
 // Necessário para o fluxo OAuth no app (completar sessão ao voltar do browser)
 WebBrowser.maybeCompleteAuthSession();
