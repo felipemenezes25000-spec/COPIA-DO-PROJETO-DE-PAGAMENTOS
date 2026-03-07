@@ -1,0 +1,1354 @@
+From 1bb3cb9b398d79de589a08e4e192dcdda1b725d4 Mon Sep 17 00:00:00 2001
+From: felipemenezes25000-spec <felipemenezes25000@gmail.com>
+Date: Sat, 7 Mar 2026 11:36:36 -0300
+Subject: [PATCH] fix(patient-flow): z-index/overlay, validation, optimistic
+ notifications, dark mode, tests
+
+- Z-index/overlay: theme.zIndex.float/toast, CTA exclusion zone, ModalVisibilityContext
+- Validation: exam/consultation/prescription isFormValid, showToast for errors
+- Notifications: markAllReadOptimistic, decrementUnreadCount with rollback
+- Dark mode: designSystem tokens, remove hardcoded colors
+- Jest: AsyncStorage mock (jest.setup.early.js), NotificationContext tests
+- UI: DASHBOARD_STATS_LABELS centralizado
+
+Made-with: Cursor
+---
+ .../__tests__/NotificationContext.test.tsx    | 129 ++++++++++++++++++
+ .../__tests__/OfflineBanner.test.tsx          |  35 +++--
+ frontend-mobile/app/(patient)/home.tsx        |  24 ++--
+ .../app/(patient)/notifications.tsx           |  10 +-
+ frontend-mobile/app/(patient)/profile.tsx     |  25 ++--
+ frontend-mobile/app/(patient)/record.tsx      |  12 +-
+ frontend-mobile/app/_layout.tsx               |   3 +
+ .../app/new-request/consultation.tsx          |  30 ++--
+ frontend-mobile/app/new-request/exam.tsx      |  28 ++--
+ .../app/new-request/prescription.tsx          |  10 +-
+ frontend-mobile/app/request-detail/[id].tsx   |  23 +++-
+ .../triage/DraggableAssistantBanner.tsx       |  14 +-
+ .../triage/GlobalAssistantBanner.tsx          |   3 +
+ frontend-mobile/components/ui/StickyCTA.tsx   |   2 +
+ frontend-mobile/components/ui/Toast.tsx       |  17 ++-
+ .../contexts/ModalVisibilityContext.tsx       |  29 ++++
+ .../contexts/NotificationContext.tsx          |  34 ++++-
+ frontend-mobile/jest.config.js                |   2 +
+ frontend-mobile/jest.setup.early.js           |   7 +
+ frontend-mobile/lib/designSystem.ts           |  23 ++++
+ frontend-mobile/lib/domain/statusLabels.ts    |  10 ++
+ frontend-mobile/lib/theme.ts                  |   2 +
+ .../lib/validation/__tests__/schemas.test.ts  |  78 ++++++++++-
+ 23 files changed, 457 insertions(+), 93 deletions(-)
+ create mode 100644 frontend-mobile/__tests__/NotificationContext.test.tsx
+ create mode 100644 frontend-mobile/contexts/ModalVisibilityContext.tsx
+ create mode 100644 frontend-mobile/jest.setup.early.js
+
+diff --git a/frontend-mobile/__tests__/NotificationContext.test.tsx b/frontend-mobile/__tests__/NotificationContext.test.tsx
+new file mode 100644
+index 0000000..1544877
+--- /dev/null
++++ b/frontend-mobile/__tests__/NotificationContext.test.tsx
+@@ -0,0 +1,129 @@
++/**
++ * Testes do NotificationContext — markAllReadOptimistic e rollback.
++ */
++
++const mockMarkAllNotificationsAsRead = jest.fn();
++const mockGetUnreadNotificationsCount = jest.fn();
++
++jest.mock('../contexts/AuthContext', () => ({
++  useAuth: () => ({ user: { id: 'user-1' } }),
++}));
++
++jest.mock('../contexts/PushNotificationContext', () => ({
++  usePushNotification: () => ({ lastNotificationAt: 0 }),
++}));
++
++jest.mock('../lib/api', () => ({
++  getUnreadNotificationsCount: (...args: unknown[]) => mockGetUnreadNotificationsCount(...args),
++  markAllNotificationsAsRead: (...args: unknown[]) => mockMarkAllNotificationsAsRead(...args),
++}));
++
++jest.mock('react-native', () => ({
++  AppState: {
++    addEventListener: jest.fn(() => ({ remove: jest.fn() })),
++    currentState: 'active',
++  },
++}));
++
++import React from 'react';
++import { renderHook, act } from '@testing-library/react';
++import { NotificationProvider, useNotifications } from '../contexts/NotificationContext';
++
++const wrapper = ({ children }: { children: React.ReactNode }) => (
++  <NotificationProvider>{children}</NotificationProvider>
++);
++
++describe('NotificationContext', () => {
++  beforeEach(() => {
++    jest.clearAllMocks();
++    mockGetUnreadNotificationsCount.mockResolvedValue(5);
++  });
++
++  it('decrementUnreadCount reduces count optimistically', async () => {
++    mockGetUnreadNotificationsCount.mockResolvedValueOnce(10).mockResolvedValue(10);
++
++    const { result } = renderHook(() => useNotifications(), { wrapper });
++
++    await act(async () => {
++      await new Promise((r) => setTimeout(r, 100));
++    });
++
++    expect(result.current.unreadCount).toBe(10);
++
++    act(() => {
++      result.current.decrementUnreadCount();
++    });
++
++    expect(result.current.unreadCount).toBe(9);
++
++    act(() => {
++      result.current.decrementUnreadCount();
++      result.current.decrementUnreadCount();
++    });
++
++    expect(result.current.unreadCount).toBe(7);
++  });
++
++  it('decrementUnreadCount does not go below 0', async () => {
++    mockGetUnreadNotificationsCount.mockResolvedValueOnce(1).mockResolvedValue(1);
++
++    const { result } = renderHook(() => useNotifications(), { wrapper });
++
++    await act(async () => {
++      await new Promise((r) => setTimeout(r, 100));
++    });
++
++    expect(result.current.unreadCount).toBe(1);
++
++    act(() => {
++      result.current.decrementUnreadCount();
++      result.current.decrementUnreadCount();
++    });
++
++    expect(result.current.unreadCount).toBe(0);
++  });
++
++  it('markAllReadOptimistic sets unreadCount to 0 immediately', async () => {
++    mockMarkAllNotificationsAsRead.mockImplementation(() => new Promise((r) => setTimeout(r, 100)));
++
++    const { result } = renderHook(() => useNotifications(), { wrapper });
++
++    await act(async () => {
++      await new Promise((r) => setTimeout(r, 50));
++    });
++
++    expect(result.current.unreadCount).toBe(5);
++
++    await act(async () => {
++      await result.current.markAllReadOptimistic();
++    });
++
++    expect(result.current.unreadCount).toBe(0);
++  });
++
++  it('markAllReadOptimistic rolls back on API error', async () => {
++    mockMarkAllNotificationsAsRead.mockRejectedValue(new Error('Network error'));
++    mockGetUnreadNotificationsCount.mockResolvedValue(3);
++
++    const { result } = renderHook(() => useNotifications(), { wrapper });
++
++    await act(async () => {
++      await new Promise((r) => setTimeout(r, 50));
++    });
++
++    expect(result.current.unreadCount).toBe(3);
++
++    await expect(
++      act(async () => {
++        await result.current.markAllReadOptimistic();
++      })
++    ).rejects.toThrow('Network error');
++
++    await act(async () => {
++      await new Promise((r) => setTimeout(r, 50));
++    });
++
++    expect(mockGetUnreadNotificationsCount).toHaveBeenCalled();
++    expect(result.current.unreadCount).toBe(3);
++  });
++});
+diff --git a/frontend-mobile/__tests__/OfflineBanner.test.tsx b/frontend-mobile/__tests__/OfflineBanner.test.tsx
+index 8cfc07d..289edfd 100644
+--- a/frontend-mobile/__tests__/OfflineBanner.test.tsx
++++ b/frontend-mobile/__tests__/OfflineBanner.test.tsx
+@@ -2,13 +2,24 @@
+  * @jest-environment jsdom
+  */
+ 
+-jest.mock('react-native', () => ({
+-  View: 'View',
+-  Text: 'Text',
+-  StyleSheet: {
+-    create: (s: any) => s,
+-  },
+-}));
++jest.mock('react-native', () => {
++  const React = require('react');
++  return {
++    View: (props: any) => {
++      const { accessibilityRole, accessibilityLabel, style, ...rest } = props;
++      return React.createElement('div', {
++        ...rest,
++        role: accessibilityRole,
++        'aria-label': accessibilityLabel,
++        'data-testid': 'offline-banner-view',
++      }, props.children);
++    },
++    Text: (props: any) => React.createElement('span', props, props.children),
++    StyleSheet: {
++      create: (s: any) => s,
++    },
++  };
++});
+ 
+ jest.mock('../hooks/useNetworkStatus', () => ({
+   useNetworkStatus: jest.fn(),
+@@ -62,17 +73,15 @@ describe('OfflineBanner', () => {
+ 
+   it('has alert accessibility role', () => {
+     mockUseNetworkStatus.mockReturnValue({ isConnected: false });
+-    const { container } = render(<OfflineBanner />);
+-    const alertEl = container.querySelector('[accessibilityrole="alert"]');
++    render(<OfflineBanner />);
++    const alertEl = screen.getByRole('alert', { name: 'Sem conexão com a internet' });
+     expect(alertEl).toBeTruthy();
+   });
+ 
+   it('has correct accessibility label', () => {
+     mockUseNetworkStatus.mockReturnValue({ isConnected: false });
+-    const { container } = render(<OfflineBanner />);
+-    const alertEl = container.querySelector(
+-      '[accessibilitylabel="Sem conexão com a internet"]'
+-    );
++    render(<OfflineBanner />);
++    const alertEl = screen.getByLabelText('Sem conexão com a internet');
+     expect(alertEl).toBeTruthy();
+   });
+ 
+diff --git a/frontend-mobile/app/(patient)/home.tsx b/frontend-mobile/app/(patient)/home.tsx
+index a7ee88b..b2ac9ae 100644
+--- a/frontend-mobile/app/(patient)/home.tsx
++++ b/frontend-mobile/app/(patient)/home.tsx
+@@ -16,7 +16,7 @@ import { useAuth } from '../../contexts/AuthContext';
+ import { useAppTheme } from '../../lib/ui/useAppTheme';
+ import type { DesignColors } from '../../lib/designSystem';
+ import { uiTokens } from '../../lib/ui/tokens';
+-import { STATUS_LABELS_PT } from '../../lib/domain/statusLabels';
++import { STATUS_LABELS_PT, DASHBOARD_STATS_LABELS } from '../../lib/domain/statusLabels';
+ import { RequestResponseDto } from '../../types/database';
+ import { useRequestsQuery } from '../../lib/hooks/useRequestsQuery';
+ import { getRequestUiState, needsPayment, isSignedOrDelivered } from '../../lib/domain/getRequestUiState';
+@@ -273,7 +273,7 @@ export default function PatientHome() {
+       <View style={styles.statsRow}>
+         <StatsCard
+           icon="analytics"
+-          label={STATUS_LABELS_PT.in_review}
++          label={DASHBOARD_STATS_LABELS.analyzing}
+           value={stats.pending}
+           iconColor={colors.warning}
+           iconBgColor={colors.warningLight}
+@@ -281,7 +281,7 @@ export default function PatientHome() {
+         />
+         <StatsCard
+           icon="wallet"
+-          label="A pagar"
++          label={DASHBOARD_STATS_LABELS.toPay}
+           value={stats.toPay}
+           iconColor={colors.error}
+           iconBgColor={colors.errorLight}
+@@ -289,7 +289,7 @@ export default function PatientHome() {
+         />
+         <StatsCard
+           icon="shield-checkmark"
+-          label="Prontos"
++          label={DASHBOARD_STATS_LABELS.ready}
+           value={stats.ready}
+           iconColor={colors.success}
+           iconBgColor={colors.successLight}
+@@ -325,9 +325,9 @@ export default function PatientHome() {
+                 accessibilityRole="button"
+                 accessibilityLabel="Pagar agora"
+               >
+-                <Ionicons name="card" size={15} color="#FFFFFF" />
++                <Ionicons name="card" size={15} color={colors.headerOverlayText} />
+                 <Text style={styles.followUpPayCtaText}>{followUpAction.ctaLabel ?? 'Pagar agora'}</Text>
+-                <Ionicons name="arrow-forward" size={14} color="rgba(255,255,255,0.75)" importantForAccessibility="no" />
++                <Ionicons name="arrow-forward" size={14} color={colors.headerOverlayTextMuted} importantForAccessibility="no" />
+               </Pressable>
+             )}
+           </View>
+@@ -509,23 +509,23 @@ function makeStyles(colors: DesignColors) {
+     fontSize: 14,
+     fontFamily: 'PlusJakartaSans_500Medium',
+     fontWeight: '500',
+-    color: 'rgba(255,255,255,0.85)',
++    color: colors.headerOverlayTextMuted,
+     marginBottom: 2,
+   },
+   headerGreetingName: {
+     fontSize: 24,
+     fontFamily: 'PlusJakartaSans_700Bold',
+     fontWeight: '800',
+-    color: colors.white,
++    color: colors.headerOverlayText,
+     letterSpacing: -0.2,
+   },
+   avatarBtn: {
+     width: 52,
+     height: 52,
+     borderRadius: 26,
+-    backgroundColor: 'rgba(255,255,255,0.25)',
++    backgroundColor: colors.headerOverlaySurface,
+     borderWidth: 2,
+-    borderColor: 'rgba(255,255,255,0.4)',
++    borderColor: colors.headerOverlayBorder,
+     alignItems: 'center',
+     justifyContent: 'center',
+   },
+@@ -533,7 +533,7 @@ function makeStyles(colors: DesignColors) {
+     fontSize: 20,
+     fontFamily: 'PlusJakartaSans_700Bold',
+     fontWeight: '700',
+-    color: colors.white,
++    color: colors.headerOverlayText,
+   },
+ 
+   // ─── Destaque IA ───
+@@ -701,7 +701,7 @@ function makeStyles(colors: DesignColors) {
+     minHeight: 44,
+   },
+   followUpPayCtaText: {
+-    color: '#FFFFFF',
++    color: colors.headerOverlayText,
+     fontSize: 14,
+     fontFamily: 'PlusJakartaSans_700Bold',
+     fontWeight: '700',
+diff --git a/frontend-mobile/app/(patient)/notifications.tsx b/frontend-mobile/app/(patient)/notifications.tsx
+index 6bc6a39..7d18e67 100644
+--- a/frontend-mobile/app/(patient)/notifications.tsx
++++ b/frontend-mobile/app/(patient)/notifications.tsx
+@@ -60,7 +60,7 @@ const SectionGap = () => <View style={{ height: 6 }} />;
+ export default function PatientNotifications() {
+   const router = useRouter();
+   const insets = useSafeAreaInsets();
+-  const { refreshUnreadCount } = useNotifications();
++  const { refreshUnreadCount, markAllReadOptimistic, decrementUnreadCount } = useNotifications();
+   const [notifications, setNotifications] = useState<NotificationResponseDto[]>([]);
+   const [loading, setLoading] = useState(true);
+   const [refreshing, setRefreshing] = useState(false);
+@@ -109,9 +109,8 @@ export default function PatientNotifications() {
+ 
+   const handleMarkAllRead = async () => {
+     try {
+-      await markAllNotificationsAsRead();
+       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+-      refreshUnreadCount();
++      await markAllReadOptimistic();
+       haptics.success();
+       showToast({ message: 'Todas as notificações foram marcadas como lidas', type: 'success' });
+     } catch (error) {
+@@ -121,10 +120,10 @@ export default function PatientNotifications() {
+   };
+ 
+   const handleMarkRead = async (id: string, item?: NotificationResponseDto) => {
++    decrementUnreadCount();
++    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+     try {
+       await markNotificationAsRead(id);
+-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+-      refreshUnreadCount();
+       haptics.selection();
+       const requestId = item?.data?.requestId;
+       if (requestId) {
+@@ -132,6 +131,7 @@ export default function PatientNotifications() {
+       }
+     } catch (error) {
+       console.error('Error marking as read:', error);
++      refreshUnreadCount();
+     }
+   };
+ 
+diff --git a/frontend-mobile/app/(patient)/profile.tsx b/frontend-mobile/app/(patient)/profile.tsx
+index f397712..c4772b0 100644
+--- a/frontend-mobile/app/(patient)/profile.tsx
++++ b/frontend-mobile/app/(patient)/profile.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState, useMemo } from 'react';
++import React, { useState, useMemo, useEffect } from 'react';
+ import {
+   View,
+   Text,
+@@ -30,6 +30,7 @@ import { useAppTheme } from '../../lib/ui/useAppTheme';
+ import type { DesignColors } from '../../lib/designSystem';
+ import { uiTokens } from '../../lib/ui/tokens';
+ import { useAuth } from '../../contexts/AuthContext';
++import { useModalVisibility } from '../../contexts/ModalVisibilityContext';
+ import { useTriageEval } from '../../hooks/useTriageEval';
+ import { haptics } from '../../lib/haptics';
+ import { FadeIn } from '../../components/ui/FadeIn';
+@@ -48,6 +49,12 @@ export default function PatientProfile() {
+   const [avatarLoading, setAvatarLoading] = useState(false);
+   const [avatarPreviewUri, setAvatarPreviewUri] = useState<string | null>(null);
+   const [avatarImageError, setAvatarImageError] = useState(false);
++  const { setModalOpen } = useModalVisibility();
++
++  useEffect(() => {
++    setModalOpen(!!avatarPreviewUri);
++    return () => setModalOpen(false);
++  }, [avatarPreviewUri, setModalOpen]);
+ 
+   const doLogout = () => {
+     setLogoutLoading(true);
+@@ -388,9 +395,9 @@ function makeStyles(colors: DesignColors) {
+     width: 72,
+     height: 72,
+     borderRadius: 36,
+-    backgroundColor: 'rgba(255,255,255,0.25)',
++    backgroundColor: colors.headerOverlaySurface,
+     borderWidth: 3,
+-    borderColor: 'rgba(255,255,255,0.5)',
++    borderColor: colors.headerOverlayBorder,
+     alignItems: 'center',
+     justifyContent: 'center',
+     overflow: 'hidden',
+@@ -402,11 +409,11 @@ function makeStyles(colors: DesignColors) {
+   avatarText: {
+     fontSize: 28,
+     fontWeight: '800',
+-    color: colors.white,
++    color: colors.headerOverlayText,
+   },
+   avatarOverlay: {
+     ...StyleSheet.absoluteFillObject,
+-    backgroundColor: 'rgba(0,0,0,0.4)',
++    backgroundColor: colors.overlayBackground,
+     borderRadius: 36,
+     alignItems: 'center',
+     justifyContent: 'center',
+@@ -422,16 +429,16 @@ function makeStyles(colors: DesignColors) {
+     alignItems: 'center',
+     justifyContent: 'center',
+     borderWidth: 2,
+-    borderColor: 'rgba(255,255,255,0.9)',
++    borderColor: colors.headerOverlayTextMuted,
+   },
+   userName: {
+     fontSize: 20,
+     fontWeight: '700',
+-    color: colors.white,
++    color: colors.headerOverlayText,
+   },
+   userEmail: {
+     fontSize: 14,
+-    color: 'rgba(255,255,255,0.8)',
++    color: colors.headerOverlayTextMuted,
+     marginTop: 4,
+   },
+ 
+@@ -552,7 +559,7 @@ function makeStyles(colors: DesignColors) {
+   // Avatar preview modal
+   previewOverlay: {
+     flex: 1,
+-    backgroundColor: 'rgba(0,0,0,0.45)',
++    backgroundColor: colors.overlayBackground,
+     justifyContent: 'center',
+     alignItems: 'center',
+     padding: 24,
+diff --git a/frontend-mobile/app/(patient)/record.tsx b/frontend-mobile/app/(patient)/record.tsx
+index 0afbc8b..2669e64 100644
+--- a/frontend-mobile/app/(patient)/record.tsx
++++ b/frontend-mobile/app/(patient)/record.tsx
+@@ -772,19 +772,19 @@ function makeStyles(colors: DesignColors) {
+   headerLabel: {
+     fontSize: 12,
+     fontWeight: '600',
+-    color: 'rgba(255,255,255,0.75)',
++    color: colors.headerOverlayTextMuted,
+     textTransform: 'uppercase',
+     letterSpacing: 1,
+   },
+   headerName: {
+     fontSize: 24,
+     fontWeight: '800',
+-    color: colors.white,
++    color: colors.headerOverlayText,
+     marginTop: 2,
+   },
+   headerSubtitle: {
+     fontSize: 13,
+-    color: 'rgba(255,255,255,0.85)',
++    color: colors.headerOverlayTextMuted,
+     marginTop: 6,
+     lineHeight: 18,
+   },
+@@ -792,13 +792,13 @@ function makeStyles(colors: DesignColors) {
+     width: 56,
+     height: 56,
+     borderRadius: 28,
+-    backgroundColor: 'rgba(255,255,255,0.25)',
++    backgroundColor: colors.headerOverlaySurface,
+     borderWidth: 2,
+-    borderColor: 'rgba(255,255,255,0.4)',
++    borderColor: colors.headerOverlayBorder,
+     alignItems: 'center',
+     justifyContent: 'center',
+   },
+-  avatarText: { fontSize: 20, fontWeight: '700', color: colors.white },
++  avatarText: { fontSize: 20, fontWeight: '700', color: colors.headerOverlayText },
+ 
+   segmentBar: {
+     flexDirection: 'row',
+diff --git a/frontend-mobile/app/_layout.tsx b/frontend-mobile/app/_layout.tsx
+index 1ddfef2..510b983 100644
+--- a/frontend-mobile/app/_layout.tsx
++++ b/frontend-mobile/app/_layout.tsx
+@@ -31,6 +31,7 @@ import { RequestUpdateBanner } from '../components/RequestUpdateBanner';
+ import { OfflineBanner } from '../components/OfflineBanner';
+ import { GlobalAssistantBanner } from '../components/triage/GlobalAssistantBanner';
+ import { ToastProvider } from '../components/ui/Toast';
++import { ModalVisibilityProvider } from '../contexts/ModalVisibilityContext';
+ import { ColorSchemeProvider, useColorSchemeContext } from '../contexts/ColorSchemeContext';
+ import * as SplashScreen from 'expo-splash-screen';
+ import { motionTokens } from '../lib/ui/motion';
+@@ -95,6 +96,7 @@ export default function RootLayout() {
+       <AuthProvider>
+         <PushNotificationProvider>
+           <NotificationProvider>
++            <ModalVisibilityProvider>
+             <RequestsEventsProvider>
+             <GlobalRequestUpdatedToast />
+             <TriageAssistantProvider>
+@@ -139,6 +141,7 @@ export default function RootLayout() {
+             </ToastProvider>
+             </TriageAssistantProvider>
+             </RequestsEventsProvider>
++            </ModalVisibilityProvider>
+           </NotificationProvider>
+         </PushNotificationProvider>
+       </AuthProvider>
+diff --git a/frontend-mobile/app/new-request/consultation.tsx b/frontend-mobile/app/new-request/consultation.tsx
+index fd0f877..71e7750 100644
+--- a/frontend-mobile/app/new-request/consultation.tsx
++++ b/frontend-mobile/app/new-request/consultation.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState, useMemo, useEffect } from 'react';
++import React, { useState, useMemo, useEffect, useRef } from 'react';
+ import {
+   View,
+   Text,
+@@ -136,6 +136,14 @@ export default function ConsultationScreen() {
+   if (userPickedType && userAdjustedMinutes) currentStep = 3;
+   if (userPickedType && userAdjustedMinutes && symptoms.trim().length > 0) currentStep = 4;
+ 
++  const consultationValidation = validate(createConsultationSchema, {
++    consultationType,
++    durationMinutes,
++    symptoms,
++  });
++  const isFormValid = completeness.missingRequired.length === 0 && consultationValidation.success;
++  const symptomsRef = useRef<TextInput>(null);
++
+   useEffect(() => {
+     let cancelled = false;
+     setLoadingBank(true);
+@@ -179,7 +187,7 @@ export default function ConsultationScreen() {
+         router.replace('/(patient)/requests');
+       }
+     } catch (error: unknown) {
+-      Alert.alert('Erro', getApiErrorMessage(error));
++      showToast({ message: getApiErrorMessage(error), type: 'error' });
+     } finally {
+       setLoading(false);
+     }
+@@ -187,10 +195,8 @@ export default function ConsultationScreen() {
+ 
+   const handleSubmit = async () => {
+     if (completeness.missingRequired.length > 0) {
+-      Alert.alert(
+-        'Faltam itens para enviar',
+-        completeness.missingRequired.map((item) => `• ${item.label}`).join('\n')
+-      );
++      showToast({ message: completeness.missingRequired.map((item) => item.label).join('. '), type: 'error' });
++      symptomsRef.current?.focus();
+       return;
+     }
+ 
+@@ -200,7 +206,8 @@ export default function ConsultationScreen() {
+       symptoms,
+     });
+     if (!validation.success) {
+-      Alert.alert('Atenção', validation.firstError ?? 'Preencha todos os campos.');
++      showToast({ message: validation.firstError ?? 'Preencha todos os campos.', type: 'error' });
++      symptomsRef.current?.focus();
+       return;
+     }
+     const payload = validation.data!;
+@@ -315,7 +322,8 @@ export default function ConsultationScreen() {
+           <Text style={styles.stepHint}>Passo 3 — Escreva o que você está sentindo ou a dúvida que tem. Isso ajuda o profissional a te atender melhor.</Text>
+         )}
+         <TextInput
+-          style={styles.textArea}
++          ref={symptomsRef}
++          style={[styles.textArea, !isFormValid && symptoms.trim().length < 10 && styles.inputError]}
+           placeholder="O que você está sentindo? Desde quando? O que gostaria de esclarecer?"
+           placeholderTextColor={colors.textMuted}
+           value={symptoms}
+@@ -367,7 +375,7 @@ export default function ConsultationScreen() {
+           label: 'Solicitar consulta',
+           onPress: handleSubmit,
+           loading,
+-          disabled: loading,
++          disabled: loading || !isFormValid,
+         }}
+       />
+       </View>
+@@ -537,6 +545,10 @@ function makeStyles(colors: DesignColors) {
+       minHeight: 120,
+       marginBottom: s.lg,
+     },
++    inputError: {
++      borderColor: colors.error,
++      borderWidth: 1.5,
++    },
+     totalCard: {
+       marginBottom: s.lg,
+     },
+diff --git a/frontend-mobile/app/new-request/exam.tsx b/frontend-mobile/app/new-request/exam.tsx
+index 16c9ddb..2abc061 100644
+--- a/frontend-mobile/app/new-request/exam.tsx
++++ b/frontend-mobile/app/new-request/exam.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState, useEffect, useMemo } from 'react';
++import React, { useState, useEffect, useMemo, useRef } from 'react';
+ import {
+   View,
+   Text,
+@@ -121,7 +121,11 @@ export default function NewExam() {
+   if (exams.length > 0) currentStep = 3;
+   if (symptoms.trim().length > 0) currentStep = 4;
+ 
++  const examValidation = validate(createExamSchema, { examType, exams, symptoms, images });
++  const isFormValid = completeness.missingRequired.length === 0 && examValidation.success;
++
+   const selectedPrice = formatBRL(EXAM_TYPE_PRICES[examType as 'laboratorial' | 'imagem']);
++  const symptomsRef = useRef<TextInput>(null);
+ 
+   /** Dra. Renoveja: dicas por etapa (tipo imagem, exames). */
+   useTriageEval({
+@@ -190,7 +194,7 @@ export default function NewExam() {
+       showToast({ message: 'Pedido de exame enviado! Acompanhe na aba Pedidos.', type: 'success' });
+       router.replace('/(patient)/requests');
+     } catch (error: unknown) {
+-      Alert.alert('Erro', getApiErrorMessage(error));
++      showToast({ message: getApiErrorMessage(error), type: 'error' });
+     } finally {
+       setLoading(false);
+     }
+@@ -198,10 +202,8 @@ export default function NewExam() {
+ 
+   const handleSubmit = async () => {
+     if (completeness.missingRequired.length > 0) {
+-      Alert.alert(
+-        'Faltam itens para enviar',
+-        completeness.missingRequired.map((item) => `• ${item.label}`).join('\n')
+-      );
++      showToast({ message: completeness.missingRequired.map((item) => item.label).join('. '), type: 'error' });
++      symptomsRef.current?.focus();
+       return;
+     }
+ 
+@@ -212,7 +214,8 @@ export default function NewExam() {
+       images,
+     });
+     if (!validation.success) {
+-      Alert.alert('Preencha os campos', validation.firstError ?? 'Informe os exames desejados e os sintomas.');
++      showToast({ message: validation.firstError ?? 'Informe os exames desejados e os sintomas.', type: 'error' });
++      symptomsRef.current?.focus();
+       return;
+     }
+     const payload = {
+@@ -332,7 +335,8 @@ export default function NewExam() {
+         {/* Symptoms */}
+         <Text style={styles.overline}>SINTOMAS (Obrigatório)</Text>
+         <TextInput
+-          style={styles.textarea}
++          ref={symptomsRef}
++          style={[styles.textarea, !isFormValid && symptoms.trim().length === 0 && styles.inputError]}
+           placeholder="Descreva seus sintomas"
+           placeholderTextColor={colors.textMuted}
+           value={symptoms}
+@@ -396,7 +400,7 @@ export default function NewExam() {
+           label: 'Enviar pedido',
+           onPress: handleSubmit,
+           loading,
+-          disabled: loading,
++          disabled: loading || !isFormValid,
+         }}
+       />
+       </View>
+@@ -544,8 +548,14 @@ function makeStyles(colors: DesignColors) {
+       fontSize: ty.fontSize.md,
+       color: colors.text,
+       minHeight: 100,
++      borderWidth: 1,
++      borderColor: colors.border,
+       ...theme.shadows.card,
+     },
++    inputError: {
++      borderColor: colors.error,
++      borderWidth: 1.5,
++    },
+     photoHint: {
+       fontSize: 12,
+       color: colors.textMuted,
+diff --git a/frontend-mobile/app/new-request/prescription.tsx b/frontend-mobile/app/new-request/prescription.tsx
+index 977be27..0896cd3 100644
+--- a/frontend-mobile/app/new-request/prescription.tsx
++++ b/frontend-mobile/app/new-request/prescription.tsx
+@@ -221,7 +221,7 @@ export default function NewPrescription() {
+       showToast({ message: 'Solicitação enviada! Acompanhe na aba Pedidos.', type: 'success' });
+       router.replace('/(patient)/requests');
+     } catch (error: unknown) {
+-      Alert.alert('Erro', getApiErrorMessage(error));
++      showToast({ message: getApiErrorMessage(error), type: 'error' });
+     } finally {
+       setLoading(false);
+     }
+@@ -323,7 +323,7 @@ export default function NewPrescription() {
+ 
+           {/* Warning card — prominente, não pode ser ignorado */}
+           <View style={styles.photoWarningCard}>
+-            <Ionicons name="warning" size={18} color="#92400E" />
++            <Ionicons name="warning" size={18} color={colors.warning} />
+             <Text style={styles.photoWarningText}>
+               Envie <Text style={styles.photoWarningBold}>somente</Text> fotos do documento da receita (papel ou tela com os medicamentos). Outras imagens serão rejeitadas automaticamente.
+             </Text>
+@@ -582,9 +582,9 @@ function makeStyles(colors: DesignColors) {
+       flexDirection: 'row',
+       alignItems: 'flex-start',
+       gap: s.sm,
+-      backgroundColor: '#FEF3C7',
++      backgroundColor: colors.warningLight,
+       borderWidth: 1,
+-      borderColor: '#FCD34D',
++      borderColor: colors.warning,
+       borderRadius: r.md,
+       padding: s.md,
+       marginBottom: s.sm,
+@@ -593,7 +593,7 @@ function makeStyles(colors: DesignColors) {
+       flex: 1,
+       fontSize: 13,
+       lineHeight: 19,
+-      color: '#78350F',
++      color: colors.warningText,
+     },
+     photoWarningBold: {
+       fontWeight: typo.fontWeight.bold,
+diff --git a/frontend-mobile/app/request-detail/[id].tsx b/frontend-mobile/app/request-detail/[id].tsx
+index 219cc70..f8b4883 100644
+--- a/frontend-mobile/app/request-detail/[id].tsx
++++ b/frontend-mobile/app/request-detail/[id].tsx
+@@ -39,6 +39,7 @@ import { ObservationCard } from '../../components/triage';
+ import { useTriageEval } from '../../hooks/useTriageEval';
+ import { getNextBestActionForRequest, type NextActionIntent } from '../../lib/domain/assistantIntelligence';
+ import { useNetworkStatus } from '../../hooks/useNetworkStatus';
++import { useModalVisibility } from '../../contexts/ModalVisibilityContext';
+ 
+ /** Texto expansível: mostra N linhas com "Ver mais" / "Ver menos". */
+ function ExpandableText({ text, maxLines = 4, style }: { text: string; maxLines?: number; style?: any }) {
+@@ -133,6 +134,7 @@ export default function RequestDetailScreen() {
+   const { isConnected } = useNetworkStatus();
+   const { colors } = useAppTheme();
+   const styles = useMemo(() => makeStyles(colors), [colors]);
++  const { setModalOpen } = useModalVisibility();
+ 
+   const fetchIdRef = useRef(0);
+   const abortRef = useRef<AbortController | null>(null);
+@@ -448,6 +450,15 @@ export default function RequestDetailScreen() {
+     );
+   }
+ 
++  const isModalVisible =
++    (showVideoModal && request && ['paid', 'in_consultation'].includes(request.status) && request.requestType === 'consultation') ||
++    selectedImageUri !== null;
++
++  useEffect(() => {
++    setModalOpen(isModalVisible);
++    return () => setModalOpen(false);
++  }, [isModalVisible, setModalOpen]);
++
+   if (!request) return null;
+ 
+   // Backend aceita pagamento quando status está aguardando pagamento.
+@@ -511,7 +522,7 @@ export default function RequestDetailScreen() {
+                 {request.status === 'in_consultation' ? 'Toque para entrar ou voltar à videoconsulta' : 'Toque para entrar na videoconsulta'}
+               </Text>
+             </View>
+-            <Ionicons name="chevron-forward" size={24} color="rgba(255,255,255,0.8)" />
++            <Ionicons name="chevron-forward" size={24} color={colors.headerOverlayTextMuted} />
+           </TouchableOpacity>
+         )}
+ 
+@@ -902,10 +913,10 @@ function makeStyles(colors: DesignColors) {
+   },
+   videoReadyBannerText: { flex: 1 },
+   videoReadyBannerTitle: { fontSize: 16, fontWeight: '700', color: colors.white },
+-  videoReadyBannerSub: { fontSize: 13, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
++  videoReadyBannerSub: { fontSize: 13, color: colors.headerOverlayTextMuted, marginTop: 2 },
+   videoModalOverlay: {
+     flex: 1,
+-    backgroundColor: 'rgba(0,0,0,0.6)',
++    backgroundColor: colors.modalOverlay,
+     justifyContent: 'center',
+     alignItems: 'center',
+     padding: spacing.lg,
+@@ -1022,15 +1033,15 @@ function makeStyles(colors: DesignColors) {
+   errorBtnText: { fontSize: 15, fontWeight: '600', color: colors.white },
+   thumbWrap: { marginHorizontal: spacing.sm, position: 'relative' },
+   thumbImg: { width: 120, height: 120, borderRadius: 14 },
+-  zoomBadge: { position: 'absolute', bottom: 6, right: 6, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 12, padding: 4, alignItems: 'center', justifyContent: 'center' },
++  zoomBadge: { position: 'absolute', bottom: 6, right: 6, backgroundColor: colors.overlayBackground, borderRadius: 12, padding: 4, alignItems: 'center', justifyContent: 'center' },
+   zoomHint: { fontSize: 12, color: colors.textMuted, marginBottom: spacing.xs },
+-  modalContainer: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.95)', justifyContent: 'center', alignItems: 'center' },
++  modalContainer: { flex: 1, backgroundColor: colors.modalOverlay, justifyContent: 'center', alignItems: 'center' },
+   modalCloseBtn: {
+     position: 'absolute',
+     top: Platform.OS === 'web' ? 20 : 60,
+     right: spacing.md,
+     zIndex: 10,
+-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
++    backgroundColor: colors.modalOverlay,
+     borderRadius: 25,
+     padding: 10,
+     width: 50,
+diff --git a/frontend-mobile/components/triage/DraggableAssistantBanner.tsx b/frontend-mobile/components/triage/DraggableAssistantBanner.tsx
+index f5ade64..52993dc 100644
+--- a/frontend-mobile/components/triage/DraggableAssistantBanner.tsx
++++ b/frontend-mobile/components/triage/DraggableAssistantBanner.tsx
+@@ -42,6 +42,8 @@ const FAB_SIZE = 48;
+ const BANNER_WIDTH = 300;
+ const SPRING_CONFIG = { damping: 22, stiffness: 200 };
+ const DRAG_THRESHOLD = 16; // Maior para evitar conflito com tap — tap expande, arraste move
++/** Zona de exclusão inferior: FAB nunca cobre StickyCTA/inputs (~100px). */
++const CTA_EXCLUSION_ZONE = 100;
+ 
+ interface DraggableAssistantBannerProps {
+   onAction?: (action: CTAAction, message?: { requestId?: string; status?: string | null }) => void;
+@@ -69,7 +71,7 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
+ 
+   const topLimitFab = (insets.top ?? 0) + padding;
+   const maxXFabInit = screenW - FAB_SIZE - padding;
+-  const maxYFabInit = screenH - FAB_SIZE - (insets.bottom ?? 0) - padding;
++  const maxYFabInit = screenH - FAB_SIZE - (insets.bottom ?? 0) - CTA_EXCLUSION_ZONE;
+ 
+   useEffect(() => {
+     let cancelled = false;
+@@ -84,13 +86,13 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
+           translateY.value = y;
+         } else if (!cancelled) {
+           translateX.value = screenW - padding - FAB_SIZE;
+-          translateY.value = screenH - (insets.bottom ?? 0) - padding - FAB_SIZE;
++          translateY.value = screenH - (insets.bottom ?? 0) - CTA_EXCLUSION_ZONE - FAB_SIZE;
+         }
+         if (!cancelled) setInitialized(true);
+       } catch {
+         if (!cancelled) {
+           translateX.value = screenW - padding - FAB_SIZE;
+-          translateY.value = screenH - (insets.bottom ?? 0) - padding - FAB_SIZE;
++          translateY.value = screenH - (insets.bottom ?? 0) - CTA_EXCLUSION_ZONE - FAB_SIZE;
+           setInitialized(true);
+         }
+       }
+@@ -152,8 +154,8 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
+   }, [current?.key, current?.severity, expanded, lastAutoExpandKey, handleExpand]);
+ 
+   const topLimit = (insets.top ?? 0) + padding;
+-  const bottomLimitFab = screenH - FAB_SIZE - (insets.bottom ?? 0) - padding;
+-  const bottomLimitExpanded = screenH - expandedHeight - (insets.bottom ?? 0) - padding;
++  const bottomLimitFab = screenH - FAB_SIZE - (insets.bottom ?? 0) - CTA_EXCLUSION_ZONE;
++  const bottomLimitExpanded = screenH - expandedHeight - (insets.bottom ?? 0) - CTA_EXCLUSION_ZONE;
+   const maxXFab = screenW - FAB_SIZE - padding;
+   const maxXExpanded = screenW - bannerWidth - padding;
+ 
+@@ -233,7 +235,7 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
+           top: 0,
+           right: 0,
+           bottom: 0,
+-          zIndex: 9999,
++          zIndex: theme.zIndex.float,
+         },
+         containerStyle,
+       ]}
+diff --git a/frontend-mobile/components/triage/GlobalAssistantBanner.tsx b/frontend-mobile/components/triage/GlobalAssistantBanner.tsx
+index 661621a..587fb76 100644
+--- a/frontend-mobile/components/triage/GlobalAssistantBanner.tsx
++++ b/frontend-mobile/components/triage/GlobalAssistantBanner.tsx
+@@ -9,6 +9,7 @@ import React from 'react';
+ import { View, StyleSheet } from 'react-native';
+ import { usePathname, useRouter } from 'expo-router';
+ import { useAuth } from '../../contexts/AuthContext';
++import { useModalVisibility } from '../../contexts/ModalVisibilityContext';
+ import { DraggableAssistantBanner } from './DraggableAssistantBanner';
+ import type { CTAAction } from '../../lib/triage/triage.types';
+ import { theme } from '../../lib/theme';
+@@ -48,9 +49,11 @@ export function GlobalAssistantBanner() {
+   const pathname = usePathname();
+   const router = useRouter();
+   const { user } = useAuth();
++  const { isModalOpen } = useModalVisibility();
+   const isLoggedIn = !!user;
+ 
+   if (shouldHideBanner(pathname, isLoggedIn, user?.role)) return null;
++  if (isModalOpen) return null;
+ 
+   const handleAction: (action: CTAAction, message?: { requestId?: string; status?: string | null }) => void = (action, message) => {
+     if (!action) return;
+diff --git a/frontend-mobile/components/ui/StickyCTA.tsx b/frontend-mobile/components/ui/StickyCTA.tsx
+index 6adf52e..408a8f9 100644
+--- a/frontend-mobile/components/ui/StickyCTA.tsx
++++ b/frontend-mobile/components/ui/StickyCTA.tsx
+@@ -10,6 +10,7 @@ import {
+ import { useSafeAreaInsets } from 'react-native-safe-area-context';
+ import { useAppTheme } from '../../lib/ui/useAppTheme';
+ import { uiTokens } from '../../lib/ui/tokens';
++import { theme } from '../../lib/theme';
+ import { AppButton, AppButtonVariant } from './AppButton';
+ 
+ type Action = {
+@@ -58,6 +59,7 @@ export function StickyCTA({
+           backgroundColor: colors.surface,
+           borderTopColor: colors.border,
+           paddingBottom: padBottom,
++          zIndex: theme.zIndex.sticky,
+         },
+         ((shadows as any)?.sm ?? undefined) as any,
+         style,
+diff --git a/frontend-mobile/components/ui/Toast.tsx b/frontend-mobile/components/ui/Toast.tsx
+index 511cc3b..a51c357 100644
+--- a/frontend-mobile/components/ui/Toast.tsx
++++ b/frontend-mobile/components/ui/Toast.tsx
+@@ -9,8 +9,9 @@ import {
+ } from 'react-native';
+ import { useSafeAreaInsets } from 'react-native-safe-area-context';
+ import { Ionicons } from '@expo/vector-icons';
+-import { colors, spacing, borderRadius, typography } from '../../lib/theme';
++import { colors, spacing, borderRadius, typography, theme } from '../../lib/theme';
+ import { haptics } from '../../lib/haptics';
++import { useAppTheme } from '../../lib/ui/useAppTheme';
+ 
+ type ToastType = 'success' | 'error' | 'info' | 'warning';
+ 
+@@ -39,6 +40,7 @@ export function showToast(config: ToastConfig) {
+ 
+ export function ToastProvider({ children }: { children: React.ReactNode }) {
+     const insets = useSafeAreaInsets();
++    const { colors: themeColors } = useAppTheme();
+     const [visible, setVisible] = useState(false);
+     const [config, setConfig] = useState<ToastConfig>({ message: '' });
+     const translateY = useRef(new Animated.Value(-100)).current;
+@@ -108,7 +110,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
+                         activeOpacity={0.8}
+                     >
+                         <Ionicons name={tc.icon} size={22} color={tc.iconColor} />
+-                        <Text style={styles.toastText} numberOfLines={2}>
++                        <Text style={[styles.toastText, { color: themeColors.text }]} numberOfLines={2}>
+                             {config.message}
+                         </Text>
+                         {config.actionLabel && config.onAction ? (
+@@ -117,13 +119,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
+                                     config.onAction?.();
+                                     dismiss();
+                                 }}
+-                                style={styles.actionBtn}
++                                style={[styles.actionBtn, { backgroundColor: themeColors.textMuted + '20' }]}
+                                 activeOpacity={0.8}
+                             >
+-                                <Text style={styles.actionBtnText}>{config.actionLabel}</Text>
++                                <Text style={[styles.actionBtnText, { color: themeColors.primary }]}>{config.actionLabel}</Text>
+                             </TouchableOpacity>
+                         ) : (
+-                            <Ionicons name="close" size={18} color={colors.textMuted} />
++                            <Ionicons name="close" size={18} color={themeColors.textMuted} />
+                         )}
+                     </TouchableOpacity>
+                 </Animated.View>
+@@ -137,7 +139,7 @@ const styles = StyleSheet.create({
+         position: 'absolute',
+         left: spacing.md,
+         right: spacing.md,
+-        zIndex: 9999,
++        zIndex: theme.zIndex.toast,
+         borderRadius: borderRadius.md,
+         shadowColor: colors.black,
+         shadowOffset: { width: 0, height: 4 },
+@@ -156,19 +158,16 @@ const styles = StyleSheet.create({
+         fontSize: 14,
+         fontFamily: typography.fontFamily.medium,
+         fontWeight: '500',
+-        color: colors.text,
+         lineHeight: 20,
+     },
+     actionBtn: {
+         paddingVertical: 6,
+         paddingHorizontal: 10,
+         borderRadius: borderRadius.sm,
+-        backgroundColor: 'rgba(0,0,0,0.06)',
+     },
+     actionBtnText: {
+         fontSize: 13,
+         fontFamily: typography.fontFamily.semibold,
+         fontWeight: '600',
+-        color: colors.primary,
+     },
+ });
+diff --git a/frontend-mobile/contexts/ModalVisibilityContext.tsx b/frontend-mobile/contexts/ModalVisibilityContext.tsx
+new file mode 100644
+index 0000000..38be2c9
+--- /dev/null
++++ b/frontend-mobile/contexts/ModalVisibilityContext.tsx
+@@ -0,0 +1,29 @@
++import React, { createContext, useCallback, useContext, useState } from 'react';
++
++interface ModalVisibilityContextValue {
++  isModalOpen: boolean;
++  setModalOpen: (open: boolean) => void;
++}
++
++const ModalVisibilityContext = createContext<ModalVisibilityContextValue | undefined>(undefined);
++
++export function ModalVisibilityProvider({ children }: { children: React.ReactNode }) {
++  const [isModalOpen, setIsModalOpen] = useState(false);
++
++  const setModalOpen = useCallback((open: boolean) => {
++    setIsModalOpen(open);
++  }, []);
++
++  const value: ModalVisibilityContextValue = { isModalOpen, setModalOpen };
++
++  return (
++    <ModalVisibilityContext.Provider value={value}>
++      {children}
++    </ModalVisibilityContext.Provider>
++  );
++}
++
++export function useModalVisibility() {
++  const context = useContext(ModalVisibilityContext);
++  return context ?? { isModalOpen: false, setModalOpen: () => {} };
++}
+diff --git a/frontend-mobile/contexts/NotificationContext.tsx b/frontend-mobile/contexts/NotificationContext.tsx
+index 844cbb9..ace5844 100644
+--- a/frontend-mobile/contexts/NotificationContext.tsx
++++ b/frontend-mobile/contexts/NotificationContext.tsx
+@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
+ import { AppState, AppStateStatus } from 'react-native';
+ import { useAuth } from './AuthContext';
+ import { usePushNotification } from './PushNotificationContext';
+-import { getUnreadNotificationsCount } from '../lib/api';
++import { getUnreadNotificationsCount, markAllNotificationsAsRead } from '../lib/api';
+ 
+ /** Intervalo de polling quando app está em primeiro plano (em ms). */
+ const POLL_INTERVAL_MS = 30_000;
+@@ -14,6 +14,10 @@ const UNCHANGED_THRESHOLD = 5;
+ interface NotificationContextValue {
+   unreadCount: number;
+   refreshUnreadCount: () => Promise<void>;
++  /** Atualização otimista: zera badge imediatamente, chama API, rollback em erro. */
++  markAllReadOptimistic: () => Promise<void>;
++  /** Decrementa contador otimisticamente (ex.: ao marcar uma como lida). */
++  decrementUnreadCount: () => void;
+ }
+ 
+ const NotificationContext = createContext<NotificationContextValue | undefined>(undefined);
+@@ -45,6 +49,22 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
+     }
+   }, [user?.id]);
+ 
++  const markAllReadOptimistic = useCallback(async () => {
++    setUnreadCount(0);
++    lastCount.current = 0;
++    try {
++      await markAllNotificationsAsRead();
++    } catch (e) {
++      refreshUnreadCount();
++      throw e;
++    }
++  }, [refreshUnreadCount]);
++
++  const decrementUnreadCount = useCallback(() => {
++    setUnreadCount((prev) => Math.max(0, prev - 1));
++    lastCount.current = lastCount.current !== null ? Math.max(0, lastCount.current - 1) : null;
++  }, []);
++
+   useEffect(() => {
+     refreshUnreadCount();
+   }, [refreshUnreadCount]);
+@@ -89,7 +109,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
+     };
+   }, [user?.id, refreshUnreadCount]);
+ 
+-  const value = useMemo(() => ({ unreadCount, refreshUnreadCount }), [unreadCount, refreshUnreadCount]);
++  const value = useMemo(
++    () => ({ unreadCount, refreshUnreadCount, markAllReadOptimistic, decrementUnreadCount }),
++    [unreadCount, refreshUnreadCount, markAllReadOptimistic, decrementUnreadCount]
++  );
+ 
+   return (
+     <NotificationContext.Provider value={value}>
+@@ -100,5 +123,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
+ 
+ export function useNotifications() {
+   const context = useContext(NotificationContext);
+-  return context ?? { unreadCount: 0, refreshUnreadCount: async () => {} };
++  return context ?? {
++    unreadCount: 0,
++    refreshUnreadCount: async () => {},
++    markAllReadOptimistic: async () => {},
++    decrementUnreadCount: () => {},
++  };
+ }
+diff --git a/frontend-mobile/jest.config.js b/frontend-mobile/jest.config.js
+index 9fd0640..b3c30f3 100644
+--- a/frontend-mobile/jest.config.js
++++ b/frontend-mobile/jest.config.js
+@@ -30,6 +30,7 @@ module.exports = {
+       globals: {
+         __DEV__: true,
+       },
++      setupFiles: ['<rootDir>/jest.setup.early.js'],
+       setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+     },
+     {
+@@ -45,6 +46,7 @@ module.exports = {
+       globals: {
+         __DEV__: true,
+       },
++      setupFiles: ['<rootDir>/jest.setup.early.js'],
+     },
+   ],
+   collectCoverageFrom: [
+diff --git a/frontend-mobile/jest.setup.early.js b/frontend-mobile/jest.setup.early.js
+new file mode 100644
+index 0000000..68aca63
+--- /dev/null
++++ b/frontend-mobile/jest.setup.early.js
+@@ -0,0 +1,7 @@
++/**
++ * Setup executado antes do framework de testes (setupFiles).
++ * Mock de AsyncStorage para evitar "NativeModule: AsyncStorage is null" em testes RN.
++ */
++jest.mock('@react-native-async-storage/async-storage', () =>
++  require('@react-native-async-storage/async-storage/jest/async-storage-mock')
++);
+diff --git a/frontend-mobile/lib/designSystem.ts b/frontend-mobile/lib/designSystem.ts
+index c47267b..9668731 100644
+--- a/frontend-mobile/lib/designSystem.ts
++++ b/frontend-mobile/lib/designSystem.ts
+@@ -39,8 +39,18 @@ const BRAND = {
+   black: '#0F172A',
+ };
+ 
++// ─── Header overlay (texto sobre gradiente azul — sempre claro) ───
++const HEADER_OVERLAY = {
++  headerOverlayText: '#FFFFFF',
++  headerOverlayTextMuted: 'rgba(255,255,255,0.85)',
++  headerOverlayBorder: 'rgba(255,255,255,0.4)',
++  headerOverlaySurface: 'rgba(255,255,255,0.25)',
++};
++
+ // ─── Semantic light ───────────────────────────────────────────
+ const PATIENT_LIGHT = {
++  overlayBackground: 'rgba(0,0,0,0.45)',
++  modalOverlay: 'rgba(0,0,0,0.7)',
+   background: '#F8FAFC',
+   surface: '#FFFFFF',
+   surfaceSecondary: '#F1F5F9',
+@@ -54,6 +64,8 @@ const PATIENT_LIGHT = {
+ };
+ 
+ const DOCTOR_LIGHT = {
++  overlayBackground: 'rgba(0,0,0,0.45)',
++  modalOverlay: 'rgba(0,0,0,0.7)',
+   background: '#F4F6F9',
+   surface: '#FFFFFF',
+   surfaceSecondary: '#F1F5F9',
+@@ -70,6 +82,8 @@ const DOCTOR_LIGHT = {
+ 
+ // ─── Semantic dark ────────────────────────────────────────────
+ const PATIENT_DARK = {
++  overlayBackground: 'rgba(0,0,0,0.6)',
++  modalOverlay: 'rgba(0,0,0,0.9)',
+   background: '#0F172A',
+   surface: '#1E293B',
+   surfaceSecondary: '#162032',
+@@ -83,6 +97,8 @@ const PATIENT_DARK = {
+ };
+ 
+ const DOCTOR_DARK = {
++  overlayBackground: 'rgba(0,0,0,0.6)',
++  modalOverlay: 'rgba(0,0,0,0.9)',
+   background: '#0D1B2A',
+   surface: '#1A2B3C',
+   surfaceSecondary: '#152235',
+@@ -97,6 +113,11 @@ const DOCTOR_DARK = {
+   ring: '#2CB1FF',
+ };
+ 
++// ─── Warning card text (contraste em warningLight) ──────────────
++const WARNING_CARD = {
++  warningText: '#78350F', // amber-900, legível em warningLight
++};
++
+ // ─── Status tokens (mesmo em ambos os modes) ──────────────────
+ const STATUS_COLORS = {
+   statusSubmitted: '#F59E0B',
+@@ -140,6 +161,8 @@ export function createTokens(role: AppRole, scheme: ColorScheme) {
+   const colors = {
+     ...BRAND,
+     ...semantic,
++    ...HEADER_OVERLAY,
++    ...WARNING_CARD,
+     ...STATUS_COLORS,
+     // Doctor-specific aliases
+     ...(role === 'doctor' ? {
+diff --git a/frontend-mobile/lib/domain/statusLabels.ts b/frontend-mobile/lib/domain/statusLabels.ts
+index f9a0329..adf5a41 100644
+--- a/frontend-mobile/lib/domain/statusLabels.ts
++++ b/frontend-mobile/lib/domain/statusLabels.ts
+@@ -43,3 +43,13 @@ export function getStatusLabelPt(status: string | null | undefined): string {
+   const s = status ?? '';
+   return (STATUS_LABELS_PT[s] ?? s) || '—';
+ }
++
++/**
++ * Rótulos dos cards de estatísticas no dashboard (Home).
++ * Decisão: "Prontos" = documentos assinados/entregues (resumo); "Documento pronto" = próximo passo em card de follow-up.
++ */
++export const DASHBOARD_STATS_LABELS = {
++  analyzing: 'Em análise médica',
++  toPay: 'A pagar',
++  ready: 'Prontos',
++} as const;
+diff --git a/frontend-mobile/lib/theme.ts b/frontend-mobile/lib/theme.ts
+index 752d83f..3e77959 100644
+--- a/frontend-mobile/lib/theme.ts
++++ b/frontend-mobile/lib/theme.ts
+@@ -361,12 +361,14 @@ export const theme = {
+   zIndex: {
+     base: 0,
+     dropdown: 1000,
++    float: 1050,
+     sticky: 1100,
+     fixed: 1200,
+     modalBackdrop: 1300,
+     modal: 1400,
+     popover: 1500,
+     tooltip: 1600,
++    toast: 1700,
+   },
+ } as const;
+ 
+diff --git a/frontend-mobile/lib/validation/__tests__/schemas.test.ts b/frontend-mobile/lib/validation/__tests__/schemas.test.ts
+index 257dc8c..ba35c21 100644
+--- a/frontend-mobile/lib/validation/__tests__/schemas.test.ts
++++ b/frontend-mobile/lib/validation/__tests__/schemas.test.ts
+@@ -1,4 +1,11 @@
+-import { loginSchema, registerSchema, completeProfileSchema, createConsultationSchema } from '../schemas';
++import {
++  loginSchema,
++  registerSchema,
++  completeProfileSchema,
++  createConsultationSchema,
++  createExamSchema,
++  createPrescriptionSchema,
++} from '../schemas';
+ 
+ describe('schemas', () => {
+   describe('loginSchema', () => {
+@@ -105,5 +112,74 @@ describe('schemas', () => {
+       });
+       expect(result.success).toBe(false);
+     });
++
++    it('rejects empty symptoms', () => {
++      const result = createConsultationSchema.safeParse({
++        consultationType: 'psicologo',
++        durationMinutes: 15,
++        symptoms: '',
++      });
++      expect(result.success).toBe(false);
++    });
++  });
++
++  describe('createExamSchema', () => {
++    it('rejects when symptoms empty and no exams/images', () => {
++      const result = createExamSchema.safeParse({
++        examType: 'laboratorial',
++        exams: [],
++        symptoms: '',
++        images: [],
++      });
++      expect(result.success).toBe(false);
++    });
++
++    it('rejects when no exams and no images', () => {
++      const result = createExamSchema.safeParse({
++        examType: 'laboratorial',
++        exams: [],
++        symptoms: 'Dor de cabeça',
++        images: [],
++      });
++      expect(result.success).toBe(false);
++    });
++
++    it('accepts with exams and symptoms', () => {
++      const result = createExamSchema.safeParse({
++        examType: 'laboratorial',
++        exams: ['Hemograma'],
++        symptoms: 'Dor de cabeça',
++        images: [],
++      });
++      expect(result.success).toBe(true);
++    });
++
++    it('accepts with images and symptoms', () => {
++      const result = createExamSchema.safeParse({
++        examType: 'laboratorial',
++        exams: [],
++        symptoms: 'Dor de cabeça',
++        images: ['file:///photo.jpg'],
++      });
++      expect(result.success).toBe(true);
++    });
++  });
++
++  describe('createPrescriptionSchema', () => {
++    it('accepts valid prescriptionType', () => {
++      const result = createPrescriptionSchema.safeParse({
++        prescriptionType: 'simples',
++        medications: [],
++      });
++      expect(result.success).toBe(true);
++    });
++
++    it('rejects invalid prescriptionType', () => {
++      const result = createPrescriptionSchema.safeParse({
++        prescriptionType: 'invalid',
++        medications: [],
++      });
++      expect(result.success).toBe(false);
++    });
+   });
+ });
+-- 
+2.52.0.windows.1
+
