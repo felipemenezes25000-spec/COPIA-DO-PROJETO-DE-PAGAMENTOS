@@ -31,12 +31,14 @@ export function Logo({ size = 'medium', compact = false, variant = 'light' }: Lo
 
   return (
     <View style={styles.container}>
-      <Image
-        source={LOGO_IMAGE as ImageSourcePropType}
-        style={[styles.logoImage, { width: dims.width, height }]}
-        resizeMode="contain"
-        accessibilityLabel="Logo RenoveJá"
-      />
+      <View style={styles.logoWrapper}>
+        <Image
+          source={LOGO_IMAGE as ImageSourcePropType}
+          style={[styles.logoImage, { width: dims.width, height }]}
+          resizeMode="contain"
+          accessibilityLabel="Logo RenoveJá"
+        />
+      </View>
       {!compact && (
         <Text style={[styles.tagline, { fontSize: dims.taglineSize, color: taglineColor }]}>
           {TAGLINE}
@@ -51,9 +53,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoImage: {
-    marginBottom: 4,
+  logoWrapper: {
+    backgroundColor: '#FFFFFF', // Clean background for non-transparent logo asset
+    borderRadius: 24,
+    padding: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
   },
+  logoImage: {},
   tagline: {
     marginTop: 4,
     textAlign: 'center',

@@ -1,9 +1,6 @@
 import React from 'react';
 import { View, Pressable, StyleSheet, StyleProp, ViewStyle } from 'react-native';
-import { theme } from '../../lib/theme';
-
-const c = theme.colors;
-const r = theme.borderRadius;
+import { useAppTheme } from '../../lib/ui/useAppTheme';
 
 type CardVariant = 'default' | 'elevated' | 'outlined';
 
@@ -26,13 +23,32 @@ export function AppCard({
   onPress,
   accessibilityLabel,
 }: AppCardProps) {
-  const cardStyle = [
-    styles.base,
-    !noPadding && styles.padding,
-    variant === 'default' && theme.shadows.card,
-    variant === 'elevated' && theme.shadows.elevated,
-    variant === 'outlined' && styles.outlined,
-    selected && styles.selected,
+  const { colors, borderRadius, shadows, spacing } = useAppTheme();
+
+  const cardStyles: ViewStyle = {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.card,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    ...(variant === 'outlined' ? { borderWidth: 1, borderColor: colors.borderLight } : {}),
+    ...(selected ? { borderColor: colors.primary, backgroundColor: colors.surfaceSecondary } : {}), // primarySoft removido, usando surface sec
+    ...(variant === 'default' ? shadows.card : {}),
+    ...(variant === 'elevated' ? shadows.cardLg : {}), // cardLg
+  } as ViewStyle; // Cast to avoid TS complexity with shadows type
+
+  const paddingStyle = !noPadding ? { padding: spacing.md } : undefined;
+
+  // Selected state override
+  const selectedStyle = selected ? {
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft, // Now safe from theme hook
+  } : undefined;
+
+  const combinedStyles: StyleProp<ViewStyle> = [
+    cardStyles,
+    paddingStyle,
+    selectedStyle,
     style,
   ];
 
@@ -40,7 +56,10 @@ export function AppCard({
     return (
       <Pressable
         onPress={onPress}
-        style={({ pressed }) => [...cardStyle, pressed && styles.pressed]}
+        style={({ pressed }) => [
+          combinedStyles,
+          pressed && { opacity: 0.88, transform: [{ scale: 0.98 }] },
+        ]}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
       >
@@ -49,30 +68,5 @@ export function AppCard({
     );
   }
 
-  return <View style={cardStyle}>{children}</View>;
+  return <View style={combinedStyles}>{children}</View>;
 }
-
-const styles = StyleSheet.create({
-  base: {
-    backgroundColor: c.background.paper,
-    borderRadius: r.card,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  padding: {
-    padding: theme.spacing.md,
-  },
-  outlined: {
-    borderWidth: 1,
-    borderColor: c.border.light,
-  },
-  selected: {
-    borderColor: c.primary.main,
-    backgroundColor: c.primary.soft,
-  },
-  pressed: {
-    opacity: 0.88,
-    transform: [{ scale: 0.98 }],
-  },
-});

@@ -4,11 +4,8 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { theme } from '../../lib/theme';
+import { useAppTheme } from '../../lib/ui/useAppTheme';
 import { uiTokens } from '../../lib/ui/tokens';
-
-const c = theme.colors;
-const s = theme.spacing;
 
 interface AppHeaderProps {
   title: string;
@@ -17,9 +14,7 @@ interface AppHeaderProps {
   left?: React.ReactNode;
   right?: React.ReactNode;
   transparent?: boolean;
-  /** Pass gradient colors array to render a gradient background with white text */
   gradient?: readonly string[] | string[];
-  /** Quando true, o pai já aplica safe area — usa apenas padding mínimo no topo */
   skipSafeAreaTop?: boolean;
 }
 
@@ -35,10 +30,12 @@ export function AppHeader({
 }: AppHeaderProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors, spacing } = useAppTheme();
+  
   const handleBack = onBack || (() => router.back());
 
   const isGradient = !!gradient;
-  const textColor = isGradient ? c.text.inverse : c.text.primary;
+  const textColor = isGradient ? '#FFFFFF' : colors.text;
   const backBgColor = isGradient ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)';
   const topPadding = skipSafeAreaTop ? 8 : insets.top + 8;
 
@@ -48,7 +45,7 @@ export function AppHeader({
         styles.container,
         { paddingTop: topPadding },
         transparent && styles.transparent,
-        !isGradient && !transparent && styles.defaultBg,
+        !isGradient && !transparent && { backgroundColor: colors.background },
       ]}
     >
       {left || (
@@ -61,13 +58,13 @@ export function AppHeader({
           <Ionicons name="chevron-back" size={24} color={textColor} />
         </TouchableOpacity>
       )}
-      <View style={styles.titleWrap}>
-        <Text style={[styles.title, { color: textColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} ellipsizeMode="tail">
+      <View style={[styles.titleWrap, { marginHorizontal: spacing.sm }]}>
+        <Text style={[styles.title, { color: textColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
           {title}
         </Text>
         {subtitle && (
           <Text
-            style={[styles.subtitle, { color: isGradient ? 'rgba(255,255,255,0.85)' : c.text.secondary }]}
+            style={[styles.subtitle, { color: isGradient ? 'rgba(255,255,255,0.85)' : colors.textSecondary }]}
             numberOfLines={1}
           >
             {subtitle}
@@ -100,9 +97,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: uiTokens.screenPaddingHorizontal,
     paddingBottom: 12,
   },
-  defaultBg: {
-    backgroundColor: theme.colors.background.default,
-  },
   transparent: {
     backgroundColor: 'transparent',
   },
@@ -116,7 +110,6 @@ const styles = StyleSheet.create({
   titleWrap: {
     flex: 1,
     alignItems: 'center',
-    marginHorizontal: s.sm,
   },
   title: {
     fontSize: 18,

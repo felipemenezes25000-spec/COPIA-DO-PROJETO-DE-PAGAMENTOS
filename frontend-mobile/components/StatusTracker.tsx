@@ -1,11 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../lib/theme';
+import { useAppTheme } from '../lib/ui/useAppTheme';
 import { RequestType, RequestStatus } from '../types/database';
 import { STATUS_LABELS_PT } from '../lib/domain/statusLabels';
-
-const c = theme.colors;
 
 interface Step {
   key: string;
@@ -46,27 +44,30 @@ interface Props {
 
 const DOT_SIZE = 26;
 const LINE_W = 2.5;
-const COMPLETED_COLOR = c.status.success;
-const CURRENT_COLOR = c.primary.main;
-const PENDING_COLOR = c.border.main;
 
 export default function StatusTracker({ currentStatus, requestType }: Props) {
   const { width } = useWindowDimensions();
+  const { colors } = useAppTheme();
+  
   const isCompact = width < 360;
   const steps = requestType === 'consultation' ? CONSULTATION_STEPS : PRESCRIPTION_STEPS;
+
+  const COMPLETED_COLOR = colors.status.success;
+  const CURRENT_COLOR = colors.primary.main;
+  const PENDING_COLOR = colors.border.main; // Agora dinâmico!
 
   if (currentStatus === 'rejected' || currentStatus === 'cancelled') {
     const isRejected = currentStatus === 'rejected';
     return (
       <View style={styles.terminalContainer}>
-        <View style={[styles.terminalCircle, { backgroundColor: isRejected ? c.status.errorLight : c.background.secondary }]}>
+        <View style={[styles.terminalCircle, { backgroundColor: isRejected ? colors.status.errorLight : colors.background.secondary }]}>
           <Ionicons
             name={isRejected ? 'close-circle' : 'ban'}
             size={28}
-            color={isRejected ? c.status.error : c.text.tertiary}
+            color={isRejected ? colors.status.error : colors.text.tertiary}
           />
         </View>
-        <Text style={[styles.terminalText, { color: isRejected ? c.status.error : c.text.tertiary }]}>
+        <Text style={[styles.terminalText, { color: isRejected ? colors.status.error : colors.text.tertiary }]}>
           {isRejected ? 'Solicitação rejeitada' : 'Solicitação cancelada'}
         </Text>
       </View>
@@ -85,7 +86,7 @@ export default function StatusTracker({ currentStatus, requestType }: Props) {
         const dotColor = isCompleted ? COMPLETED_COLOR : isCurrent ? CURRENT_COLOR : PENDING_COLOR;
         const dotBg = isCompleted ? COMPLETED_COLOR : isCurrent ? CURRENT_COLOR : 'transparent';
         const lineColor = index < currentIndex ? COMPLETED_COLOR : PENDING_COLOR;
-        const textColor = isCompleted ? COMPLETED_COLOR : isCurrent ? CURRENT_COLOR : c.text.tertiary;
+        const textColor = isCompleted ? COMPLETED_COLOR : isCurrent ? CURRENT_COLOR : colors.text.tertiary; // Agora dinâmico!
         const textWeight = isCurrent ? '700' : isCompleted ? '600' : '400';
 
         return (
@@ -94,9 +95,9 @@ export default function StatusTracker({ currentStatus, requestType }: Props) {
             <View style={styles.dotColumn}>
               <View style={[styles.dot, { borderColor: dotColor, backgroundColor: dotBg }]}>
                 {isCompleted ? (
-                  <Ionicons name="checkmark" size={14} color={c.text.inverse} />
+                  <Ionicons name="checkmark" size={14} color={colors.text.inverse} />
                 ) : (
-                  <Ionicons name={step.icon} size={12} color={isCurrent ? c.text.inverse : c.text.tertiary} />
+                  <Ionicons name={step.icon} size={12} color={isCurrent ? colors.text.inverse : colors.text.tertiary} />
                 )}
               </View>
               {!isLast && (
@@ -111,8 +112,8 @@ export default function StatusTracker({ currentStatus, requestType }: Props) {
               </Text>
               {isCurrent && (
                 <View style={styles.currentBadge}>
-                  <View style={styles.pulsingDot} />
-                  <Text style={styles.currentText}>Etapa atual</Text>
+                  <View style={[styles.pulsingDot, { backgroundColor: colors.primary.main }]} />
+                  <Text style={[styles.currentText, { color: colors.primary.main }]}>Etapa atual</Text>
                 </View>
               )}
             </View>
@@ -173,12 +174,10 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: c.primary.main,
   },
   currentText: {
     fontSize: 12,
     fontWeight: '700',
-    color: c.primary.main,
     letterSpacing: 0.2,
   },
   terminalContainer: {

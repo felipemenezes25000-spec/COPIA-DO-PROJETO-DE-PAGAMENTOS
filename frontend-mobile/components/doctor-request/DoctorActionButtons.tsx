@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, spacing, borderRadius, typography } from '../../lib/theme';
+import { useAppTheme } from '../../lib/ui/useAppTheme';
 import { DoctorCard } from '../ui/DoctorCard';
 import { AppButton } from '../ui/AppButton';
+import type { DesignColors } from '../../lib/designSystem';
 
 interface DoctorActionButtonsProps {
   canApprove: boolean;
@@ -58,7 +59,10 @@ export function DoctorActionButtons({
   onToggleSignForm,
   isInQueue,
 }: DoctorActionButtonsProps) {
-  const { colors } = theme;
+  const { colors, typography, spacing, borderRadius } = useAppTheme();
+  
+  // Dynamic styles
+  const styles = useMemo(() => makeStyles(colors, typography, spacing, borderRadius), [colors]);
 
   return (
     <>
@@ -66,7 +70,7 @@ export function DoctorActionButtons({
       {showSignForm && (
         <DoctorCard style={styles.formCard}>
           <View style={styles.formHeader}>
-            <View style={[styles.iconWrap, { backgroundColor: colors.primary.soft }]}>
+            <View style={[styles.iconWrap, { backgroundColor: colors.primarySoft }]}>
               <Ionicons name="shield-checkmark" size={20} color={colors.primary.main} />
             </View>
             <View style={{ flex: 1 }}>
@@ -81,7 +85,7 @@ export function DoctorActionButtons({
             secureTextEntry
             value={certPassword}
             onChangeText={onCertPasswordChange}
-            placeholderTextColor={colors.text.tertiary}
+            placeholderTextColor={colors.textMuted}
             autoFocus
             returnKeyType="done"
             onSubmitEditing={certPassword.length > 0 ? onSign : undefined}
@@ -111,7 +115,7 @@ export function DoctorActionButtons({
       {showRejectForm && (
         <DoctorCard style={[styles.formCard, { borderColor: colors.status.error }]}>
           <View style={styles.formHeader}>
-            <View style={[styles.iconWrap, { backgroundColor: colors.status.errorBg }]}>
+            <View style={[styles.iconWrap, { backgroundColor: colors.errorLight }]}>
               <Ionicons name="close-circle" size={20} color={colors.status.error} />
             </View>
             <View style={{ flex: 1 }}>
@@ -127,7 +131,7 @@ export function DoctorActionButtons({
             onChangeText={onRejectionReasonChange}
             multiline
             textAlignVertical="top"
-            placeholderTextColor={colors.text.tertiary}
+            placeholderTextColor={colors.textMuted}
             autoFocus
           />
           
@@ -164,7 +168,7 @@ export function DoctorActionButtons({
       {/* --- BOTÕES DE AÇÃO PRINCIPAIS --- */}
       {!showSignForm && !showRejectForm && (
         <View style={styles.mainActions}>
-          {/* 1. ACEITAR CONSULTA (Fluxo de Telemedicina) */}
+          {/* 1. ACEITAR CONSULTA */}
           {canAccept && (
             <AppButton
               title="Aceitar Atendimento"
@@ -178,7 +182,7 @@ export function DoctorActionButtons({
             />
           )}
 
-          {/* 2. APROVAR (Fluxo Simples) */}
+          {/* 2. APROVAR */}
           {canApprove && (
             <AppButton
               title="Aprovar Solicitação"
@@ -191,7 +195,7 @@ export function DoctorActionButtons({
             />
           )}
 
-          {/* 3. ASSINAR (Fluxo Receita/Exame) */}
+          {/* 3. ASSINAR */}
           {canSign && (isPrescription || isExam) && (
             <AppButton
               title="Visualizar e Assinar"
@@ -205,7 +209,7 @@ export function DoctorActionButtons({
             />
           )}
           
-          {/* 4. ASSINAR (Legado/Genérico) */}
+          {/* 4. ASSINAR (Legado) */}
           {canSign && !isPrescription && !isExam && (
             <AppButton
               title="Assinar Digitalmente"
@@ -218,25 +222,25 @@ export function DoctorActionButtons({
             />
           )}
 
-          {/* 5. VÍDEO (Pós-Aceite) */}
+          {/* 5. VÍDEO (Pós-Aceite) - Use secondary (green) */}
           {canVideo && (
             <AppButton
               title="Entrar na Sala de Vídeo"
-              variant="secondary" // Green for "Go"
+              variant="secondary"
               size="lg"
               icon="videocam"
               onPress={onStartVideo}
-              pulse // Call to action!
+              pulse
               fullWidth
             />
           )}
 
-          {/* 6. REJEITAR (Secundário) */}
+          {/* 6. REJEITAR (Ghost/Destructive) */}
           {canReject && (
             <AppButton
               title="Rejeitar Pedido"
-              variant="ghost"
-              size="md" // Smaller
+              variant="ghost" 
+              size="md"
               icon="close-circle-outline"
               onPress={onToggleRejectForm}
               style={{ marginTop: 8 }}
@@ -249,86 +253,88 @@ export function DoctorActionButtons({
   );
 }
 
-const styles = StyleSheet.create({
-  cardMargin: {
-    marginHorizontal: 20,
-    marginTop: 16,
-  },
-  formCard: {
-    padding: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.border.main,
-    marginBottom: 24,
-    marginHorizontal: 20,
-  },
-  formHeader: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  formTitle: {
-    fontSize: 16,
-    fontFamily: theme.typography.fontFamily.bold,
-    color: theme.colors.text.primary,
-  },
-  formDesc: {
-    fontSize: 13,
-    color: theme.colors.text.secondary,
-    marginTop: 2,
-  },
-  input: {
-    height: 50,
-    borderWidth: 1,
-    borderColor: theme.colors.border.main,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: theme.colors.text.primary,
-    backgroundColor: theme.colors.background.subtle,
-    marginBottom: 16,
-  },
-  textArea: {
-    minHeight: 120,
-    borderWidth: 1,
-    borderColor: theme.colors.border.main,
-    borderRadius: theme.borderRadius.md,
-    padding: 16,
-    fontSize: 16,
-    color: theme.colors.text.primary,
-    backgroundColor: theme.colors.background.subtle,
-    marginBottom: 16,
-  },
-  btnRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  hintBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: theme.colors.primary.soft,
-    padding: 16,
-    borderRadius: theme.borderRadius.card,
-    marginHorizontal: 20,
-    marginTop: 24,
-  },
-  hintText: {
-    flex: 1,
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    lineHeight: 20,
-  },
-  mainActions: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 40, // Extra bottom padding for scroll
-    gap: 12,
-  },
-});
+function makeStyles(colors: DesignColors, typography: any, spacing: any, borderRadius: any) {
+  return StyleSheet.create({
+    cardMargin: {
+      marginHorizontal: 20,
+      marginTop: 16,
+    },
+    formCard: {
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 24,
+      marginHorizontal: 20,
+    },
+    formHeader: {
+      flexDirection: 'row',
+      gap: 12,
+      marginBottom: 16,
+    },
+    iconWrap: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    formTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    formDesc: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    input: {
+      height: 50,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: borderRadius.md,
+      paddingHorizontal: 16,
+      fontSize: 16,
+      color: colors.text,
+      backgroundColor: colors.surfaceSecondary,
+      marginBottom: 16,
+    },
+    textArea: {
+      minHeight: 120,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: borderRadius.md,
+      padding: 16,
+      fontSize: 16,
+      color: colors.text,
+      backgroundColor: colors.surfaceSecondary,
+      marginBottom: 16,
+    },
+    btnRow: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    hintBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: colors.primarySoft,
+      padding: 16,
+      borderRadius: borderRadius.card,
+      marginHorizontal: 20,
+      marginTop: 24,
+    },
+    hintText: {
+      flex: 1,
+      fontSize: 14,
+      color: colors.textSecondary,
+      lineHeight: 20,
+    },
+    mainActions: {
+      paddingHorizontal: 20,
+      paddingTop: 24,
+      paddingBottom: 40, // Extra bottom padding for scroll
+      gap: 12,
+    },
+  });
+}
