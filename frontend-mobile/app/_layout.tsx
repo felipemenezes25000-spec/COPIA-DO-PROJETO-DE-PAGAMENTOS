@@ -3,18 +3,7 @@ import { Platform, View, StyleSheet } from 'react-native';
 import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 30_000,
-      gcTime: 5 * 60_000,
-      retry: 1,
-    },
-  },
-});
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { isExpoGo } from '../lib/expo-go';
 import { useFonts } from '@expo-google-fonts/plus-jakarta-sans';
 import {
   PlusJakartaSans_400Regular,
@@ -22,6 +11,8 @@ import {
   PlusJakartaSans_600SemiBold,
   PlusJakartaSans_700Bold,
 } from '@expo-google-fonts/plus-jakarta-sans';
+import * as SplashScreen from 'expo-splash-screen';
+import { isExpoGo } from '../lib/expo-go';
 import { AuthProvider } from '../contexts/AuthContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
 import { RequestsEventsProvider } from '../contexts/RequestsEventsContext';
@@ -33,14 +24,24 @@ import { GlobalAssistantBanner } from '../components/triage/GlobalAssistantBanne
 import { ToastProvider } from '../components/ui/Toast';
 import { ModalVisibilityProvider } from '../contexts/ModalVisibilityContext';
 import { ColorSchemeProvider, useColorSchemeContext } from '../contexts/ColorSchemeContext';
-import * as SplashScreen from 'expo-splash-screen';
 import { motionTokens } from '../lib/ui/motion';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      retry: 1,
+    },
+  },
+});
 
 // Push notifications foram removidas do Expo Go no SDK 53 - carregar provider só em development build
 const NoopProvider = ({ children }: { children: React.ReactNode }) => <>{children}</>;
 let PushNotificationProvider: React.ComponentType<{ children: React.ReactNode }> = NoopProvider;
 if (!isExpoGo) {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- conditional native module
     PushNotificationProvider = require('../contexts/PushNotificationContext').PushNotificationProvider;
   } catch {
     // Módulo nativo indisponível (ex: web) — usa noop

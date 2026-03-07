@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
-  Pressable,
   TouchableOpacity,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -99,7 +98,7 @@ export default function DoctorDashboard() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { colors, gradients, spacing, shadows, scheme } = useAppTheme();
+  const { colors, gradients, shadows, scheme } = useAppTheme();
   const isDark = scheme === 'dark';
   
   const [queue, setQueue] = useState<RequestResponseDto[]>([]);

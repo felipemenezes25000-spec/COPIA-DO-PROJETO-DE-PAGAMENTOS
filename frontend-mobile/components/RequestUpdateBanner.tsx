@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Pressable, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';

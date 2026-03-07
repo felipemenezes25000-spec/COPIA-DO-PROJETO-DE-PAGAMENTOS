@@ -108,7 +108,7 @@ export function useAudioRecorder(requestId: string, stream: 'local' | 'remote' =
         setLastChunkError(null);
         setSecondsUntilNextChunk(CHUNK_DURATION_MS / 1000);
         if (__DEV__) {
-          console.log(`[AudioRecorder] Chunk enviado OK (total: ${chunkIndexRef.current})`);
+          console.warn(`[AudioRecorder] Chunk enviado OK (total: ${chunkIndexRef.current})`);
         }
       } catch (e: any) {
         const msg = e?.message ?? String(e);
@@ -222,7 +222,7 @@ export function useAudioRecorder(requestId: string, stream: 'local' | 'remote' =
         setSecondsUntilNextChunk((s) => (s <= 1 ? CHUNK_DURATION_MS / 1000 : s - 1));
       }, 1000);
 
-      console.log('[AudioRecorder] Started recording, chunk interval:', CHUNK_DURATION_MS);
+      console.warn('[AudioRecorder] Started recording, chunk interval:', CHUNK_DURATION_MS);
       return true;
     } catch (e: any) {
       const msg = e?.message || 'Erro ao iniciar gravação';
@@ -237,7 +237,7 @@ export function useAudioRecorder(requestId: string, stream: 'local' | 'remote' =
   // ── Stop recording ──
 
   const stop = useCallback(async () => {
-    console.log('[AudioRecorder] Stopping...');
+    console.warn('[AudioRecorder] Stopping...');
     activeRef.current = false;
     setIsRecording(false);
     setSecondsUntilNextChunk(0);
@@ -280,7 +280,7 @@ export function useAudioRecorder(requestId: string, stream: 'local' | 'remote' =
       });
     } catch {}
 
-    console.log(
+    console.warn(
       `[AudioRecorder] Stopped. Sent: ${chunkIndexRef.current} chunks`,
     );
   }, [sendChunk, stream]);

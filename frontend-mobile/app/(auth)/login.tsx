@@ -14,7 +14,6 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import { useIdTokenAuthRequest } from 'expo-auth-session/providers/google';
@@ -30,8 +29,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth, FORBIDDEN_MESSAGE_KEY } from '../../contexts/AuthContext';
 import { validate } from '../../lib/validation';
 import { loginSchema } from '../../lib/validation/schemas';
-
-const s = theme.spacing;
 
 const LOG_RENDER = __DEV__ && false;
 const WHATSAPP_NUMBER = '5511986318000';
@@ -57,7 +54,6 @@ export default function Login() {
 
   const { height: windowHeight } = useWindowDimensions();
   const isSmallScreen = windowHeight < SMALL_SCREEN_HEIGHT;
-  const isExtraSmallScreen = windowHeight < EXTRA_SMALL_SCREEN_HEIGHT;
 
   const extra = Constants.expoConfig?.extra as Record<string, string> | undefined;
   const googleWebClientId =
@@ -210,7 +206,7 @@ export default function Login() {
     } finally {
       setGoogleLoading(false);
     }
-  }, [googleWebClientId, request, promptGoogle, signInWithGoogle, router]);
+  }, [googleWebClientId, googleAndroidClientId, googleIosClientId, hasGoogleConfig, request, promptGoogle, signInWithGoogle, router]);
 
   const openWhatsApp = useCallback(() => {
     const url = `https://wa.me/${WHATSAPP_NUMBER}`;

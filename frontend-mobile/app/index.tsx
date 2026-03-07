@@ -39,7 +39,7 @@ export default function SplashScreen() {
       }, delay);
       return () => clearTimeout(t);
     }
-  }, [user, loading]);
+  }, [user, loading, router]);
 
   // Plano B: se após SPLASH_MAX_MS ainda estiver na splash, força login (evita tela travada)
   useEffect(() => {
@@ -49,7 +49,7 @@ export default function SplashScreen() {
       router.replace('/(auth)/login');
     }, SPLASH_MAX_MS);
     return () => clearTimeout(t);
-  }, []);
+  }, [router]);
 
   return (
     <LinearGradient

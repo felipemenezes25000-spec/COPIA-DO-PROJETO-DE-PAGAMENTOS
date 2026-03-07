@@ -1,7 +1,4 @@
 import { apiClient } from './api-client';
-
-type RNFile = { uri: string; type: string; name: string };
-
 import {
   RequestResponseDto,
   RequestStatus,
@@ -543,6 +540,7 @@ export async function payWithSavedCard(
 // ============================================
 // NOTIFICATIONS — implementação em api-notifications.ts
 // ============================================
+// eslint-disable-next-line import/first -- grouped with notification exports
 import {
   fetchNotifications,
   markNotificationRead,

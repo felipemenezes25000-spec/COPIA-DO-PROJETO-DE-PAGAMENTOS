@@ -61,6 +61,7 @@ export default function PaymentScreen() {
   useEffect(() => {
     loadPayment();
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadPayment defined below
   }, [paymentId]);
 
   // Verifica status imediatamente quando o usuário volta ao app (ex.: após pagar PIX no app do banco)

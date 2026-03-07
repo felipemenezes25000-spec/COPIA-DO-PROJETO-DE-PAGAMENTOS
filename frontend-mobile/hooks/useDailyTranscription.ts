@@ -86,7 +86,7 @@ export function useDailyTranscription({
         await call.startTranscription?.({ language: 'pt-BR' });
         startedRef.current = true;
         setIsTranscribing(true);
-        if (__DEV__) console.log('[DailyTranscription] Transcrição iniciada');
+        if (__DEV__) console.warn('[DailyTranscription] Transcrição iniciada');
       } catch (e) {
         if (__DEV__) console.warn('[DailyTranscription] Falha ao iniciar:', e);
       }

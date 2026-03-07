@@ -89,17 +89,18 @@ export function useDoctorRequest(): UseDoctorRequestReturn {
       setLoadError(false);
       const fresh = await getRequestById(requestId);
       if (__DEV__) {
-        console.log('[DOCTOR_DETAIL] prescriptionImages:', JSON.stringify(fresh.prescriptionImages));
-        console.log('[DOCTOR_DETAIL] examImages:', JSON.stringify(fresh.examImages));
+        console.warn('[DOCTOR_DETAIL] prescriptionImages:', JSON.stringify(fresh.prescriptionImages));
+        console.warn('[DOCTOR_DETAIL] examImages:', JSON.stringify(fresh.examImages));
       }
       setRequest(fresh);
       _requestCache.set(requestId, fresh);
     } catch {
-      console.error('Error loading request');
+      console.warn('Error loading request');
       if (!request) setLoadError(true);
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- request used only for setLoadError fallback
   }, [requestId]);
 
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
@@ -110,7 +111,7 @@ export function useDoctorRequest(): UseDoctorRequestReturn {
     if (!request) return;
     setConductNotes(request.doctorConductNotes || '');
     setIncludeConductInPdf(request.includeConductInPdf ?? true);
-  }, [request?.id, request?.doctorConductNotes, request?.includeConductInPdf]);
+  }, [request?.id, request?.doctorConductNotes, request?.includeConductInPdf, request]);
 
   const handleSaveConduct = async () => {
     if (!requestId || !request) return;

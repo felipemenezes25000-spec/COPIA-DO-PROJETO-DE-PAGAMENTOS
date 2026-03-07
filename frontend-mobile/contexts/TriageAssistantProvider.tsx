@@ -194,7 +194,7 @@ export function TriageAssistantProvider({ children }: { children: React.ReactNod
         }
       });
     }
-  }, []);
+  }, [current]);
 
   const dismiss = useCallback(() => {
     setCurrent(null);
@@ -206,6 +206,7 @@ export function TriageAssistantProvider({ children }: { children: React.ReactNod
     screenKeyRef.current = null;
     currentShownAtRef.current = 0;
     if (keyToReset) resetSessionCountForKey(keyToReset);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refs are stable
   }, []);
 
   const muteCurrent = useCallback(async () => {

@@ -189,7 +189,7 @@ describe('api module', () => {
       mockFetch.mockResolvedValueOnce(mockOkResponse(mockResp));
 
       const { createPrescriptionRequest } = require('../lib/api');
-      const result = await createPrescriptionRequest({
+      await createPrescriptionRequest({
         prescriptionType: 'simples',
         medications: ['Paracetamol'],
       });

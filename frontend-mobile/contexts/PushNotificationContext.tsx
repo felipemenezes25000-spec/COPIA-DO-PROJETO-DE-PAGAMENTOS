@@ -7,6 +7,7 @@ import { registerPushToken, unregisterPushToken } from '../lib/api';
 import { isExpoGo } from '../lib/expo-go';
 
 // Push foi removido do Expo Go no SDK 53 — não carregar o módulo no Expo Go para evitar erro
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- conditional native module
 const Notifications = isExpoGo ? null : require('expo-notifications');
 
 if (Notifications) {
@@ -135,7 +136,7 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
     return () => {
       mounted = false;
     };
-  }, [user?.id]);
+  }, [user?.id, user]);
 
   return (
     <PushNotificationContext.Provider value={{ lastNotificationAt }}>

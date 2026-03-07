@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../../lib/themeDoctor';
+import { colors, typography } from '../../lib/themeDoctor';
 import { DoctorCard } from '../ui/DoctorCard';
 import { RequestResponseDto, PatientProfileForDoctorDto } from '../../types/database';
 import { formatDateTimeBR } from '../../lib/utils/format';

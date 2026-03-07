@@ -27,7 +27,6 @@ import { fetchSpecialties, uploadCertificate } from '../../lib/api';
 import { SPECIALTIES_FALLBACK } from '../../lib/constants/specialties';
 
 const s = theme.spacing;
-const t = theme.typography;
 
 function onlyDigits(s: string) {
   return (s || '').replace(/\D/g, '');
@@ -334,7 +333,7 @@ export default function Register() {
             setTimeout(() => router.replace('/(doctor)/dashboard' as any), 0);
             return;
           }
-        } catch (uploadErr: any) {
+        } catch (_uploadErr: unknown) {
           Alert.alert(
             'Cadastro concluído',
             'Conta criada. O certificado não pôde ser enviado. Você será direcionado para concluir o cadastro.',

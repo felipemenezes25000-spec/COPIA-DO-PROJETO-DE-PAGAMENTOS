@@ -38,7 +38,7 @@ export function PulsingNotificationIcon({ color, size, hasUnread }: PulsingNotif
       cancelAnimation(scale);
       scale.value = withTiming(1, { duration: 200 });
     }
-  }, [hasUnread]);
+  }, [hasUnread, scale]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],

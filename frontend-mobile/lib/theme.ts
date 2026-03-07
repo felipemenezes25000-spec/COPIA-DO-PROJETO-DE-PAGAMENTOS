@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 
 /**
  * RenoveJá+ Design System - Unified Theme

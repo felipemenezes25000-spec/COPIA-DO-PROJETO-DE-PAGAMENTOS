@@ -23,7 +23,7 @@ export default function CompleteDoctorScreen() {
   const { refreshUser, signOut } = useAuth();
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const [certificate, setCertificate] = useState<any>(null);
+  const [, setCertificate] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<any>(null);
@@ -33,6 +33,7 @@ export default function CompleteDoctorScreen() {
 
   useEffect(() => {
     loadCert();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadCert is stable, runs once on mount
   }, []);
 
   const loadCert = async () => {

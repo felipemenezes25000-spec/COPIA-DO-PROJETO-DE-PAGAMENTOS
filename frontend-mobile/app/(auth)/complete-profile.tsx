@@ -37,7 +37,6 @@ export default function CompleteProfileScreen() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const { user, completeProfile, cancelRegistration } = useAuth();
   const router = useRouter();
-  const isPatient = user?.role === 'patient';
   const addressRequired = true; // Endereço obrigatório para paciente e médico
 
   const clearError = (field: string) => {

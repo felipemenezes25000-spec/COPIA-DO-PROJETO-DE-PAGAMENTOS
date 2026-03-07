@@ -18,8 +18,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, borderRadius, doctorDS } from '../../lib/themeDoctor';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../lib/designSystem';
-const pad = doctorDS.screenPaddingHorizontal;
 import { RequestResponseDto } from '../../types/database';
+
+const pad = doctorDS.screenPaddingHorizontal;
 import { cacheRequest } from '../doctor-request/[id]';
 import { useRequestsEvents } from '../../contexts/RequestsEventsContext';
 import { getHistoricalGroupedByPeriod } from '../../lib/domain/getRequestUiState';

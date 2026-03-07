@@ -47,7 +47,7 @@ describe('createTokens', () => {
     });
 
     it('texto claro no dark mode', () => {
-      expect(t.colors.text).toBe('#F1F5F9');
+      expect(t.colors.text).toBe('#F8FAFC'); // Slate 50
     });
 
     it('primary permanece igual no dark mode', () => {
@@ -66,24 +66,24 @@ describe('createTokens', () => {
       expect(t.role).toBe('doctor');
     });
 
-    it('fundo levemente diferente do patient', () => {
-      expect(t.colors.background).toBe('#F4F6F9');
+    it('fundo unificado com patient no light mode', () => {
+      expect(t.colors.background).toBe('#F8FAFC'); // Unificado
     });
 
-    it('texto mais escuro no doctor', () => {
-      expect(t.colors.text).toBe('#121A3E');
+    it('texto escuro no doctor', () => {
+      expect(t.colors.text).toBe('#0F172A'); // Unificado
     });
   });
 
   describe('doctor dark', () => {
     const t = createTokens('doctor', 'dark');
 
-    it('fundo escuro doctor', () => {
-      expect(t.colors.background).toBe('#0D1B2A');
+    it('fundo escuro doctor (mais profundo que patient)', () => {
+      expect(t.colors.background).toBe('#0B1120');
     });
 
     it('texto claro doctor dark', () => {
-      expect(t.colors.text).toBe('#E2E8F0');
+      expect(t.colors.text).toBe('#F8FAFC');
     });
   });
 
@@ -97,17 +97,15 @@ describe('createTokens', () => {
       expect(doctorTokens.scheme).toBe('light');
       expect(doctorTokens.role).toBe('doctor');
     });
-
-    it('patientTokens e doctorTokens diferem no background', () => {
-      expect(patientTokens.colors.background).not.toBe(doctorTokens.colors.background);
-    });
   });
 
   describe('invariantes cross-scheme', () => {
-    it('status de erro é consistente entre light e dark', () => {
+    it(' status de erro é consistente entre light e dark (ajustado para legibilidade)', () => {
       const light = createTokens('patient', 'light');
       const dark = createTokens('patient', 'dark');
-      expect(light.colors.error).toBe(dark.colors.error);
+      // No novo design system, erro no dark é #F87171 (mais claro) para contraste
+      expect(light.colors.error).not.toBe(dark.colors.error); 
+      expect(dark.colors.error).toBe('#F87171');
     });
 
     it('primary é consistente entre roles', () => {

@@ -90,7 +90,7 @@ export default function ConsultationSummaryScreen() {
         router.back();
       })
       .finally(() => setLoading(false));
-  }, [rid]);
+  }, [rid, router]);
 
   const handleSaveToRecord = async () => {
     if (!rid) return;
@@ -99,7 +99,7 @@ export default function ConsultationSummaryScreen() {
       await saveConsultationSummary(rid, { plan: clinicalNote.trim() || undefined });
       setSaved(true);
       Alert.alert('Sucesso', 'Nota clínica salva no prontuário.');
-    } catch (e) {
+    } catch {
       Alert.alert('Erro', 'Não foi possível salvar no prontuário. Tente novamente.');
     } finally {
       setSaving(false);

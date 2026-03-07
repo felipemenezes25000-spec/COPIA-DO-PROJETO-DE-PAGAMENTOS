@@ -19,9 +19,6 @@ import type { ComponentProps } from 'react';
 import { spacing, borderRadius, typography, doctorDS } from '../../lib/themeDoctor';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../lib/designSystem';
-
-type IoniconName = ComponentProps<typeof Ionicons>['name'];
-
 import { getDisplayPrice } from '../../lib/config/pricing';
 import { formatBRL } from '../../lib/utils/format';
 import StatusTracker from '../../components/StatusTracker';
@@ -41,6 +38,8 @@ import { PatientInfoCard } from '../../components/doctor-request/PatientInfoCard
 import { AiCopilotSection } from '../../components/doctor-request/AiCopilotSection';
 import { PrescriptionImageGallery } from '../../components/doctor-request/PrescriptionImageGallery';
 import { DoctorActionButtons } from '../../components/doctor-request/DoctorActionButtons';
+
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
 export { cacheRequest } from '../../hooks/useDoctorRequest';
 
@@ -333,7 +332,7 @@ function ConsultationPostSection({ request, router }: { request: NonNullable<Ret
       {request.consultationAnamnesis && request.consultationAnamnesis.trim() && (() => {
         let ana: Record<string, unknown> = {};
         try { ana = JSON.parse(request.consultationAnamnesis || '{}'); } catch { /* ignore */ }
-        const fields: Array<{ key: string; label: string; icon: string }> = [
+        const fields: { key: string; label: string; icon: string }[] = [
           { key: 'queixa_principal', label: 'Queixa Principal', icon: 'chatbubble-ellipses' },
           { key: 'historia_doenca_atual', label: 'História da Doença Atual', icon: 'time' },
           { key: 'sintomas', label: 'Sintomas', icon: 'thermometer' },

@@ -16,7 +16,7 @@ import { spacing, borderRadius } from '../../lib/theme';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../lib/designSystem';
 import { uiTokens } from '../../lib/ui/tokens';
-import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '../../lib/api';
+import { getNotifications, markNotificationAsRead } from '../../lib/api';
 import { NotificationResponseDto } from '../../types/database';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { AppHeader, AppSegmentedControl, AppEmptyState, TopSummaryStrip } from '../../components/ui';

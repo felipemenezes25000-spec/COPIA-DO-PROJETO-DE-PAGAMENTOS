@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
   Platform,
   Modal,
   useWindowDimensions,
@@ -24,7 +23,6 @@ import { useAppTheme } from '../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../lib/designSystem';
 import { uiTokens } from '../../lib/ui/tokens';
 import { fetchRequestById, markRequestDelivered, cancelRequest } from '../../lib/api';
-import { apiClient } from '../../lib/api-client';
 import { getDisplayPrice } from '../../lib/config/pricing';
 import { formatBRL, formatDateTimeBR } from '../../lib/utils/format';
 import { RequestResponseDto } from '../../types/database';
@@ -152,20 +150,20 @@ export default function RequestDetailScreen() {
     setLoading(true);
     setDetailError(null);
     const start = Date.now();
-    if (LOG_DETAIL) console.info('[DETAIL_FETCH] start', { requestId, fid });
+    if (LOG_DETAIL) console.warn('[DETAIL_FETCH] start', { requestId, fid });
 
     try {
       const data = await fetchRequestById(requestId, { signal: abort.signal });
       if (fid !== fetchIdRef.current) return;
       setRequest(data);
-      if (LOG_DETAIL) console.info('[DETAIL_FETCH] success', { requestId, fid, ms: Date.now() - start });
+      if (LOG_DETAIL) console.warn('[DETAIL_FETCH] success', { requestId, fid, ms: Date.now() - start });
     } catch (e: unknown) {
       if (fid !== fetchIdRef.current) return;
       if ((e as { name?: string })?.name === 'AbortError') return;
       const msg = (e as Error)?.message ?? String(e);
       setDetailError(msg);
       setRequest(null);
-      if (LOG_DETAIL) console.info('[DETAIL_FETCH] error', { requestId, fid, msg });
+      if (LOG_DETAIL) console.warn('[DETAIL_FETCH] error', { requestId, fid, msg });
     } finally {
       if (fid === fetchIdRef.current) {
         setLoading(false);
@@ -220,7 +218,7 @@ export default function RequestDetailScreen() {
       videoModalShownRef.current = true;
       setShowVideoModal(true);
     }
-  }, [request?.id, request?.status, request?.requestType]);
+  }, [request?.id, request?.status, request?.requestType, request]);
 
   /** Polling: aguardando pagamento OU consulta pronta (paid) — para detectar webhook de pagamento ou médico iniciando. */
   const MAX_POLLS = 90;
@@ -268,7 +266,7 @@ export default function RequestDetailScreen() {
         pollTimerRef.current = null;
       }
     };
-  }, [request?.status, request?.id, loadSilent]);
+  }, [request?.status, request?.id, request, loadSilent]);
 
   /** Dra. Renova: mensagens no contexto do detalhe (conduta disponível, documento pronto). */
   useTriageEval({

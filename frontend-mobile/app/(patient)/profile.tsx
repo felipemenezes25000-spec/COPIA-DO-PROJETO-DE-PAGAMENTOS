@@ -16,14 +16,11 @@ import {
   UIManager,
 } from 'react-native';
 
-// Habilitar LayoutAnimation no Android
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { shadows } from '../../lib/theme';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
@@ -37,6 +34,11 @@ import { FadeIn } from '../../components/ui/FadeIn';
 import { motionTokens } from '../../lib/ui/motion';
 import { updateAvatar } from '../../lib/api';
 import { showToast } from '../../components/ui/Toast';
+
+// Habilitar LayoutAnimation no Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function PatientProfile() {
   const router = useRouter();
@@ -85,7 +87,6 @@ export default function PatientProfile() {
     }
   };
 
-  const firstName = user?.name?.split(' ')[0] || '';
   const initials = user?.name
     ? user.name.split(' ').slice(0, 2).map(n => n[0]?.toUpperCase()).join('')
     : '?';
@@ -293,7 +294,7 @@ export default function PatientProfile() {
         )}
       </TouchableOpacity>
 
-      <Text style={styles.version}>RenoveJá+ v{require('expo-constants').default?.expoConfig?.version ?? '1.0.0'}</Text>
+      <Text style={styles.version}>RenoveJá+ v{Constants.expoConfig?.version ?? '1.0.0'}</Text>
 
       <View style={{ height: insets.bottom + 24 }} />
       </FadeIn>

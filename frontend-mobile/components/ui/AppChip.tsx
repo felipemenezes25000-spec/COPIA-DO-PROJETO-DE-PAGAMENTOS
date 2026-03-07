@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, ViewStyle } from 'react-native';
-import { uiTokens } from '../../lib/ui/tokens';
+import { Text, StyleSheet, Pressable, ViewStyle } from 'react-native';
 import { theme } from '../../lib/theme';
 
 interface AppChipProps {

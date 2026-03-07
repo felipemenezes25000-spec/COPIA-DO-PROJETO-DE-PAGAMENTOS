@@ -62,7 +62,7 @@ export function DoctorActionButtons({
   const { colors, typography, spacing, borderRadius } = useAppTheme();
   
   // Dynamic styles
-  const styles = useMemo(() => makeStyles(colors, typography, spacing, borderRadius), [colors]);
+  const styles = useMemo(() => makeStyles(colors, typography, spacing, borderRadius), [colors, typography, spacing, borderRadius]);
 
   return (
     <>

@@ -103,7 +103,7 @@ export async function uploadCarePlanTaskFile(
 
 export async function reviewCarePlan(
   carePlanId: string,
-  data: { notes?: string; closePlan: boolean; taskDecisions: Array<{ taskId: string; decision: string; reason?: string }> },
+  data: { notes?: string; closePlan: boolean; taskDecisions: { taskId: string; decision: string; reason?: string }[] },
 ): Promise<CarePlan> {
   return apiClient.post(`/api/care-plans/${carePlanId}/review`, data);
 }

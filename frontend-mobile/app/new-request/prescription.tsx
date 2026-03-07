@@ -17,8 +17,6 @@ import { uiTokens } from '../../lib/ui/tokens';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../lib/designSystem';
 import { createPrescriptionRequest } from '../../lib/api';
-import { validate } from '../../lib/validation';
-import { createPrescriptionSchema } from '../../lib/validation/schemas';
 import { PRESCRIPTION_TYPE_PRICES } from '../../lib/config/pricing';
 import { formatBRL } from '../../lib/utils/format';
 import { getApiErrorMessage } from '../../lib/api-client';

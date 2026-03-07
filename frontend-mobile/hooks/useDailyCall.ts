@@ -3,7 +3,6 @@ import Daily, {
   DailyCall,
   DailyEvent,
   DailyParticipant,
-  DailyEventObjectParticipant,
   DailyTrackState,
 } from '@daily-co/react-native-daily-js';
 

@@ -5,21 +5,21 @@
 
 export type HumanizeErrorContext = 'payment' | 'request' | 'consultation' | 'generic';
 
-const PAYMENT_PATTERNS: Array<{ pattern: RegExp | string; message: string }> = [
+const PAYMENT_PATTERNS: { pattern: RegExp | string; message: string }[] = [
   { pattern: /pending payment|must be in.*payment|aguardando pagamento/i, message: 'Este pedido não está disponível para pagamento. Verifique o status do pedido.' },
   { pattern: /already paid|já.*pago|payment.*completed/i, message: 'Pagamento já foi realizado.' },
   { pattern: /invalid.*status|status.*invalid/i, message: 'Este pedido não está disponível para pagamento. Verifique o status do pedido.' },
   { pattern: /request.*not found|pedido.*não encontrado/i, message: 'Pedido não encontrado.' },
 ];
 
-const REQUEST_PATTERNS: Array<{ pattern: RegExp | string; message: string }> = [
+const REQUEST_PATTERNS: { pattern: RegExp | string; message: string }[] = [
   { pattern: /cannot approve|não.*aprovar|invalid.*approve/i, message: 'Não é possível aprovar este pedido no momento.' },
   { pattern: /cannot reject|não.*rejeitar/i, message: 'Não é possível rejeitar este pedido no momento.' },
   { pattern: /cannot sign|não.*assinar|invalid.*sign/i, message: 'Não é possível assinar este documento no momento.' },
   { pattern: /request.*not found|pedido.*não encontrado/i, message: 'Pedido não encontrado.' },
 ];
 
-const CONSULTATION_PATTERNS: Array<{ pattern: RegExp | string; message: string }> = [
+const CONSULTATION_PATTERNS: { pattern: RegExp | string; message: string }[] = [
   { pattern: /consultation.*not available|consulta.*indisponível/i, message: 'Esta consulta não está disponível no momento.' },
   { pattern: /already accepted|já.*aceita/i, message: 'Esta consulta já foi aceita.' },
   { pattern: /request.*not found|pedido.*não encontrado/i, message: 'Pedido não encontrado.' },
@@ -45,7 +45,7 @@ function getMessageFromError(err: unknown): string {
   return '';
 }
 
-function matchPatterns(rawMessage: string, patterns: Array<{ pattern: RegExp | string; message: string }>): string | null {
+function matchPatterns(rawMessage: string, patterns: { pattern: RegExp | string; message: string }[]): string | null {
   const lower = rawMessage.toLowerCase();
   for (const { pattern, message } of patterns) {
     if (typeof pattern === 'string') {

@@ -346,7 +346,7 @@ export default function PrescriptionEditorScreen() {
         showToast({ message: request.requestType === 'exam' ? 'Preview não disponível para o pedido de exame.' : 'Preview não disponível. Verifique se há medicamentos na receita.', type: 'warning' });
         return;
       }
-      if (__DEV__) console.info('[PDF_PREVIEW] Blob recebido:', { size: blob.size, type: blob.type });
+      if (__DEV__) console.warn('[PDF_PREVIEW] Blob recebido:', { size: blob.size, type: blob.type });
       if (Platform.OS === 'web') {
         if (pdfBlobUrlRef.current) {
           URL.revokeObjectURL(pdfBlobUrlRef.current);
@@ -363,7 +363,7 @@ export default function PrescriptionEditorScreen() {
           showToast({ message: 'Erro ao processar o PDF. Tente novamente.', type: 'error' });
           return;
         }
-        if (__DEV__) console.info('[PDF_PREVIEW] base64 gerado com sucesso:', { length: base64.length });
+        if (__DEV__) console.warn('[PDF_PREVIEW] base64 gerado com sucesso:', { length: base64.length });
         setPdfUri(`data:application/pdf;base64,${base64}`);
       }
     } catch (e: any) {
@@ -373,6 +373,7 @@ export default function PrescriptionEditorScreen() {
     } finally {
       setPdfLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- request?.requestType is the actual dependency
   }, [requestId, request?.requestType]);
 
   useEffect(() => {

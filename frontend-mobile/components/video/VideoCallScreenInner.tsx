@@ -155,7 +155,7 @@ export default function VideoCallScreenInner() {
 
   // Patient: time bank
   const [bankBalance, setBankBalance] = useState<{ minutes: number; seconds: number } | null>(null);
-  const [consultationType, setConsultationType] = useState<string>('medico_clinico');
+  const [, setConsultationType] = useState<string>('medico_clinico');
 
   // Transcrição: Daily.co nativa (ambos) ou fallback expo-av (só paciente)
   const canStartRecording = consultationStartedAt || requestStatus === 'in_consultation' || requestStatus === 'paid';
@@ -166,7 +166,7 @@ export default function VideoCallScreenInner() {
   const [transcript, setTranscript] = useState('');
   const [anamnesis, setAnamnesis] = useState<Record<string, any> | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [evidence, setEvidence] = useState<Array<{
+  const [evidence, setEvidence] = useState<{
     title: string;
     abstract: string;
     source: string;
@@ -174,7 +174,7 @@ export default function VideoCallScreenInner() {
     relevantExcerpts?: string[];
     clinicalRelevance?: string;
     provider?: string;
-  }>>([]);
+  }[]>([]);
   const [transcriptFilter, setTranscriptFilter] = useState<TranscriptFilter>('todos');
   const [isAiActive, setIsAiActive] = useState(false);
   const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
@@ -237,12 +237,14 @@ export default function VideoCallScreenInner() {
   const connectSignalR = useCallback(async () => {
     if (!rid || !isDoctor) return;
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic import for SignalR
       const signalR = require('@microsoft/signalr');
       let apiBase = apiClient.getBaseUrl(); // e.g. 'http://192.168.x.x:5000' or '' for web
       apiBase = apiBase.replace(/\/api\/?$/, '');
       // Get token from stored auth (same key used by api-client.ts)
       let authToken = '';
       try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- conditional native module
         const AsyncStorage = require('@react-native-async-storage/async-storage').default;
         authToken = (await AsyncStorage.getItem('@renoveja:auth_token')) ?? '';
       } catch {}
@@ -380,7 +382,7 @@ export default function VideoCallScreenInner() {
         setConsultationStartedAt(new Date().toISOString());
       }
     }
-  }, [rid, connectSignalR, isDoctor, consultationStartedAt]);
+  }, [rid, connectSignalR, consultationStartedAt]);
 
   // Auto-start robusto: quando médico e paciente já estão conectados na sala,
   // inicia consulta automaticamente para evitar perder transcrição por falta de clique.
@@ -478,6 +480,7 @@ export default function VideoCallScreenInner() {
         text: 'OK', onPress: () => doEnd(true),
       }]);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- doEnd defined below
   }, [callSeconds, contractedMinutes]);
 
   // Dica UX: esconder após 8s (usuário pode usar o celular durante a chamada)

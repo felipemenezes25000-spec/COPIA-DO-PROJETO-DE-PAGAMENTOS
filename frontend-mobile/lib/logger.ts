@@ -9,12 +9,12 @@ const ENABLE =
 
 export const logger = {
   queue: (msg: string, data?: object) => {
-    if (ENABLE) console.info(`[QUEUE] ${msg}`, data ?? '');
+    if (ENABLE) console.warn(`[QUEUE] ${msg}`, data ?? '');
   },
   detail: (msg: string, data?: object) => {
-    if (ENABLE) console.info(`[DETAIL] ${msg}`, data ?? '');
+    if (ENABLE) console.warn(`[DETAIL] ${msg}`, data ?? '');
   },
   auth: (msg: string, data?: object) => {
-    if (ENABLE) console.info(`[AUTH] ${msg}`, data ?? '');
+    if (ENABLE) console.warn(`[AUTH] ${msg}`, data ?? '');
   },
 };

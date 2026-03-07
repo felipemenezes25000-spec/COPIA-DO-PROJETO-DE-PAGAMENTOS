@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Pressable, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import { View, Pressable, StyleProp, ViewStyle } from 'react-native';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 
 type CardVariant = 'default' | 'elevated' | 'outlined';

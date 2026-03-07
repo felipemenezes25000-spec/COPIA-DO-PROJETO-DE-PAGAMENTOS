@@ -39,6 +39,7 @@ export async function startRequestsEventsConnection(): Promise<boolean> {
   if (!token) return false;
 
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic SignalR
     const signalR = require('@microsoft/signalr');
     const url = getHubUrl();
     const conn = new signalR.HubConnectionBuilder()

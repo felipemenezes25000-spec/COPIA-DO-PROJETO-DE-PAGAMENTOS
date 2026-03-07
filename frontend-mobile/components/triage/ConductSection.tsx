@@ -9,7 +9,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, Switch, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, borderRadius, shadows, doctorDS, typography } from '../../lib/themeDoctor';
+import { colors, spacing, borderRadius, shadows, typography } from '../../lib/themeDoctor';
 
 interface ConductSectionProps {
   /** Valor atual da conduta */

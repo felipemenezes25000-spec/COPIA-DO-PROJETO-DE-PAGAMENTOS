@@ -86,16 +86,18 @@ const DOCTOR_DARK = {
   ring: '#3B82F6',
 };
 
-// ─── Gradients (ajustados para dark) ─────────────────────────
+// ─── Gradients (ajustados para dark e autônomos) ─────────────────────────
 function getGradients(scheme: ColorScheme) {
   const isDark = scheme === 'dark';
   return {
-    auth: theme.colors.gradients.authBackground as unknown as string[],
-    splash: theme.colors.gradients.splash as unknown as string[],
+    auth: isDark ? ['#0F172A', '#1E293B'] : ['#F8FAFC', '#F1F5F9'],
+    splash: isDark ? ['#0F172A', '#1A9DE0'] : ['#1A9DE0', '#2CB1FF', '#38BDF8'],
     doctorHeader: isDark ? ['#0F172A', '#1E293B'] : ['#1A9DE0', '#2CB1FF'],
     patientHeader: isDark ? ['#0F172A', '#1E293B'] : ['#1A9DE0', '#2CB1FF', '#5EC5FF'],
-    primary: theme.colors.gradients.primary as unknown as string[],
-    secondary: theme.colors.gradients.secondary as unknown as string[],
+    // Compatibilidade com theme.ts
+    authBackground: isDark ? ['#0F172A', '#1E293B'] : ['#F8FAFC', '#F1F5F9'],
+    primary: isDark ? ['#1A9DE0', '#2CB1FF'] : ['#1A9DE0', '#2CB1FF'],
+    secondary: isDark ? ['#059669', '#10B981'] : ['#10B981', '#059669'],
   };
 }
 

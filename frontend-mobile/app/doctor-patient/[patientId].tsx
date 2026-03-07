@@ -259,7 +259,7 @@ export default function DoctorPatientProntuario() {
   );
 
   const groupedRequests = useMemo(() => {
-    const groups: Array<{ dateLabel: string; items: RequestResponseDto[] }> = [];
+    const groups: { dateLabel: string; items: RequestResponseDto[] }[] = [];
     const groupIndex = new Map<string, number>();
 
     filteredRequests.forEach((req) => {

@@ -110,6 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     loadStoredUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once on mount
   }, []);
 
   // Timeout de segurança: se após 1,2s ainda estiver loading, libera a tela (evita loading infinito ao escanear QR)

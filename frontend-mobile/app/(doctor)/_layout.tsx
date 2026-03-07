@@ -30,7 +30,7 @@ export default function DoctorLayout() {
     if (!loading && !user) {
       router.replace('/(auth)/login');
     }
-  }, [loading, user]);
+  }, [loading, user, router]);
 
   return (
     <>

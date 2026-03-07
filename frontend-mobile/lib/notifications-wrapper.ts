@@ -16,6 +16,7 @@ if (isExpoGo) {
   registerForPushNotifications = registerStub;
   unregisterPushToken = unregisterStub;
 } else {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- conditional native module
   const notif = require('./notifications');
   registerForPushNotifications = notif.registerForPushNotifications;
   unregisterPushToken = notif.unregisterPushToken;

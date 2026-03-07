@@ -34,6 +34,7 @@ export function ZoomableImage({ uri, showHint = true }: ZoomableImageProps) {
       savedTranslateX.value = 0;
       savedTranslateY.value = 0;
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- shared values are stable refs
   }, []);
 
   const pinchGesture = Gesture.Pinch()

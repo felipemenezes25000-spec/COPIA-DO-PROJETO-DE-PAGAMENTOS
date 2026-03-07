@@ -10,7 +10,7 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, shadows } from '../../lib/theme';
+import { theme } from '../../lib/theme';
 
 export type AppButtonVariant =
   | 'primary'
@@ -130,7 +130,7 @@ export function AppButton({
     );
     loop.start();
     return () => loop.stop();
-  }, [pulse, isDisabled]);
+  }, [pulse, isDisabled, pulseScale]);
 
   const handlePressIn = () => {
     onPressIn?.();

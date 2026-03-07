@@ -34,7 +34,6 @@ import {
   setBannerFloatingPosition,
   setBannerPositionMode,
 } from '../../lib/triage/triagePersistence';
-import type { BannerFloatingPosition } from '../../lib/triage/triage.types';
 import { AssistantBanner } from './AssistantBanner';
 import type { CTAAction } from '../../lib/triage/triage.types';
 
@@ -75,6 +74,7 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- init runs once, shared values are refs
     (async () => {
       try {
         const pos = await getBannerFloatingPosition();
@@ -114,6 +114,7 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
     } else {
       pulseScale.value = withTiming(1, { duration: 250 });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- pulseScale is shared value ref
   }, [!!current, expanded]);
 
   const savePosition = useCallback(async (x: number, y: number) => {
@@ -136,6 +137,7 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
     translateY.value = withSpring(y, SPRING_CONFIG);
     setExpanded(true);
     savePosition(x, y);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- translateX/Y are shared value refs
   }, [screenW, screenH, bannerWidth, padding, insets, expandedHeight]);
 
   const handleCollapse = useCallback(() => {

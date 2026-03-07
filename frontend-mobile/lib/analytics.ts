@@ -188,7 +188,7 @@ class FunnelAnalytics {
       await this.persistQueue();
 
       if (__DEV__) {
-        console.debug('[Analytics] flush failed, events re-queued:', (err as Error)?.message);
+        console.warn('[Analytics] flush failed, events re-queued:', (err as Error)?.message);
       }
     } finally {
       this.isFlushing = false;

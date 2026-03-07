@@ -15,26 +15,28 @@ import {
   LayoutAnimation,
   UIManager,
 } from 'react-native';
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import Constants from 'expo-constants';
 import { typography, gradients, doctorDS } from '../../lib/themeDoctor';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../lib/designSystem';
-const pad = doctorDS.screenPaddingHorizontal;
 import { useAuth } from '../../contexts/AuthContext';
 import { updateAvatar } from '../../lib/api';
 import { showToast } from '../../components/ui/Toast';
 import { haptics } from '../../lib/haptics';
 import { FadeIn } from '../../components/ui/FadeIn';
 import { motionTokens } from '../../lib/ui/motion';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const pad = doctorDS.screenPaddingHorizontal;
 
 export default function DoctorProfile() {
   const router = useRouter();
@@ -271,7 +273,7 @@ export default function DoctorProfile() {
         <Text style={styles.logoutText}>Sair da conta</Text>
       </TouchableOpacity>
 
-      <Text style={styles.version}>RenoveJá+ v{require('expo-constants').default?.expoConfig?.version ?? '1.0.0'}</Text>
+      <Text style={styles.version}>RenoveJá+ v{Constants.expoConfig?.version ?? '1.0.0'}</Text>
       <View style={{ height: insets.bottom + 24 }} />
       </FadeIn>
 

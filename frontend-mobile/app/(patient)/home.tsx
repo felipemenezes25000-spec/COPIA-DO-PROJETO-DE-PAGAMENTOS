@@ -16,7 +16,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../lib/designSystem';
 import { uiTokens } from '../../lib/ui/tokens';
-import { STATUS_LABELS_PT, DASHBOARD_STATS_LABELS } from '../../lib/domain/statusLabels';
+import { DASHBOARD_STATS_LABELS } from '../../lib/domain/statusLabels';
 import { RequestResponseDto } from '../../types/database';
 import { useRequestsQuery } from '../../lib/hooks/useRequestsQuery';
 import { getRequestUiState, needsPayment, isSignedOrDelivered } from '../../lib/domain/getRequestUiState';
@@ -205,7 +205,7 @@ export default function PatientHome() {
         }
       });
     return () => { cancelled = true; };
-  }, [followUpRequest?.id, followUpRequest?.status]);
+  }, [followUpRequest?.id, followUpRequest?.status, followUpRequest]);
 
   const followUpAction = useMemo(() => {
     if (followUpActionFromApi) return followUpActionFromApi;

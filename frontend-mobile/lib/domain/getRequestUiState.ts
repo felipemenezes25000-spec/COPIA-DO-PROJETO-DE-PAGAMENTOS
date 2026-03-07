@@ -161,7 +161,6 @@ export function getHistoricalGroupedByDay(
   const historical = requests.filter(isHistorical);
   const byDateKey: Record<string, number> = {};
   const now = new Date();
-  const todayKey = now.toISOString().slice(0, 10);
 
   for (const r of historical) {
     const dateStr = r.updatedAt || r.signedAt || r.createdAt;

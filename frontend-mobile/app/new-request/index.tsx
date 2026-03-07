@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../lib/theme';
-import { uiTokens } from '../../lib/ui/tokens';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../lib/designSystem';
 import { Screen } from '../../components/ui/Screen';

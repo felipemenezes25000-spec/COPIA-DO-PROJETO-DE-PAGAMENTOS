@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTriageEval } from '../hooks/useTriageEval';
 import { useAuth } from '../contexts/AuthContext';
