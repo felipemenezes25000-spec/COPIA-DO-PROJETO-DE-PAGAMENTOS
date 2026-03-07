@@ -107,7 +107,7 @@ app/doctor-request/ → Detalhes e editor de solicitação (médico)
 ## Estrutura do Projeto
 
 ```
-renovejatac/
+ola-jamal/
 ├── backend-dotnet/
 │   ├── src/
 │   │   ├── RenoveJa.Api/           # Host, Controllers, Middleware
@@ -345,6 +345,7 @@ npm test
 
 | Documento | Conteúdo |
 |-----------|----------|
+| `docs/ANALISE_PONTA_A_PONTA.md` | Análise ponta a ponta: arquitetura, stack, rotas, fluxos e integrações |
 | `docs/QUICK_START.md` | Guia rápido de setup |
 | `docs/VERIFY_DEPLOY.md` | Deploy da Edge Function Verify |
 | `docs/FLUXO_RECEITA_TELAS_E_STATUS.md` | Fluxo de receita e status |
