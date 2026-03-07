@@ -636,8 +636,13 @@ app.MapHub<RequestsHub>("/hubs/requests");
 // Endpoint de verificação do Sentry (disponível sempre que SENTRY_DSN estiver configurado)
 if (!string.IsNullOrWhiteSpace(sentryDsn))
 {
-    app.MapGet("/api/sentry-test", () =>
+    app.MapGet("/api/sentry-test", (HttpContext ctx) =>
     {
+        var throwError = string.Equals(ctx.Request.Query["error"], "true", StringComparison.OrdinalIgnoreCase);
+        if (throwError)
+        {
+            throw new InvalidOperationException("Teste de erro Sentry - este erro deve aparecer em Issues");
+        }
         SentrySdk.CaptureMessage("Hello Sentry");
         return Results.Ok(new { message = "Teste enviado ao Sentry" });
     });
