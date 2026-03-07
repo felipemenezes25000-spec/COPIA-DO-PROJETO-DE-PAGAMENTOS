@@ -39,3 +39,7 @@ test-signature/bin/
 test-signature/obj/
 *.pfx
 *.p12
+
+# Firebase / Google Services — contém project_id e API keys; obter do Firebase Console
+frontend-mobile/google-services.json
+frontend-mobile/GoogleService-Info.plist

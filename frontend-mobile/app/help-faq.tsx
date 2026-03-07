@@ -31,7 +31,7 @@ export default function HelpFaqScreen() {
 
         <Text style={styles.question}>Como renovar uma receita?</Text>
         <Text style={styles.answer}>
-          Escolha o tipo de receita (simples, controlada ou azul), tire uma foto ou envie da galeria, e aguarde a análise. Após aprovação do médico, realize o pagamento e a receita assinada ficará disponível para download.
+          Escolha o tipo de receita (simples ou controlada), tire uma foto ou envie da galeria, e aguarde a análise. Após aprovação do médico, realize o pagamento e a receita assinada ficará disponível para download.
         </Text>
 
         <Text style={styles.question}>Como solicitar exames?</Text>

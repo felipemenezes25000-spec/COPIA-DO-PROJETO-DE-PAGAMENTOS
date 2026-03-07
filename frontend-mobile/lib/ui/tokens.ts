@@ -17,6 +17,8 @@ export const uiTokens = {
     sm: 12,
     md: 16,
     lg: 24,
+    pill: 9999,
+    card: 16,
   },
   iconSizes: {
     sm: 20,

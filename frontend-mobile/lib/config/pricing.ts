@@ -5,19 +5,18 @@
 
 import type { RequestType } from '../../types/database';
 
-/** Valores fallback por tipo (apenas quando backend não envia price). TODO: alinhar com backend quando houver tabela de preços. */
+/** Valores fallback por tipo (quando backend não envia price). Usa menor preço de cada tipo para consistência com tela de criação. */
 export const FALLBACK_PRICES: Record<RequestType, number> = {
-  prescription: 80,
-  exam: 60,
+  prescription: 29.9,
+  exam: 19.9,
   consultation: 120,
 };
 
 /** Preços por tipo de receita (telas de new-request). Centralizado aqui para não hardcode em componentes. */
-export const PRESCRIPTION_TYPE_PRICES: Record<'simples' | 'controlado' | 'azul' | 'amarelo', number> = {
+export const PRESCRIPTION_TYPE_PRICES: Record<'simples' | 'controlado' | 'azul', number> = {
   simples: 29.9,
   controlado: 49.9,
-  azul: 129.9,
-  amarelo: 0, // Em breve
+  azul: 129.9,  // Backend rejeita por enquanto; mantido para referência futura
 };
 
 export const FALLBACK_CONSULTATION_PRICE = 120;
@@ -40,9 +39,13 @@ export const CONSULTATION_PRICE_PER_MINUTE: Record<'psicologo' | 'medico_clinico
  */
 export function getDisplayPrice(
   price: number | null | undefined,
-  requestType?: RequestType
+  requestType?: RequestType,
+  prescriptionType?: 'simples' | 'controlado' | 'azul' | null
 ): number {
   if (price != null && price > 0) return price;
+  if (requestType === 'prescription' && prescriptionType && PRESCRIPTION_TYPE_PRICES[prescriptionType] != null) {
+    return PRESCRIPTION_TYPE_PRICES[prescriptionType];
+  }
   if (requestType && FALLBACK_PRICES[requestType] != null) return FALLBACK_PRICES[requestType];
   return FALLBACK_PRICES.prescription;
 }

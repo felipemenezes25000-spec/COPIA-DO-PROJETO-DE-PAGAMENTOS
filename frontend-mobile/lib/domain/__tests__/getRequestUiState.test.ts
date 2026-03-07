@@ -50,6 +50,17 @@ describe('getRequestUiState', () => {
     expect(paid.label).toBeTruthy();
     expect(['action', 'success', 'waiting', 'historical']).toContain(paid.colorKey);
   });
+
+  it('paid + consultation retorna "Consulta pronta"', () => {
+    const res = mapUi(req('paid', { requestType: 'consultation' }));
+    expect(res.uiState).toBe('ready');
+    expect(res.label).toBe('Consulta pronta');
+  });
+
+  it('paid + prescription retorna needs_action', () => {
+    const res = mapUi(req('paid', { requestType: 'prescription' }));
+    expect(res.uiState).toBe('needs_action');
+  });
 });
 
 describe('painel de pendências', () => {
@@ -57,7 +68,7 @@ describe('painel de pendências', () => {
     req('submitted'),
     req('in_review'),
     req('approved_pending_payment'),
-    req('paid'),
+    req('paid', { requestType: 'consultation' }), // consulta paga = "Consulta pronta"
     req('in_consultation'),
     req('delivered'),
     req('cancelled'),

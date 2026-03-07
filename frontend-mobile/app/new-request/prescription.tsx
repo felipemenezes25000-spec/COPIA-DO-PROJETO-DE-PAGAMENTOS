@@ -63,14 +63,6 @@ const TYPES = [
     comingSoon: true,
     anvisaPrevisao: ANVISA_PREVISAO,
   },
-  {
-    key: 'amarelo' as const,
-    label: 'Receituário AMARELO',
-    desc: 'Receituário para medicamentos sujeitos a controle especial (lista B1/B2 – amarelo).',
-    price: PRESCRIPTION_TYPE_PRICES.amarelo,
-    comingSoon: true,
-    anvisaPrevisao: ANVISA_PREVISAO,
-  },
 ];
 
 export default function NewPrescription() {
@@ -100,26 +92,29 @@ export default function NewPrescription() {
 
   useEffect(() => {
     let cancelled = false;
-    setApiLoading(true);
-    evaluateAssistantCompleteness({
-      flow: 'prescription',
-      prescriptionType: selectedType,
-      imagesCount: images.length,
-    })
-      .then((res) => {
-        if (!cancelled) {
-          const missingRequired = res.checks.filter((c) => c.required && !c.done);
-          setApiResult({
-            score: res.score,
-            doneCount: res.doneCount,
-            totalCount: res.totalCount,
-            items: res.checks,
-            missingRequired,
-          });
-        }
+    const timer = setTimeout(() => {
+      setApiLoading(true);
+      evaluateAssistantCompleteness({
+        flow: 'prescription',
+        prescriptionType: selectedType,
+        imagesCount: images.length,
       })
-      .catch(() => { if (!cancelled) setApiResult(null); });
-    return () => { cancelled = true; };
+        .then((res) => {
+          if (!cancelled) {
+            const missingRequired = res.checks.filter((c) => c.required && !c.done);
+            setApiResult({
+              score: res.score,
+              doneCount: res.doneCount,
+              totalCount: res.totalCount,
+              items: res.checks,
+              missingRequired,
+            });
+          }
+        })
+        .catch(() => { if (!cancelled) setApiResult(null); })
+        .finally(() => { if (!cancelled) setApiLoading(false); });
+    }, 500); // debounce 500ms
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [selectedType, images.length]);
 
   const completeness = apiResult
@@ -593,7 +588,7 @@ function makeStyles(colors: DesignColors) {
       flex: 1,
       fontSize: 13,
       lineHeight: 19,
-      color: colors.warningText,
+      color: colors.warning,
     },
     photoWarningBold: {
       fontWeight: typo.fontWeight.bold,

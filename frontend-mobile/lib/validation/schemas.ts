@@ -122,7 +122,7 @@ export const registerDoctorSchema = z.object({
 
 // --- Requests ---
 
-export const prescriptionTypeSchema = z.enum(['simples', 'controlado', 'azul']);
+export const prescriptionTypeSchema = z.enum(['simples', 'controlado']);
 
 export const createPrescriptionSchema = z.object({
   prescriptionType: prescriptionTypeSchema,

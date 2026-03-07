@@ -33,6 +33,7 @@ export default function PaymentRequestScreen() {
 
   const loadRequest = React.useCallback(async () => {
     if (!rid) return;
+    setLoading(true);
     try {
       const data = await fetchRequestById(rid);
       setRequest(data);
@@ -48,22 +49,8 @@ export default function PaymentRequestScreen() {
       setLoading(false);
       return;
     }
-    setLoading(true);
-    let cancelled = false;
-    (async () => {
-      try {
-        const data = await fetchRequestById(rid);
-        if (!cancelled) setRequest(data);
-      } catch (e: unknown) {
-        if (!cancelled) {
-          Alert.alert('Erro', (e as Error)?.message || String(e) || 'Erro ao carregar solicitação');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [rid]);
+    loadRequest();
+  }, [rid, loadRequest]);
 
   useRequestUpdated(rid ?? undefined, loadRequest);
 

@@ -4,6 +4,7 @@
 
 | Documento | Descrição |
 |-----------|-----------|
+| [ANALISE_PONTA_A_PONTA.md](./ANALISE_PONTA_A_PONTA.md) | **Análise ponta a ponta:** arquitetura, stack, rotas, fluxos e integrações |
 | [QUICK_START.md](./QUICK_START.md) | Como rodar o backend e links rápidos |
 | [TUTORIAL_VERIFICACAO_RECEITA.md](./TUTORIAL_VERIFICACAO_RECEITA.md) | **Tutorial completo:** verificar e ajustar validação (Vercel + Render, CORS, env) |
 | [TUTORIAL_NAVEGADOR_VERIFICACAO.md](./TUTORIAL_NAVEGADOR_VERIFICACAO.md) | **Só no navegador:** passo a passo Vercel, Render e teste do validador (cliques, F12, Network) |

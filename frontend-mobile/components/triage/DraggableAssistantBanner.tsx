@@ -294,6 +294,7 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
                 onAction={onAction}
                 onCompanionPress={onCompanionPress}
                 containerStyle={styles.bannerContent}
+                embedded={true}
               />
             </ScrollView>
           </Animated.View>

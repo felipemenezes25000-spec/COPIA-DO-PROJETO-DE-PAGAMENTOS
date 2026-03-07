@@ -79,11 +79,19 @@ const STATUS_DISPLAY_LABELS = STATUS_DISPLAY_LABELS_PT;
 /**
  * Retorna estado de UI, label e cor para um request (ou apenas status).
  * Todas as telas devem usar esta função para exibir status.
+ * Diferencia `paid` por requestType: consulta = pronto para entrar; receita/exame = aguardando assinatura.
  */
 export function getRequestUiState(
-  request: RequestResponseDto | { status?: string | null }
+  request: RequestResponseDto | { status?: string | null; requestType?: string | null }
 ): RequestUiStateResult {
   const status = request?.status ?? '';
+  const requestType = (request as { requestType?: string | null })?.requestType ?? null;
+
+  // paid tem significado diferente por tipo de solicitação
+  if (status === 'paid' && requestType === 'consultation') {
+    return { uiState: 'ready', label: 'Consulta pronta', colorKey: 'action' };
+  }
+
   const uiState = STATUS_TO_UI[status] ?? 'historical';
   const label = STATUS_DISPLAY_LABELS[status] ?? STATE_LABELS[uiState];
   const colorKey = STATE_COLORS[uiState];

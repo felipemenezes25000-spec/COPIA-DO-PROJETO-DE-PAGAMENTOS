@@ -91,31 +91,33 @@ export default function ConsultationScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    setApiLoading(true);
-    evaluateAssistantCompleteness({
-      flow: 'consultation',
-      consultationType,
-      durationMinutes,
-      symptoms,
-    })
-      .then((res) => {
-        if (!cancelled) {
-          const missingRequired = res.checks.filter((c) => c.required && !c.done);
-          setApiResult({
-            score: res.score,
-            doneCount: res.doneCount,
-            totalCount: res.totalCount,
-            items: res.checks,
-            missingRequired,
-            hasUrgencyRisk: res.hasUrgencyRisk,
-            urgencySignals: res.urgencySignals,
-            urgencyMessage: res.urgencyMessage,
-          });
-        }
+    const t = setTimeout(() => {
+      setApiLoading(true);
+      evaluateAssistantCompleteness({
+        flow: 'consultation',
+        consultationType,
+        durationMinutes,
+        symptoms,
       })
-      .catch(() => { if (!cancelled) setApiResult(null); })
-      .finally(() => { if (!cancelled) setApiLoading(false); });
-    return () => { cancelled = true; };
+        .then((res) => {
+          if (!cancelled) {
+            const missingRequired = res.checks.filter((c) => c.required && !c.done);
+            setApiResult({
+              score: res.score,
+              doneCount: res.doneCount,
+              totalCount: res.totalCount,
+              items: res.checks,
+              missingRequired,
+              hasUrgencyRisk: res.hasUrgencyRisk,
+              urgencySignals: res.urgencySignals,
+              urgencyMessage: res.urgencyMessage,
+            });
+          }
+        })
+        .catch(() => { if (!cancelled) setApiResult(null); })
+        .finally(() => { if (!cancelled) setApiLoading(false); });
+    }, 500);
+    return () => { cancelled = true; clearTimeout(t); };
   }, [consultationType, durationMinutes, symptoms]);
 
   const completeness = apiResult

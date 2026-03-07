@@ -306,7 +306,7 @@ export default function Login() {
         style={styles.socialButton}
       />
       <AppButton
-        title="Continuar com Apple"
+        title="Continuar com Apple (em breve)"
         onPress={() => {}}
         disabled
         variant="outline"

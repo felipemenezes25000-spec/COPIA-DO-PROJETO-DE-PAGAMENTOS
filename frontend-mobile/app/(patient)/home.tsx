@@ -73,60 +73,100 @@ export default function PatientHome() {
     }
   }, [refetch]);
 
-  const stats = useMemo(() => ({
-    pending: requests.filter(r => getRequestUiState(r).uiState === 'needs_action').length,
-    toPay: requests.filter(r => needsPayment(r)).length,
-    ready: requests.filter(r => isSignedOrDelivered(r)).length,
-  }), [requests]);
+  /** Dados derivados dos requests — uma única passagem em vez de 8 useMemo separados. */
+  const derived = useMemo(() => {
+    let pending = 0, toPay = 0, ready = 0;
+    let prescriptionCount = 0, examCount = 0;
+    let lastConsultation: RequestResponseDto | null = null;
+    let lastSignedPrescription: RequestResponseDto | null = null;
+    let lastSignedExam: RequestResponseDto | null = null;
+    const medsSet = new Set<string>();
 
-  const firstName = user?.name?.split(' ')[0] || 'Paciente';
-  const initial = firstName[0]?.toUpperCase() || 'P';
+    const priorityMap: Record<string, number> = {
+      approved_pending_payment: 100, pending_payment: 100, paid: 95,
+      signed: 90, in_review: 80, submitted: 70, searching_doctor: 65, in_consultation: 50,
+    };
+    const terminalStatuses = ['delivered', 'consultation_finished', 'rejected', 'cancelled'];
+    let followUpRequest: RequestResponseDto | null = null;
+    let followUpPriority = -1;
 
-  const recentPrescriptionCount = useMemo(
-    () => requests.filter((r) => r.requestType === 'prescription').length,
-    [requests]
-  );
-  const recentExamCount = useMemo(
-    () => requests.filter((r) => r.requestType === 'exam').length,
-    [requests]
-  );
-  const lastConsultation = useMemo(() => {
-    const cons = requests.filter((r) => r.requestType === 'consultation');
-    if (cons.length === 0) return null;
-    const sorted = [...cons].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-    return sorted[0];
+    for (const r of requests) {
+      // Stats
+      const ui = getRequestUiState(r);
+      if (ui.uiState === 'needs_action') pending++;
+      if (needsPayment(r)) toPay++;
+      if (isSignedOrDelivered(r)) ready++;
+
+      // Counts por tipo
+      if (r.requestType === 'prescription') {
+        prescriptionCount++;
+        r.medications?.forEach(m => m && medsSet.add(m));
+        if (isSignedOrDelivered(r)) {
+          const d = new Date(r.signedAt ?? r.updatedAt).getTime();
+          if (!lastSignedPrescription || d > new Date(lastSignedPrescription.signedAt ?? lastSignedPrescription.updatedAt).getTime()) {
+            lastSignedPrescription = r;
+          }
+        }
+      }
+      if (r.requestType === 'exam') {
+        examCount++;
+        if (isSignedOrDelivered(r)) {
+          const d = new Date(r.signedAt ?? r.updatedAt).getTime();
+          if (!lastSignedExam || d > new Date(lastSignedExam.signedAt ?? lastSignedExam.updatedAt).getTime()) {
+            lastSignedExam = r;
+          }
+        }
+      }
+      if (r.requestType === 'consultation') {
+        if (!lastConsultation || new Date(r.createdAt).getTime() > new Date(lastConsultation.createdAt).getTime()) {
+          lastConsultation = r;
+        }
+      }
+
+      // Follow-up
+      if (!terminalStatuses.includes(r.status)) {
+        const p = priorityMap[r.status] ?? 0;
+        if (p > followUpPriority) {
+          followUpPriority = p;
+          followUpRequest = r;
+        }
+      }
+    }
+
+    const msDay = 24 * 60 * 60 * 1000;
+    const daysAgo = (r: RequestResponseDto | null) => {
+      if (!r) return undefined;
+      const ref = r.signedAt ?? r.updatedAt ?? r.createdAt;
+      return Math.floor((Date.now() - new Date(ref).getTime()) / msDay);
+    };
+
+    const recentRequests = followUpRequest
+      ? requests.filter(r => r.id !== followUpRequest!.id).slice(0, 2)
+      : requests.slice(0, 2);
+
+    return {
+      stats: { pending, toPay, ready },
+      recentPrescriptionCount: prescriptionCount,
+      recentExamCount: examCount,
+      lastConsultation,
+      lastConsultationDays: lastConsultation
+        ? Math.floor((Date.now() - new Date(lastConsultation.createdAt).getTime()) / msDay)
+        : undefined,
+      lastPrescriptionDaysAgo: daysAgo(lastSignedPrescription),
+      lastExamDaysAgo: daysAgo(lastSignedExam),
+      recentMedications: [...medsSet].slice(0, 10),
+      followUpRequest,
+      recentRequests,
+    };
   }, [requests]);
-  const lastConsultationDays = lastConsultation
-    ? Math.floor(
-        (Date.now() - new Date(lastConsultation.createdAt).getTime()) / (24 * 60 * 60 * 1000)
-      )
-    : undefined;
 
-  // Última receita assinada (para sugestão de renovação)
-  const lastPrescriptionDaysAgo = useMemo(() => {
-    const signed = requests
-      .filter((r) => r.requestType === 'prescription' && isSignedOrDelivered(r))
-      .sort((a, b) => new Date(b.signedAt ?? b.updatedAt).getTime() - new Date(a.signedAt ?? a.updatedAt).getTime());
-    if (signed.length === 0) return undefined;
-    const last = signed[0];
-    const refDate = last.signedAt ?? last.updatedAt ?? last.createdAt;
-    return Math.floor((Date.now() - new Date(refDate).getTime()) / (24 * 60 * 60 * 1000));
-  }, [requests]);
+  const {
+    stats, recentPrescriptionCount, recentExamCount,
+    lastConsultationDays, lastPrescriptionDaysAgo, lastExamDaysAgo,
+    recentMedications, followUpRequest, recentRequests,
+  } = derived;
 
-  // Último exame assinado
-  const lastExamDaysAgo = useMemo(() => {
-    const signed = requests
-      .filter((r) => r.requestType === 'exam' && isSignedOrDelivered(r))
-      .sort((a, b) => new Date(b.signedAt ?? b.updatedAt).getTime() - new Date(a.signedAt ?? a.updatedAt).getTime());
-    if (signed.length === 0) return undefined;
-    const last = signed[0];
-    const refDate = last.signedAt ?? last.updatedAt ?? last.createdAt;
-    return Math.floor((Date.now() - new Date(refDate).getTime()) / (24 * 60 * 60 * 1000));
-  }, [requests]);
-
-  // Idade do paciente (para recomendações por faixa etária)
+  // Idade do paciente (dependência diferente: user.birthDate)
   const patientAge = useMemo(() => {
     const bd = user?.birthDate;
     if (!bd) return undefined;
@@ -138,40 +178,8 @@ export default function PatientHome() {
     return age >= 0 ? age : undefined;
   }, [user?.birthDate]);
 
-  const recentMedications = useMemo(() => {
-    const meds = requests
-      .filter((r) => r.requestType === 'prescription' && r.medications?.length)
-      .flatMap((r) => r.medications!)
-      .filter(Boolean)
-      .slice(0, 10);
-    return [...new Set(meds)];
-  }, [requests]);
-
-  const followUpRequest = useMemo(() => {
-    if (requests.length === 0) return null;
-    const priorityMap: Record<string, number> = {
-      approved_pending_payment: 100,
-      pending_payment: 100,
-      paid: 95,
-      signed: 90,
-      in_review: 80,
-      submitted: 70,
-      searching_doctor: 65,
-      in_consultation: 50,
-    };
-
-    return [...requests]
-      .filter((request) => !['delivered', 'consultation_finished', 'rejected', 'cancelled'].includes(request.status))
-      .sort((a, b) => (priorityMap[b.status] ?? 0) - (priorityMap[a.status] ?? 0))[0] ?? null;
-  }, [requests]);
-
-  // Deduplica: não mostra na lista recente o pedido que já aparece no card de follow-up
-  const recentRequests = useMemo(() => {
-    const filtered = followUpRequest
-      ? requests.filter(r => r.id !== followUpRequest.id)
-      : requests;
-    return filtered.slice(0, 2);
-  }, [requests, followUpRequest]);
+  const firstName = user?.name?.split(' ')[0] || 'Paciente';
+  const initial = firstName[0]?.toUpperCase() || 'P';
 
   const [followUpActionFromApi, setFollowUpActionFromApi] = useState<AssistantNextActionResponseData | null>(null);
 

@@ -24,6 +24,7 @@ public class RequestsController(
     IClinicalSummaryService clinicalSummaryService,
     IConsultationEncounterService consultationEncounterService,
     IDoctorPatientNotesRepository doctorPatientNotesRepository,
+    IDocumentTokenService documentTokenService,
     SupabaseClient supabaseClient,
     ILogger<RequestsController> logger) : ControllerBase
 {
@@ -869,6 +870,26 @@ public class RequestsController(
     }
 
     /// <summary>
+    /// Gera um token temporário (5 min) para download do PDF assinado.
+    /// Evita expor o JWT completo na query string da URL de download.
+    /// </summary>
+    [HttpPost("{id}/document-token")]
+    public async Task<IActionResult> CreateDocumentToken(Guid id, CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        var req = await requestService.GetRequestByIdAsync(id, userId, cancellationToken);
+        var isOwner = req.PatientId == userId || (req.DoctorId.HasValue && req.DoctorId.Value == userId);
+        if (!isOwner)
+            return StatusCode(403, new { error = "Você não tem permissão para acessar este documento." });
+
+        var token = documentTokenService.GenerateDocumentToken(id, validMinutes: 5);
+        if (string.IsNullOrEmpty(token))
+            return StatusCode(500, new { error = "Não foi possível gerar token de download. Verifique configuração do servidor." });
+
+        return Ok(new { token });
+    }
+
+    /// <summary>
     /// Baixa/visualiza o PDF assinado. Paciente ou médico atribuído.
     /// Aceita Bearer ou ?token= (temporário para links abertos em navegador).
     /// URL usa domínio próprio (renovejasaude.com.br) quando Api:BaseUrl configurado.
@@ -919,6 +940,11 @@ public class RequestsController(
     {
         Guid? userId = null;
         try { userId = GetUserId(); } catch { /* AllowAnonymous */ }
+
+        // Requer pelo menos um: autenticação ou token temporário
+        if (userId == null && string.IsNullOrWhiteSpace(token))
+            return Unauthorized(new { error = "Autenticação necessária para acessar imagens." });
+
         var bytes = await requestService.GetRequestImageAsync(id, token, userId, "prescription", index, cancellationToken);
         if (bytes == null || bytes.Length == 0)
             return NotFound(new { error = "Imagem não encontrada ou sem permissão." });
@@ -935,6 +961,11 @@ public class RequestsController(
     {
         Guid? userId = null;
         try { userId = GetUserId(); } catch { /* AllowAnonymous */ }
+
+        // Requer pelo menos um: autenticação ou token temporário
+        if (userId == null && string.IsNullOrWhiteSpace(token))
+            return Unauthorized(new { error = "Autenticação necessária para acessar imagens." });
+
         var bytes = await requestService.GetRequestImageAsync(id, token, userId, "exam", index, cancellationToken);
         if (bytes == null || bytes.Length == 0)
             return NotFound(new { error = "Imagem não encontrada ou sem permissão." });

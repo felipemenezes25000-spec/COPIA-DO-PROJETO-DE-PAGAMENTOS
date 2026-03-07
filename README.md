@@ -22,7 +22,7 @@ Plataforma completa de telemedicina para **renovação de receitas**, **pedidos 
 ## Funcionalidades
 
 ### Paciente
-- Solicitar renovação de receita (simples, controlada, azul/antimicrobiana)
+- Solicitar renovação de receita (simples, controlada)
 - Enviar fotos da receita antiga (IA analisa e extrai medicamentos)
 - Solicitar pedido de exame (laboratorial, imagem, etc.)
 - Agendar teleconsulta por vídeo (médico clínico ou psicólogo)
@@ -232,7 +232,7 @@ Aplique as migrações no SQL Editor do Supabase Dashboard na ordem:
 ## Fluxos Principais
 
 ### Receita
-1. Paciente envia foto da receita antiga + tipo (simples/controlada/azul)
+1. Paciente envia foto da receita antiga + tipo (simples/controlada)
 2. IA (GPT-4o) analisa a imagem: extrai medicamentos, avalia legibilidade e risco
 3. Solicitação entra na fila do médico com resumo da IA
 4. Médico revisa, edita medicamentos se necessário, aprova

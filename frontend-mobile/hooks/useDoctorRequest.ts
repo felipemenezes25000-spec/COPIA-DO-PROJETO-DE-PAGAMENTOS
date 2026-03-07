@@ -15,8 +15,14 @@ import { showToast } from '../components/ui/Toast';
 import { getApiErrorMessage } from '../lib/api-client';
 import { useRequestUpdated } from './useRequestUpdated';
 
+const MAX_CACHE_SIZE = 50;
 const _requestCache = new Map<string, RequestResponseDto>();
 export function cacheRequest(r: RequestResponseDto) {
+  if (_requestCache.size >= MAX_CACHE_SIZE) {
+    // Remove o mais antigo (primeiro inserido)
+    const firstKey = _requestCache.keys().next().value;
+    if (firstKey) _requestCache.delete(firstKey);
+  }
   _requestCache.set(r.id, r);
 }
 

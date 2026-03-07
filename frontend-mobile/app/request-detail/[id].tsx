@@ -116,6 +116,9 @@ function getNextActionIcon(intent: NextActionIntent): keyof typeof Ionicons.glyp
 
 const LOG_DETAIL = __DEV__ && false;
 
+/** Statuses em que o pagamento pode ser confirmado pelo webhook enquanto o usuário está na tela. */
+const AWAITING_PAYMENT_STATUSES = ['approved_pending_payment', 'pending_payment'] as const;
+
 export default function RequestDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const requestId = Array.isArray(id) ? id[0] : id;
@@ -139,9 +142,6 @@ export default function RequestDetailScreen() {
   const fetchIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const payInFlightRef = useRef(false);
-
-  /** Statuses em que o pagamento pode ser confirmado pelo webhook enquanto o usuário está na tela. */
-  const AWAITING_PAYMENT_STATUSES = ['approved_pending_payment', 'pending_payment'];
 
   const load = useCallback(async () => {
     if (!requestId) { setLoading(false); return; }
@@ -188,12 +188,23 @@ export default function RequestDetailScreen() {
     }
   }, [requestId]);
 
+  // Cleanup: abortar request pendente ao desmontar
   useEffect(() => {
-    load();
     return () => { abortRef.current?.abort(); };
-  }, [load]);
+  }, []);
 
+  // Carregar ao entrar/voltar na tela (useFocusEffect cobre mount + focus)
   useFocusEffect(useCallback(() => { if (requestId) load(); }, [requestId, load]));
+
+  // Modal visibility: deve ficar ANTES de qualquer early return para respeitar Rules of Hooks
+  const isModalVisible =
+    (showVideoModal && request && ['paid', 'in_consultation'].includes(request.status) && request.requestType === 'consultation') ||
+    selectedImageUri !== null;
+
+  useEffect(() => {
+    setModalOpen(!!isModalVisible);
+    return () => setModalOpen(false);
+  }, [isModalVisible, setModalOpen]);
 
   /** Popup de vídeo: ao carregar com consulta pronta, mostra modal. Se status mudar para in_consultation (médico entrou), mostra de novo. */
   useEffect(() => {
@@ -212,40 +223,49 @@ export default function RequestDetailScreen() {
   }, [request?.id, request?.status, request?.requestType]);
 
   /** Polling: aguardando pagamento OU consulta pronta (paid) — para detectar webhook de pagamento ou médico iniciando. */
-  const MAX_POLLS = 180;
+  const MAX_POLLS = 90;
   const pollCountRef = useRef(0);
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     const awaiting = request && (
-      AWAITING_PAYMENT_STATUSES.includes(request.status) ||
+      (AWAITING_PAYMENT_STATUSES as readonly string[]).includes(request.status) ||
       (request.requestType === 'consultation' && request.status === 'paid')
     );
     if (!awaiting) {
       pollCountRef.current = 0;
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
+      if (pollTimerRef.current) {
+        clearTimeout(pollTimerRef.current);
+        pollTimerRef.current = null;
       }
       return;
     }
     pollCountRef.current = 0;
-    const tick = () => {
-      pollCountRef.current += 1;
-      if (pollCountRef.current >= MAX_POLLS) {
-        if (pollIntervalRef.current) {
-          clearInterval(pollIntervalRef.current);
-          pollIntervalRef.current = null;
-        }
-        return;
-      }
-      loadSilent();
-    };
     const isConsultationWaiting = request.requestType === 'consultation' && request.status === 'paid';
-    pollIntervalRef.current = setInterval(tick, isConsultationWaiting ? 3000 : 5000);
+    const baseDelay = isConsultationWaiting ? 3000 : 5000;
+
+    const getDelay = (count: number) => {
+      if (count < 12) return baseDelay;          // primeiros ~1min: normal
+      if (count < 36) return baseDelay * 2;       // ~2-4min: dobro
+      return baseDelay * 4;                        // depois: 4x (12-20s)
+    };
+
+    const schedulePoll = () => {
+      pollTimerRef.current = setTimeout(() => {
+        pollCountRef.current += 1;
+        if (pollCountRef.current >= MAX_POLLS) {
+          pollTimerRef.current = null;
+          return;
+        }
+        loadSilent();
+        schedulePoll();
+      }, getDelay(pollCountRef.current));
+    };
+    schedulePoll();
+
     return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
+      if (pollTimerRef.current) {
+        clearTimeout(pollTimerRef.current);
+        pollTimerRef.current = null;
       }
     };
   }, [request?.status, request?.id, loadSilent]);
@@ -449,15 +469,6 @@ export default function RequestDetailScreen() {
       </SafeAreaView>
     );
   }
-
-  const isModalVisible =
-    (showVideoModal && request && ['paid', 'in_consultation'].includes(request.status) && request.requestType === 'consultation') ||
-    selectedImageUri !== null;
-
-  useEffect(() => {
-    setModalOpen(isModalVisible);
-    return () => setModalOpen(false);
-  }, [isModalVisible, setModalOpen]);
 
   if (!request) return null;
 

@@ -250,7 +250,7 @@ function DetailsCard({ request }: { request: NonNullable<ReturnType<typeof useDo
         )}
         <View style={s.detailItem}>
           <Text style={s.detailItemLabel}>VALOR</Text>
-          <Text style={s.detailPrice}>{formatBRL(getDisplayPrice(request.price, request.requestType))}</Text>
+          <Text style={s.detailPrice}>{formatBRL(getDisplayPrice(request.price, request.requestType, request.prescriptionType))}</Text>
         </View>
       </View>
     </DoctorCard>

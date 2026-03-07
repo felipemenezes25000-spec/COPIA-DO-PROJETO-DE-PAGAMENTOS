@@ -74,7 +74,7 @@ function RequestCardInner({
 }: Props) {
   const typeConf = TYPE_CONFIG[request.requestType] || FALLBACK_TYPE;
   const preview = getMedicationPreview(request);
-  const price = getDisplayPrice(request.price, request.requestType);
+  const price = getDisplayPrice(request.price, request.requestType, request.prescriptionType ?? undefined);
   const riskConf = showRisk && request.aiRiskLevel ? RISK_CONFIG[request.aiRiskLevel] : null;
   const defaultLabel = `${typeConf.label}${request.patientName ? ` de ${request.patientName}` : ''}`;
 

@@ -29,17 +29,22 @@ public class AuditService(
     {
         try
         {
+            // Compliance & Security: Ensure sensitive data is never logged in plain text
+            var sanitizedOld = SanitizerHelper.Sanitize(oldValues);
+            var sanitizedNew = SanitizerHelper.Sanitize(newValues);
+            var sanitizedMeta = SanitizerHelper.Sanitize(metadata);
+
             var auditLog = AuditLog.Create(
                 userId: userId,
                 action: action,
                 entityType: entityType,
                 entityId: entityId,
-                oldValues: oldValues,
-                newValues: newValues,
+                oldValues: sanitizedOld,
+                newValues: sanitizedNew,
                 ipAddress: ipAddress,
                 userAgent: userAgent,
                 correlationId: correlationId,
-                metadata: metadata);
+                metadata: sanitizedMeta);
 
             await auditLogRepository.CreateAsync(auditLog, cancellationToken);
         }

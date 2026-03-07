@@ -10,10 +10,9 @@ import React, { useCallback, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable, Platform, Modal } from 'react-native';
 import Reanimated, {
   FadeInDown,
-  FadeOutUp,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, colors } from '../../lib/theme';
+import { theme } from '../../lib/theme';
 import { uiTokens } from '../../lib/ui/tokens';
 import { useTriageAssistant } from '../../contexts/TriageAssistantProvider';
 import { showToast } from '../ui/Toast';
@@ -55,9 +54,11 @@ interface AssistantBannerProps {
   containerStyle?: object;
   /** Se true, esconde completamente (ex.: telas de pagamento com dados privados) */
   hidden?: boolean;
+  /** Modo embutido: esconde cabeçalho repetido e remove animação de entrada */
+  embedded?: boolean;
 }
 
-export function AssistantBanner({ onAction, onCompanionPress, containerStyle, hidden }: AssistantBannerProps) {
+export function AssistantBanner({ onAction, onCompanionPress, containerStyle, hidden, embedded = false }: AssistantBannerProps) {
   const { current, dismiss, muteCurrent } = useTriageAssistant();
   const [expanded, setExpanded] = useState(false);
 
@@ -90,45 +91,41 @@ export function AssistantBanner({ onAction, onCompanionPress, containerStyle, hi
   const av = current ? AVATAR[current.avatarState] : AVATAR.neutral;
   const accent = current ? ACCENT[current.severity] : theme.colors.primary.main;
 
-  return (
-      <Reanimated.View
-        entering={FadeInDown.duration(280).springify().damping(20).stiffness(180)}
-        style={[styles.container, containerStyle]}
-        accessibilityRole="alert"
-        accessibilityLabel={isCompanion ? 'Dra. Renoveja, sua assistente' : `Assistente de triagem: ${current?.text}`}
-      >
-      {/* Accent stripe */}
-      <View style={[styles.accentBar, { backgroundColor: accent }]} />
-
-      <Pressable
-        style={styles.inner}
-        onPress={() => isCompanion ? onCompanionPress?.() : setExpanded(true)}
+  // Render content logic
+  const content = (
+    <Pressable
+        style={[styles.inner, embedded && styles.innerEmbedded]}
+        onPress={() => isCompanion ? onCompanionPress?.() : (!embedded && setExpanded(true))}
         onLongPress={isCompanion ? undefined : handleLongPress}
         delayLongPress={800}
         accessibilityHint={current?.canMute ? 'Segure para silenciar esta mensagem' : undefined}
         accessibilityLabel={isCompanion ? 'Dra. Renoveja, sua assistente' : `Assistente de triagem: ${current?.text}`}
       >
-        {/* Avatar */}
-        <View style={[styles.avatar, { backgroundColor: av.bg, borderColor: av.border }]}>
-          <Ionicons name={av.icon} size={15} color={av.iconColor} />
-        </View>
+        {/* Avatar - Hide if embedded (container has its own header) */}
+        {!embedded && (
+          <View style={[styles.avatar, { backgroundColor: av.bg, borderColor: av.border }]}>
+            <Ionicons name={av.icon} size={15} color={av.iconColor} />
+          </View>
+        )}
 
         {/* Content */}
         <View style={styles.content}>
-          <View style={styles.labelRow}>
-            <Text style={styles.label}>Dra. Renoveja</Text>
-            {current?.isPersonalized && (
-              <View style={styles.personalizedBadge}>
-                <Ionicons name="sparkles" size={9} color={theme.colors.accent.main} />
-                <Text style={styles.personalizedText} numberOfLines={1}>personalizado</Text>
-              </View>
-            )}
-          </View>
-          <Text style={styles.message} numberOfLines={2}>
+          {!embedded && (
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Dra. Renoveja</Text>
+              {current?.isPersonalized && (
+                <View style={styles.personalizedBadge}>
+                  <Ionicons name="sparkles" size={9} color={theme.colors.accent.main} />
+                  <Text style={styles.personalizedText} numberOfLines={1}>personalizado</Text>
+                </View>
+              )}
+            </View>
+          )}
+          <Text style={styles.message} numberOfLines={embedded ? 0 : 2} adjustsFontSizeToFit={embedded}>
             {isCompanion ? COMPANION_TIPS[companionTipIndex] : current!.text}
           </Text>
 
-          {/* Action — sempre abaixo do texto para evitar sobreposição */}
+          {/* Action — sempre abaixo do texto */}
           {!isCompanion && (
             <View style={styles.actionRow}>
               {current?.cta && current.ctaLabel ? (
@@ -160,6 +157,26 @@ export function AssistantBanner({ onAction, onCompanionPress, containerStyle, hi
           )}
         </View>
       </Pressable>
+  );
+
+  if (embedded) {
+    return (
+      <View style={[styles.containerEmbedded, containerStyle]}>
+        {content}
+      </View>
+    );
+  }
+
+  return (
+      <Reanimated.View
+        entering={FadeInDown.duration(280).springify().damping(20).stiffness(180)}
+        style={[styles.container, containerStyle]}
+        accessibilityRole="alert"
+        accessibilityLabel={isCompanion ? 'Dra. Renoveja, sua assistente' : `Assistente de triagem: ${current?.text}`}
+      >
+      {/* Accent stripe */}
+      <View style={[styles.accentBar, { backgroundColor: accent }]} />
+      {content}
 
       {/* Disclaimer + hint de mute — só quando há mensagem ativa */}
       {!isCompanion && (
@@ -173,7 +190,7 @@ export function AssistantBanner({ onAction, onCompanionPress, containerStyle, hi
         </View>
       )}
 
-      {/* Modal expandido para leitura completa — só quando há mensagem ativa */}
+      {/* Modal expandido para leitura completa */}
       {!isCompanion && current && (
       <Modal
         visible={expanded}
@@ -226,6 +243,11 @@ const styles = StyleSheet.create({
     marginBottom: uiTokens.cardGap,
     ...theme.shadows.card,
   },
+  containerEmbedded: {
+    backgroundColor: 'transparent',
+    padding: 0,
+    margin: 0,
+  },
   accentBar: {
     height: 2.5,
     width: '100%',
@@ -237,6 +259,10 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 4,
     gap: 10,
+  },
+  innerEmbedded: {
+    paddingTop: 0,
+    paddingHorizontal: 12,
   },
   avatar: {
     width: 34,

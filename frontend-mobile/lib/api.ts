@@ -17,7 +17,11 @@ import {
   MedicalDocumentSummaryDto,
   PatientProfileForDoctorDto,
   VideoRoomResponseDto,
+  UserDto,
 } from '../types/database';
+
+// Re-export para quem importava de api.ts
+export type { UserDto };
 
 // ============================================
 // AUTH
@@ -28,27 +32,6 @@ export async function changePassword(currentPassword: string, newPassword: strin
     currentPassword,
     newPassword,
   });
-}
-
-export interface UserDto {
-  id: string;
-  name: string;
-  email: string;
-  phone: string | null;
-  cpf: string | null;
-  birthDate: string | null;
-  avatarUrl: string | null;
-  role: string;
-  profileComplete: boolean;
-  createdAt: string;
-  updatedAt: string;
-  street?: string | null;
-  number?: string | null;
-  neighborhood?: string | null;
-  complement?: string | null;
-  city?: string | null;
-  state?: string | null;
-  postalCode?: string | null;
 }
 
 export async function updateAvatar(uri: string, filename?: string): Promise<UserDto> {
@@ -655,7 +638,7 @@ export async function fetchSpecialties(): Promise<string[]> {
     return await apiClient.get<string[]>('/api/specialties');
   } catch (e) {
     if (__DEV__) {
-      const base = typeof apiClient.getBaseUrl === 'function' ? apiClient.getBaseUrl() : '(api-client)';
+      const base = apiClient.getBaseUrl();
       console.warn('[API] fetchSpecialties falhou. Base URL:', base, '| Erro:', (e as { message?: string })?.message ?? e);
     }
     throw e;
@@ -900,15 +883,22 @@ export async function cancelRequest(requestId: string): Promise<RequestResponseD
 
 /**
  * Retorna a URL autenticada para download do PDF assinado via proxy do backend.
- * Evita expor a URL pública do Supabase Storage ao usuário.
- * O endpoint GET /api/requests/{id}/document aceita Bearer token ou ?token= query param.
+ * Usa token temporário de curta duração (gerado pelo backend) em vez do JWT completo
+ * para não expor credenciais em logs, referrer headers e histórico do browser.
  */
 export async function getDocumentDownloadUrl(requestId: string): Promise<string> {
   const baseUrl = apiClient.getBaseUrl();
-  const token = await apiClient.getAuthToken();
-  // Usa query param token para que o download funcione em navegador/WebBrowser
-  // (onde não temos controle sobre headers Authorization)
-  return `${baseUrl}/api/requests/${requestId}/document${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+  try {
+    // Pede ao backend um token descartável de curta duração para este documento
+    const { token: docToken } = await apiClient.post<{ token: string }>(
+      `/api/requests/${requestId}/document-token`, {}
+    );
+    return `${baseUrl}/api/requests/${requestId}/document?token=${encodeURIComponent(docToken)}`;
+  } catch {
+    // Fallback: se o endpoint de document-token não existir ainda, usa JWT (retrocompatibilidade)
+    const token = await apiClient.getAuthToken();
+    return `${baseUrl}/api/requests/${requestId}/document${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+  }
 }
 
 /** Ordena pedidos do mais recente para o mais antigo (createdAt desc, desempate updatedAt desc). */

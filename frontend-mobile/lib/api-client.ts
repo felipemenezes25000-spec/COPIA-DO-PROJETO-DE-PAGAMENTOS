@@ -94,31 +94,36 @@ class ApiClient {
     };
   }
 
-  /** Cria um AbortSignal que cancela a requisição após REQUEST_TIMEOUT_MS. Evita loading infinito se a API não responder. */
-  private getTimeoutSignal(): { signal: AbortSignal; cleanup: () => void } {
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-    return {
-      signal: controller.signal,
-      cleanup: () => clearTimeout(id),
-    };
-  }
-
+  /** Executa fetch com timeout e combina signal do caller (navegação/desmontagem) com signal de timeout. */
   private async fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
-    const { signal, cleanup } = this.getTimeoutSignal();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     const start = Date.now();
     const endpoint = url.replace(this.baseUrl, '').split('?')[0];
 
+    // Propagar abort do caller para o controller combinado
+    const callerSignal = init.signal;
+    if (callerSignal) {
+      if (callerSignal.aborted) {
+        clearTimeout(timeoutId);
+        controller.abort();
+      } else {
+        callerSignal.addEventListener('abort', () => controller.abort(), { once: true });
+      }
+    }
+
     try {
-      const res = await fetch(url, { ...init, signal });
-      cleanup();
+      const res = await fetch(url, { ...init, signal: controller.signal });
+      clearTimeout(timeoutId);
       trackApiLatency(endpoint, Date.now() - start, res.status);
       return res;
     } catch (e: any) {
-      cleanup();
+      clearTimeout(timeoutId);
       trackApiLatency(endpoint, Date.now() - start, 0);
 
       if (e?.name === 'AbortError') {
+        // Se foi o caller que abortou (navegação), re-throw sem mensagem amigável
+        if (callerSignal?.aborted) throw e;
         throw {
           message:
             'O servidor demorou para responder. Isso pode acontecer quando o servidor está iniciando — aguarde alguns segundos e tente novamente.',

@@ -96,5 +96,6 @@ export function subscribeRequestsEvents(listener: RequestUpdatedListener): () =>
 }
 
 export function isRequestsEventsConnected(): boolean {
-  return connection?.state === 1; // Connected
+  // @microsoft/signalr usa strings ('Connected', 'Disconnected', etc.), não números
+  return connection?.state === 'Connected';
 }

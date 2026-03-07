@@ -1,11 +1,6 @@
 /**
- * RenoveJá+ Unified Design System
- *
+ * RenoveJá+ Unified Design System (Dark Mode Enhanced)
  * Factory `createTokens(role, scheme)` — única fonte de verdade de tokens.
- * lib/theme.ts e lib/themeDoctor.ts exportam versões pré-criadas para
- * compatibilidade com imports estáticos existentes.
- *
- * Para dark mode, use `useAppTheme()` que chama `createTokens` com o scheme atual.
  */
 
 import { theme } from './theme';
@@ -13,38 +8,16 @@ import { theme } from './theme';
 export type ColorScheme = 'light' | 'dark';
 export type AppRole = 'patient' | 'doctor';
 
-// ─── Paletas estáticas (não mudam com o scheme) ──────────────
+// ─── Paletas Base (Brand) ──────────────
 const BRAND = {
   primary: '#2CB1FF',
-  primaryDark: '#1A9DE0',
   primaryLight: '#5EC5FF',
-  primaryLighter: '#7DD3FC',
-  primaryDarker: '#1595DC',
+  primaryDark: '#1A9DE0',
   secondary: '#10B981',
   secondaryDark: '#059669',
   accent: '#8B5CF6',
-
-  // Status — mesmo em dark (contraste suficiente)
-  success: '#10B981',
-  successLight: '#D1FAE5',
-  error: '#EF4444',
-  errorLight: '#FEE2E2',
-  warning: '#F59E0B',
-  warningLight: '#FEF3C7',
-  info: '#3B82F6',
-  infoLight: '#DBEAFE',
-  destructive: '#DC2626',
-
   white: '#FFFFFF',
   black: '#0F172A',
-};
-
-// ─── Header overlay (texto sobre gradiente azul — sempre claro) ───
-const HEADER_OVERLAY = {
-  headerOverlayText: '#FFFFFF',
-  headerOverlayTextMuted: 'rgba(255,255,255,0.85)',
-  headerOverlayBorder: 'rgba(255,255,255,0.4)',
-  headerOverlaySurface: 'rgba(255,255,255,0.25)',
 };
 
 // ─── Semantic light ───────────────────────────────────────────
@@ -61,121 +34,115 @@ const PATIENT_LIGHT = {
   borderLight: '#F1F5F9',
   primarySoft: '#E3F4FF',
   primaryGhost: 'rgba(44,177,255,0.08)',
+  
+  // Status Backgrounds (Light)
+  successLight: '#D1FAE5',
+  warningLight: '#FEF3C7',
+  errorLight: '#FEE2E2',
+  infoLight: '#DBEAFE',
+  
+  // Status Text
+  success: '#10B981',
+  warning: '#F59E0B',
+  error: '#EF4444',
+  info: '#3B82F6',
 };
 
-const DOCTOR_LIGHT = {
-  overlayBackground: 'rgba(0,0,0,0.45)',
-  modalOverlay: 'rgba(0,0,0,0.7)',
-  background: '#F4F6F9',
-  surface: '#FFFFFF',
-  surfaceSecondary: '#F1F5F9',
-  muted: '#E2EDF6',
-  text: '#121A3E',
-  textSecondary: '#475569',
-  textMuted: '#64748B',
-  border: '#E2E8F0',
-  borderLight: '#F1F5F9',
-  primarySoft: '#E3F4FF',
-  primaryGhost: 'rgba(44,177,255,0.10)',
-  ring: '#2CB1FF',
-};
-
-// ─── Semantic dark ────────────────────────────────────────────
+// ─── Semantic dark (Refined) ──────────────────────────────────
 const PATIENT_DARK = {
-  overlayBackground: 'rgba(0,0,0,0.6)',
-  modalOverlay: 'rgba(0,0,0,0.9)',
-  background: '#0F172A',
-  surface: '#1E293B',
-  surfaceSecondary: '#162032',
-  text: '#F1F5F9',
-  textSecondary: '#94A3B8',
-  textMuted: '#64748B',
-  border: '#334155',
+  overlayBackground: 'rgba(0,0,0,0.7)',
+  modalOverlay: 'rgba(0,0,0,0.85)',
+  background: '#0F172A', // Slate 900
+  surface: '#1E293B',    // Slate 800 - Card Surface
+  surfaceSecondary: '#334155', // Slate 700
+  text: '#F8FAFC',       // Slate 50
+  textSecondary: '#CBD5E1', // Slate 300
+  textMuted: '#94A3B8',  // Slate 400
+  border: '#334155',     // Slate 700
   borderLight: '#1E293B',
-  primarySoft: '#1A3A5C',
-  primaryGhost: 'rgba(44,177,255,0.12)',
+  primarySoft: '#1e3a8a', // Blue 900 (Deep Blue)
+  primaryGhost: 'rgba(44,177,255,0.15)',
+
+  // Status Backgrounds (Dark - Muted)
+  successLight: '#064E3B', // Emerald 900
+  warningLight: '#451A03', // Amber 900
+  errorLight: '#450A0A',   // Red 900
+  infoLight: '#172554',    // Blue 950
+  
+  // Status Text (Light on Dark)
+  success: '#34D399',      // Emerald 400
+  warning: '#FBBF24',      // Amber 400
+  error: '#F87171',        // Red 400
+  info: '#60A5FA',         // Blue 400
 };
 
+// ─── Doctor Theme (Dark Mode) ────────────────────────────────
 const DOCTOR_DARK = {
-  overlayBackground: 'rgba(0,0,0,0.6)',
-  modalOverlay: 'rgba(0,0,0,0.9)',
-  background: '#0D1B2A',
-  surface: '#1A2B3C',
-  surfaceSecondary: '#152235',
-  muted: '#1A2E42',
-  text: '#E2E8F0',
-  textSecondary: '#94A3B8',
-  textMuted: '#64748B',
-  border: '#2D4560',
-  borderLight: '#1A2B3C',
-  primarySoft: '#1A3A5C',
-  primaryGhost: 'rgba(44,177,255,0.12)',
-  ring: '#2CB1FF',
-};
-
-// ─── Warning card text (contraste em warningLight) ──────────────
-const WARNING_CARD = {
-  warningText: '#78350F', // amber-900, legível em warningLight
-};
-
-// ─── Status tokens (mesmo em ambos os modes) ──────────────────
-const STATUS_COLORS = {
-  statusSubmitted: '#F59E0B',
-  statusInReview: '#3B82F6',
-  statusApproved: '#10B981',
-  statusPaid: '#10B981',
-  statusSigned: '#8B5CF6',
-  statusDelivered: '#10B981',
-  statusRejected: '#EF4444',
-  statusCancelled: '#6B7280',
-  statusSearching: '#F59E0B',
-  statusConsultationReady: '#3B82F6',
-  statusInConsultation: '#3B82F6',
-  statusFinished: '#10B981',
+  ...PATIENT_DARK,
+  background: '#0B1120', // Even darker for professional feel
+  surface: '#15202E',    // Cool Gray
+  muted: '#1E293B',
+  primarySoft: '#172554',
+  ring: '#3B82F6',
 };
 
 // ─── Gradients (ajustados para dark) ─────────────────────────
 function getGradients(scheme: ColorScheme) {
-  const doctorGrad = scheme === 'dark'
-    ? ['#0F3050', '#1A9DE0'] as const
-    : ['#1A9DE0', '#2CB1FF'] as const;
-  const patientGrad = scheme === 'dark'
-    ? ['#0A2540', '#1A9DE0', '#2CB1FF'] as const
-    : ['#1A9DE0', '#2CB1FF', '#5EC5FF'] as const;
+  const isDark = scheme === 'dark';
   return {
     auth: theme.colors.gradients.authBackground as unknown as string[],
     splash: theme.colors.gradients.splash as unknown as string[],
-    doctorHeader: doctorGrad as unknown as string[],
-    patientHeader: patientGrad as unknown as string[],
+    doctorHeader: isDark ? ['#0F172A', '#1E293B'] : ['#1A9DE0', '#2CB1FF'],
+    patientHeader: isDark ? ['#0F172A', '#1E293B'] : ['#1A9DE0', '#2CB1FF', '#5EC5FF'],
     primary: theme.colors.gradients.primary as unknown as string[],
     secondary: theme.colors.gradients.secondary as unknown as string[],
   };
 }
 
+// ─── Header overlay (texto sobre gradiente azul — sempre claro) ───
+const HEADER_OVERLAY = {
+  headerOverlayText: '#FFFFFF',
+  headerOverlayTextMuted: 'rgba(255,255,255,0.85)',
+  headerOverlayBorder: 'rgba(255,255,255,0.4)',
+  headerOverlaySurface: 'rgba(255,255,255,0.25)',
+};
+
 // ─── Factory ─────────────────────────────────────────────────
 export function createTokens(role: AppRole, scheme: ColorScheme) {
-  const semantic = role === 'doctor'
-    ? (scheme === 'dark' ? DOCTOR_DARK : DOCTOR_LIGHT)
-    : (scheme === 'dark' ? PATIENT_DARK : PATIENT_LIGHT);
+  const isDoctor = role === 'doctor';
+  const isDark = scheme === 'dark';
+  
+  const base = isDoctor
+    ? (isDark ? DOCTOR_DARK : PATIENT_LIGHT) // Doctor uses similar light theme
+    : (isDark ? PATIENT_DARK : PATIENT_LIGHT);
 
   const colors = {
     ...BRAND,
-    ...semantic,
+    ...base,
     ...HEADER_OVERLAY,
-    ...WARNING_CARD,
-    ...STATUS_COLORS,
-    // Doctor-specific aliases
-    ...(role === 'doctor' ? {
-      secondary: '#F4A261',
-      secondaryDark: '#E76F51',
-      secondarySoft: scheme === 'dark' ? '#3A2010' : '#FFF3E6',
-      accentSoft: semantic.primarySoft,
-      // Backward compat with themeDoctor
-      success: BRAND.secondaryDark,
-      successLight: scheme === 'dark' ? '#0D2A1E' : BRAND.successLight,
-    } : {
-      accentSoft: scheme === 'dark' ? '#2D1B5E' : '#EDE9FE',
-    }),
+    white: BRAND.white,
+    black: BRAND.black,
+    destructive: isDark ? '#F87171' : '#DC2626', // Lighter red in dark mode
+    
+    // Status Aliases (Flat)
+    statusSubmitted: base.warning,
+    statusInReview: base.info,
+    statusApproved: base.success,
+    statusPaid: base.success,
+    statusSigned: base.textSecondary,
+    statusDelivered: base.success,
+    statusRejected: base.error,
+    statusCancelled: base.textMuted,
+    statusSearching: base.warning,
+    statusConsultationReady: base.info,
+    statusInConsultation: base.warning,
+    statusFinished: base.success,
+    
+    // Legacy mapping
+    muted: (base as any).muted || base.surfaceSecondary,
+    
+    secondarySoft: isDoctor && isDark ? '#3A2010' : '#FFF3E6',
+    accentSoft: isDark ? '#2E1065' : '#EDE9FE',
   };
 
   const borderRadius = {
@@ -199,14 +166,8 @@ export function createTokens(role: AppRole, scheme: ColorScheme) {
     gradients: getGradients(scheme),
     spacing: theme.spacing,
     borderRadius,
-    /** @alias borderRadius — backward-compat com componentes antigos. */
     radius: borderRadius,
-    shadows: {
-      card: theme.shadows.card,
-      cardLg: theme.shadows.elevated,
-      button: theme.shadows.button,
-      sm: theme.shadows.sm,
-    },
+    shadows: theme.shadows,
     typography: theme.typography,
   };
 }

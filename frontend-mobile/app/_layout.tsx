@@ -37,9 +37,15 @@ import * as SplashScreen from 'expo-splash-screen';
 import { motionTokens } from '../lib/ui/motion';
 
 // Push notifications foram removidas do Expo Go no SDK 53 - carregar provider só em development build
-const PushNotificationProvider = isExpoGo
-  ? ({ children }: { children: React.ReactNode }) => <>{children}</>
-  : require('../contexts/PushNotificationContext').PushNotificationProvider;
+const NoopProvider = ({ children }: { children: React.ReactNode }) => <>{children}</>;
+let PushNotificationProvider: React.ComponentType<{ children: React.ReactNode }> = NoopProvider;
+if (!isExpoGo) {
+  try {
+    PushNotificationProvider = require('../contexts/PushNotificationContext').PushNotificationProvider;
+  } catch {
+    // Módulo nativo indisponível (ex: web) — usa noop
+  }
+}
 
 SplashScreen.preventAutoHideAsync();
 

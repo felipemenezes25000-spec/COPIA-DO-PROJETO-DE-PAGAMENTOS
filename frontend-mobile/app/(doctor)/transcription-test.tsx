@@ -134,7 +134,7 @@ export default function TranscriptionTestScreen() {
 
           {status === 'idle' && (
             <TouchableOpacity style={styles.btn} onPress={runTest} activeOpacity={0.8}>
-              <Ionicons name="mic" size={20} color={colors.white} />
+              <Ionicons name="mic" size={20} color={colors.surface} />
               <Text style={styles.btnText}>Gravar e testar</Text>
             </TouchableOpacity>
           )}
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginTop: 24,
   },
-  btnText: { color: colors.white, fontWeight: '600', fontSize: 16 },
+  btnText: { color: colors.surface, fontWeight: '600', fontSize: 16 },
   recording: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 24 },
   recDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.error },
   recText: { color: colors.textSecondary, fontSize: 14 },

@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, borderRadius, typography, doctorDS } from '../../lib/themeDoctor';
+import { theme, spacing, borderRadius, typography } from '../../lib/theme';
 import { DoctorCard } from '../ui/DoctorCard';
 import { AppButton } from '../ui/AppButton';
 
@@ -58,131 +58,190 @@ export function DoctorActionButtons({
   onToggleSignForm,
   isInQueue,
 }: DoctorActionButtonsProps) {
+  const { colors } = theme;
+
   return (
     <>
+      {/* --- FORMULÁRIO DE ASSINATURA --- */}
       {showSignForm && (
-        <DoctorCard style={[s.cardMargin, s.formCard]}>
-          <View style={s.formHeader}>
-            <View style={s.formIconWrap}>
-              <Ionicons name="shield-checkmark" size={18} color={colors.primary} />
+        <DoctorCard style={styles.formCard}>
+          <View style={styles.formHeader}>
+            <View style={[styles.iconWrap, { backgroundColor: colors.primary.soft }]}>
+              <Ionicons name="shield-checkmark" size={20} color={colors.primary.main} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.formTitle}>Assinatura digital</Text>
-              <Text style={s.formDesc}>Digite a senha do seu certificado A1 para assinar digitalmente</Text>
+              <Text style={styles.formTitle}>Assinatura Digital ICP-Brasil</Text>
+              <Text style={styles.formDesc}>Digite a senha do seu certificado A1 para concluir.</Text>
             </View>
           </View>
+          
           <TextInput
-            style={s.formInput}
+            style={styles.input}
             placeholder="Senha do certificado"
             secureTextEntry
             value={certPassword}
             onChangeText={onCertPasswordChange}
-            placeholderTextColor={colors.textMuted}
+            placeholderTextColor={colors.text.tertiary}
             autoFocus
             returnKeyType="done"
             onSubmitEditing={certPassword.length > 0 ? onSign : undefined}
-            accessibilityLabel="Senha do certificado digital"
-            accessibilityHint="Confirme com o botão Assinar"
           />
-          <View style={s.formBtns}>
+          
+          <View style={styles.btnRow}>
             <AppButton
               title="Cancelar"
-              variant="doctorOutline"
+              variant="outline"
               onPress={onToggleSignForm}
-              style={s.primaryBtnFlex}
+              style={{ flex: 1 }}
             />
             <AppButton
-              title="Assinar"
-              variant="doctorPrimary"
+              title="Assinar Documento"
+              variant="primary"
+              icon="pencil"
               onPress={onSign}
               loading={actionLoading}
-              disabled={certPassword.length === 0 || actionLoading}
-              style={s.primaryBtnFlex}
+              disabled={certPassword.length === 0}
+              style={{ flex: 1.5 }}
             />
           </View>
         </DoctorCard>
       )}
 
+      {/* --- FORMULÁRIO DE REJEIÇÃO --- */}
       {showRejectForm && (
-        <DoctorCard style={[s.cardMargin, s.formCard]}>
-          <View style={s.formHeader}>
-            <View style={[s.formIconWrap, s.formIconWrapDanger]}>
-              <Ionicons name="close-circle" size={18} color={colors.destructive} />
+        <DoctorCard style={[styles.formCard, { borderColor: colors.status.error }]}>
+          <View style={styles.formHeader}>
+            <View style={[styles.iconWrap, { backgroundColor: colors.status.errorBg }]}>
+              <Ionicons name="close-circle" size={20} color={colors.status.error} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[s.formTitle, s.formTitleDanger]}>Rejeitar pedido</Text>
-              <Text style={s.formDesc}>Informe o motivo para que o paciente possa corrigir</Text>
+              <Text style={[styles.formTitle, { color: colors.status.error }]}>Rejeitar Pedido</Text>
+              <Text style={styles.formDesc}>O motivo será enviado ao paciente.</Text>
             </View>
           </View>
+          
           <TextInput
-            style={s.formTextArea}
-            placeholder="Descreva o motivo da rejeição..."
+            style={styles.textArea}
+            placeholder="Motivo da rejeição (ex: foto ilegível)..."
             value={rejectionReason}
             onChangeText={onRejectionReasonChange}
             multiline
             textAlignVertical="top"
-            placeholderTextColor={colors.textMuted}
+            placeholderTextColor={colors.text.tertiary}
             autoFocus
-            accessibilityLabel="Motivo da rejeição"
-            accessibilityHint="Explique por que o pedido está sendo rejeitado"
           />
-          <View style={s.formBtns}>
+          
+          <View style={styles.btnRow}>
             <AppButton
-              title="Cancelar"
-              variant="doctorOutline"
+              title="Voltar"
+              variant="outline"
               onPress={onToggleRejectForm}
-              style={s.primaryBtnFlex}
+              style={{ flex: 1 }}
             />
             <AppButton
-              title="Rejeitar"
-              variant="doctorDanger"
+              title="Confirmar Rejeição"
+              variant="danger"
+              icon="close-circle"
               onPress={onReject}
               loading={actionLoading}
-              disabled={rejectionReason.trim().length === 0 || actionLoading}
-              style={s.primaryBtnFlex}
+              disabled={rejectionReason.trim().length === 0}
+              style={{ flex: 1.5 }}
             />
           </View>
         </DoctorCard>
       )}
 
-      {isInQueue && (
-        <View style={s.queueHint}>
-          <Ionicons name="information-circle" size={20} color={colors.primary} />
-          <Text style={s.queueHintText}>Pedido na fila. Aprove para enviar ao pagamento ou rejeite informando o motivo.</Text>
+      {/* --- DICA DE FILA --- */}
+      {isInQueue && !showSignForm && !showRejectForm && (
+        <View style={styles.hintBox}>
+          <Ionicons name="information-circle" size={20} color={colors.primary.main} />
+          <Text style={styles.hintText}>
+            Pedido aguardando sua análise. Verifique os dados acima antes de decidir.
+          </Text>
         </View>
       )}
 
+      {/* --- BOTÕES DE AÇÃO PRINCIPAIS --- */}
       {!showSignForm && !showRejectForm && (
-        <View style={s.actions}>
+        <View style={styles.mainActions}>
+          {/* 1. ACEITAR CONSULTA (Fluxo de Telemedicina) */}
           {canAccept && (
-            <AppButton title="Aceitar Consulta" variant="doctorPrimary" onPress={onAccept} loading={actionLoading} style={s.actionBtnFull} />
+            <AppButton
+              title="Aceitar Atendimento"
+              variant="primary"
+              size="lg"
+              icon="videocam"
+              onPress={onAccept}
+              loading={actionLoading}
+              pulse
+              fullWidth
+            />
           )}
+
+          {/* 2. APROVAR (Fluxo Simples) */}
           {canApprove && (
-            <AppButton title="Aprovar" variant="doctorPrimary" onPress={onApprove} loading={actionLoading} style={s.actionBtnFull} />
+            <AppButton
+              title="Aprovar Solicitação"
+              variant="primary"
+              size="lg"
+              icon="checkmark-circle"
+              onPress={onApprove}
+              loading={actionLoading}
+              fullWidth
+            />
           )}
+
+          {/* 3. ASSINAR (Fluxo Receita/Exame) */}
           {canSign && (isPrescription || isExam) && (
             <AppButton
               title="Visualizar e Assinar"
-              variant="doctorPrimary"
-              trailing={<Ionicons name="chevron-forward" size={20} color={colors.white} />}
+              variant="primary"
+              size="lg"
+              icon="document-text"
+              trailing={<Ionicons name="arrow-forward" size={20} color={colors.text.inverse} />}
               onPress={onNavigateEditor}
-              style={s.actionBtnFull}
+              loading={actionLoading}
+              fullWidth
             />
           )}
+          
+          {/* 4. ASSINAR (Legado/Genérico) */}
           {canSign && !isPrescription && !isExam && (
-            <AppButton title="Assinar Digitalmente" variant="doctorPrimary" onPress={onToggleSignForm} style={s.actionBtnFull} />
+            <AppButton
+              title="Assinar Digitalmente"
+              variant="primary"
+              size="lg"
+              icon="pencil"
+              onPress={onToggleSignForm}
+              loading={actionLoading}
+              fullWidth
+            />
           )}
+
+          {/* 5. VÍDEO (Pós-Aceite) */}
           {canVideo && (
             <AppButton
-              title="Iniciar Consulta"
-              variant="doctorPrimary"
-              trailing={<Ionicons name="chevron-forward" size={20} color={colors.white} />}
+              title="Entrar na Sala de Vídeo"
+              variant="secondary" // Green for "Go"
+              size="lg"
+              icon="videocam"
               onPress={onStartVideo}
-              style={s.actionBtnFull}
+              pulse // Call to action!
+              fullWidth
             />
           )}
+
+          {/* 6. REJEITAR (Secundário) */}
           {canReject && (
-            <AppButton title="Rejeitar" variant="doctorOutlineDanger" onPress={onToggleRejectForm} style={s.actionBtnFull} />
+            <AppButton
+              title="Rejeitar Pedido"
+              variant="ghost"
+              size="md" // Smaller
+              icon="close-circle-outline"
+              onPress={onToggleRejectForm}
+              style={{ marginTop: 8 }}
+              fullWidth
+            />
           )}
         </View>
       )}
@@ -190,43 +249,86 @@ export function DoctorActionButtons({
   );
 }
 
-const pad = doctorDS.screenPaddingHorizontal;
-
-const s = StyleSheet.create({
-  cardMargin: { marginHorizontal: pad, marginTop: spacing.md },
-  formCard: { borderWidth: 1, borderColor: colors.border },
-  formHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.md },
-  formIconWrap: {
-    width: 36, height: 36, borderRadius: 10,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center', justifyContent: 'center',
+const styles = StyleSheet.create({
+  cardMargin: {
+    marginHorizontal: 20,
+    marginTop: 16,
   },
-  formIconWrapDanger: { backgroundColor: colors.errorLight },
+  formCard: {
+    padding: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border.main,
+    marginBottom: 24,
+    marginHorizontal: 20,
+  },
+  formHeader: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   formTitle: {
-    fontSize: 15, fontFamily: typography.fontFamily.bold, fontWeight: '700',
-    color: colors.text, marginBottom: 2,
+    fontSize: 16,
+    fontFamily: theme.typography.fontFamily.bold,
+    color: theme.colors.text.primary,
   },
-  formTitleDanger: { color: colors.destructive },
-  formDesc: { fontSize: 13, fontFamily: typography.fontFamily.regular, color: colors.textSecondary, lineHeight: 18 },
-  formInput: {
-    backgroundColor: colors.background, borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.md, height: 48, fontSize: 15, color: colors.text,
-    borderWidth: 1, borderColor: colors.border, fontFamily: typography.fontFamily.regular,
+  formDesc: {
+    fontSize: 13,
+    color: theme.colors.text.secondary,
+    marginTop: 2,
   },
-  formTextArea: {
-    backgroundColor: colors.background, borderRadius: borderRadius.sm,
-    padding: spacing.md, fontSize: 15, color: colors.text,
-    minHeight: 100, borderWidth: 1, borderColor: colors.border,
-    fontFamily: typography.fontFamily.regular,
+  input: {
+    height: 50,
+    borderWidth: 1,
+    borderColor: theme.colors.border.main,
+    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: theme.colors.text.primary,
+    backgroundColor: theme.colors.background.subtle,
+    marginBottom: 16,
   },
-  formBtns: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
-  primaryBtnFlex: { flex: 1 },
-  queueHint: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    marginHorizontal: pad, marginTop: spacing.lg, padding: spacing.md,
-    backgroundColor: colors.primarySoft, borderRadius: borderRadius.card,
+  textArea: {
+    minHeight: 120,
+    borderWidth: 1,
+    borderColor: theme.colors.border.main,
+    borderRadius: theme.borderRadius.md,
+    padding: 16,
+    fontSize: 16,
+    color: theme.colors.text.primary,
+    backgroundColor: theme.colors.background.subtle,
+    marginBottom: 16,
   },
-  queueHintText: { flex: 1, fontSize: 14, fontFamily: typography.fontFamily.regular, color: colors.textSecondary },
-  actions: { marginHorizontal: pad, marginTop: doctorDS.sectionGap, gap: spacing.sm },
-  actionBtnFull: { width: '100%' },
+  btnRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  hintBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: theme.colors.primary.soft,
+    padding: 16,
+    borderRadius: theme.borderRadius.card,
+    marginHorizontal: 20,
+    marginTop: 24,
+  },
+  hintText: {
+    flex: 1,
+    fontSize: 14,
+    color: theme.colors.text.secondary,
+    lineHeight: 20,
+  },
+  mainActions: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 40, // Extra bottom padding for scroll
+    gap: 12,
+  },
 });

@@ -92,7 +92,7 @@ export default function OnboardingScreen() {
     <View style={[styles.root, { paddingBottom: insets.bottom }]}>
       <StatusBar style="light" />
       <LinearGradient
-        colors={gradients.patientHeader as [string, string, ...string[]]}
+        colors={gradients.patientHeader as unknown as [string, string, ...string[]]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.topGradient, { paddingTop: insets.top + 16 }]}

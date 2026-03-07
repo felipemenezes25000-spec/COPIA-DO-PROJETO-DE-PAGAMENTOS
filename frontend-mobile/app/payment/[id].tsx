@@ -75,7 +75,9 @@ export default function PaymentScreen() {
         if (pollRef.current) clearInterval(pollRef.current);
         setAutoPolling(false);
       }
-    } catch { /* ignora erro silenciosamente */ }
+    } catch (e) {
+      if (__DEV__) console.warn('[Payment] syncPaymentStatus erro:', e);
+    }
   }, [paymentId]);
 
   useEffect(() => {
@@ -116,7 +118,9 @@ export default function PaymentScreen() {
         try {
           const refreshed = await fetchPayment(paymentId);
           setPayment(refreshed);
-        } catch {}
+        } catch (e) {
+          if (__DEV__) console.warn('[Payment] refresh após PIX falhou:', e);
+        }
         startPolling();
       }
     } catch (e: unknown) {
@@ -182,7 +186,9 @@ export default function PaymentScreen() {
           setAutoPolling(false);
           setPayment(updated); // Mostra card com botão "Ver Pedido"
         }
-      } catch {}
+      } catch (e) {
+        if (__DEV__) console.warn('[Payment] polling erro:', e);
+      }
     }, 5000);
   };
 
@@ -236,7 +242,9 @@ export default function PaymentScreen() {
           setPayment(updated); // Mostra card com botão "Ver Pedido"
           return;
         }
-      } catch { /* ignore fallback error */ }
+      } catch (fallbackErr) {
+        if (__DEV__) console.warn('[Payment] fallback fetch erro:', fallbackErr);
+      }
       Alert.alert('Erro', (e as Error)?.message || String(e) || 'Erro ao verificar status');
     } finally {
       setCheckingNow(false);

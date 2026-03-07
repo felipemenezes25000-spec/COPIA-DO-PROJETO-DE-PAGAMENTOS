@@ -1,104 +1,177 @@
+import { Platform } from 'react-native';
+
 /**
- * RenoveJá+ Design System
- * Tema global (light). Telas do médico usam lib/themeDoctor.ts (Stitch Ocean Blue).
+ * RenoveJá+ Design System - Unified Theme
+ * Supports Light & Dark modes via semantic tokens.
  */
 
+// -----------------------------------------------------------------------------
+// 1. Primitive Colors (Palette)
+// -----------------------------------------------------------------------------
+const palette = {
+  // Brand / Primary (Blue)
+  primary: {
+    50: '#F0F9FF',
+    100: '#E0F2FE',
+    200: '#BAE6FD',
+    300: '#7DD3FC',
+    400: '#38BDF8',
+    500: '#0EA5E9', // Main Brand
+    600: '#0284C7', // Hover/Active
+    700: '#0369A1',
+    800: '#075985',
+    900: '#0C4A6E',
+    950: '#082F49',
+  },
+  // Secondary / Success (Green/Teal for Medical)
+  secondary: {
+    50: '#F0FDFA',
+    100: '#CCFBF1',
+    200: '#99F6E4',
+    300: '#5EEAD4',
+    400: '#2DD4BF',
+    500: '#14B8A6',
+    600: '#0D9488',
+    700: '#0F766E',
+    800: '#115E59',
+    900: '#134E4A',
+    950: '#042F2E',
+  },
+  // Neutral (Slate/Gray)
+  neutral: {
+    0: '#FFFFFF',
+    50: '#F8FAFC',
+    100: '#F1F5F9',
+    200: '#E2E8F0',
+    300: '#CBD5E1',
+    400: '#94A3B8',
+    500: '#64748B',
+    600: '#475569',
+    700: '#334155',
+    800: '#1E293B',
+    900: '#0F172A',
+    950: '#020617',
+  },
+  // Semantic Status
+  error: {
+    50: '#FEF2F2',
+    100: '#FEE2E2',
+    500: '#EF4444',
+    600: '#DC2626',
+    700: '#B91C1C',
+  },
+  warning: {
+    50: '#FFFBEB',
+    100: '#FEF3C7',
+    500: '#F59E0B',
+    600: '#D97706',
+    700: '#B45309',
+  },
+  success: {
+    50: '#F0FDF4',
+    100: '#DCFCE7',
+    500: '#22C55E', // Standard Green
+    600: '#16A34A',
+    700: '#15803D',
+  },
+  info: {
+    50: '#EFF6FF',
+    100: '#DBEAFE',
+    500: '#3B82F6',
+    600: '#2563EB',
+    700: '#1D4ED8',
+  },
+} as const;
+
+// -----------------------------------------------------------------------------
+// 2. Semantic Tokens (Theme)
+// -----------------------------------------------------------------------------
 export const theme = {
   colors: {
+    // Brand
     primary: {
-      main: '#2CB1FF',
-      light: '#5EC5FF',
-      dark: '#1A9DE0',
-      lighter: '#7DD3FC',
-      darker: '#1595DC',
-      soft: '#E3F4FF',
-      ghost: 'rgba(44,177,255,0.08)',
-      contrast: '#FFFFFF',
+      main: palette.primary[600], // #0284C7
+      light: palette.primary[500],
+      dark: palette.primary[700],
+      soft: palette.primary[50],
+      contrast: palette.neutral[0],
+      ghost: palette.primary[50], // Legacy alias
     },
-
     secondary: {
-      main: '#10B981',
-      light: '#34D399',
-      dark: '#059669',
-      lighter: '#6EE7B7',
-      darker: '#047857',
-      soft: '#D1FAE5',
-      contrast: '#FFFFFF',
+      main: palette.secondary[600],
+      light: palette.secondary[500],
+      dark: palette.secondary[700],
+      soft: palette.secondary[50],
+      contrast: palette.neutral[0],
     },
-
-    accent: {
-      main: '#8B5CF6',
-      light: '#A78BFA',
-      dark: '#7C3AED',
-      soft: '#EDE9FE',
-    },
-
+    
+    // Backgrounds
     background: {
-      default: '#F8FAFC',
-      paper: '#FFFFFF',
-      secondary: '#F1F5F9',
-      tertiary: '#EFF6FF',
+      default: palette.neutral[50],
+      primary: palette.neutral[50],
+      secondary: palette.neutral[100],
+      tertiary: palette.neutral[200],
+      paper: palette.neutral[0],
+      subtle: palette.neutral[100],
       modal: 'rgba(0, 0, 0, 0.5)',
     },
+    accent: {
+      main: palette.primary[500],
+      dark: palette.primary[700],
+      soft: palette.primary[50],
+    },
 
+    // Typography
     text: {
-      primary: '#0F172A',
-      secondary: '#475569',
-      tertiary: '#94A3B8',
-      disabled: '#CBD5E1',
-      inverse: '#FFFFFF',
+      primary: palette.neutral[900],
+      secondary: palette.neutral[600],
+      tertiary: palette.neutral[400],
+      inverse: palette.neutral[0],
+      disabled: palette.neutral[300],
+      muted: palette.neutral[400], // Legacy alias
     },
 
-    status: {
-      success: '#10B981',
-      successLight: '#D1FAE5',
-      error: '#EF4444',
-      errorLight: '#FEE2E2',
-      warning: '#F59E0B',
-      warningLight: '#FEF3C7',
-      info: '#3B82F6',
-      infoLight: '#DBEAFE',
-    },
-
-    medical: {
-      exam: '#8B5CF6',
-      examLight: '#EDE9FE',
-      prescription: '#EC4899',
-      prescriptionLight: '#FCE7F3',
-      consultation: '#0EA5E9',
-      consultationLight: '#E0F2FE',
-      appointment: '#F59E0B',
-      appointmentLight: '#FEF3C7',
-    },
-
+    // Borders
     border: {
-      main: '#E2E8F0',
-      light: '#F1F5F9',
-      dark: '#CBD5E1',
-      focus: '#2CB1FF',
+      light: palette.neutral[100],
+      main: palette.neutral[200],
+      dark: palette.neutral[300],
+      focus: palette.primary[500],
     },
 
-    divider: '#E2E8F0',
-
-    overlay: {
-      light: 'rgba(0, 0, 0, 0.05)',
-      medium: 'rgba(0, 0, 0, 0.1)',
-      dark: 'rgba(0, 0, 0, 0.2)',
-      darker: 'rgba(0, 0, 0, 0.4)',
+    // Status (Feedback)
+    status: {
+      success: palette.success[600],
+      successBg: palette.success[50],
+      warning: palette.warning[600],
+      warningBg: palette.warning[50],
+      error: palette.error[600],
+      errorBg: palette.error[50],
+      info: palette.info[600],
+      infoBg: palette.info[50],
+      // Flattened for compatibility
+      successLight: palette.success[50],
+      warningLight: palette.warning[50],
+      errorLight: palette.error[50],
+      infoLight: palette.info[50],
     },
 
+    // Gradients
     gradients: {
-      primary: ['#1A9DE0', '#2CB1FF'],
-      secondary: ['#10B981', '#059669'],
-      accent: ['#8B5CF6', '#7C3AED'],
-      warm: ['#F59E0B', '#D97706'],
-      authBackground: ['#FFFFFF', '#E8F4FE', '#B8DFFB', '#38BDF8'],
-      splash: ['#0284C7', '#0EA5E9', '#38BDF8'],
-      doctorHeader: ['#1A9DE0', '#2CB1FF'],
-      patientHeader: ['#1A9DE0', '#2CB1FF', '#5EC5FF'],
+      primary: [palette.primary[600], palette.primary[500]],
+      secondary: [palette.secondary[600], palette.secondary[500]],
+      doctorHeader: [palette.primary[700], palette.primary[600]],
+      patientHeader: [palette.primary[600], palette.primary[500]],
+      splash: [palette.primary[600], palette.primary[500]],
+      auth: [palette.neutral[50], palette.neutral[100]],
+      authBackground: [palette.neutral[50], palette.neutral[100]],
+      subtle: [palette.neutral[50], palette.neutral[100]],
     },
   },
 
+  // ---------------------------------------------------------------------------
+  // 3. Spacing & Layout (8pt Grid System)
+  // ---------------------------------------------------------------------------
   spacing: {
     xs: 4,
     sm: 8,
@@ -106,26 +179,90 @@ export const theme = {
     lg: 24,
     xl: 32,
     xxl: 48,
-    xxxl: 64,
   },
-
+  
   borderRadius: {
-    none: 0,
-    xs: 6,
-    sm: 10,
-    md: 14,
-    lg: 18,
-    xl: 22,
-    xxl: 26,
+    xs: 4,
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 24,
     full: 9999,
-    pill: 26,
-    pillLg: 30,
-    card: 18,
-    button: 26,
-    modal: 22,
-    input: 26,
+    pill: 9999,
+    card: 16,
+    button: 12,
+    input: 8,
+    modal: 16,
   },
 
+  // ---------------------------------------------------------------------------
+  // 4. Typography Scale (Plus Jakarta Sans)
+  // ---------------------------------------------------------------------------
+  typography: {
+    fontFamily: {
+      regular: 'PlusJakartaSans_400Regular',
+      medium: 'PlusJakartaSans_500Medium',
+      semibold: 'PlusJakartaSans_600SemiBold',
+      bold: 'PlusJakartaSans_700Bold',
+    },
+    sizes: {
+      xs: 12,
+      sm: 14,
+      md: 16,
+      lg: 18,
+      xl: 20,
+      xxl: 24,
+      display: 32,
+    },
+    fontSize: {
+      xs: 12,
+      sm: 14,
+      md: 16,
+      lg: 18,
+      xl: 20,
+      xxl: 24,
+    },
+    fontWeight: {
+      regular: '400',
+      medium: '500',
+      semibold: '600',
+      bold: '700',
+    },
+    lineHeights: {
+      tight: 1.25,
+      normal: 1.5,
+      relaxed: 1.75,
+    },
+    variants: {
+      body: { fontSize: 14, fontFamily: 'PlusJakartaSans_400Regular', lineHeight: 1.5, fontWeight: '400' as const },
+      body2: { fontSize: 14, fontFamily: 'PlusJakartaSans_400Regular', lineHeight: 1.5, fontWeight: '400' as const },
+      bodySm: { fontSize: 12, fontFamily: 'PlusJakartaSans_400Regular', lineHeight: 1.5, fontWeight: '400' as const },
+      bodyLg: { fontSize: 16, fontFamily: 'PlusJakartaSans_400Regular', lineHeight: 1.5, fontWeight: '400' as const },
+      caption: { fontSize: 12, fontFamily: 'PlusJakartaSans_400Regular', lineHeight: 1.25, fontWeight: '400' as const },
+      overline: { fontSize: 12, fontFamily: 'PlusJakartaSans_600SemiBold', lineHeight: 1.25, letterSpacing: 1, fontWeight: '600' as const },
+      label: { fontSize: 14, fontFamily: 'PlusJakartaSans_600SemiBold', lineHeight: 1.25, fontWeight: '600' as const },
+      h1: { fontSize: 28, fontFamily: 'PlusJakartaSans_700Bold', lineHeight: 1.2, fontWeight: '700' as const },
+      h2: { fontSize: 22, fontFamily: 'PlusJakartaSans_700Bold', lineHeight: 1.25, fontWeight: '700' as const },
+      h3: { fontSize: 18, fontFamily: 'PlusJakartaSans_600SemiBold', lineHeight: 1.25, fontWeight: '600' as const },
+      title: { fontSize: 18, fontFamily: 'PlusJakartaSans_600SemiBold', lineHeight: 1.25, fontWeight: '600' as const },
+      titleLg: { fontSize: 22, fontFamily: 'PlusJakartaSans_700Bold', lineHeight: 1.2, fontWeight: '700' as const },
+      display: { fontSize: 32, fontFamily: 'PlusJakartaSans_700Bold', lineHeight: 1.2, fontWeight: '700' as const },
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // 5. Opacity
+  // ---------------------------------------------------------------------------
+  opacity: {
+    disabled: 0.5,
+    overlay: 0.5,
+    pressed: 0.7,
+    hover: 0.8,
+  },
+
+  // ---------------------------------------------------------------------------
+  // 6. Shadows
+  // ---------------------------------------------------------------------------
   shadows: {
     none: {
       shadowColor: '#000',
@@ -135,353 +272,132 @@ export const theme = {
       elevation: 0,
     },
     sm: {
-      shadowColor: '#000',
+      shadowColor: palette.neutral[900],
       shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.04,
-      shadowRadius: 3,
-      elevation: 1,
-    },
-    md: {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.06,
-      shadowRadius: 8,
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
       elevation: 2,
     },
-    lg: {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08,
-      shadowRadius: 16,
-      elevation: 4,
-    },
-    xl: {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.1,
-      shadowRadius: 24,
-      elevation: 8,
-    },
-    card: {
-      shadowColor: '#000',
+    md: {
+      shadowColor: palette.neutral[900],
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.06,
-      shadowRadius: 12,
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
       elevation: 3,
     },
-    elevated: {
-      shadowColor: '#000',
+    lg: { 
+      shadowColor: palette.neutral[900],
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08,
-      shadowRadius: 20,
+      shadowOpacity: 0.10,
+      shadowRadius: 12,
       elevation: 5,
     },
     button: {
-      shadowColor: '#0EA5E9',
+      shadowColor: palette.primary[600],
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.25,
-      shadowRadius: 12,
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
       elevation: 4,
     },
-    buttonSuccess: {
-      shadowColor: '#10B981',
+    card: {
+      shadowColor: palette.neutral[900],
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.25,
+      shadowOpacity: 0.10,
       shadowRadius: 12,
-      elevation: 4,
+      elevation: 5,
     },
-    buttonDanger: {
-      shadowColor: '#EF4444',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.25,
-      shadowRadius: 12,
-      elevation: 4,
-    },
-  },
-
-  typography: {
-    fontFamily: {
-      regular: 'PlusJakartaSans_400Regular',
-      medium: 'PlusJakartaSans_500Medium',
-      semibold: 'PlusJakartaSans_600SemiBold',
-      bold: 'PlusJakartaSans_700Bold',
-    },
-
-    fontSize: {
-      xs: 11,
-      sm: 14,
-      md: 16,
-      lg: 18,
-      xl: 20,
-      xxl: 24,
-      xxxl: 28,
-      display: 32,
-      hero: 36,
-    },
-
-    lineHeight: {
-      tight: 1.2,
-      normal: 1.5,
-      relaxed: 1.75,
-      loose: 2,
-    },
-
-    fontWeight: {
-      regular: '400',
-      medium: '500',
-      semibold: '600',
-      bold: '700',
-      extrabold: '800',
-    },
-
-    variants: {
-      hero: {
-        fontSize: 32,
-        lineHeight: 40,
-        fontWeight: '800',
-        letterSpacing: -0.5,
-      },
-      h1: {
-        fontSize: 28,
-        lineHeight: 36,
-        fontWeight: '700',
-        letterSpacing: -0.3,
-      },
-      h2: {
-        fontSize: 22,
-        lineHeight: 30,
-        fontWeight: '700',
-      },
-      h3: {
-        fontSize: 18,
-        lineHeight: 26,
-        fontWeight: '600',
-      },
-      h4: {
-        fontSize: 16,
-        lineHeight: 24,
-        fontWeight: '600',
-      },
-      body1: {
-        fontSize: 16,
-        lineHeight: 24,
-        fontWeight: '400',
-      },
-      body2: {
-        fontSize: 14,
-        lineHeight: 20,
-        fontWeight: '400',
-      },
-      button: {
-        fontSize: 16,
-        lineHeight: 24,
-        fontWeight: '700',
-      },
-      buttonSmall: {
-        fontSize: 14,
-        lineHeight: 20,
-        fontWeight: '600',
-      },
-      caption: {
-        fontSize: 12,
-        lineHeight: 16,
-        fontWeight: '500',
-      },
-      overline: {
-        fontSize: 11,
-        lineHeight: 16,
-        fontWeight: '700',
-        textTransform: 'uppercase' as const,
-        letterSpacing: 1.2,
-      },
+    elevated: {
+      shadowColor: palette.neutral[900],
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.12,
+      shadowRadius: 16,
+      elevation: 8,
     },
   },
-
-  layout: {
-    container: {
-      padding: 20,
-      paddingHorizontal: 20,
-      paddingVertical: 16,
-    },
-    screen: {
-      padding: 20,
-      paddingHorizontal: 20,
-      paddingVertical: 16,
-    },
-    height: {
-      button: 54,
-      buttonSmall: 44,
-      buttonLarge: 60,
-      input: 54,
-      inputSmall: 44,
-      inputLarge: 60,
-      header: 56,
-      tabBar: 60,
-      card: 'auto',
-    },
-    icon: {
-      xs: 16,
-      sm: 20,
-      md: 24,
-      lg: 32,
-      xl: 40,
-      xxl: 48,
-    },
-    avatar: {
-      xs: 24,
-      sm: 32,
-      md: 40,
-      lg: 56,
-      xl: 72,
-      xxl: 96,
-    },
-  },
-
-  animations: {
-    duration: {
-      fast: 150,
-      normal: 250,
-      slow: 350,
-    },
-    easing: {
-      linear: 'linear',
-      easeIn: 'ease-in',
-      easeOut: 'ease-out',
-      easeInOut: 'ease-in-out',
-    },
-  },
-
-  opacity: {
-    disabled: 0.5,
-    hover: 0.8,
-    pressed: 0.7,
-    overlay: 0.5,
-  },
-
+  
+  // Legacy Z-Index (Restored)
   zIndex: {
     base: 0,
     dropdown: 1000,
-    float: 1050,
     sticky: 1100,
-    fixed: 1200,
-    modalBackdrop: 1300,
-    modal: 1400,
-    popover: 1500,
-    tooltip: 1600,
-    toast: 1700,
+    modal: 1300,
+    toast: 1400,
+    float: 1200,
+    fixed: 1100,
   },
 } as const;
 
-// Type exports
-export type Theme = typeof theme;
-export type ThemeColors = typeof theme.colors;
-export type ThemeSpacing = typeof theme.spacing;
-export type ThemeTypography = typeof theme.typography;
 
-// Helper functions
-export const getColor = (path: string): string => {
-  const keys = path.split('.');
-  let value: any = theme.colors;
-  for (const key of keys) {
-    value = value[key];
-    if (value === undefined) {
-      console.warn(`Color path "${path}" not found in theme`);
-      return theme.colors.primary.main;
-    }
-  }
-  return value as string;
-};
+// -----------------------------------------------------------------------------
+// Legacy & Compatibility Exports (Bridge pattern)
+// -----------------------------------------------------------------------------
 
-export const getSpacing = (...multipliers: number[]): number | number[] => {
-  const baseSpacing = theme.spacing.md;
-  if (multipliers.length === 1) return baseSpacing * multipliers[0];
-  return multipliers.map(m => baseSpacing * m);
-};
-
-export const getShadow = (level: keyof typeof theme.shadows) => theme.shadows[level];
-
-// ============================================
-// FLAT EXPORTS for easy component usage
-// ============================================
 export const colors = {
+  ...theme.colors,
+  // Flat Colors
   primary: theme.colors.primary.main,
+  primaryLight: theme.colors.primary.light,
   primaryDark: theme.colors.primary.dark,
-  primaryLight: theme.colors.primary.soft,
   primarySoft: theme.colors.primary.soft,
   primaryGhost: theme.colors.primary.ghost,
+  
   secondary: theme.colors.secondary.main,
+  secondaryLight: theme.colors.secondary.light,
   secondaryDark: theme.colors.secondary.dark,
+  secondarySoft: theme.colors.secondary.soft, // Restored
+
   accent: theme.colors.accent.main,
-  accentSoft: theme.colors.accent.soft,
+  accentSoft: theme.colors.accent.soft, // Restored
+
   background: theme.colors.background.default,
   surface: theme.colors.background.paper,
-  surfaceSecondary: theme.colors.background.secondary,
+  surfaceSecondary: theme.colors.background.subtle,
+  
   text: theme.colors.text.primary,
   textSecondary: theme.colors.text.secondary,
   textMuted: theme.colors.text.tertiary,
+  
   border: theme.colors.border.main,
   borderLight: theme.colors.border.light,
-  error: theme.colors.status.error,
-  errorLight: theme.colors.status.errorLight,
-  warning: theme.colors.status.warning,
-  warningLight: theme.colors.status.warningLight,
+  
+  white: palette.neutral[0], // Restored
+  black: palette.neutral[950], // Restored
+  
+  // Status Aliases
   success: theme.colors.status.success,
-  successLight: theme.colors.status.successLight,
+  successLight: theme.colors.status.successLight, // Restored
+  warning: theme.colors.status.warning,
+  warningLight: theme.colors.status.warningLight, // Restored
+  error: theme.colors.status.error,
+  errorLight: theme.colors.status.errorLight, // Restored
   info: theme.colors.status.info,
-  infoLight: theme.colors.status.infoLight,
-  white: '#FFFFFF',
-  black: '#0F172A',
-  // Status-specific
-  statusSubmitted: '#F59E0B',
-  statusInReview: '#3B82F6',
-  statusApproved: '#10B981',
-  statusPaid: '#10B981',
-  statusSigned: '#8B5CF6',
-  statusDelivered: '#10B981',
-  statusRejected: '#EF4444',
-  statusCancelled: '#6B7280',
-  statusSearching: '#F59E0B',
-  statusConsultationReady: '#3B82F6',
-  statusInConsultation: '#3B82F6',
-  statusFinished: '#10B981',
+  infoLight: theme.colors.status.infoLight, // Restored
+  destructive: palette.error[600],
+  muted: palette.neutral[200],
+
+  statusSubmitted: theme.colors.status.warning,
+  statusInReview: theme.colors.status.info,
+  statusApproved: theme.colors.status.success,
+  statusPaid: theme.colors.status.success,
+  statusSigned: theme.colors.text.secondary,
+  statusDelivered: theme.colors.status.success,
+  statusRejected: theme.colors.status.error,
+  statusCancelled: theme.colors.text.tertiary,
+  statusSearching: theme.colors.status.info,
+  statusConsultationReady: theme.colors.status.info,
+  statusInConsultation: theme.colors.status.warning,
+  statusFinished: theme.colors.status.success,
+
+  // UI Overlays (Missing tokens restoration)
+  overlayBackground: 'rgba(0, 0, 0, 0.6)',
+  headerOverlayTextMuted: 'rgba(255, 255, 255, 0.8)',
+  modalOverlay: 'rgba(0, 0, 0, 0.5)',
 };
 
-export const spacing = {
-  xs: theme.spacing.xs,
-  sm: theme.spacing.sm,
-  md: theme.spacing.md,
-  lg: theme.spacing.lg,
-  xl: theme.spacing.xl,
-  xxl: theme.spacing.xxl,
-};
-
+export const spacing = theme.spacing;
+export const borderRadius = theme.borderRadius;
 export const typography = theme.typography;
-
-export const borderRadius = {
-  xs: theme.borderRadius.xs,
-  sm: theme.borderRadius.sm,
-  md: theme.borderRadius.md,
-  lg: theme.borderRadius.lg,
-  xl: theme.borderRadius.xl,
-  pill: theme.borderRadius.pill,
-  card: theme.borderRadius.card,
-  full: theme.borderRadius.full,
-};
-
-export const shadows = {
-  card: theme.shadows.card,
-  cardLg: theme.shadows.elevated,
-  button: theme.shadows.button,
-  sm: theme.shadows.sm,
-};
-
-export const gradients = {
-  auth: theme.colors.gradients.authBackground as unknown as string[],
-  splash: theme.colors.gradients.splash as unknown as string[],
-  doctorHeader: theme.colors.gradients.doctorHeader as unknown as string[],
-  patientHeader: theme.colors.gradients.patientHeader as unknown as string[],
-  primary: theme.colors.gradients.primary as unknown as string[],
-  secondary: theme.colors.gradients.secondary as unknown as string[],
-};
+export const shadows = theme.shadows;
+export const gradients = theme.colors.gradients;
 
 export default theme;
