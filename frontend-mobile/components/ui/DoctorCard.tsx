@@ -1,10 +1,11 @@
 /**
- * Card padrão do fluxo médico: branco, radius 16, padding 16–20, sombra suave.
+ * Card padrão do fluxo médico: surface do tema (light/dark), radius 16, padding 16–20, sombra suave.
  */
 
 import React from 'react';
 import { View, StyleSheet, ViewStyle, Pressable, StyleProp } from 'react-native';
-import { colors, doctorDS, shadows } from '../../lib/themeDoctor';
+import { doctorDS, shadows } from '../../lib/themeDoctor';
+import { useAppTheme } from '../../lib/ui/useAppTheme';
 
 export interface DoctorCardProps {
   children: React.ReactNode;
@@ -21,8 +22,10 @@ export function DoctorCard({
   onPress,
   accessibilityLabel,
 }: DoctorCardProps) {
+  const { colors } = useAppTheme({ role: 'doctor' });
   const cardStyle: StyleProp<ViewStyle> = [
     styles.card,
+    { backgroundColor: colors.surface },
     !noPadding && { padding: doctorDS.cardPadding },
     style,
   ];
@@ -45,7 +48,6 @@ export function DoctorCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
     borderRadius: 14,
     overflow: 'hidden',
     ...shadows.card,

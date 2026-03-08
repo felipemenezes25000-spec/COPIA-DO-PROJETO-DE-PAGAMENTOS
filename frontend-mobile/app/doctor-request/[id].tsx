@@ -48,7 +48,7 @@ const TYPE_LABELS: Record<string, string> = { prescription: 'RECEITA', exam: 'EX
 export default function DoctorRequestDetail() {
   const router = useRouter();
   const listPadding = useListBottomPadding();
-  const { colors } = useAppTheme();
+  const { colors } = useAppTheme({ role: 'doctor' });
   const s = useMemo(() => makeStyles(colors), [colors]);
 
   const {

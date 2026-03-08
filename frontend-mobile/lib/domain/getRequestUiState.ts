@@ -16,6 +16,7 @@
 import type { RequestResponseDto } from '../../types/database';
 import { STATUS_DISPLAY_LABELS_PT } from './statusLabels';
 import { colors } from '../theme';
+import type { DesignColors } from '../designSystem';
 
 export type RequestUiState =
   | 'needs_action'
@@ -246,3 +247,13 @@ export const UI_STATUS_COLORS: Record<RequestUiColorKey, { color: string; bg: st
   waiting: { color: colors.warning, bg: colors.warningLight },
   historical: { color: colors.textMuted, bg: colors.surfaceSecondary },
 };
+
+/** Cores do badge por tema (dark mode) */
+export function getUIStatusColorsForTheme(c: DesignColors): Record<RequestUiColorKey, { color: string; bg: string }> {
+  return {
+    action: { color: c.info, bg: c.infoLight },
+    success: { color: c.success, bg: c.successLight },
+    waiting: { color: c.warning, bg: c.warningLight },
+    historical: { color: c.textMuted, bg: c.surfaceSecondary },
+  };
+}

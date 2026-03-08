@@ -1,5 +1,6 @@
 /**
  * Header padrão do fluxo médico com gradiente institucional e contraste alto.
+ * Suporta dark mode via useAppTheme.
  */
 
 import React from 'react';
@@ -8,7 +9,8 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { gradients, typography, doctorDS, colors } from '../../lib/themeDoctor';
+import { typography, doctorDS } from '../../lib/themeDoctor';
+import { useAppTheme } from '../../lib/ui/useAppTheme';
 
 export interface DoctorHeaderProps {
   title: string;
@@ -20,6 +22,7 @@ export interface DoctorHeaderProps {
 export function DoctorHeader({ title, subtitle, onBack, right }: DoctorHeaderProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { gradients } = useAppTheme({ role: 'doctor' });
   const handleBack = onBack ?? (() => router.back());
 
   const content = (
@@ -30,7 +33,7 @@ export function DoctorHeader({ title, subtitle, onBack, right }: DoctorHeaderPro
         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         accessibilityLabel="Voltar"
       >
-        <Ionicons name="chevron-back" size={24} color={colors.white} />
+        <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
       </TouchableOpacity>
       <View style={styles.titleWrap}>
         <Text style={styles.title} numberOfLines={1}>
@@ -48,7 +51,7 @@ export function DoctorHeader({ title, subtitle, onBack, right }: DoctorHeaderPro
 
   return (
     <LinearGradient
-      colors={[...gradients.doctorHeader]}
+      colors={gradients.doctorHeader as [string, string, ...string[]]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
     >
@@ -81,13 +84,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: typography.fontFamily.bold,
     fontWeight: '700',
-    color: colors.white,
+    color: '#FFFFFF',
     textAlign: 'center',
     letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255,255,255,0.85)',
     marginTop: 3,
     textAlign: 'center',
     letterSpacing: 0.2,

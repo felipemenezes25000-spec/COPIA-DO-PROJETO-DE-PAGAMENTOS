@@ -68,7 +68,7 @@ export default function ConsultationScreen() {
   const [loading, setLoading] = useState(false);
   const [bankMinutes, setBankMinutes] = useState<number>(0);
   const [loadingBank, setLoadingBank] = useState(false);
-  const { colors } = useAppTheme();
+  const { colors } = useAppTheme({ role: 'patient' });
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const listPadding = useStickyCtaScrollPadding();
   const completenessLocal = evaluateConsultationCompleteness({
@@ -327,7 +327,7 @@ export default function ConsultationScreen() {
           ref={symptomsRef}
           style={[
             styles.textArea,
-            symptoms.trim().length > 0 && symptoms.trim().length < 10 && styles.inputError,
+            symptoms.trim().length > 0 && symptoms.trim().length < 10 && [styles.inputError, { borderColor: colors.warning + 'CC' }],
           ]}
           placeholder="O que você está sentindo? Desde quando? O que gostaria de esclarecer?"
           placeholderTextColor={colors.textMuted}
@@ -548,7 +548,7 @@ function makeStyles(colors: DesignColors) {
     textArea: {
       backgroundColor: colors.surface,
       borderRadius: r.md,
-      borderWidth: 1,
+      borderWidth: 2,
       borderColor: colors.border,
       paddingHorizontal: s.md,
       paddingTop: s.md,
@@ -560,8 +560,7 @@ function makeStyles(colors: DesignColors) {
       overflow: 'hidden',
     },
     inputError: {
-      borderColor: colors.error,
-      borderWidth: 1.5,
+      borderWidth: 2,
     },
     totalCard: {
       marginBottom: s.lg,

@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { usePathname, useRouter } from 'expo-router';
+import { usePathname, useRouter, useSegments } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { useModalVisibility } from '../../contexts/ModalVisibilityContext';
 import { DraggableAssistantBanner } from './DraggableAssistantBanner';
@@ -16,6 +16,7 @@ import { theme } from '../../lib/theme';
 
 function shouldHideBanner(
   pathname: string | null | undefined,
+  segments: (string | number)[],
   isLoggedIn: boolean,
   userRole?: string | null
 ): boolean {
@@ -41,7 +42,7 @@ function shouldHideBanner(
   // Notificações/Alertas — ícone flutuante sobrepõe os cards de notificação
   if (pathname.includes('notifications')) return true;
   // New-request (prescription, exam, consultation) — FAB sobrepõe assistant card e causa texto corrompido
-  if (pathname.includes('new-request')) return true;
+  if (pathname.includes('new-request') || segments.some((s) => s === 'new-request')) return true;
   // Painel do médico e rotas médico: doctor-request, doctor-patient, doctor-patient-summary, certificate
   if (pathname.includes('(doctor)') || pathname.includes('doctor-') || pathname.includes('certificate/')) return true;
   return false;
@@ -49,12 +50,13 @@ function shouldHideBanner(
 
 export function GlobalAssistantBanner() {
   const pathname = usePathname();
+  const segments = useSegments();
   const router = useRouter();
   const { user } = useAuth();
   const { isModalOpen } = useModalVisibility();
   const isLoggedIn = !!user;
 
-  if (shouldHideBanner(pathname, isLoggedIn, user?.role)) return null;
+  if (shouldHideBanner(pathname, segments, isLoggedIn, user?.role)) return null;
   if (isModalOpen) return null;
 
   const handleAction: (action: CTAAction, message?: { requestId?: string; status?: string | null }) => void = (action, message) => {

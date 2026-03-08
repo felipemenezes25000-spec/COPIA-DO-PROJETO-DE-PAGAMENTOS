@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
-import { colors, spacing, typography } from '../../lib/themeDoctor';
+import { spacing, typography } from '../../lib/themeDoctor';
 import { DoctorCard } from '../ui/DoctorCard';
+import { useAppTheme } from '../../lib/ui/useAppTheme';
 import { AIActionSheet, type AIActionSheetAction } from '../ui';
 import { showToast } from '../ui/Toast';
 import { parseAiSummary } from '../FormattedAiSummary';
@@ -12,11 +13,13 @@ import { RequestResponseDto } from '../../types/database';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
-const RISK_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
-  low: { bg: colors.successLight, text: colors.success, icon: 'shield-checkmark' },
-  medium: { bg: colors.warningLight, text: colors.warning, icon: 'alert-circle' },
-  high: { bg: colors.errorLight, text: colors.destructive, icon: 'warning' },
-};
+function getRiskColors(colors: { successLight: string; success: string; warningLight: string; warning: string; errorLight: string; destructive: string; text: string }): Record<string, { bg: string; text: string; icon: string }> {
+  return {
+    low: { bg: colors.successLight, text: colors.success, icon: 'shield-checkmark' },
+    medium: { bg: colors.warningLight, text: colors.warning, icon: 'alert-circle' },
+    high: { bg: colors.errorLight, text: colors.destructive, icon: 'warning' },
+  };
+}
 const RISK_LABELS_PT: Record<string, string> = {
   low: 'Risco baixo',
   medium: 'Risco médio',
@@ -56,6 +59,9 @@ interface AiCopilotSectionProps {
 }
 
 export function AiCopilotSection({ request, expanded, onToggleExpand, style }: AiCopilotSectionProps) {
+  const { colors } = useAppTheme({ role: 'doctor' });
+  const s = useMemo(() => makeStyles(colors), [colors]);
+  const riskColors = useMemo(() => getRiskColors(colors), [colors]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const summaryText = request.aiSummaryForDoctor?.trim() ?? '';
   const blocks = useMemo(() => parseAiSummary(summaryText), [summaryText]);
@@ -95,13 +101,13 @@ export function AiCopilotSection({ request, expanded, onToggleExpand, style }: A
         <Ionicons name="sparkles" size={18} color={colors.primary} />
         <Text style={s.aiTitle}>Copiloto IA</Text>
         {request.aiRiskLevel && (
-          <View style={[s.riskBadge, { backgroundColor: RISK_COLORS[request.aiRiskLevel.toLowerCase()]?.bg || colors.muted }]}>
+          <View style={[s.riskBadge, { backgroundColor: riskColors[request.aiRiskLevel.toLowerCase()]?.bg || colors.muted }]}>
             <Ionicons
-              name={(RISK_COLORS[request.aiRiskLevel.toLowerCase()]?.icon || 'alert-circle') as IoniconName}
+              name={(riskColors[request.aiRiskLevel.toLowerCase()]?.icon || 'alert-circle') as IoniconName}
               size={12}
-              color={RISK_COLORS[request.aiRiskLevel.toLowerCase()]?.text || colors.text}
+              color={riskColors[request.aiRiskLevel.toLowerCase()]?.text || colors.text}
             />
-            <Text style={[s.riskText, { color: RISK_COLORS[request.aiRiskLevel.toLowerCase()]?.text || colors.text }]}>
+            <Text style={[s.riskText, { color: riskColors[request.aiRiskLevel.toLowerCase()]?.text || colors.text }]}>
               {getRiskLabelPt(request.aiRiskLevel)}
             </Text>
           </View>
@@ -161,26 +167,28 @@ export function AiCopilotSection({ request, expanded, onToggleExpand, style }: A
   );
 }
 
-const s = StyleSheet.create({
-  aiCard: { backgroundColor: colors.primarySoft, borderWidth: 1, borderColor: colors.accent },
-  aiHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
-  aiTitle: { fontSize: 13, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.text, flex: 1, letterSpacing: 0.8 },
-  riskBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: 8 },
-  riskText: { fontSize: 12, fontFamily: typography.fontFamily.bold, fontWeight: '700' },
-  aiDisclaimer: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: spacing.sm, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: 'rgba(0,119,182,0.06)', borderRadius: 6 },
-  aiDisclaimerText: { fontSize: 12, fontFamily: typography.fontFamily.regular, color: colors.textMuted, fontStyle: 'italic' },
-  aiSummarySection: { marginBottom: spacing.sm },
-  aiBlock: {},
-  aiBlockSpaced: { marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(0,119,182,0.08)' },
-  aiBlockHeader: { fontSize: 12, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.primary, letterSpacing: 0.8, marginBottom: 4 },
-  aiBlockContent: { fontSize: 14, fontFamily: typography.fontFamily.regular, color: colors.text, lineHeight: 22 },
-  aiBulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 4, paddingLeft: 2 },
-  aiBulletDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary, marginTop: 7 },
-  aiBulletText: { flex: 1, fontSize: 14, fontFamily: typography.fontFamily.regular, color: colors.text, lineHeight: 22 },
-  aiTruncatedHint: { fontSize: 14, color: colors.textMuted, marginTop: 4 },
-  aiSummaryActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.sm, flexWrap: 'wrap', paddingTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(0,119,182,0.06)' },
-  aiSummaryActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 10 },
-  aiSummaryActionText: { fontSize: 13, fontFamily: typography.fontFamily.semibold, fontWeight: '600', color: colors.primary },
-  urgencyRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  urgencyText: { fontSize: 13, fontFamily: typography.fontFamily.regular, color: colors.textSecondary },
-});
+function makeStyles(colors: { primarySoft: string; accent: string; text: string; textMuted: string; primary: string; textSecondary: string }) {
+  return StyleSheet.create({
+    aiCard: { backgroundColor: colors.primarySoft, borderWidth: 1, borderColor: colors.accent },
+    aiHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
+    aiTitle: { fontSize: 13, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.text, flex: 1, letterSpacing: 0.8 },
+    riskBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: 8 },
+    riskText: { fontSize: 12, fontFamily: typography.fontFamily.bold, fontWeight: '700' },
+    aiDisclaimer: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: spacing.sm, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: colors.primarySoft + '40', borderRadius: 6 },
+    aiDisclaimerText: { fontSize: 12, fontFamily: typography.fontFamily.regular, color: colors.textMuted, fontStyle: 'italic' },
+    aiSummarySection: { marginBottom: spacing.sm },
+    aiBlock: {},
+    aiBlockSpaced: { marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.primarySoft },
+    aiBlockHeader: { fontSize: 12, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.primary, letterSpacing: 0.8, marginBottom: 4 },
+    aiBlockContent: { fontSize: 14, fontFamily: typography.fontFamily.regular, color: colors.text, lineHeight: 22 },
+    aiBulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 4, paddingLeft: 2 },
+    aiBulletDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary, marginTop: 7 },
+    aiBulletText: { flex: 1, fontSize: 14, fontFamily: typography.fontFamily.regular, color: colors.text, lineHeight: 22 },
+    aiTruncatedHint: { fontSize: 14, color: colors.textMuted, marginTop: 4 },
+    aiSummaryActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.sm, flexWrap: 'wrap', paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.primarySoft + '60' },
+    aiSummaryActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 10 },
+    aiSummaryActionText: { fontSize: 13, fontFamily: typography.fontFamily.semibold, fontWeight: '600', color: colors.primary },
+    urgencyRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    urgencyText: { fontSize: 13, fontFamily: typography.fontFamily.regular, color: colors.textSecondary },
+  });
+}

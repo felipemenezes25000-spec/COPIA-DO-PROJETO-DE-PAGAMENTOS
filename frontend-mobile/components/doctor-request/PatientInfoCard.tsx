@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography } from '../../lib/themeDoctor';
+import { typography } from '../../lib/themeDoctor';
 import { DoctorCard } from '../ui/DoctorCard';
+import { useAppTheme } from '../../lib/ui/useAppTheme';
 import { RequestResponseDto, PatientProfileForDoctorDto } from '../../types/database';
 import { formatDateTimeBR } from '../../lib/utils/format';
 
@@ -30,6 +31,9 @@ function calcAge(birthDate: string | null | undefined): number | null {
 }
 
 export function PatientInfoCard({ request, profile, onViewRecord, style }: PatientInfoCardProps) {
+  const { colors } = useAppTheme({ role: 'doctor' });
+  const s = useMemo(() => makeStyles(colors), [colors]);
+
   const age = profile ? calcAge(profile.birthDate) : null;
   const metaParts: string[] = [];
   if (age != null) metaParts.push(`${age} anos`);
@@ -66,14 +70,16 @@ export function PatientInfoCard({ request, profile, onViewRecord, style }: Patie
   );
 }
 
-const s = StyleSheet.create({
-  patientRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  patientAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  patientAvatarText: { fontSize: 18, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.white },
-  patientInfo: { flex: 1, minWidth: 0 },
-  patientName: { fontSize: 16, fontFamily: typography.fontFamily.semibold, fontWeight: '600', color: colors.text },
-  patientDate: { fontSize: 12, fontFamily: typography.fontFamily.regular, color: colors.textMuted, marginTop: 2 },
-  patientMetaText: { fontSize: 12, fontFamily: typography.fontFamily.regular, color: colors.textSecondary, marginTop: 4 },
-  patientLink: { flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 4 },
-  patientLinkText: { fontSize: 12, fontFamily: typography.fontFamily.bold, color: colors.primary, fontWeight: '700', letterSpacing: 0.5 },
-});
+function makeStyles(colors: { primary: string; white: string; text: string; textMuted: string; textSecondary: string }) {
+  return StyleSheet.create({
+    patientRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+    patientAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+    patientAvatarText: { fontSize: 18, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.white },
+    patientInfo: { flex: 1, minWidth: 0 },
+    patientName: { fontSize: 16, fontFamily: typography.fontFamily.semibold, fontWeight: '600', color: colors.text },
+    patientDate: { fontSize: 12, fontFamily: typography.fontFamily.regular, color: colors.textMuted, marginTop: 2 },
+    patientMetaText: { fontSize: 12, fontFamily: typography.fontFamily.regular, color: colors.textSecondary, marginTop: 4 },
+    patientLink: { flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 4 },
+    patientLinkText: { fontSize: 12, fontFamily: typography.fontFamily.bold, color: colors.primary, fontWeight: '700', letterSpacing: 0.5 },
+  });
+}

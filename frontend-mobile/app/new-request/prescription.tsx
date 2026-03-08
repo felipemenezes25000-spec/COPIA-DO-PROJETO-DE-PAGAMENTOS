@@ -481,6 +481,7 @@ function makeStyles(colors: DesignColors) {
       lineHeight: 18,
       color: colors.textSecondary,
       alignSelf: 'stretch',
+      flexShrink: 0,
     },
     assistantGood: {
       marginTop: 8,
@@ -560,7 +561,8 @@ function makeStyles(colors: DesignColors) {
       color: colors.textMuted,
       fontStyle: 'italic',
       marginTop: s.xs,
-      lineHeight: 16,
+      lineHeight: 18,
+      flexShrink: 0,
     },
     typePriceContainer: {
       alignItems: 'flex-end',

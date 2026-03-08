@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../../lib/themeDoctor';
+import { spacing, typography } from '../../lib/themeDoctor';
 import { DoctorCard } from '../ui/DoctorCard';
+import { useAppTheme } from '../../lib/ui/useAppTheme';
 import { CompatibleImage } from '../CompatibleImage';
 import { ZoomableImage } from '../ZoomableImage';
 
@@ -15,6 +16,8 @@ interface PrescriptionImageGalleryProps {
 }
 
 export function PrescriptionImageGallery({ images, label, iconBackgroundColor, style }: PrescriptionImageGalleryProps) {
+  const { colors } = useAppTheme({ role: 'doctor' });
+  const s = useMemo(() => makeStyles(colors), [colors]);
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
 
   if (!images || images.length === 0) return null;
@@ -74,19 +77,21 @@ export function PrescriptionImageGallery({ images, label, iconBackgroundColor, s
   );
 }
 
-const s = StyleSheet.create({
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  sectionIconWrap: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  sectionLabel: { fontSize: 12, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', flex: 1, marginBottom: 2 },
-  zoomHint: { fontSize: 12, color: colors.textMuted, fontFamily: typography.fontFamily.regular },
-  imageScroll: { marginTop: 4 },
-  img: { width: 160, height: 200, borderRadius: 14 },
-  thumbContainer: { marginRight: 10, position: 'relative' },
-  zoomBadge: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 12, padding: 5, alignItems: 'center', justifyContent: 'center' },
-  imgCounter: { position: 'absolute', top: 8, left: 8, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
-  imgCounterText: { fontSize: 12, fontFamily: typography.fontFamily.semibold, fontWeight: '600', color: colors.white },
-  modalContainer: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.95)', justifyContent: 'center', alignItems: 'center' },
-  modalImageWrapper: { flex: 1, width: '100%', alignSelf: 'stretch' },
-  modalImageFull: { flex: 1, width: '100%', minHeight: 300 },
-  modalCloseButton: { position: 'absolute', top: Platform.OS === 'web' ? 20 : 60, right: spacing.md, zIndex: 10, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 25, padding: 10, width: 50, height: 50, justifyContent: 'center', alignItems: 'center' },
-});
+function makeStyles(colors: { textMuted: string; white: string }) {
+  return StyleSheet.create({
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+    sectionIconWrap: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+    sectionLabel: { fontSize: 12, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', flex: 1, marginBottom: 2 },
+    zoomHint: { fontSize: 12, color: colors.textMuted, fontFamily: typography.fontFamily.regular },
+    imageScroll: { marginTop: 4 },
+    img: { width: 160, height: 200, borderRadius: 14 },
+    thumbContainer: { marginRight: 10, position: 'relative' },
+    zoomBadge: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 12, padding: 5, alignItems: 'center', justifyContent: 'center' },
+    imgCounter: { position: 'absolute', top: 8, left: 8, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
+    imgCounterText: { fontSize: 12, fontFamily: typography.fontFamily.semibold, fontWeight: '600', color: colors.white },
+    modalContainer: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.95)', justifyContent: 'center', alignItems: 'center' },
+    modalImageWrapper: { flex: 1, width: '100%', alignSelf: 'stretch' },
+    modalImageFull: { flex: 1, width: '100%', minHeight: 300 },
+    modalCloseButton: { position: 'absolute', top: Platform.OS === 'web' ? 20 : 60, right: spacing.md, zIndex: 10, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 25, padding: 10, width: 50, height: 50, justifyContent: 'center', alignItems: 'center' },
+  });
+}

@@ -236,7 +236,7 @@ export default function PrescriptionEditorScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
-  const { colors } = useAppTheme();
+  const { colors } = useAppTheme({ role: 'doctor' });
   const st = useMemo(() => makeStyles(colors), [colors]);
   const RISK_COLORS = useMemo<Record<string, { bg: string; text: string }>>(() => ({
     low: { bg: colors.successLight, text: colors.success },

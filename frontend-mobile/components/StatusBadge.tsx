@@ -1,12 +1,13 @@
 /**
  * Badge de status usando o design system central (getRequestUiState).
  * Cores: Azul = ação, Verde = sucesso, Amarelo = aguardando, Cinza = histórico.
- * Variações: success, warning, action, neutral (sem múltiplos estilos espalhados).
+ * Suporta dark mode via useAppTheme.
  */
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { getRequestUiState, UI_STATUS_COLORS, type RequestUiColorKey } from '../lib/domain/getRequestUiState';
+import { getRequestUiState, getUIStatusColorsForTheme, UI_STATUS_COLORS, type RequestUiColorKey } from '../lib/domain/getRequestUiState';
+import { useAppTheme } from '../lib/ui/useAppTheme';
 import type { RequestResponseDto } from '../types/database';
 
 export type StatusBadgeVariantType = 'success' | 'warning' | 'action' | 'neutral';
@@ -38,8 +39,10 @@ export function StatusBadgeByRequest({
   request: RequestResponseDto;
   size?: 'sm' | 'md';
 }) {
+  const { colors } = useAppTheme();
+  const statusColors = getUIStatusColorsForTheme(colors);
   const { label, colorKey } = getRequestUiState(request);
-  const { color, bg } = UI_STATUS_COLORS[colorKey];
+  const { color, bg } = statusColors[colorKey];
   const isSm = size === 'sm';
   return (
     <View
@@ -57,8 +60,10 @@ export function StatusBadgeByRequest({
 
 /** Compatibilidade: recebe status string e usa mesmo design system */
 export function StatusBadge({ status, size = 'md' }: StatusBadgeProps) {
+  const { colors } = useAppTheme();
+  const statusColors = getUIStatusColorsForTheme(colors);
   const { label, colorKey } = getRequestUiState({ status });
-  const { color, bg } = UI_STATUS_COLORS[colorKey];
+  const { color, bg } = statusColors[colorKey];
   const isSm = size === 'sm';
   return (
     <View
@@ -76,8 +81,10 @@ export function StatusBadge({ status, size = 'md' }: StatusBadgeProps) {
 
 /** Badge por variante (success, warning, action, neutral) – design system único */
 export function StatusBadgeVariant({ variant, label, size = 'md' }: StatusBadgeVariantProps) {
+  const { colors } = useAppTheme();
+  const statusColors = getUIStatusColorsForTheme(colors);
   const colorKey = VARIANT_TO_COLOR_KEY[variant];
-  const { color, bg } = UI_STATUS_COLORS[colorKey];
+  const { color, bg } = statusColors[colorKey];
   const isSm = size === 'sm';
   return (
     <View

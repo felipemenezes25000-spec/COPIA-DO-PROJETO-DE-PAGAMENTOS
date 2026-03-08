@@ -28,6 +28,7 @@ import { Gesture, GestureDetector, Pressable as GHPressable } from 'react-native
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../lib/theme';
+import { useAppTheme } from '../../lib/ui/useAppTheme';
 import { useTriageAssistant } from '../../contexts/TriageAssistantProvider';
 import {
   getBannerFloatingPosition,
@@ -56,6 +57,7 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
   const insets = useSafeAreaInsets();
   const { width: screenW, height: screenH } = useWindowDimensions();
   const { current } = useTriageAssistant();
+  const { colors } = useAppTheme({ role: 'patient' });
 
   const padding = 16;
   const [expanded, setExpanded] = useState(false);
@@ -282,12 +284,12 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
           <Animated.View
             style={[
               styles.fab,
-              { width: FAB_SIZE, height: FAB_SIZE, borderRadius: FAB_SIZE / 2 },
+              { width: FAB_SIZE, height: FAB_SIZE, borderRadius: FAB_SIZE / 2, backgroundColor: colors.surface },
               fabAnimatedStyle,
             ]}
           >
             <View style={styles.fabInner}>
-              <Ionicons name="sparkles" size={22} color={theme.colors.primary.main} />
+              <Ionicons name="sparkles" size={22} color={colors.primary} />
             </View>
           </Animated.View>
         </GestureDetector>
@@ -299,16 +301,17 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
               {
                 width: bannerWidth,
                 height: expandedHeight,
+                backgroundColor: colors.surface,
               },
               expandedAnimatedStyle,
             ]}
           >
-            <View style={styles.expandedHeader}>
+            <View style={[styles.expandedHeader, { backgroundColor: colors.surfaceSecondary, borderBottomColor: colors.border }]}>
               <View style={styles.expandedHeaderLeft}>
-                <View style={styles.expandedFabIcon}>
-                  <Ionicons name="sparkles" size={14} color={theme.colors.primary.main} />
+                <View style={[styles.expandedFabIcon, { backgroundColor: colors.primarySoft }]}>
+                  <Ionicons name="sparkles" size={14} color={colors.primary} />
                 </View>
-                <Text style={styles.expandedHeaderLabel}>Dra. Renoveja</Text>
+                <Text style={[styles.expandedHeaderLabel, { color: colors.text }]}>Dra. Renoveja</Text>
               </View>
               <GHPressable
                 onPress={handleCollapse}
@@ -316,7 +319,7 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
                 style={({ pressed }) => [styles.collapseBtn, pressed && styles.collapseBtnPressed]}
                 accessibilityLabel="Recolher assistente"
               >
-                <Ionicons name="chevron-down" size={20} color={theme.colors.text.secondary} />
+                <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
               </GHPressable>
             </View>
             <ScrollView
@@ -348,7 +351,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
-    backgroundColor: theme.colors.background.paper,
     alignItems: 'center',
     justifyContent: 'center',
     ...theme.shadows.card,
@@ -363,7 +365,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
-    backgroundColor: theme.colors.background.paper,
     borderRadius: theme.borderRadius.lg,
     overflow: 'hidden',
     ...theme.shadows.card,
@@ -382,8 +383,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.06)',
-    backgroundColor: theme.colors.background.default,
   },
   expandedHeaderLeft: {
     flexDirection: 'row',
@@ -394,14 +393,12 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: theme.colors.primary.soft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   expandedHeaderLabel: {
     fontSize: 13,
     fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: theme.colors.text.primary,
   },
   collapseBtn: {
     padding: 4,
