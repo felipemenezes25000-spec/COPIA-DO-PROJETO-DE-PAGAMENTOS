@@ -15,7 +15,7 @@
  * - Criação de sala Daily.co antes do join
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -38,7 +38,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { DailyMediaView } from '@daily-co/react-native-daily-js';
 import ExpoPip from 'expo-pip';
 
-import { colors } from '../../lib/themeDoctor';
+import { useAppTheme } from '../../lib/ui/useAppTheme';
+import DoctorAIPanel from './DoctorAIPanel';
 import {
   startConsultation,
   finishConsultation,
@@ -65,36 +66,9 @@ function fmt(s: number) {
   return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
 }
 
-function qColor(q: ConnectionQuality) {
-  return q === 'good' ? colors.success : q === 'poor' ? colors.warning : q === 'bad' ? colors.error : colors.textMuted;
-}
-
 function qLabel(q: ConnectionQuality) {
   return q === 'good' ? 'Boa' : q === 'poor' ? 'Instável' : q === 'bad' ? 'Ruim' : '...';
 }
-
-// Tipos para medicamentos e exames sugeridos (objeto rico ou string legado)
-type MedSugerido = string | { nome: string; dose?: string; via?: string; posologia?: string; duracao?: string; indicacao?: string };
-type ExameSugerido = string | { nome: string; descricao?: string; o_que_afere?: string; indicacao?: string };
-
-function normMed(m: MedSugerido): { nome: string; dose: string; via: string; posologia: string; duracao: string; indicacao: string } {
-  if (typeof m === 'string') return { nome: m, dose: '', via: '', posologia: '', duracao: '', indicacao: '' };
-  return { nome: m.nome ?? '', dose: m.dose ?? '', via: m.via ?? '', posologia: m.posologia ?? '', duracao: m.duracao ?? '', indicacao: m.indicacao ?? '' };
-}
-function normExame(e: ExameSugerido): { nome: string; descricao: string; o_que_afere: string; indicacao: string } {
-  if (typeof e === 'string') return { nome: e, descricao: '', o_que_afere: '', indicacao: '' };
-  return { nome: e.nome ?? '', descricao: e.descricao ?? '', o_que_afere: e.o_que_afere ?? '', indicacao: e.indicacao ?? '' };
-}
-
-const ANA_FIELDS = [
-  { key: 'queixa_principal', label: 'Queixa Principal', icon: 'chatbubble-ellipses' },
-  { key: 'historia_doenca_atual', label: 'HDA', icon: 'time' },
-  { key: 'sintomas', label: 'Sintomas', icon: 'thermometer' },
-  { key: 'medicamentos_em_uso', label: 'Medicamentos', icon: 'medical' },
-  { key: 'alergias', label: 'Alergias', icon: 'warning' },
-  { key: 'antecedentes_relevantes', label: 'Antecedentes', icon: 'document-text' },
-  { key: 'cid_sugerido', label: 'CID Sugerido', icon: 'code-slash' },
-] as const;
 
 // ──── Main Screen ────
 
@@ -103,6 +77,11 @@ export default function VideoCallScreenInner() {
   const router = useRouter();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const { colors } = useAppTheme({ scheme: 'light' });
+  const S = useMemo(() => makeStyles(colors), [colors]);
+  const qColor = useCallback((q: ConnectionQuality) => {
+    return q === 'good' ? colors.success : q === 'poor' ? colors.warning : q === 'bad' ? colors.error : colors.textMuted;
+  }, [colors]);
 
   const rid = (Array.isArray(requestId) ? requestId[0] : requestId) ?? '';
   const isDoctor = user?.role === 'doctor';
@@ -140,7 +119,7 @@ export default function VideoCallScreenInner() {
   const [panelOpen, setPanelOpen] = useState(false);
   const panelAnim = useRef(new Animated.Value(0)).current;
   const [, setTranscript] = useState('');
-  const [anamnesis, setAnamnesis] = useState<Record<string, any> | null>(null);
+  const [anamnesis, setAnamnesis] = useState<Record<string, unknown> | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [evidence, setEvidence] = useState<{
     title: string;
@@ -459,6 +438,7 @@ export default function VideoCallScreenInner() {
   }, [isDoctor, rid, consultationStartedAt]);
 
   // Countdown / Auto-finish
+  const doEndRef = useRef<(autoFinish?: boolean) => Promise<void>>(async () => {});
   useEffect(() => {
     if (!contractedMinutes || contractedMinutes <= 0) return;
     const rem = contractedMinutes * 60 - callSeconds;
@@ -473,10 +453,9 @@ export default function VideoCallScreenInner() {
     if (rem <= 0 && !autoFinishedRef.current) {
       autoFinishedRef.current = true;
       Alert.alert('Tempo esgotado', 'O tempo contratado expirou.', [{
-        text: 'OK', onPress: () => doEnd(true),
+        text: 'OK', onPress: () => doEndRef.current(true),
       }]);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- doEnd defined below
   }, [callSeconds, contractedMinutes]);
 
   // Dica UX: esconder após 8s (usuário pode usar o celular durante a chamada)
@@ -521,6 +500,7 @@ export default function VideoCallScreenInner() {
     cleanup();
     router.back();
   }, [isDoctor, leave, rid, cleanup, router]);
+  doEndRef.current = doEnd;
 
   const confirmEnd = useCallback(async () => {
     setShowNotes(false);
@@ -688,6 +668,9 @@ export default function VideoCallScreenInner() {
         <TouchableOpacity
           style={[S.panelBtn, { top: insets.top + 60 + 160 }, panelOpen && S.panelBtnOn]}
           onPress={togglePanel} activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={panelOpen ? 'Fechar painel de anamnese' : 'Abrir painel de anamnese IA'}
+          accessibilityState={{ expanded: panelOpen }}
         >
           <Ionicons name={panelOpen ? 'chevron-forward' : 'document-text'} size={20} color={colors.white} />
           {panelHas && !panelOpen && <View style={S.panelDot} />}
@@ -697,7 +680,7 @@ export default function VideoCallScreenInner() {
       {/* Doctor: Start Timer / Recording Button — oculto em PiP */}
       {!isInPipMode && isDoctor && callState === 'joined' && !timerStarted && (
         <View style={S.startTimerOverlay}>
-          <TouchableOpacity style={S.startTimerBtn} onPress={handleStartTimer} activeOpacity={0.8}>
+          <TouchableOpacity style={S.startTimerBtn} onPress={handleStartTimer} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Iniciar consulta, timer e transcrição">
             <Ionicons name="play-circle" size={28} color={colors.white} />
             <View>
               <Text style={S.startTimerTitle}>Iniciar Consulta</Text>
@@ -725,7 +708,7 @@ export default function VideoCallScreenInner() {
 
       {/* Patient: indicador de transcrição Daily.co — oculto em PiP */}
       {!isInPipMode && !isDoctor && callState === 'joined' && (
-        <View style={[S.recIndicator, { top: insets.top + 60 + (bankBalance && bankBalance.minutes > 0 ? 44 : 0) }]}>
+        <View style={[dailyTranscriptionActive ? S.recIndicatorActive : S.recIndicatorMuted, { top: insets.top + 60 + (bankBalance && bankBalance.minutes > 0 ? 44 : 0) }]}>
           {dailyTranscriptionActive ? (
             <>
               <View style={S.recDot} />
@@ -757,165 +740,7 @@ export default function VideoCallScreenInner() {
           style={[S.panel, { width: PANEL_WIDTH, top: insets.top + 48, bottom: 80 + insets.bottom, transform: [{ translateX: panelX }] }]}
           pointerEvents={panelOpen ? 'auto' : 'none'}
         >
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={S.panelInner} showsVerticalScrollIndicator={false}>
-            {/* Anamnesis */}
-            {hasAna && (
-              <View style={S.sec}>
-                <View style={S.secH}>
-                  <Ionicons name="document-text" size={16} color={colors.primary} />
-                  <Text style={S.secT}>ANAMNESE</Text>
-                  <View style={S.badge}><Ionicons name="sparkles" size={10} color={colors.primary} /><Text style={S.badgeTxt}>IA</Text></View>
-                </View>
-                {ANA_FIELDS.map(({ key, label, icon }) => {
-                  const v = anamnesis?.[key];
-                  if (!v || (typeof v === 'string' && !v.trim())) return null;
-                  const d = Array.isArray(v) ? v.join(', ') : String(v);
-                  const alert = key === 'alergias';
-                  return (
-                    <View key={key} style={S.af}>
-                      <View style={S.afL}><Ionicons name={icon as any} size={11} color={alert ? colors.error : colors.textMuted} /><Text style={[S.afLT, alert && { color: colors.error }]}>{label}</Text></View>
-                      <Text style={S.afV}>{d}</Text>
-                    </View>
-                  );
-                })}
-                {Array.isArray(anamnesis?.alertas_vermelhos) && anamnesis!.alertas_vermelhos.length > 0 && (
-                  <View style={S.rfBlock}>
-                    <View style={S.afL}><Ionicons name="alert-circle" size={13} color={colors.error} /><Text style={[S.afLT, { color: colors.error, fontWeight: '700' }]}>ALERTAS</Text></View>
-                    {(anamnesis!.alertas_vermelhos as string[]).map((f, i) => <Text key={i} style={S.rfTxt}>⚠️ {f}</Text>)}
-                  </View>
-                )}
-              </View>
-            )}
-
-            {/* Medicamentos sugeridos */}
-            {hasMeds && (
-              <View style={S.sec}>
-                <View style={S.secH}>
-                  <Ionicons name="medkit" size={16} color={colors.primaryLight} />
-                  <Text style={[S.secT, { color: colors.primaryLight }]}>MEDICAMENTOS SUGERIDOS</Text>
-                  <View style={S.badge}><Ionicons name="sparkles" size={10} color={colors.primary} /><Text style={S.badgeTxt}>IA</Text></View>
-                </View>
-                {(anamnesis!.medicamentos_sugeridos as MedSugerido[]).map((m, i) => {
-                  const med = normMed(m);
-                  const parts = [med.dose, med.via, med.posologia, med.duracao].filter(Boolean);
-                  const linha = parts.length > 0 ? ` — ${parts.join(' • ')}` : '';
-                  return (
-                    <View key={i} style={S.medItemBlock}>
-                      <View style={S.medItem}>
-                        <Text style={S.medNum}>{i + 1}.</Text>
-                        <Text style={S.medNome}>{med.nome}{linha}</Text>
-                      </View>
-                      {med.indicacao ? <Text style={S.medIndicacao}>{med.indicacao}</Text> : null}
-                    </View>
-                  );
-                })}
-                <Text style={S.panelDisclaimer}>* Sugestões da IA — decisão final do médico</Text>
-              </View>
-            )}
-
-            {/* Exames sugeridos */}
-            {hasExams && (
-              <View style={S.sec}>
-                <View style={S.secH}>
-                  <Ionicons name="flask" size={16} color={colors.primaryLight} />
-                  <Text style={[S.secT, { color: colors.primaryLight }]}>EXAMES SUGERIDOS</Text>
-                  <View style={S.badge}><Ionicons name="sparkles" size={10} color={colors.primary} /><Text style={S.badgeTxt}>IA</Text></View>
-                </View>
-                {(anamnesis!.exames_sugeridos as ExameSugerido[]).map((ex, i) => {
-                  const exam = normExame(ex);
-                  return (
-                    <View key={i} style={S.examItemBlock}>
-                      <View style={S.medItem}>
-                        <Text style={S.medNum}>{i + 1}.</Text>
-                        <Text style={S.medNome}>{exam.nome}</Text>
-                      </View>
-                      {exam.descricao ? <Text style={S.examDetail}>O que é: {exam.descricao}</Text> : null}
-                      {exam.o_que_afere ? <Text style={S.examDetail}>Avalia: {exam.o_que_afere}</Text> : null}
-                      {exam.indicacao ? <Text style={S.medIndicacao}>{exam.indicacao}</Text> : null}
-                    </View>
-                  );
-                })}
-                <Text style={S.panelDisclaimer}>* Sugestões da IA — decisão final do médico</Text>
-              </View>
-            )}
-
-            {/* Evidências científicas — PubMed, Europe PMC, Semantic Scholar */}
-            {hasEv && (
-              <View style={S.sec}>
-                <View style={S.secH}>
-                  <Ionicons name="library" size={16} color={colors.primaryLight} />
-                  <Text style={[S.secT, { color: colors.primaryLight }]}>EVIDÊNCIAS</Text>
-                  <View style={S.evProviderBadges}>
-                    <View style={[S.evProviderBadge, S.evProviderPubMed]}><Text style={S.evProviderBadgeTxt}>PubMed</Text></View>
-                    <View style={[S.evProviderBadge, S.evProviderEuropePmc]}><Text style={S.evProviderBadgeTxt}>Europe PMC</Text></View>
-                    <View style={[S.evProviderBadge, S.evProviderSemantic]}><Text style={S.evProviderBadgeTxt}>Semantic Scholar</Text></View>
-                  </View>
-                </View>
-                {evidence.filter((e) =>
-                  (e.relevantExcerpts && e.relevantExcerpts.length > 0) || e.clinicalRelevance || e.translatedAbstract
-                ).map((e, i) => {
-                  const prov = e.provider ?? 'PubMed';
-                  const badgeStyle = prov === 'Europe PMC' ? S.evProviderEuropePmc : prov === 'Semantic Scholar' ? S.evProviderSemantic : S.evProviderPubMed;
-                  return (
-                    <View key={i} style={S.evItem}>
-                      <View style={S.evItemHeader}>
-                        <Text style={S.evTitle} numberOfLines={2}>{e.title}</Text>
-                        <View style={[S.evProviderBadge, badgeStyle, S.evProviderBadgeSmall]}>
-                          <Text style={S.evProviderBadgeTxt}>{prov}</Text>
-                        </View>
-                      </View>
-                      {e.clinicalRelevance && (
-                        <View style={S.evRelevance}>
-                          <Ionicons name="medical" size={12} color={colors.primary} />
-                          <Text style={S.evRelevanceTxt}>{e.clinicalRelevance}</Text>
-                        </View>
-                      )}
-                      {(e.relevantExcerpts && e.relevantExcerpts.length > 0) ? (
-                        e.relevantExcerpts.map((excerpt, j) => (
-                          <View key={j} style={S.evExcerpt}>
-                            <Text style={S.evExcerptTxt}>"{excerpt}"</Text>
-                          </View>
-                        ))
-                      ) : e.translatedAbstract ? (
-                        <Text style={S.evAbstract}>{e.translatedAbstract}</Text>
-                      ) : null}
-                      <Text style={S.evSource}>{e.source}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-            )}
-
-            {/* Suggestions */}
-            {hasSug && (
-              <View style={S.sec}>
-                <View style={S.secH}><Ionicons name="bulb" size={16} color={colors.primaryLight} /><Text style={[S.secT, { color: colors.primaryLight }]}>SUGESTÕES</Text></View>
-                {suggestions.map((s, i) => {
-                  const str = typeof s === 'string' ? s : '';
-                  const red = str.startsWith('🚨');
-                  return (
-                    <View key={i} style={[S.sugItem, red && S.sugDng]}>
-                      <Ionicons name={red ? 'alert-circle' : 'bulb-outline'} size={14} color={red ? colors.error : colors.primaryLight} />
-                      <Text style={[S.sugTxt, red && { color: colors.error }]}>{str.replace('🚨 ', '')}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-            )}
-
-            {/* Empty */}
-            {!panelHas && (
-              <View style={S.panelEmpty}>
-                <Ionicons name="sparkles-outline" size={32} color={colors.textSecondary} />
-                <Text style={S.peTitle}>Anamnese IA</Text>
-                <Text style={S.peSub}>Anamnese, medicamentos e exames sugeridos aparecerão aqui durante a conversa</Text>
-              </View>
-            )}
-          </ScrollView>
-          <View style={S.panelFoot}>
-            <Ionicons name="information-circle-outline" size={12} color={colors.textSecondary} />
-            <Text style={S.panelFootTxt}>IA como apoio — revisão médica obrigatória</Text>
-          </View>
+          <DoctorAIPanel anamnesis={anamnesis} suggestions={suggestions} evidence={evidence} />
         </Animated.View>
       )}
 
@@ -928,7 +753,7 @@ export default function VideoCallScreenInner() {
               ? 'Minimizar para usar outros apps — popup arrastável, chamada continua'
               : 'Pode trocar de app — a chamada continua em segundo plano'}
           </Text>
-          <TouchableOpacity onPress={() => setShowBackgroundHint(false)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          <TouchableOpacity onPress={() => setShowBackgroundHint(false)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} accessibilityRole="button" accessibilityLabel="Fechar dica">
             <Ionicons name="close" size={18} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
@@ -938,20 +763,20 @@ export default function VideoCallScreenInner() {
       {!isInPipMode && (
       <View style={[S.ctrl, { paddingBottom: insets.bottom + 12 }]}>
         {Platform.OS === 'android' && ExpoPip?.isAvailable?.() && (
-          <TouchableOpacity style={S.cb} onPress={() => ExpoPip.enterPipMode?.({ width: 360, height: 480 })}>
+          <TouchableOpacity style={S.cb} onPress={() => ExpoPip.enterPipMode?.({ width: 360, height: 480 })} accessibilityRole="button" accessibilityLabel="Minimizar em janela flutuante">
             <Ionicons name="contract-outline" size={22} color={colors.white} />
             <Text style={S.cLbl}>Minimizar</Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity style={[S.cb, isMuted && S.cbOn]} onPress={toggleMute}>
+        <TouchableOpacity style={[S.cb, isMuted && S.cbOn]} onPress={toggleMute} accessibilityRole="button" accessibilityLabel={isMuted ? 'Microfone mudo, toque para ativar' : 'Microfone ativo, toque para mutar'} accessibilityState={{ checked: isMuted }}>
           <Ionicons name={isMuted ? 'mic-off' : 'mic'} size={22} color={colors.white} />
           <Text style={S.cLbl}>{isMuted ? 'Mudo' : 'Mic'}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[S.cb, isCameraOff && S.cbOn]} onPress={toggleCamera}>
+        <TouchableOpacity style={[S.cb, isCameraOff && S.cbOn]} onPress={toggleCamera} accessibilityRole="button" accessibilityLabel={isCameraOff ? 'Câmera desligada, toque para ligar' : 'Câmera ligada, toque para desligar'} accessibilityState={{ checked: isCameraOff }}>
           <Ionicons name={isCameraOff ? 'videocam-off' : 'videocam'} size={22} color={colors.white} />
           <Text style={S.cLbl}>{isCameraOff ? 'Off' : 'Câm'}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={S.cb} onPress={flipCamera}>
+        <TouchableOpacity style={S.cb} onPress={flipCamera} accessibilityRole="button" accessibilityLabel="Virar câmera frontal ou traseira">
           <Ionicons name="camera-reverse-outline" size={22} color={colors.white} />
           <Text style={S.cLbl}>Virar</Text>
         </TouchableOpacity>
@@ -995,43 +820,46 @@ export default function VideoCallScreenInner() {
   );
 }
 
-// ──── Styles ────
+// ──── Styles (light mode: overlays legíveis, fundo escuro só para área do vídeo) ────
 
-const S = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.black },
+type VideoColors = { primary: string; text: string; textMuted: string; textSecondary: string; white: string; black: string; error: string; warning: string; success: string; successLight: string; destructive: string; primaryLight: string; border: string; errorLight: string; surface: string };
+
+function makeStyles(colors: VideoColors) {
+  return StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#0F172A' },
   center: { justifyContent: 'center', alignItems: 'center', gap: 12 },
 
   remote: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   noVid: { justifyContent: 'center', alignItems: 'center', gap: 12 },
-  waitCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(44,177,255,0.08)', justifyContent: 'center', alignItems: 'center' },
+  waitCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(44,177,255,0.12)', justifyContent: 'center', alignItems: 'center' },
   waitTitle: { color: colors.textMuted, fontSize: 16, fontWeight: '600' },
   waitSub: { color: colors.textSecondary, fontSize: 13 },
 
-  pip: { position: 'absolute', left: 12, width: 100, height: 136, borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: colors.primary, zIndex: 15, backgroundColor: colors.text },
-  pipRemote: { position: 'absolute', right: 12, top: 8, width: 100, height: 136, borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: colors.primary, zIndex: 15, backgroundColor: colors.text },
+  pip: { position: 'absolute', left: 12, width: 100, height: 136, borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: colors.primary, zIndex: 15, backgroundColor: colors.surface },
+  pipRemote: { position: 'absolute', right: 12, top: 8, width: 100, height: 136, borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: colors.primary, zIndex: 15, backgroundColor: colors.surface },
   pipVid: { flex: 1 },
   pipMute: { position: 'absolute', bottom: 4, left: 4, width: 18, height: 18, borderRadius: 9, backgroundColor: colors.error, justifyContent: 'center', alignItems: 'center' },
 
-  top: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, paddingBottom: 10, backgroundColor: 'rgba(12,18,34,0.75)', zIndex: 20 },
+  top: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, paddingBottom: 10, backgroundColor: 'rgba(248,250,252,0.95)', zIndex: 20 },
   topL: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   qPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   qDot: { width: 7, height: 7, borderRadius: 4 },
   qTxt: { fontSize: 12, fontWeight: '600' },
-  aiPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, backgroundColor: 'rgba(139,92,246,0.2)' },
-  aiDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primaryLight },
-  aiTxt: { fontSize: 12, fontWeight: '700', color: colors.primaryLight },
-  tPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16, backgroundColor: 'rgba(30,41,59,0.85)' },
-  tPillUrg: { backgroundColor: 'rgba(120,53,15,0.6)' },
+  aiPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, backgroundColor: 'rgba(44,177,255,0.15)' },
+  aiDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary },
+  aiTxt: { fontSize: 12, fontWeight: '700', color: colors.primary },
+  tPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16, backgroundColor: 'rgba(241,245,249,0.95)' },
+  tPillUrg: { backgroundColor: 'rgba(251,191,36,0.4)' },
   tPillCrit: { backgroundColor: colors.destructive },
-  tTxt: { color: colors.textMuted, fontSize: 13, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  tTxt: { color: colors.text, fontSize: 13, fontWeight: '700', fontVariant: ['tabular-nums'] },
   tTxtUrg: { color: colors.warning },
   tTxtCrit: { color: colors.white },
 
-  panelBtn: { position: 'absolute', right: 0, zIndex: 25, width: 44, height: 44, borderTopLeftRadius: 12, borderBottomLeftRadius: 12, backgroundColor: 'rgba(44,177,255,0.85)', justifyContent: 'center', alignItems: 'center' },
-  panelBtnOn: { backgroundColor: 'rgba(30,41,59,0.9)' },
+  panelBtn: { position: 'absolute', right: 0, zIndex: 25, width: 48, height: 48, borderTopLeftRadius: 12, borderBottomLeftRadius: 12, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
+  panelBtnOn: { backgroundColor: colors.text },
   panelDot: { position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success },
 
-  panel: { position: 'absolute', right: 0, zIndex: 22, backgroundColor: 'rgba(15,23,42,0.95)', borderTopLeftRadius: 16, borderBottomLeftRadius: 16, overflow: 'hidden' },
+  panel: { position: 'absolute', right: 0, zIndex: 22, backgroundColor: colors.surface, borderTopLeftRadius: 16, borderBottomLeftRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: -4, height: 0 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 },
   panelInner: { padding: 14, gap: 16 },
 
   sec: { gap: 8 },
@@ -1090,26 +918,26 @@ const S = StyleSheet.create({
   panelFoot: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: 'rgba(30,41,59,0.8)', borderTopWidth: 1, borderTopColor: 'rgba(51,65,85,0.3)' },
   panelFootTxt: { fontSize: 12, color: colors.textSecondary },
 
-  ctrl: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 20, paddingTop: 14, backgroundColor: 'rgba(12,18,34,0.9)' },
-  cb: { width: 56, height: 64, borderRadius: 16, backgroundColor: 'rgba(51,65,85,0.7)', justifyContent: 'center', alignItems: 'center', gap: 4 },
-  cbOn: { backgroundColor: 'rgba(239,68,68,0.5)' },
+  ctrl: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 20, paddingTop: 14, backgroundColor: 'rgba(248,250,252,0.98)' },
+  cb: { width: 56, height: 64, borderRadius: 16, backgroundColor: colors.text, justifyContent: 'center', alignItems: 'center', gap: 4 },
+  cbOn: { backgroundColor: 'rgba(239,68,68,0.6)' },
   endCb: { backgroundColor: colors.destructive },
-  cLbl: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '600' },
+  cLbl: { fontSize: 12, color: colors.white, fontWeight: '600' },
 
-  loadTitle: { color: colors.border, fontSize: 17, fontWeight: '700' },
+  loadTitle: { color: colors.text, fontSize: 17, fontWeight: '700' },
   loadSub: { color: colors.textMuted, fontSize: 13 },
-  errText: { color: colors.errorLight, fontSize: 14, textAlign: 'center', paddingHorizontal: 32 },
+  errText: { color: colors.error, fontSize: 14, textAlign: 'center', paddingHorizontal: 32 },
   retryBtn: { marginTop: 12, paddingHorizontal: 28, paddingVertical: 12, backgroundColor: colors.primary, borderRadius: 12 },
   retryTxt: { color: colors.white, fontWeight: '700' },
 
-  mOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  mCard: { backgroundColor: colors.text, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 12 },
+  mOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  mCard: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 12 },
   mHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  mTitle: { fontSize: 18, fontWeight: '700', color: colors.border },
+  mTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
   mSub: { fontSize: 13, color: colors.textMuted },
-  mInput: { backgroundColor: 'rgba(30,41,59,0.8)', borderRadius: 12, padding: 14, minHeight: 120, maxHeight: 200, color: colors.border, fontSize: 14, lineHeight: 22, borderWidth: 1, borderColor: 'rgba(51,65,85,0.5)' },
+  mInput: { backgroundColor: colors.surface, borderRadius: 12, padding: 14, minHeight: 120, maxHeight: 200, color: colors.text, fontSize: 14, lineHeight: 22, borderWidth: 1, borderColor: colors.border },
   mActs: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  mBtnSec: { flex: 1, height: 48, borderRadius: 12, backgroundColor: 'rgba(51,65,85,0.5)', justifyContent: 'center', alignItems: 'center' },
+  mBtnSec: { flex: 1, height: 48, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.06)', justifyContent: 'center', alignItems: 'center' },
   mBtnSecT: { color: colors.textMuted, fontWeight: '600', fontSize: 14 },
   mBtnPri: { flex: 2, height: 48, borderRadius: 12, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
   mBtnPriT: { color: colors.white, fontWeight: '700', fontSize: 14 },
@@ -1121,9 +949,11 @@ const S = StyleSheet.create({
   startTimerSub: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 1 },
 
   // Recording indicator
-  backgroundHint: { position: 'absolute', left: 12, right: 12, zIndex: 20, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: 'rgba(44,177,255,0.15)', borderWidth: 1, borderColor: 'rgba(44,177,255,0.3)' },
+  backgroundHint: { position: 'absolute', left: 12, right: 12, zIndex: 20, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: 'rgba(44,177,255,0.12)', borderWidth: 1, borderColor: 'rgba(44,177,255,0.25)' },
   backgroundHintText: { flex: 1, fontSize: 12, color: colors.text, lineHeight: 18 },
-  recIndicator: { position: 'absolute', left: 12, zIndex: 25, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, backgroundColor: 'rgba(220,38,38,0.8)' },
+  recIndicator: { position: 'absolute', left: 12, zIndex: 25, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, backgroundColor: colors.error },
+  recIndicatorActive: { position: 'absolute' as const, left: 12, zIndex: 25, flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, backgroundColor: colors.success },
+  recIndicatorMuted: { position: 'absolute' as const, left: 12, zIndex: 25, flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.4)' },
   recDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.white },
   recText: { color: colors.white, fontSize: 12, fontWeight: '600' },
   recCountdownText: { color: 'rgba(255,255,255,0.95)', fontSize: 13, fontWeight: '700', marginTop: 2, fontVariant: ['tabular-nums'] },
@@ -1133,6 +963,7 @@ const S = StyleSheet.create({
   bankText: { color: colors.success, fontSize: 12, fontWeight: '600' },
 
   // Patient: Early leave hint
-  earlyLeaveHint: { position: 'absolute', left: 12, right: 12, zIndex: 25, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: 'rgba(30,41,59,0.85)' },
+  earlyLeaveHint: { position: 'absolute', left: 12, right: 12, zIndex: 25, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: 'rgba(248,250,252,0.95)' },
   earlyLeaveText: { color: colors.textMuted, fontSize: 12, flex: 1 },
-});
+  });
+}

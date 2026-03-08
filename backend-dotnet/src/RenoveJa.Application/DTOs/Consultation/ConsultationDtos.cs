@@ -16,12 +16,13 @@ public record SuggestionUpdateDto(IReadOnlyList<string> Items);
 /// <summary>Payload enviado via SignalR para atualização das evidências (artigos PubMed) no painel do médico.</summary>
 public record EvidenceUpdateDto(IReadOnlyList<EvidenceItemDto> Items);
 
-/// <summary>Provedor da evidência: PubMed, Europe PMC ou Semantic Scholar.</summary>
+/// <summary>Provedor da evidência: PubMed, Europe PMC, Semantic Scholar, ClinicalTrials.gov.</summary>
 public static class EvidenceProvider
 {
     public const string PubMed = "PubMed";
     public const string EuropePmc = "Europe PMC";
     public const string SemanticScholar = "Semantic Scholar";
+    public const string ClinicalTrials = "ClinicalTrials.gov";
 }
 
 /// <summary>Item de evidência: artigo científico com trechos relevantes e relevância clínica para apoio ao diagnóstico.</summary>

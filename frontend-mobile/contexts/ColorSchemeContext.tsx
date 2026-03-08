@@ -27,16 +27,17 @@ const ColorSchemeContext = createContext<ColorSchemeContextValue | undefined>(un
 
 export function ColorSchemeProvider({ children }: { children: React.ReactNode }) {
   const systemScheme = useSystemColorScheme() ?? 'light';
-  const [preference, setPreferenceState] = useState<ColorSchemePreference>('system');
+  const [preference, setPreferenceState] = useState<ColorSchemePreference>('light');
   const [loaded, setLoaded] = useState(false);
 
-  // Carregar preferência persistida
+  // Carregar preferência persistida (default: light para melhor legibilidade)
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
       .then((stored) => {
         if (stored === 'light' || stored === 'dark' || stored === 'system') {
           setPreferenceState(stored);
         }
+        // Se nunca salvou, mantém 'light' (já é o default do useState)
       })
       .catch(() => {})
       .finally(() => setLoaded(true));

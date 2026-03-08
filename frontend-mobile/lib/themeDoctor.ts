@@ -33,7 +33,7 @@ export const colors = {
   // Status (Semantic)
   statusSubmitted: theme.colors.status.warning,     // Amber
   statusInReview: theme.colors.status.info,         // Blue
-  statusApvoved: theme.colors.status.success,       // Green
+  statusApproved: theme.colors.status.success,      // Green
   statusPaid: theme.colors.status.success,          // Green
   statusSigned: theme.colors.text.secondary,        // Gray (Done)
   statusDelivered: theme.colors.status.success,     // Green

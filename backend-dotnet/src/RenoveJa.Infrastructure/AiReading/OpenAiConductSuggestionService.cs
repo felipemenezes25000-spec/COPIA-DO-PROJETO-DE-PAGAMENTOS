@@ -8,6 +8,10 @@ using RenoveJa.Application.Interfaces;
 
 namespace RenoveJa.Infrastructure.AiReading;
 
+/// <summary>
+/// v2: Conduta mais estruturada com critérios de retorno, orientações ao paciente,
+/// template SOAP, e exames com código TUSS.
+/// </summary>
 public class OpenAiConductSuggestionService : IAiConductSuggestionService
 {
     private readonly IHttpClientFactory _httpClientFactory;
@@ -45,14 +49,14 @@ public class OpenAiConductSuggestionService : IAiConductSuggestionService
 
         try
         {
-            var systemPrompt = BuildSystemPrompt();
-            var userPrompt = BuildUserPrompt(input);
+            var systemPrompt = BuildSystemPromptV2();
+            var userPrompt = BuildUserPromptV2(input);
 
             var requestBody = new
             {
                 model = _config.Value?.Model ?? "gpt-4o",
-                temperature = 0.3,
-                max_tokens = 800,
+                temperature = 0.25,
+                max_tokens = 1200,
                 response_format = new { type = "json_object" },
                 messages = new[]
                 {
@@ -86,53 +90,62 @@ public class OpenAiConductSuggestionService : IAiConductSuggestionService
             if (string.IsNullOrWhiteSpace(message))
                 return null;
 
-            return ParseResult(message);
+            return ParseResultV2(message);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating conduct suggestion");
+            _logger.LogError(ex, "Error generating conduct suggestion v2");
             return null;
         }
     }
 
-    private static string BuildSystemPrompt()
+    private static string BuildSystemPromptV2()
     {
         return """
-            Você é um ASSISTENTE CLÍNICO de apoio ao médico na plataforma RenoveJá+.
-            Sua função é SUGERIR condutas e orientações que o médico irá REVISAR antes de aplicar.
+            Você é um ASSISTENTE CLÍNICO de apoio ao médico na plataforma RenoveJá+ (telemedicina brasileira).
+            Sua função é gerar uma conduta ESTRUTURADA que o médico revisará antes de aplicar.
 
             CONTEXTO:
-            - O RenoveJá+ é uma plataforma de telessaúde brasileira
-            - Os médicos atendem por vídeo e emitem receitas/exames digitais com assinatura ICP-Brasil
-            - Você auxilia na elaboração da conduta, mas o médico tem total autonomia
+            - Plataforma de telessaúde brasileira com receitas/exames digitais com assinatura ICP-Brasil
+            - O médico tem total autonomia — você fornece um rascunho inteligente
 
             REGRAS ABSOLUTAS:
-            - A decisão final é SEMPRE do médico. Você é um rascunho inteligente
+            - A decisão final é SEMPRE do médico
             - NÃO diagnostique. NÃO prescreva dosagens ou marcas comerciais
-            - NÃO use: "diagnóstico", "você tem", "prescrevo", "determino"
+            - Comece a conduta com "Sugestão:" para clareza do caráter auxiliar
             - Se houver medicação controlada (tarja preta/vermelha), sugira acompanhamento presencial
-            - Se o quadro sugerir investigação complementar, proponha exames pertinentes
-            - Comece a conduta com "Sugestão:" para deixar claro o caráter auxiliar
-
-            FORMATO DA CONDUTA:
-            - Máximo 5 linhas, linguagem profissional médica mas acessível ao paciente
-            - Estruture em: (1) orientação geral, (2) cuidados específicos, (3) retorno/acompanhamento
-            - Quando pertinente, mencione sinais de alerta para buscar urgência
-
-            EXAMES COMPLEMENTARES:
-            - Sugira apenas exames clinicamente relevantes ao contexto
-            - Priorize exames básicos antes de complexos
-            - Inclua justificativa implícita (ex: "Hemograma completo" em vez de apenas "hemograma")
 
             Responda APENAS com JSON válido, sem markdown:
             {
-              "conduct_suggestion": "string — sugestão de conduta estruturada",
-              "suggested_exams": ["array de strings — exames complementares, ou array vazio"]
+              "conduct_suggestion": "Conduta estruturada em formato narrativo (até 8 linhas). Estruture: (1) Hipótese diagnóstica provável com CID, (2) Orientação terapêutica geral, (3) Cuidados específicos, (4) Retorno/acompanhamento. Use linguagem profissional médica.",
+
+              "soap_template": {
+                "subjetivo": "S — Resumo da queixa principal e HDA em 2-3 frases",
+                "objetivo": "O — O que examinar / sinais vitais relevantes",
+                "avaliacao": "A — Hipótese diagnóstica principal + CID-10 + diferenciais",
+                "plano": "P — Conduta: medicação, exames, orientações, retorno"
+              },
+
+              "suggested_exams": [
+                {
+                  "nome": "Nome técnico do exame",
+                  "codigo_tuss": "Código TUSS quando conhecido, senão vazio",
+                  "justificativa": "Por que solicitar neste caso",
+                  "urgencia": "rotina | urgente",
+                  "preparo": "Preparo do paciente (jejum, etc.) ou vazio"
+                }
+              ],
+
+              "orientacoes_paciente": ["Orientações em linguagem acessível para o paciente. 2-4 itens. Ex: 'Beba pelo menos 2L de água por dia', 'Evite esforço físico intenso por 5 dias'"],
+
+              "criterios_retorno": ["Sinais de alarme para retorno antecipado. 2-3 itens em linguagem acessível. Ex: 'Se a febre não baixar em 48h', 'Se surgir falta de ar ou dor no peito'"],
+
+              "cid_sugerido": "Código CID-10 mais provável — Descrição. Ex: 'J06.9 - Infecção aguda das vias aéreas superiores não especificada'. APENAS códigos válidos CID-10."
             }
             """;
     }
 
-    private static string BuildUserPrompt(AiConductSuggestionInput input)
+    private static string BuildUserPromptV2(AiConductSuggestionInput input)
     {
         var sb = new StringBuilder();
         sb.AppendLine($"Tipo de solicitação: {input.RequestType}");
@@ -144,27 +157,30 @@ public class OpenAiConductSuggestionService : IAiConductSuggestionService
         if (!string.IsNullOrWhiteSpace(input.PatientName))
             sb.AppendLine($"Paciente: {input.PatientName}");
         if (input.PatientBirthDate.HasValue)
-            sb.AppendLine($"Data de nascimento: {input.PatientBirthDate:dd/MM/yyyy}");
+        {
+            var age = DateTime.Today.Year - input.PatientBirthDate.Value.Year;
+            sb.AppendLine($"Data de nascimento: {input.PatientBirthDate:dd/MM/yyyy} (idade: ~{age} anos)");
+        }
         if (!string.IsNullOrWhiteSpace(input.PatientGender))
             sb.AppendLine($"Gênero: {input.PatientGender}");
         if (!string.IsNullOrWhiteSpace(input.Symptoms))
-            sb.AppendLine($"Sintomas: {input.Symptoms}");
+            sb.AppendLine($"Sintomas/Queixa: {input.Symptoms}");
         if (input.Medications?.Count > 0)
-            sb.AppendLine($"Medicamentos: {string.Join(", ", input.Medications)}");
+            sb.AppendLine($"Medicamentos em uso: {string.Join(", ", input.Medications)}");
         if (input.Exams?.Count > 0)
-            sb.AppendLine($"Exames: {string.Join(", ", input.Exams)}");
+            sb.AppendLine($"Exames solicitados: {string.Join(", ", input.Exams)}");
         if (!string.IsNullOrWhiteSpace(input.AiSummaryForDoctor))
             sb.AppendLine($"Resumo IA: {input.AiSummaryForDoctor}");
         if (!string.IsNullOrWhiteSpace(input.DoctorNotes))
             sb.AppendLine($"Notas do médico: {input.DoctorNotes}");
 
         sb.AppendLine();
-        sb.AppendLine("Gere uma sugestão de conduta e exames complementares se aplicável.");
+        sb.AppendLine("Gere a conduta estruturada com template SOAP, exames (com TUSS), orientações ao paciente, critérios de retorno e CID sugerido.");
 
         return sb.ToString();
     }
 
-    private AiConductSuggestionResult? ParseResult(string json)
+    private AiConductSuggestionResult? ParseResultV2(string json)
     {
         try
         {
@@ -175,15 +191,84 @@ public class OpenAiConductSuggestionService : IAiConductSuggestionService
             if (root.TryGetProperty("conduct_suggestion", out var cs) && cs.ValueKind == JsonValueKind.String)
                 conduct = cs.GetString()?.Trim();
 
+            // Parse SOAP template
+            string? soapSubjetivo = null, soapObjetivo = null, soapAvaliacao = null, soapPlano = null;
+            if (root.TryGetProperty("soap_template", out var soap) && soap.ValueKind == JsonValueKind.Object)
+            {
+                soapSubjetivo = soap.TryGetProperty("subjetivo", out var s) ? s.GetString() : null;
+                soapObjetivo = soap.TryGetProperty("objetivo", out var o) ? o.GetString() : null;
+                soapAvaliacao = soap.TryGetProperty("avaliacao", out var a) ? a.GetString() : null;
+                soapPlano = soap.TryGetProperty("plano", out var p) ? p.GetString() : null;
+            }
+
+            // Parse suggested exams (now structured)
             var exams = new List<string>();
             if (root.TryGetProperty("suggested_exams", out var se) && se.ValueKind == JsonValueKind.Array)
             {
                 foreach (var item in se.EnumerateArray())
                 {
-                    var val = item.GetString()?.Trim();
-                    if (!string.IsNullOrEmpty(val))
-                        exams.Add(val);
+                    if (item.ValueKind == JsonValueKind.Object)
+                    {
+                        var nome = item.TryGetProperty("nome", out var n) ? n.GetString()?.Trim() : null;
+                        var tuss = item.TryGetProperty("codigo_tuss", out var t) ? t.GetString()?.Trim() : null;
+                        var just = item.TryGetProperty("justificativa", out var j) ? j.GetString()?.Trim() : null;
+                        if (!string.IsNullOrEmpty(nome))
+                        {
+                            var examLine = tuss is { Length: > 0 } ? $"{nome} (TUSS: {tuss})" : nome;
+                            if (!string.IsNullOrEmpty(just))
+                                examLine += $" — {just}";
+                            exams.Add(examLine);
+                        }
+                    }
+                    else
+                    {
+                        var val = item.GetString()?.Trim();
+                        if (!string.IsNullOrEmpty(val))
+                            exams.Add(val);
+                    }
                 }
+            }
+
+            // Parse orientações and critérios de retorno
+            var orientacoes = ParseStringArray(root, "orientacoes_paciente");
+            var criteriosRetorno = ParseStringArray(root, "criterios_retorno");
+
+            // Parse CID sugerido
+            string? cidSugerido = null;
+            if (root.TryGetProperty("cid_sugerido", out var cid) && cid.ValueKind == JsonValueKind.String)
+                cidSugerido = cid.GetString()?.Trim();
+
+            // Build enriched conduct with SOAP
+            if (!string.IsNullOrWhiteSpace(soapAvaliacao) || !string.IsNullOrWhiteSpace(soapPlano))
+            {
+                var soapFull = new StringBuilder();
+                if (!string.IsNullOrWhiteSpace(conduct))
+                    soapFull.AppendLine(conduct);
+                soapFull.AppendLine();
+                soapFull.AppendLine("--- NOTA SOAP ---");
+                if (soapSubjetivo is { Length: > 0 }) soapFull.AppendLine($"S: {soapSubjetivo}");
+                if (soapObjetivo is { Length: > 0 }) soapFull.AppendLine($"O: {soapObjetivo}");
+                if (soapAvaliacao is { Length: > 0 }) soapFull.AppendLine($"A: {soapAvaliacao}");
+                if (soapPlano is { Length: > 0 }) soapFull.AppendLine($"P: {soapPlano}");
+
+                if (cidSugerido is { Length: > 0 })
+                    soapFull.AppendLine($"\nCID: {cidSugerido}");
+
+                if (orientacoes.Count > 0)
+                {
+                    soapFull.AppendLine("\n--- ORIENTAÇÕES AO PACIENTE ---");
+                    foreach (var o in orientacoes)
+                        soapFull.AppendLine($"• {o}");
+                }
+
+                if (criteriosRetorno.Count > 0)
+                {
+                    soapFull.AppendLine("\n--- CRITÉRIOS DE RETORNO ---");
+                    foreach (var c in criteriosRetorno)
+                        soapFull.AppendLine($"⚠️ {c}");
+                }
+
+                conduct = soapFull.ToString().Trim();
             }
 
             if (string.IsNullOrWhiteSpace(conduct) && exams.Count == 0)
@@ -193,8 +278,22 @@ public class OpenAiConductSuggestionService : IAiConductSuggestionService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to parse conduct suggestion JSON: {Json}", json);
+            _logger.LogWarning(ex, "Failed to parse conduct suggestion v2 JSON: {Json}", json);
             return null;
         }
+    }
+
+    private static List<string> ParseStringArray(JsonElement root, string prop)
+    {
+        var list = new List<string>();
+        if (!root.TryGetProperty(prop, out var arr) || arr.ValueKind != JsonValueKind.Array)
+            return list;
+        foreach (var item in arr.EnumerateArray())
+        {
+            var val = item.GetString()?.Trim();
+            if (!string.IsNullOrEmpty(val))
+                list.Add(val);
+        }
+        return list;
     }
 }

@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
@@ -55,24 +56,50 @@ public class OpenAiClinicalSummaryService : IClinicalSummaryService
 
                 REGRAS:
                 - Use APENAS dados fornecidos. Não invente.
+                - CID-10: use APENAS códigos válidos da classificação oficial OMS/SUS.
                 - Extraia diagnósticos (CID) das consultas para problemList.
-                - Consolide medicamentos das receitas mais recentes em activeMedications (formato: "Nome - dosagem").
-                - narrativeSummary: texto fluido de 150-250 palavras, cronológico, linguagem médica.
-                - carePlan: plano de cuidado em 2-4 frases (seguimento, exames pendentes, orientações).
-                - alerts: alergias + pontos críticos (ex: "Alergia a dipirona", "Receita controlada em uso").
+                - Consolide medicamentos das receitas mais recentes em activeMedications.
+                - Identifique COMORBIDADES CRÔNICAS e liste separadamente.
+                - Identifique TENDÊNCIAS nos exames (ex: glicemia subindo, PA controlada).
+                - narrativeSummary: texto fluido de 200-350 palavras, cronológico, linguagem médica.
+                - carePlan: plano de cuidado em 3-6 frases (seguimento, exames pendentes, ajustes, orientações).
+                - alerts: alergias + pontos críticos + interações medicamentosas potenciais.
 
                 Responda APENAS com um JSON válido, sem markdown, exatamente neste formato:
                 {
-                  "problemList": ["CID ou diagnóstico 1", "diagnóstico 2"],
-                  "activeMedications": ["Medicamento 1 - dosagem", "Medicamento 2 - posologia"],
-                  "narrativeSummary": "Texto narrativo completo...",
-                  "carePlan": "Plano de cuidado resumido...",
-                  "alerts": ["Alerta 1", "Alerta 2"]
+                  "problemList": [
+                    {
+                      "cid": "Código CID-10",
+                      "descricao": "Descrição completa",
+                      "status": "ativo | resolvido | em investigação",
+                      "desde": "Data aproximada de início se disponível"
+                    }
+                  ],
+                  "comorbidadesCronicas": ["Lista de condições crônicas ativas: HAS, DM2, etc."],
+                  "activeMedications": [
+                    {
+                      "nome": "Nome genérico + concentração",
+                      "posologia": "Dose e frequência",
+                      "inicio": "Data aproximada de início se disponível",
+                      "indicacao": "Para qual condição"
+                    }
+                  ],
+                  "narrativeSummary": "Texto narrativo completo com timeline clínica...",
+                  "tendenciasExames": "Resumo das tendências observadas nos exames (ex: 'Glicemia de jejum em tendência de alta: 98 → 110 → 126'). Vazio se não aplicável.",
+                  "carePlan": "Plano de cuidado detalhado: seguimento, exames de controle com periodicidade, ajustes terapêuticos sugeridos, orientações de estilo de vida...",
+                  "alerts": [
+                    {
+                      "tipo": "alergia | interacao | contraindicacao | gravidade",
+                      "descricao": "Descrição do alerta",
+                      "prioridade": "alta | media | baixa"
+                    }
+                  ],
+                  "lacunasInformacao": ["Informações que estão FALTANDO e que o médico deveria perguntar: alergias não informadas, exames desatualizados, etc."]
                 }
                 Arrays vazios [] se não houver dados. Strings vazias "" se não aplicável.
                 """;
 
-            var userContent = BuildUserContent(input) + "\n\nCom base em TODAS as informações acima, gere o JSON estruturado (problemList, activeMedications, narrativeSummary, carePlan, alerts).";
+            var userContent = BuildUserContent(input);
 
             var requestBody = new
             {
@@ -144,11 +171,110 @@ public class OpenAiClinicalSummaryService : IClinicalSummaryService
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
 
-            var problemList = ReadStringArray(root, "problemList");
-            var activeMedications = ReadStringArray(root, "activeMedications");
+            // Problem list — agora é array de objetos ou strings
+            var problemList = new List<string>();
+            if (root.TryGetProperty("problemList", out var plEl) && plEl.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in plEl.EnumerateArray())
+                {
+                    if (item.ValueKind == JsonValueKind.Object)
+                    {
+                        var cid = item.TryGetProperty("cid", out var c) ? c.GetString() : "";
+                        var desc = item.TryGetProperty("descricao", out var d) ? d.GetString() : "";
+                        var status = item.TryGetProperty("status", out var s) ? s.GetString() : "";
+                        var entry = $"{cid} - {desc}".Trim(' ', '-');
+                        if (!string.IsNullOrEmpty(status) && status != "ativo")
+                            entry += $" [{status}]";
+                        if (!string.IsNullOrEmpty(entry))
+                            problemList.Add(entry);
+                    }
+                    else
+                    {
+                        var s = item.GetString()?.Trim();
+                        if (!string.IsNullOrEmpty(s)) problemList.Add(s);
+                    }
+                }
+            }
+
+            // Active medications — agora é array de objetos ou strings
+            var activeMedications = new List<string>();
+            if (root.TryGetProperty("activeMedications", out var amEl) && amEl.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in amEl.EnumerateArray())
+                {
+                    if (item.ValueKind == JsonValueKind.Object)
+                    {
+                        var nome = item.TryGetProperty("nome", out var n) ? n.GetString() : "";
+                        var poso = item.TryGetProperty("posologia", out var p) ? p.GetString() : "";
+                        var entry = !string.IsNullOrEmpty(poso) ? $"{nome} — {poso}" : nome;
+                        if (!string.IsNullOrEmpty(entry?.Trim()))
+                            activeMedications.Add(entry!.Trim());
+                    }
+                    else
+                    {
+                        var s = item.GetString()?.Trim();
+                        if (!string.IsNullOrEmpty(s)) activeMedications.Add(s);
+                    }
+                }
+            }
+
+            // Comorbidades crônicas (append to problem list)
+            if (root.TryGetProperty("comorbidadesCronicas", out var ccEl) && ccEl.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in ccEl.EnumerateArray())
+                {
+                    var s = item.GetString()?.Trim();
+                    if (!string.IsNullOrEmpty(s) && !problemList.Any(p => p.Contains(s, StringComparison.OrdinalIgnoreCase)))
+                        problemList.Add($"[Crônico] {s}");
+                }
+            }
+
             var narrativeSummary = root.TryGetProperty("narrativeSummary", out var ns) ? ns.GetString()?.Trim() : null;
+
+            // Append tendências if present
+            if (root.TryGetProperty("tendenciasExames", out var te) && !string.IsNullOrWhiteSpace(te.GetString()))
+            {
+                var tendencias = te.GetString()!.Trim();
+                narrativeSummary = narrativeSummary is { Length: > 0 }
+                    ? $"{narrativeSummary}\n\nTendências dos Exames: {tendencias}"
+                    : tendencias;
+            }
+
             var carePlan = root.TryGetProperty("carePlan", out var cp) ? cp.GetString()?.Trim() : null;
-            var alerts = ReadStringArray(root, "alerts");
+
+            // Alerts — agora é array de objetos ou strings
+            var alerts = new List<string>();
+            if (root.TryGetProperty("alerts", out var alEl) && alEl.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in alEl.EnumerateArray())
+                {
+                    if (item.ValueKind == JsonValueKind.Object)
+                    {
+                        var tipo = item.TryGetProperty("tipo", out var t) ? t.GetString() : "";
+                        var desc = item.TryGetProperty("descricao", out var d) ? d.GetString() : "";
+                        var prio = item.TryGetProperty("prioridade", out var p) ? p.GetString() : "";
+                        var prefix = prio?.ToLower() == "alta" ? "🔴" : prio?.ToLower() == "media" ? "🟡" : "🟢";
+                        var entry = $"{prefix} [{tipo?.ToUpper()}] {desc}".Trim();
+                        if (entry.Length > 5) alerts.Add(entry);
+                    }
+                    else
+                    {
+                        var s = item.GetString()?.Trim();
+                        if (!string.IsNullOrEmpty(s)) alerts.Add(s);
+                    }
+                }
+            }
+
+            // Lacunas de informação (append to alerts as low priority)
+            if (root.TryGetProperty("lacunasInformacao", out var lacEl) && lacEl.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in lacEl.EnumerateArray())
+                {
+                    var s = item.GetString()?.Trim();
+                    if (!string.IsNullOrEmpty(s))
+                        alerts.Add($"ℹ️ [LACUNA] {s}");
+                }
+            }
 
             return new ClinicalSummaryStructured(
                 problemList,
@@ -262,60 +388,70 @@ public class OpenAiClinicalSummaryService : IClinicalSummaryService
         var sb = new StringBuilder();
         sb.AppendLine($"Paciente: {input.PatientName}");
         if (input.PatientBirthDate.HasValue)
-            sb.AppendLine($"Data de nascimento: {input.PatientBirthDate:dd/MM/yyyy}");
+        {
+            var age = DateTime.Today.Year - input.PatientBirthDate.Value.Year;
+            sb.AppendLine($"Data de nascimento: {input.PatientBirthDate:dd/MM/yyyy} (idade: ~{age} anos)");
+        }
         if (!string.IsNullOrWhiteSpace(input.PatientGender))
             sb.AppendLine($"Sexo: {input.PatientGender}");
         if (input.Allergies.Count > 0)
             sb.AppendLine($"ALERGIAS: {string.Join(", ", input.Allergies)}");
+        else
+            sb.AppendLine("ALERGIAS: Não informadas (PERGUNTAR ao paciente)");
         sb.AppendLine();
 
         if (input.Consultations.Count > 0)
         {
-            sb.AppendLine("--- CONSULTAS ---");
-            foreach (var c in input.Consultations)
+            sb.AppendLine("--- CONSULTAS (ordem cronológica) ---");
+            foreach (var c in input.Consultations.OrderBy(x => x.Date))
             {
                 sb.AppendLine($"Data: {c.Date:dd/MM/yyyy}");
                 if (!string.IsNullOrWhiteSpace(c.Symptoms))
-                    sb.AppendLine($"Queixa: {c.Symptoms}");
+                    sb.AppendLine($"  Queixa: {c.Symptoms}");
                 if (!string.IsNullOrWhiteSpace(c.Cid))
-                    sb.AppendLine($"CID: {c.Cid}");
+                    sb.AppendLine($"  CID: {c.Cid}");
                 if (!string.IsNullOrWhiteSpace(c.Conduct))
-                    sb.AppendLine($"Conduta: {c.Conduct}");
+                    sb.AppendLine($"  Conduta: {c.Conduct}");
                 if (!string.IsNullOrWhiteSpace(c.AnamnesisSnippet))
-                    sb.AppendLine($"Anamnese: {c.AnamnesisSnippet}");
+                    sb.AppendLine($"  Anamnese: {c.AnamnesisSnippet}");
                 sb.AppendLine();
             }
         }
 
         if (input.Prescriptions.Count > 0)
         {
-            sb.AppendLine("--- RECEITAS ---");
-            foreach (var p in input.Prescriptions)
+            sb.AppendLine("--- RECEITAS (ordem cronológica) ---");
+            foreach (var p in input.Prescriptions.OrderBy(x => x.Date))
             {
                 sb.AppendLine($"Data: {p.Date:dd/MM/yyyy} | Tipo: {p.Type}");
-                sb.AppendLine($"Medicamentos: {string.Join(", ", p.Medications)}");
+                sb.AppendLine($"  Medicamentos: {string.Join(", ", p.Medications)}");
                 if (!string.IsNullOrWhiteSpace(p.Notes))
-                    sb.AppendLine($"Obs: {p.Notes}");
+                    sb.AppendLine($"  Obs: {p.Notes}");
                 sb.AppendLine();
             }
         }
 
         if (input.Exams.Count > 0)
         {
-            sb.AppendLine("--- EXAMES ---");
-            foreach (var e in input.Exams)
+            sb.AppendLine("--- EXAMES (ordem cronológica) ---");
+            foreach (var e in input.Exams.OrderBy(x => x.Date))
             {
                 sb.AppendLine($"Data: {e.Date:dd/MM/yyyy}");
-                sb.AppendLine($"Exames: {string.Join(", ", e.Exams)}");
+                sb.AppendLine($"  Exames: {string.Join(", ", e.Exams)}");
                 if (!string.IsNullOrWhiteSpace(e.Symptoms))
-                    sb.AppendLine($"Queixa: {e.Symptoms}");
+                    sb.AppendLine($"  Queixa: {e.Symptoms}");
                 if (!string.IsNullOrWhiteSpace(e.Notes))
-                    sb.AppendLine($"Obs: {e.Notes}");
+                    sb.AppendLine($"  Obs/Resultados: {e.Notes}");
                 sb.AppendLine();
             }
         }
 
-        sb.AppendLine("Gere o resumo narrativo completo consolidando todas as informações acima.");
+        sb.AppendLine("INSTRUÇÕES FINAIS:");
+        sb.AppendLine("1. Gere o JSON estruturado consolidando TODAS as informações acima.");
+        sb.AppendLine("2. Identifique comorbidades crônicas implícitas (ex: uso contínuo de losartana = HAS).");
+        sb.AppendLine("3. Identifique tendências nos exames (valores subindo/descendo/estáveis).");
+        sb.AppendLine("4. Liste lacunas de informação que o médico deveria preencher.");
+        sb.AppendLine("5. No carePlan, seja específico: quais exames repetir, quando retornar, o que ajustar.");
         return sb.ToString();
     }
 }
