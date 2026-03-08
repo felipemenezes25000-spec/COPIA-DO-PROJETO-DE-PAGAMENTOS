@@ -66,11 +66,11 @@ export function Footer() {
                 (11) 98631-8000
               </a>
               <a
-                href="mailto:contato@renoveja.com.br"
+                href="mailto:contato@renovejasaude.com.br"
                 className="flex items-center gap-3 text-background/70 hover:text-primary transition-colors"
               >
                 <Mail className="w-5 h-5" />
-                contato@renoveja.com.br
+                contato@renovejasaude.com.br
               </a>
               <div className="flex items-start gap-3 text-background/70">
                 <MapPin className="w-5 h-5 flex-shrink-0 mt-0.5" />

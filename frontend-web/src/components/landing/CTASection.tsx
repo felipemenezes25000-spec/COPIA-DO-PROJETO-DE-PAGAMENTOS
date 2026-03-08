@@ -75,11 +75,11 @@ export function CTASection() {
               (11) 98631-8000
             </a>
             <a
-              href="mailto:contato@renoveja.com.br"
+              href="mailto:contato@renovejasaude.com.br"
               className="flex items-center gap-2 hover:text-white transition-colors"
             >
               <Mail className="w-4 h-4" />
-              contato@renoveja.com.br
+              contato@renovejasaude.com.br
             </a>
           </div>
         </motion.div>

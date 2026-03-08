@@ -1,70 +1,61 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Download, ChevronUp } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronUp, Menu, MessageCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ComingSoonModal } from '@/components/ui/coming-soon-modal';
 import logo from '@/assets/logo-renoveja-new.png';
 
 const navLinks = [
-  { name: 'Início', href: '#hero' },
-  { name: 'Como Funciona', href: '#steps' },
-  { name: 'Benefícios', href: '#benefits' },
+  { name: 'Problema', href: '#problem' },
+  { name: 'Solução', href: '#solution' },
+  { name: 'Funcionalidades', href: '#features' },
   { name: 'Telas', href: '#screenshots' },
-  { name: 'Tutorial', href: '#tutorial' },
-  { name: 'Preços', href: '#pricing' },
-  { name: 'Depoimentos', href: '#testimonials' },
-  { name: 'FAQ', href: '#faq' },
+  { name: 'Conformidade', href: '#compliance' },
+  { name: 'Setores', href: '#partners' },
+  { name: 'Contato', href: '#contact' },
 ];
 
 export function AppHeader() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState('hero');
+  const [activeSection, setActiveSection] = useState('problem');
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
-  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-      setShowScrollTop(window.scrollY > 500);
-      
-      // Calculate scroll progress
+      setIsScrolled(window.scrollY > 16);
+      setShowScrollTop(window.scrollY > 600);
+
       const scrollHeight = document.body.scrollHeight - window.innerHeight;
       const progress = scrollHeight > 0 ? (window.scrollY / scrollHeight) * 100 : 0;
       setScrollProgress(Math.min(100, progress));
 
-      // Detect active section
-      const sections = navLinks.map(link => link.href.replace('#', ''));
+      const sections = ['hero', ...navLinks.map((link) => link.href.replace('#', ''))];
       for (const section of sections.reverse()) {
         const element = document.getElementById(section);
-        if (element) {
-          const rect = element.getBoundingClientRect();
-          if (rect.top <= 150) {
-            setActiveSection(section);
-            break;
-          }
+        if (!element) continue;
+        const rect = element.getBoundingClientRect();
+        if (rect.top <= 150) {
+          setActiveSection(section);
+          break;
         }
       }
     };
-    
+
     window.addEventListener('scroll', handleScroll);
-    handleScroll(); // Initial call
+    handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const scrollToSection = (href: string) => {
     const element = document.querySelector(href);
-    if (element) {
-      const offset = 80; // Header height
-      const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.pageYOffset - offset;
-      
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      });
-    }
+    if (!element) return;
+
+    const offset = 84;
+    const elementPosition = element.getBoundingClientRect().top;
+    const offsetPosition = elementPosition + window.pageYOffset - offset;
+
+    window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
     setIsMobileMenuOpen(false);
   };
 
@@ -85,30 +76,22 @@ export function AppHeader() {
         }`}
       >
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16 sm:h-20">
-            {/* Logo */}
-            <button 
-              onClick={scrollToTop}
-              className="flex items-center gap-2 sm:gap-3 group"
-            >
-              <motion.div 
+          <div className="flex h-16 items-center justify-between sm:h-20">
+            <button onClick={scrollToTop} className="flex items-center gap-2 sm:gap-3 group" aria-label="Voltar ao topo">
+              <motion.div
                 className="relative"
-                initial={{ opacity: 0, scale: 0.8, rotate: -10 }}
+                initial={{ opacity: 0, scale: 0.8, rotate: -8 }}
                 animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
+                transition={{ duration: 0.6, ease: 'easeOut', delay: 0.2 }}
                 whileHover={{ scale: 1.05, rotate: 2 }}
               >
-                <img 
-                  src={logo} 
-                  alt="RenoveJá+" 
-                  className="h-10 sm:h-12 w-auto drop-shadow-md" 
-                />
+                <img src={logo} alt="RenoveJá+" className="h-10 w-auto drop-shadow-md sm:h-12" />
               </motion.div>
-              <motion.span 
-                className="text-lg sm:text-xl font-bold hidden sm:block"
+              <motion.span
+                className="hidden text-lg font-bold sm:block sm:text-xl"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, ease: "easeOut", delay: 0.4 }}
+                transition={{ duration: 0.5, ease: 'easeOut', delay: 0.4 }}
               >
                 <span className="text-primary">Renove</span>
                 <span className="text-foreground">Já</span>
@@ -116,25 +99,24 @@ export function AppHeader() {
               </motion.span>
             </button>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center gap-1">
+            <nav className="hidden items-center gap-1 lg:flex">
               {navLinks.map((link) => {
                 const isActive = activeSection === link.href.replace('#', '');
                 return (
                   <button
                     key={link.name}
                     onClick={() => scrollToSection(link.href)}
-                    className={`px-4 py-2 rounded-xl font-medium transition-all duration-300 text-sm relative ${
-                      isActive 
-                        ? 'text-primary bg-primary/10' 
-                        : 'text-foreground/70 hover:text-primary hover:bg-primary/5'
+                    className={`relative rounded-xl px-4 py-2 text-sm font-medium transition-all duration-300 ${
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-foreground/70 hover:bg-primary/5 hover:text-primary'
                     }`}
                   >
                     {link.name}
                     {isActive && (
                       <motion.div
                         layoutId="activeSection"
-                        className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary"
+                        className="absolute bottom-0 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary"
                       />
                     )}
                   </button>
@@ -142,21 +124,19 @@ export function AppHeader() {
               })}
             </nav>
 
-            {/* CTA Button */}
-            <div className="hidden lg:flex items-center gap-3">
-              <Button 
-                onClick={() => setModalOpen(true)}
-                className="font-semibold shadow-primary hover:shadow-elevated transition-all duration-300 gap-2 rounded-xl"
+            <div className="hidden lg:flex">
+              <Button
+                onClick={() => scrollToSection('#contact')}
+                className="gap-2 rounded-xl font-semibold shadow-primary transition-all duration-300 hover:shadow-elevated"
               >
-                <Download className="w-4 h-4" />
-                Baixar App
+                <MessageCircle className="h-4 w-4" />
+                Fale com a gente
               </Button>
             </div>
 
-            {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-2 rounded-lg transition-colors text-foreground hover:bg-muted"
+              className="rounded-lg p-2 text-foreground transition-colors hover:bg-muted lg:hidden"
               aria-label="Menu"
             >
               {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -164,18 +144,12 @@ export function AppHeader() {
           </div>
         </div>
 
-        {/* Scroll Progress Bar */}
-        <motion.div
-          className="absolute bottom-0 left-0 h-0.5 bg-primary"
-          style={{ width: `${scrollProgress}%` }}
-        />
+        <motion.div className="absolute bottom-0 left-0 h-0.5 bg-primary" style={{ width: `${scrollProgress}%` }} />
       </motion.header>
 
-      {/* Mobile Menu */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>
-            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -183,41 +157,33 @@ export function AppHeader() {
               onClick={() => setIsMobileMenuOpen(false)}
               className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden"
             />
-            
+
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-              className="fixed inset-x-0 top-20 z-50 lg:hidden bg-background/95 backdrop-blur-xl border border-border/50 shadow-elevated mx-4 rounded-2xl overflow-hidden"
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+              className="fixed inset-x-0 top-20 z-50 mx-4 overflow-hidden rounded-2xl border border-border/50 bg-background/95 shadow-elevated backdrop-blur-xl lg:hidden"
             >
-              <nav className="p-4 flex flex-col gap-1">
+              <nav className="flex flex-col gap-1 p-4">
                 {navLinks.map((link) => {
                   const isActive = activeSection === link.href.replace('#', '');
                   return (
                     <button
                       key={link.name}
                       onClick={() => scrollToSection(link.href)}
-                      className={`px-4 py-3 rounded-xl font-medium text-left transition-all ${
-                        isActive 
-                          ? 'text-primary bg-primary/10' 
-                          : 'text-foreground hover:bg-muted'
+                      className={`rounded-xl px-4 py-3 text-left font-medium transition-all ${
+                        isActive ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'
                       }`}
                     >
                       {link.name}
                     </button>
                   );
                 })}
-                <div className="pt-3 mt-2 border-t border-border">
-                  <Button 
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      setModalOpen(true);
-                    }}
-                    className="w-full font-semibold gap-2 h-12"
-                  >
-                    <Download className="w-5 h-5" />
-                    Baixar App Grátis
+                <div className="mt-2 border-t border-border pt-3">
+                  <Button onClick={() => scrollToSection('#contact')} className="h-12 w-full gap-2 font-semibold">
+                    <MessageCircle className="h-5 w-5" />
+                    Fale com a gente
                   </Button>
                 </div>
               </nav>
@@ -226,7 +192,6 @@ export function AppHeader() {
         )}
       </AnimatePresence>
 
-      {/* Scroll to Top Button */}
       <AnimatePresence>
         {showScrollTop && (
           <motion.button
@@ -234,20 +199,13 @@ export function AppHeader() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             onClick={scrollToTop}
-            className="fixed bottom-24 right-6 z-40 w-12 h-12 bg-primary text-white rounded-full shadow-primary flex items-center justify-center hover:scale-110 transition-transform"
+            className="fixed bottom-24 right-6 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-primary transition-transform hover:scale-110"
             aria-label="Voltar ao topo"
           >
-            <ChevronUp className="w-6 h-6" />
+            <ChevronUp className="h-6 w-6" />
           </motion.button>
         )}
       </AnimatePresence>
-
-      {/* Coming Soon Modal */}
-      <ComingSoonModal 
-        isOpen={modalOpen} 
-        onClose={() => setModalOpen(false)} 
-        platform="android" 
-      />
     </>
   );
 }

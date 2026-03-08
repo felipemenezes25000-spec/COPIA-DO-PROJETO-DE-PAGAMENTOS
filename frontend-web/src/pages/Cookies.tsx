@@ -34,7 +34,9 @@ export default function Cookies() {
         <section style={styles.section}>
           <h2 style={styles.h2}>4. Contato</h2>
           <p style={styles.p}>
-            Dúvidas sobre cookies ou proteção de dados: (11) 98631-8000 · www.renovejasaude.com.br
+            Dúvidas sobre cookies ou proteção de dados:{' '}
+            <a href="mailto:privacidade@renovejasaude.com.br" style={styles.link}>privacidade@renovejasaude.com.br</a>
+            {' '}· WhatsApp (11) 98631-8000 · www.renovejasaude.com.br
           </p>
         </section>
 

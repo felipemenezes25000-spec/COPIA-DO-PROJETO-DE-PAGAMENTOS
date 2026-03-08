@@ -1,238 +1,314 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Shield, Award, FileCheck, Lock } from 'lucide-react';
+import { type ReactNode, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronLeft, ChevronRight, Clock3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const screens = [
+type ScreenSlide = {
+  id: number;
+  title: string;
+  description: string;
+  content: ReactNode;
+};
+
+function MiniSectionTitle({ children }: { children: ReactNode }) {
+  return <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">{children}</p>;
+}
+
+function MiniCard({ children, tone = 'default' }: { children: ReactNode; tone?: 'default' | 'primary' | 'success' | 'warning' }) {
+  const toneClasses = {
+    default: 'border-slate-200 bg-white',
+    primary: 'border-primary/20 bg-primary/5',
+    success: 'border-emerald-200 bg-emerald-50',
+    warning: 'border-amber-200 bg-amber-50',
+  };
+
+  return <div className={`rounded-2xl border p-3 shadow-sm ${toneClasses[tone]}`}>{children}</div>;
+}
+
+function StatusStep({
+  label,
+  state,
+  last = false,
+}: {
+  label: string;
+  state: 'done' | 'current' | 'pending';
+  last?: boolean;
+}) {
+  const dotClasses =
+    state === 'done'
+      ? 'border-emerald-500 bg-emerald-500 text-white'
+      : state === 'current'
+        ? 'border-primary bg-primary text-white'
+        : 'border-slate-300 bg-white text-slate-400';
+
+  const textClasses =
+    state === 'done' ? 'text-emerald-600' : state === 'current' ? 'text-primary' : 'text-slate-400';
+
+  return (
+    <div className="flex gap-3">
+      <div className="flex w-5 flex-col items-center">
+        <div className={`flex h-5 w-5 items-center justify-center rounded-full border-2 text-[10px] font-bold ${dotClasses}`}>
+          {state === 'done' ? '✓' : state === 'current' ? '•' : ''}
+        </div>
+        {!last && <div className={`mt-1 h-8 w-[2px] rounded-full ${state === 'done' ? 'bg-emerald-500' : 'bg-slate-200'}`} />}
+      </div>
+      <div className="pt-0.5">
+        <p className={`text-xs font-semibold ${textClasses}`}>{label}</p>
+        {state === 'current' && <p className="mt-1 text-[10px] font-medium text-primary">Etapa atual</p>}
+      </div>
+    </div>
+  );
+}
+
+function RequestListItem({
+  type,
+  accent,
+  status,
+  subtitle,
+}: {
+  type: string;
+  accent: string;
+  status: string;
+  subtitle: string;
+}) {
+  return (
+    <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+      <div className={`mt-0.5 h-10 w-1 rounded-full ${accent}`} />
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-sm">+</div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2">
+          <p className="truncate text-xs font-bold text-slate-900">{type}</p>
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{status}</span>
+        </div>
+        <p className="mt-1 truncate text-[11px] text-slate-500">{subtitle}</p>
+      </div>
+    </div>
+  );
+}
+
+const screens: ScreenSlide[] = [
   {
     id: 1,
-    title: 'Envio Fácil',
-    description: 'Upload da receita ou pedido de exame com a câmera',
+    title: 'Nova solicitação de receita',
+    description: 'Tela real do app para seleção do tipo de receituário, envio de foto e revisão em modo claro.',
     content: (
-      <div className="space-y-4">
-        <div className="text-center py-4">
-          <div className="w-16 h-16 bg-primary/20 rounded-2xl mx-auto flex items-center justify-center mb-3">
-            <span className="text-3xl">📸</span>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-bold text-slate-900">Renovação de Receita</p>
+            <p className="text-[11px] text-slate-500">Fluxo guiado em 3 etapas</p>
           </div>
-          <p className="font-semibold text-foreground">Tire uma foto</p>
-          <p className="text-xs text-muted-foreground">ou escolha da galeria</p>
+          <div className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-500">2/3</div>
         </div>
-        <div className="border-2 border-dashed border-primary/30 rounded-xl p-6 text-center">
-          <span className="text-4xl">📄</span>
-          <p className="text-sm text-muted-foreground mt-2">Arraste aqui</p>
+
+        <div className="grid grid-cols-3 gap-2">
+          {['Tipo', 'Foto', 'Revisão'].map((item, index) => (
+            <div
+              key={item}
+              className={`rounded-xl px-2 py-2 text-center text-[10px] font-semibold ${
+                index < 2 ? 'bg-primary text-primary-foreground' : 'bg-slate-100 text-slate-400'
+              }`}
+            >
+              {item}
+            </div>
+          ))}
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
-          <Lock className="w-3 h-3" />
-          <span>Envio criptografado</span>
+
+        <MiniCard tone="primary">
+          <div className="flex items-start gap-2">
+            <div className="mt-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">IA</div>
+            <div>
+              <p className="text-xs font-semibold text-slate-900">Dra. Renoveja: qualidade do envio</p>
+              <p className="mt-1 text-[11px] text-slate-600">Seu pedido está 67% pronto</p>
+              <p className="mt-1 text-[11px] text-slate-500">• Adicione ao menos 1 foto da receita</p>
+            </div>
+          </div>
+        </MiniCard>
+
+        <div className="space-y-2">
+          <MiniSectionTitle>Tipo de receita</MiniSectionTitle>
+          <MiniCard>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold text-slate-900">Receituário simples</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-500">Uso contínuo, com fluxo guiado e revisão posterior.</p>
+              </div>
+              <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">Selecionado</span>
+            </div>
+          </MiniCard>
+        </div>
+
+        <div className="space-y-2">
+          <MiniSectionTitle>Foto da receita</MiniSectionTitle>
+          <MiniCard tone="warning">
+            <p className="text-[11px] font-medium text-amber-700">Envie somente fotos da receita. Outras imagens são rejeitadas.</p>
+          </MiniCard>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-sm">
+              <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">+</div>
+              <p className="text-[11px] font-semibold text-slate-700">Câmera</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-sm">
+              <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">+</div>
+              <p className="text-[11px] font-semibold text-slate-700">Galeria</p>
+            </div>
+          </div>
         </div>
       </div>
     ),
   },
   {
     id: 2,
-    title: 'Formulário Simples',
-    description: 'Preencha informações básicas de forma rápida',
+    title: 'Lista de pedidos com status',
+    description: 'A listagem do paciente mostra filtros, busca, resumo operacional e cards reais de acompanhamento.',
     content: (
       <div className="space-y-3">
-        <div className="bg-muted rounded-lg p-3">
-          <p className="text-xs text-muted-foreground mb-1">Nome completo</p>
-          <p className="text-sm font-medium text-foreground">João Silva</p>
+        <div className="rounded-2xl bg-[linear-gradient(135deg,#12395f,#1f6aa5)] px-4 py-3 text-white shadow-sm">
+          <p className="text-sm font-bold">Meus pedidos</p>
+          <p className="text-[11px] text-white/75">Receitas, exames e consultas</p>
         </div>
-        <div className="bg-muted rounded-lg p-3">
-          <p className="text-xs text-muted-foreground mb-1">CPF</p>
-          <p className="text-sm font-medium text-foreground">•••.•••.•••-00</p>
+
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            ['Total', '12'],
+            ['Pag. pendente', '2'],
+            ['No filtro', '4'],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-2xl border border-slate-200 bg-white px-2 py-2 text-center shadow-sm">
+              <p className="text-[10px] text-slate-500">{label}</p>
+              <p className="mt-1 text-sm font-bold text-slate-900">{value}</p>
+            </div>
+          ))}
         </div>
-        <div className="bg-muted rounded-lg p-3">
-          <p className="text-xs text-muted-foreground mb-1">Medicamento</p>
-          <p className="text-sm font-medium text-foreground">Losartana 50mg</p>
+
+        <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-400 shadow-sm">
+          Buscar pedidos
         </div>
-        <div className="bg-primary text-primary-foreground rounded-lg p-3 text-center font-semibold text-sm">
-          Continuar →
+
+        <div className="flex gap-2 overflow-hidden rounded-2xl bg-slate-100 p-1">
+          <div className="rounded-xl bg-white px-3 py-2 text-[10px] font-semibold text-slate-900 shadow-sm">Todos</div>
+          <div className="rounded-xl px-3 py-2 text-[10px] font-semibold text-slate-500">Receitas</div>
+          <div className="rounded-xl px-3 py-2 text-[10px] font-semibold text-slate-500">Exames</div>
+        </div>
+
+        <div className="space-y-2">
+          <RequestListItem type="Receita" accent="bg-sky-500" status="Em análise" subtitle="Dr(a). Maria Silva • 08 Mar" />
+          <RequestListItem type="Exame" accent="bg-slate-400" status="Pago" subtitle="Pedido com documento anexado" />
+          <RequestListItem type="Consulta" accent="bg-emerald-500" status="Pronta" subtitle="Teleconsulta liberada para entrada" />
         </div>
       </div>
     ),
   },
   {
     id: 3,
-    title: 'Acompanhamento',
-    description: 'Veja o status do seu pedido em tempo real',
+    title: 'Detalhe do pedido e próxima ação',
+    description: 'A tela de detalhe acompanha cada etapa, mostra orientações e libera ações como download do documento.',
     content: (
       <div className="space-y-3">
-        {[
-          { step: 'Enviado', status: 'done', icon: '✓' },
-          { step: 'Em análise', status: 'current', icon: '⏳' },
-          { step: 'Aprovação', status: 'pending', icon: '○' },
-          { step: 'Disponível', status: 'pending', icon: '○' },
-        ].map((item) => (
-          <div 
-            key={item.step}
-            className={`flex items-center gap-3 p-3 rounded-lg ${
-              item.status === 'done' ? 'bg-success/10' :
-              item.status === 'current' ? 'bg-primary/10' :
-              'bg-muted'
-            }`}
-          >
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-              item.status === 'done' ? 'bg-success text-white' :
-              item.status === 'current' ? 'bg-primary text-white' :
-              'bg-muted-foreground/20 text-muted-foreground'
-            }`}>
-              {item.icon}
-            </div>
-            <span className={`text-sm font-medium ${
-              item.status === 'pending' ? 'text-muted-foreground' : 'text-foreground'
-            }`}>
-              {item.step}
-            </span>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-bold text-slate-900">Receita</p>
+          <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">Assinado</span>
+        </div>
+
+        <MiniCard>
+          <p className="mb-3 text-xs font-bold text-slate-900">Status do pedido</p>
+          <div className="space-y-0">
+            <StatusStep label="Enviado" state="done" />
+            <StatusStep label="Em análise" state="done" />
+            <StatusStep label="Pago" state="done" />
+            <StatusStep label="Assinado" state="current" />
+            <StatusStep label="Entregue" state="pending" last />
           </div>
-        ))}
+        </MiniCard>
+
+        <MiniCard tone="primary">
+          <p className="text-xs font-bold text-slate-900">Dra. Renoveja</p>
+          <p className="mt-1 text-[11px] text-slate-600">Documento pronto para conferência e download.</p>
+          <div className="mt-3 rounded-xl bg-primary px-3 py-2 text-center text-[11px] font-semibold text-primary-foreground">
+            Baixar receita
+          </div>
+        </MiniCard>
+
+        <MiniCard>
+          <p className="mb-2 text-xs font-bold text-slate-900">Detalhes da solicitação</p>
+          <div className="space-y-2 text-[11px]">
+            <div className="flex items-center justify-between text-slate-500">
+              <span>Controle</span>
+              <span className="font-semibold text-slate-800">Receita Simples</span>
+            </div>
+            <div className="flex items-center justify-between text-slate-500">
+              <span>Médico</span>
+              <span className="font-semibold text-slate-800">Dra. Ana Paula</span>
+            </div>
+            <div className="flex items-center justify-between text-slate-500">
+              <span>Criado em</span>
+              <span className="font-semibold text-slate-800">08/03/2026</span>
+            </div>
+          </div>
+        </MiniCard>
       </div>
     ),
   },
   {
     id: 4,
-    title: 'Certificado Digital',
-    description: 'Documento com assinatura digital ICP-Brasil',
+    title: 'Prontuário com documentos emitidos',
+    description: 'A aba de prontuário organiza histórico, timeline e documentos assinados em uma experiência clara e leve.',
     content: (
-      <div className="text-center space-y-4">
-        <div className="relative w-20 h-24 bg-gradient-to-br from-primary/20 to-success/20 rounded-lg mx-auto flex flex-col items-center justify-center border-2 border-primary/30">
-          <span className="text-2xl mb-1">📋</span>
-          <div className="absolute -top-2 -right-2 w-8 h-8 bg-success rounded-full flex items-center justify-center">
-            <Award className="w-4 h-4 text-white" />
-          </div>
+      <div className="space-y-3">
+        <div className="rounded-2xl bg-[linear-gradient(135deg,#153b63,#266aa0)] px-4 py-3 text-white shadow-sm">
+          <p className="text-sm font-bold">Prontuário</p>
+          <p className="text-[11px] text-white/75">Resumo, timeline e documentos</p>
         </div>
-        <div>
-          <p className="font-semibold text-foreground text-sm">Receita Digital</p>
-          <p className="text-xs text-success font-medium">✓ Certificado ICP-Brasil</p>
+
+        <div className="grid grid-cols-3 gap-2 rounded-2xl bg-slate-100 p-1">
+          {['Resumo', 'Timeline', 'Documentos'].map((tab, index) => (
+            <div
+              key={tab}
+              className={`rounded-xl px-2 py-2 text-center text-[10px] font-semibold ${
+                index === 2 ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+              }`}
+            >
+              {tab}
+            </div>
+          ))}
         </div>
-        <div className="bg-success/10 rounded-lg p-3 text-left">
-          <div className="flex items-center gap-2 mb-2">
-            <Shield className="w-4 h-4 text-success" />
-            <span className="text-xs font-semibold text-foreground">Assinatura Digital</span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Dra. Maria Santos<br/>
-            CRM: 123456-SP<br/>
-            Válido juridicamente
-          </p>
-        </div>
-      </div>
-    ),
-  },
-  {
-    id: 5,
-    title: 'Download PDF',
-    description: 'Receita ou pedido pronto para usar',
-    content: (
-      <div className="text-center space-y-4">
-        <div className="relative w-20 h-24 bg-destructive/10 rounded-lg mx-auto flex flex-col items-center justify-center">
-          <span className="text-3xl mb-1">📄</span>
-          <span className="text-xs font-medium text-destructive">PDF</span>
-          <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-success rounded-full flex items-center justify-center">
-            <FileCheck className="w-3 h-3 text-white" />
-          </div>
-        </div>
-        <div>
-          <p className="font-semibold text-foreground">Receita_12345.pdf</p>
-          <p className="text-xs text-success font-medium">✓ Assinado digitalmente</p>
-          <p className="text-xs text-muted-foreground">Válida por 6 meses</p>
-        </div>
+
         <div className="flex gap-2">
-          <div className="flex-1 bg-primary text-primary-foreground rounded-lg p-2 text-center text-sm font-medium">
-            Baixar
-          </div>
-          <div className="flex-1 bg-muted text-foreground rounded-lg p-2 text-center text-sm font-medium">
-            Compartilhar
-          </div>
-        </div>
-      </div>
-    ),
-  },
-  {
-    id: 6,
-    title: 'Validação QR Code',
-    description: 'Farmácias podem validar a receita',
-    content: (
-      <div className="text-center space-y-4">
-        <div className="w-24 h-24 bg-foreground rounded-lg mx-auto flex items-center justify-center">
-          <div className="w-20 h-20 bg-background rounded grid grid-cols-4 gap-0.5 p-1">
-            {Array.from({ length: 16 }).map((_, i) => (
-              <div 
-                key={i} 
-                className={`${Math.random() > 0.5 ? 'bg-foreground' : 'bg-background'}`}
-              />
-            ))}
-          </div>
-        </div>
-        <div>
-          <p className="font-semibold text-foreground text-sm">QR Code de Validação</p>
-          <p className="text-xs text-muted-foreground">Escaneie para verificar autenticidade</p>
-        </div>
-        <div className="bg-success/10 rounded-lg p-2 flex items-center justify-center gap-2">
-          <Shield className="w-4 h-4 text-success" />
-          <span className="text-xs font-medium text-success">Documento Autêntico</span>
-        </div>
-      </div>
-    ),
-  },
-  {
-    id: 7,
-    title: 'Histórico',
-    description: 'Todos os seus pedidos organizados',
-    content: (
-      <div className="space-y-3">
-        {[
-          { name: 'Losartana 50mg', date: 'Jan 2025', status: 'Ativo', cert: true },
-          { name: 'Metformina 850mg', date: 'Dez 2024', status: 'Ativo', cert: true },
-          { name: 'Exame Sangue', date: 'Nov 2024', status: 'Concluído', cert: true },
-        ].map((item) => (
-          <div key={item.name} className="bg-muted rounded-lg p-3">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-sm font-medium text-foreground">{item.name}</p>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                item.status === 'Ativo' ? 'bg-success/10 text-success' : 'bg-muted-foreground/10 text-muted-foreground'
-              }`}>
-                {item.status}
-              </span>
+          {['Todos', 'Receitas', 'Exames'].map((chip, index) => (
+            <div
+              key={chip}
+              className={`rounded-full px-3 py-1.5 text-[10px] font-semibold ${
+                index === 0 ? 'bg-primary text-primary-foreground' : 'bg-slate-100 text-slate-500'
+              }`}
+            >
+              {chip}
             </div>
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">{item.date}</p>
-              {item.cert && (
-                <span className="text-xs text-success flex items-center gap-1">
-                  <Award className="w-3 h-3" /> Certificado
-                </span>
-              )}
+          ))}
+        </div>
+
+        <MiniCard>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-xs font-bold text-slate-900">Receita</p>
+              <p className="mt-1 text-[11px] text-slate-500">Assinada em 08 Mar 2026</p>
             </div>
+            <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-semibold text-emerald-700">Assinado</span>
           </div>
-        ))}
-      </div>
-    ),
-  },
-  {
-    id: 8,
-    title: 'Suporte',
-    description: 'Ajuda rápida quando você precisar',
-    content: (
-      <div className="space-y-3">
-        <div className="bg-primary/10 rounded-lg p-4 text-center">
-          <span className="text-3xl mb-2 block">💬</span>
-          <p className="font-semibold text-foreground text-sm">Chat ao Vivo</p>
-          <p className="text-xs text-muted-foreground">Resposta em minutos</p>
-        </div>
-        <div className="bg-success/10 rounded-lg p-3 flex items-center gap-3">
-          <span className="text-2xl">📱</span>
-          <div>
-            <p className="font-semibold text-foreground text-sm">WhatsApp</p>
-            <p className="text-xs text-muted-foreground">(11) 98631-8000</p>
+        </MiniCard>
+
+        <MiniCard>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-xs font-bold text-slate-900">Pedido de exame</p>
+              <p className="mt-1 text-[11px] text-slate-500">Emitido após avaliação clínica</p>
+            </div>
+            <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-semibold text-emerald-700">Assinado</span>
           </div>
-        </div>
-        <div className="bg-muted rounded-lg p-3 flex items-center gap-3">
-          <span className="text-2xl">❓</span>
-          <div>
-            <p className="font-semibold text-foreground text-sm">FAQ</p>
-            <p className="text-xs text-muted-foreground">Perguntas frequentes</p>
-          </div>
-        </div>
+        </MiniCard>
+
+        <MiniCard tone="success">
+          <p className="text-[11px] font-medium text-emerald-700">Documentos com histórico organizado para consulta posterior.</p>
+        </MiniCard>
       </div>
     ),
   },
@@ -241,90 +317,78 @@ const screens = [
 export function AppScreensSection() {
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const nextSlide = () => {
-    setCurrentIndex((prev) => (prev + 1) % screens.length);
-  };
-
-  const prevSlide = () => {
-    setCurrentIndex((prev) => (prev - 1 + screens.length) % screens.length);
-  };
+  const nextSlide = () => setCurrentIndex((prev) => (prev + 1) % screens.length);
+  const prevSlide = () => setCurrentIndex((prev) => (prev - 1 + screens.length) % screens.length);
 
   return (
-    <section id="screenshots" className="py-24 lg:py-32 bg-background relative overflow-hidden">
+    <section id="screenshots" className="relative overflow-hidden bg-background py-24 lg:py-32">
       <div className="container mx-auto px-4">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center max-w-3xl mx-auto mb-16"
+          className="mx-auto mb-16 max-w-3xl text-center"
         >
-          <span className="inline-block text-primary font-semibold text-sm uppercase tracking-wider mb-4">
-            Telas do App
+          <span className="mb-4 inline-block text-sm font-semibold uppercase tracking-wider text-primary">
+            Telas do app
           </span>
-          <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-6">
-            Conheça a <span className="text-gradient">Experiência</span>
+          <h2 className="font-display text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl">
+            Conheça a <span className="text-gradient">plataforma em uso</span>
           </h2>
-          <p className="text-lg text-muted-foreground">
-            Interface intuitiva pensada para facilitar sua vida. Todos os documentos com certificado digital.
+          <p className="mt-6 text-lg text-muted-foreground">
+            Uma amostra da jornada digital que ajuda instituições a organizar solicitações, validar documentos
+            e ampliar acesso com mais previsibilidade operacional.
           </p>
         </motion.div>
 
-        {/* Digital Certificate Badge */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
+          initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
-          className="flex justify-center mb-12"
+          className="mb-12 flex justify-center"
         >
-          <div className="inline-flex items-center gap-3 bg-success/10 border border-success/20 rounded-full px-6 py-3 shadow-card">
-            <Award className="w-5 h-5 text-success" />
+          <div className="inline-flex items-center gap-3 rounded-full border border-success/20 bg-success/10 px-6 py-3 shadow-card">
+            <div className="h-2.5 w-2.5 rounded-full bg-success" />
             <span className="text-sm font-medium text-foreground">
-              Todas as receitas e pedidos com <strong className="text-success">Certificado Digital ICP-Brasil</strong>
+              Telas baseadas no <strong className="text-success">app real em modo claro</strong>, com jornadas de envio,
+              acompanhamento e documentos.
             </span>
-            <Shield className="w-5 h-5 text-success" />
+            <Clock3 className="h-5 w-5 text-success" />
           </div>
         </motion.div>
 
-        {/* Carousel */}
-        <div className="relative max-w-4xl mx-auto">
-          {/* Navigation Buttons */}
+        <div className="relative mx-auto max-w-4xl">
           <Button
             variant="outline"
             size="icon"
             onClick={prevSlide}
-            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 lg:-translate-x-12 z-10 rounded-full shadow-lg hidden sm:flex"
+            className="absolute left-0 top-1/2 z-10 hidden -translate-x-4 -translate-y-1/2 rounded-full shadow-lg sm:flex lg:-translate-x-12"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="h-5 w-5" />
           </Button>
           <Button
             variant="outline"
             size="icon"
             onClick={nextSlide}
-            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 lg:translate-x-12 z-10 rounded-full shadow-lg hidden sm:flex"
+            className="absolute right-0 top-1/2 z-10 hidden -translate-y-1/2 translate-x-4 rounded-full shadow-lg sm:flex lg:translate-x-12"
           >
-            <ChevronRight className="w-5 h-5" />
+            <ChevronRight className="h-5 w-5" />
           </Button>
 
-          {/* Phone Mockup Container */}
           <div className="flex justify-center">
             <div className="relative">
-              {/* Phone Frame */}
-              <div className="w-[280px] sm:w-[300px] aspect-[9/19] bg-foreground rounded-[3rem] p-3 shadow-elevated">
-                {/* Screen */}
-                <div className="w-full h-full bg-background rounded-[2.5rem] overflow-hidden">
-                  {/* Status Bar */}
-                  <div className="flex items-center justify-between px-6 py-3 bg-muted/50">
-                    <span className="text-xs font-medium text-foreground">9:41</span>
+              <div className="aspect-[9/19] w-[280px] rounded-[3rem] bg-slate-900 p-3 shadow-elevated sm:w-[300px]">
+                <div className="h-full w-full overflow-hidden rounded-[2.5rem] bg-[#f6f8fb]">
+                  <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
+                    <span className="text-xs font-medium text-slate-900">9:41</span>
                     <div className="flex items-center gap-1">
-                      <div className="w-4 h-2 border border-foreground rounded-sm">
-                        <div className="w-3/4 h-full bg-success rounded-sm"></div>
+                      <div className="h-2 w-4 rounded-sm border border-slate-900">
+                        <div className="h-full w-3/4 rounded-sm bg-success" />
                       </div>
                     </div>
                   </div>
 
-                  {/* Content */}
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={currentIndex}
@@ -332,58 +396,49 @@ export function AppScreensSection() {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -50 }}
                       transition={{ duration: 0.3 }}
-                      className="px-4 py-4"
+                      className="h-full px-4 py-4"
                     >
                       {screens[currentIndex].content}
                     </motion.div>
                   </AnimatePresence>
                 </div>
 
-                {/* Notch */}
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-24 h-6 bg-foreground rounded-full" />
+                <div className="absolute left-1/2 top-3 h-6 w-24 -translate-x-1/2 rounded-full bg-slate-900" />
               </div>
             </div>
           </div>
 
-          {/* Screen Info */}
           <motion.div
             key={currentIndex}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center mt-8"
+            className="mt-8 text-center"
           >
-            <h3 className="font-display text-xl font-bold text-foreground mb-2">
-              {screens[currentIndex].title}
-            </h3>
-            <p className="text-muted-foreground">
-              {screens[currentIndex].description}
-            </p>
+            <h3 className="mb-2 font-display text-xl font-bold text-foreground">{screens[currentIndex].title}</h3>
+            <p className="text-muted-foreground">{screens[currentIndex].description}</p>
           </motion.div>
 
-          {/* Dots Navigation */}
-          <div className="flex justify-center gap-2 mt-6">
+          <div className="mt-6 flex justify-center gap-2">
             {screens.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentIndex(index)}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  index === currentIndex
-                    ? 'w-8 bg-primary'
-                    : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                className={`h-2 w-2 rounded-full transition-all ${
+                  index === currentIndex ? 'w-8 bg-primary' : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
                 }`}
+                aria-label={`Ir para slide ${index + 1}`}
               />
             ))}
           </div>
 
-          {/* Mobile Navigation */}
-          <div className="flex justify-center gap-4 mt-6 sm:hidden">
+          <div className="mt-6 flex justify-center gap-4 sm:hidden">
             <Button variant="outline" size="sm" onClick={prevSlide}>
-              <ChevronLeft className="w-4 h-4 mr-1" />
+              <ChevronLeft className="mr-1 h-4 w-4" />
               Anterior
             </Button>
             <Button variant="outline" size="sm" onClick={nextSlide}>
               Próximo
-              <ChevronRight className="w-4 h-4 ml-1" />
+              <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
           </div>
         </div>

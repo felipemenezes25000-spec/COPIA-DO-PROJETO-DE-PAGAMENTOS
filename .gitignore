@@ -45,3 +45,4 @@ frontend-mobile/google-services.json
 frontend-mobile/GoogleService-Info.plist
 # Firebase Admin SDK — contém chave privada; NUNCA commitar
 frontend-mobile/*-firebase-adminsdk*.json
+.vercel

@@ -1,113 +1,84 @@
 import { motion } from 'framer-motion';
-import { 
-  Home, 
-  Shield, 
-  Clock,
-  UserCheck, 
-  History,
-  Bell
-} from 'lucide-react';
+import { BrainCircuit, FileCheck2, LockKeyhole, ScanSearch, ShieldCheck, Stethoscope } from 'lucide-react';
 
-const benefits = [
+const solutions = [
   {
-    icon: Home,
-    title: 'Sem sair de casa',
-    description: 'Faça todo o processo pelo celular, de onde estiver. Sem filas, sem deslocamento.',
-    stat: '100%',
-    statLabel: 'Digital',
+    icon: BrainCircuit,
+    title: 'IA assistiva, não autônoma',
+    description:
+      'A plataforma apoia leitura documental, triagem e organização de informações, mantendo a decisão final com o médico.',
   },
   {
-    icon: Clock,
-    title: 'Rápido e prático',
-    description: 'Receba sua receita em até 2 horas. Processo simples e sem burocracia.',
-    stat: '~2h',
-    statLabel: 'Tempo médio',
+    icon: Stethoscope,
+    title: 'Fluxo clínico supervisionado',
+    description:
+      'Solicitações passam por revisão profissional, com visibilidade da fila, critérios clínicos e possibilidade de ajuste antes da emissão.',
   },
   {
-    icon: Shield,
-    title: 'Seguro e confiável',
-    description: 'Seus dados protegidos por criptografia. 100% em conformidade com a LGPD.',
-    stat: '100%',
-    statLabel: 'LGPD',
+    icon: FileCheck2,
+    title: 'Documento válido e verificável',
+    description:
+      'Receitas e pedidos podem ser assinados digitalmente com ICP-Brasil e validados publicamente por QR Code.',
   },
   {
-    icon: UserCheck,
-    title: 'Profissionais qualificados',
-    description: 'Avaliação individual por médicos com CRM ativo e registro verificável.',
-    stat: '50+',
-    statLabel: 'Médicos',
+    icon: LockKeyhole,
+    title: 'Governança e rastreabilidade',
+    description:
+      'Cada etapa do fluxo fica registrada para auditoria, apoio à conformidade institucional e análise operacional.',
   },
   {
-    icon: History,
-    title: 'Histórico completo',
-    description: 'Acompanhe todos os seus pedidos e receitas anteriores em um só lugar.',
-    stat: '24/7',
-    statLabel: 'Acesso',
+    icon: ShieldCheck,
+    title: 'Conformidade de ponta a ponta',
+    description:
+      'Arquitetura pensada para LGPD, trilha de auditoria e alinhamento com regras regulatórias aplicáveis à telemedicina.',
   },
   {
-    icon: Bell,
-    title: 'Notificações em tempo real',
-    description: 'Receba alertas sobre cada etapa do seu pedido direto no celular.',
-    stat: '3min',
-    statLabel: 'Resposta',
+    icon: ScanSearch,
+    title: 'Jornada mais simples para o cidadão',
+    description:
+      'Menos papel, menos fila e menos ruído entre solicitação, análise, assinatura e acesso ao documento.',
   },
 ];
 
 export function AppBenefitsSection() {
   return (
-    <section id="benefits" className="py-16 sm:py-24 lg:py-32 bg-background relative overflow-hidden">
-      <div className="container mx-auto px-4 relative z-10">
-        {/* Header */}
+    <section id="solution" className="relative overflow-hidden bg-background py-16 sm:py-24 lg:py-32">
+      <div className="container relative z-10 mx-auto px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center max-w-3xl mx-auto mb-10 sm:mb-16"
+          className="mx-auto mb-10 max-w-3xl text-center sm:mb-16"
         >
-          <span className="inline-block text-primary font-semibold text-sm uppercase tracking-wider mb-4">
-            Vantagens do App
+          <span className="mb-4 inline-block text-sm font-semibold uppercase tracking-wider text-primary">
+            A solução
           </span>
-          <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-6">
-            Por que escolher o <span className="text-gradient">RenoveJá+</span>?
+          <h2 className="font-display text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl">
+            Um fluxo digital para apoiar operação, rastreabilidade e continuidade do atendimento.
           </h2>
-          <p className="text-lg text-muted-foreground">
-            Descubra as vantagens de renovar suas receitas pelo celular.
+          <p className="mt-6 text-lg text-muted-foreground">
+            O RenoveJá+ foi desenhado para apoiar pacientes, médicos e gestores em uma jornada mais ágil,
+            auditável e estruturada, com uso responsável de IA e responsabilidade clínica preservada.
           </p>
         </motion.div>
 
-        {/* Benefits Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
-          {benefits.map((benefit, index) => (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {solutions.map((solution, index) => (
             <motion.div
-              key={benefit.title}
+              key={solution.title}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
+              transition={{ duration: 0.5, delay: index * 0.08 }}
               className="group"
             >
-              <div className="h-full bg-card rounded-3xl p-6 border border-border/50 shadow-card hover:shadow-elevated hover:-translate-y-2 hover:border-primary/30 transition-all duration-300">
-                {/* Stat Badge */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold text-primary">{benefit.stat}</span>
-                    <span className="text-sm text-muted-foreground">{benefit.statLabel}</span>
-                  </div>
+              <div className="h-full rounded-3xl border border-border/50 bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-elevated">
+                <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 transition-colors group-hover:bg-primary">
+                  <solution.icon className="h-7 w-7 text-primary transition-colors group-hover:text-white" />
                 </div>
-
-                {/* Icon */}
-                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-5 group-hover:bg-primary group-hover:scale-110 transition-all duration-300">
-                  <benefit.icon className="w-7 h-7 text-primary group-hover:text-white transition-colors" />
-                </div>
-
-                {/* Content */}
-                <h3 className="font-display text-lg font-bold text-foreground mb-2">
-                  {benefit.title}
-                </h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  {benefit.description}
-                </p>
+                <h3 className="font-display text-xl font-bold text-foreground">{solution.title}</h3>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{solution.description}</p>
               </div>
             </motion.div>
           ))}

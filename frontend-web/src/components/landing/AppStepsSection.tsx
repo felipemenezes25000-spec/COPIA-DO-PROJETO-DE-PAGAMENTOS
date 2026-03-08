@@ -1,130 +1,99 @@
 import { motion } from 'framer-motion';
-import { Upload, ClipboardCheck, Stethoscope, FileCheck, Clock } from 'lucide-react';
+import { Clock3, FileClock, MapPinned, UsersRound } from 'lucide-react';
 
-const steps = [
+const problems = [
   {
-    number: '01',
-    icon: Upload,
-    title: 'Envie a receita ou pedido',
-    description: 'Tire uma foto clara da sua receita vencida ou pedido de exame usando a câmera do app.',
-    time: '30 seg',
-    color: 'bg-primary/20 text-primary',
+    icon: Clock3,
+    title: 'Filas prolongadas e sobrecarga assistencial',
+    description:
+      'Parte relevante da capacidade assistencial ainda é consumida por fluxos administrativos, reavaliações simples e etapas repetitivas.',
   },
   {
-    number: '02',
-    icon: ClipboardCheck,
-    title: 'Preencha dados básicos',
-    description: 'Informações simples para validação, em um formulário rápido e intuitivo.',
-    time: '2 min',
-    color: 'bg-success/20 text-success',
+    icon: FileClock,
+    title: 'Renovação burocrática de documentos',
+    description:
+      'Receitas, pedidos de exame e reemissões costumam depender de processos manuais, ligações e deslocamentos evitáveis.',
   },
   {
-    number: '03',
-    icon: Stethoscope,
-    title: 'Avaliação profissional',
-    description: 'Médicos habilitados analisam seu pedido de forma individual e segura.',
-    time: '~2h',
-    color: 'bg-orange/20 text-orange',
-  },
-  {
-    number: '04',
-    icon: FileCheck,
-    title: 'Receba o documento',
-    description: 'Documento digital com certificado ICP-Brasil, pronto para usar na farmácia.',
-    time: 'Instantâneo',
-    color: 'bg-primary/20 text-primary',
+    icon: MapPinned,
+    title: 'Acesso desigual entre territórios',
+    description:
+      'Pacientes e equipes em regiões remotas ou com baixa cobertura enfrentam mais barreiras para triagem, acompanhamento e emissão documental.',
   },
 ];
 
 export function AppStepsSection() {
   return (
-    <section id="steps" className="py-16 sm:py-24 lg:py-32 bg-background relative overflow-hidden">
-      <div className="container mx-auto px-4 relative z-10">
-        {/* Header */}
+    <section id="problem" className="relative overflow-hidden bg-background py-16 sm:py-24 lg:py-32">
+      <div className="container relative z-10 mx-auto px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center max-w-3xl mx-auto mb-10 sm:mb-16 lg:mb-20"
+          className="mx-auto mb-10 max-w-3xl text-center sm:mb-14"
         >
-          <span className="inline-block text-primary font-semibold text-sm uppercase tracking-wider mb-4">
-            Processo Simples
+          <span className="mb-4 inline-block text-sm font-semibold uppercase tracking-wider text-primary">
+            O problema
           </span>
-          <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-6">
-            Como Funciona
+          <h2 className="font-display text-3xl font-bold text-foreground sm:text-4xl lg:text-5xl">
+            Fluxos administrativos ainda consomem tempo assistencial.
           </h2>
-          <p className="text-lg text-muted-foreground">
-            Em apenas 4 passos, você envia seu pedido e recebe o documento digital no app.
+          <p className="mt-6 text-lg text-muted-foreground">
+            O desafio não é apenas digitalizar documentos. Em muitos cenários, tambem envolve reduzir fricção
+            operacional, organizar a demanda e dar mais previsibilidade ao atendimento.
           </p>
         </motion.div>
 
-        {/* Steps Grid */}
-        <div className="max-w-5xl mx-auto">
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-4">
-            {steps.map((step, index) => (
+        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
+          <div className="grid gap-5 md:grid-cols-3">
+            {problems.map((problem, index) => (
               <motion.div
-                key={step.number}
+                key={problem.title}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="relative"
+                className="rounded-3xl border border-border/60 bg-card p-6 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-elevated"
               >
-                {/* Connector Line (desktop) */}
-                {index < steps.length - 1 && (
-                  <div className="hidden lg:block absolute top-12 left-full w-full h-0.5 bg-gradient-to-r from-primary/40 to-primary/10 z-0" />
-                )}
-
-                {/* Card */}
-                <div className="bg-card rounded-3xl p-6 shadow-card border border-border/50 hover:shadow-elevated hover:border-primary/30 hover:-translate-y-2 transition-all duration-300 relative z-10">
-                  {/* Step Number */}
-                  <div className="absolute -top-3 -left-2">
-                    <span className="bg-primary text-white font-bold text-xs px-3 py-1.5 rounded-full shadow-primary">
-                      Passo {step.number}
-                    </span>
-                  </div>
-
-                  {/* Time Badge */}
-                  <div className="flex justify-end mb-4">
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
-                      <Clock className="w-3 h-3" />
-                      {step.time}
-                    </span>
-                  </div>
-
-                  {/* Icon */}
-                  <div className={`w-16 h-16 rounded-2xl ${step.color} flex items-center justify-center mb-4 mx-auto`}>
-                    <step.icon className="w-8 h-8" />
-                  </div>
-
-                  {/* Content */}
-                  <h3 className="font-display text-lg font-bold text-foreground mb-2 text-center">
-                    {step.title}
-                  </h3>
-                  <p className="text-muted-foreground text-sm text-center leading-relaxed">
-                    {step.description}
-                  </p>
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+                  <problem.icon className="h-7 w-7 text-primary" />
                 </div>
+                <h3 className="font-display text-xl font-bold text-foreground">{problem.title}</h3>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{problem.description}</p>
               </motion.div>
             ))}
           </div>
-        </div>
 
-        {/* Total Time */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mt-12"
-        >
-          <div className="inline-flex items-center gap-3 bg-primary/10 border border-primary/20 rounded-full px-6 py-3">
-            <Clock className="w-5 h-5 text-primary" />
-            <span className="text-foreground font-medium">
-              Tempo total estimado: <strong className="text-primary">2-3 horas</strong>
-            </span>
-          </div>
-        </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="rounded-[2rem] border border-primary/20 bg-primary/5 p-6 shadow-card"
+          >
+            <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-white shadow-primary">
+              <UsersRound className="h-7 w-7" />
+            </div>
+            <h3 className="font-display text-2xl font-bold text-foreground">Saude publica e suplementar exigem escala com governanca.</h3>
+            <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+              A proposta da plataforma é apoiar instituições a organizar jornadas recorrentes sem substituir a avaliação
+              clínica, preservando rastreabilidade, segurança documental e responsabilidade médica.
+            </p>
+
+            <div className="mt-6 space-y-3">
+              {[
+                'Menos deslocamentos desnecessarios para demandas simples',
+                'Mais previsibilidade para regulacao, atendimento e gestao',
+                'Jornada documentada com trilha auditavel ponta a ponta',
+              ].map((item) => (
+                <div key={item} className="flex items-start gap-3 rounded-2xl bg-background/80 px-4 py-3">
+                  <div className="mt-1 h-2.5 w-2.5 rounded-full bg-primary" />
+                  <span className="text-sm font-medium text-foreground">{item}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
       </div>
     </section>
   );

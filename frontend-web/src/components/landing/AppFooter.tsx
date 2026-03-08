@@ -1,88 +1,72 @@
 import { motion } from 'framer-motion';
-import { Facebook, Instagram, Linkedin, Mail, Phone, AlertTriangle, Shield, Award, CheckCircle2, Clock } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Mail, Phone, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import logo from '@/assets/logo-renoveja-new.png';
 
 const footerLinks = {
-  legal: [
-    { name: 'Termos de Uso', href: '/termos' },
-    { name: 'Privacidade', href: '/privacidade' },
-    { name: 'LGPD', href: '/lgpd' },
+  institucional: [
+    { name: 'Problema', href: '#problem' },
+    { name: 'Funcionalidades', href: '#features' },
+    { name: 'Setores', href: '#partners' },
+    { name: 'Contato', href: '#contact' },
   ],
-  support: [
-    { name: 'FAQ', href: '#faq' },
-    { name: 'Suporte', href: 'https://wa.me/5511986318000' },
-    { name: 'Contato', href: 'mailto:contato@renoveja.com.br' },
+  legal: [
+    { name: 'Cookies', href: '/cookies' },
+    { name: 'Contato', href: 'mailto:contato@renovejasaude.com.br' },
+    { name: 'Privacidade (LGPD)', href: 'mailto:privacidade@renovejasaude.com.br' },
+    { name: 'WhatsApp', href: 'https://wa.me/5511986318000' },
   ],
 };
-
-const socialLinks = [
-  { icon: Facebook, href: 'https://facebook.com/renoveja', label: 'Facebook' },
-  { icon: Instagram, href: 'https://instagram.com/renoveja', label: 'Instagram' },
-  { icon: Linkedin, href: 'https://linkedin.com/company/renoveja', label: 'LinkedIn' },
-];
 
 export function AppFooter() {
   const currentYear = new Date().getFullYear();
 
-  const scrollToFaq = (e: React.MouseEvent, href: string) => {
-    if (href.startsWith('#')) {
-      e.preventDefault();
-      const element = document.querySelector(href);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
-      }
-    }
+  const scrollToSection = (e: React.MouseEvent, href: string) => {
+    if (!href.startsWith('#')) return;
+    e.preventDefault();
+    const element = document.querySelector(href);
+    element?.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
     <footer className="bg-[#1E3A5F]">
-      {/* Compliance Notice */}
-      <div className="bg-[#25D366]/10 border-b border-[#25D366]/30">
+      <div className="border-b border-[#25D366]/30 bg-[#25D366]/10">
         <div className="container mx-auto px-4 py-5">
-          <div className="flex items-start gap-4 max-w-4xl mx-auto">
-            <div className="w-10 h-10 rounded-full bg-[#25D366] flex items-center justify-center flex-shrink-0 mt-0.5">
-              <CheckCircle2 className="w-5 h-5 text-white" />
+          <div className="mx-auto flex max-w-4xl items-start gap-4">
+            <div className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#25D366]">
+              <CheckCircle2 className="h-5 w-5 text-white" />
             </div>
             <div className="text-sm">
-              <p className="font-bold text-white mb-2 text-base">✓ Serviço em Conformidade com as Legislações Vigentes</p>
-              <p className="text-white/80 leading-relaxed">
-                O RenoveJá+ opera em total conformidade com a{' '}
-                <Link to="/lgpd" className="text-[#25D366] hover:underline font-semibold">
-                  Lei Geral de Proteção de Dados (LGPD)
-                </Link>, 
-                resoluções do <span className="text-white font-medium">Conselho Federal de Medicina (CFM)</span> sobre telemedicina e demais normas aplicáveis. 
-                Todos os profissionais são devidamente habilitados com CRM ativo.
-                <span className="text-[#25D366] font-semibold"> Receitas emitidas com Certificado Digital ICP-Brasil</span>.
+              <p className="mb-2 text-base font-bold text-white">Serviço com foco em conformidade e responsabilidade clínica</p>
+              <p className="leading-relaxed text-white/80">
+                O RenoveJá+ foi estruturado para apoiar telemedicina e jornadas documentais com uso responsável de IA,
+                proteção de dados, rastreabilidade operacional e decisão final sempre do médico.
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Important Notice */}
-      <div className="bg-amber-500/10 border-b border-amber-500/30">
+      <div className="border-b border-amber-500/30 bg-amber-500/10">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-3 max-w-4xl mx-auto">
-            <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />
+          <div className="mx-auto flex max-w-4xl items-center gap-3">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-400" />
             <p className="text-sm text-white/90">
-              <span className="font-bold text-amber-400">Aviso:</span> Este serviço não atende urgências ou emergências médicas. 
-              Em caso de sintomas graves, procure atendimento presencial ou ligue <strong className="text-white">SAMU 192</strong>.
+              <span className="font-bold text-amber-400">Aviso:</span> este site não representa atendimento de urgência ou emergência.
+              Em casos graves, procure assistência presencial ou ligue para o <strong className="text-white">SAMU 192</strong>.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Main Footer */}
       <div className="container mx-auto px-4 py-12">
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {/* Brand Column */}
-          <div className="lg:col-span-2">
-            <Link to="/" className="inline-flex items-center gap-3 mb-6 group">
-              <motion.img 
-                src={logo} 
-                alt="RenoveJá+" 
-                className="h-14 w-auto drop-shadow-md" 
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
+          <div>
+            <Link to="/" className="group mb-6 inline-flex items-center gap-3">
+              <motion.img
+                src={logo}
+                alt="RenoveJá+"
+                className="h-14 w-auto drop-shadow-md"
                 whileHover={{ scale: 1.05, rotate: 2 }}
                 transition={{ duration: 0.3 }}
               />
@@ -92,108 +76,97 @@ export function AppFooter() {
                 <span className="text-primary">+</span>
               </span>
             </Link>
-            <p className="text-white/70 mb-6 max-w-sm leading-relaxed text-sm">
-              Plataforma digital para renovação de receitas e pedidos de exames. 
-              Simples, rápido e seguro.
+            <p className="mb-6 max-w-md text-sm leading-relaxed text-white/70">
+              Plataforma de telemedicina para apoiar fluxos assistenciais e documentais
+              com tecnologia, conformidade e rastreabilidade.
             </p>
-            
-            {/* Contact Info */}
+
             <div className="space-y-3">
               <a
                 href="https://wa.me/5511986318000"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 text-white/80 hover:text-[#25D366] transition-colors text-sm group"
+                className="group flex items-center gap-3 text-sm text-white/80 transition-colors hover:text-[#25D366]"
               >
-                <div className="w-10 h-10 rounded-full bg-[#25D366]/20 group-hover:bg-[#25D366] flex items-center justify-center transition-colors">
-                  <Phone className="w-5 h-5" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#25D366]/20 transition-colors group-hover:bg-[#25D366]">
+                  <Phone className="h-5 w-5" />
                 </div>
                 <div>
-                  <span className="font-medium block">(11) 98631-8000</span>
-                  <span className="text-xs text-white/50">WhatsApp</span>
+                  <span className="block font-medium">(11) 98631-8000</span>
+                  <span className="text-xs text-white/50">WhatsApp / contato institucional</span>
                 </div>
               </a>
               <a
-                href="mailto:contato@renoveja.com.br"
-                className="flex items-center gap-3 text-white/80 hover:text-primary transition-colors text-sm group"
+                href="mailto:contato@renovejasaude.com.br"
+                className="group flex items-center gap-3 text-sm text-white/80 transition-colors hover:text-primary"
               >
-                <div className="w-10 h-10 rounded-full bg-primary/20 group-hover:bg-primary flex items-center justify-center transition-colors">
-                  <Mail className="w-5 h-5" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20 transition-colors group-hover:bg-primary">
+                  <Mail className="h-5 w-5" />
                 </div>
                 <div>
-                  <span className="font-medium block">contato@renoveja.com.br</span>
-                  <span className="text-xs text-white/50">Email</span>
+                  <span className="block font-medium">contato@renovejasaude.com.br</span>
+                  <span className="text-xs text-white/50">Contato institucional</span>
                 </div>
               </a>
-              <div className="flex items-center gap-3 text-white/60 text-sm">
-                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-                  <Clock className="w-5 h-5" />
+              <div className="flex items-center gap-3 text-sm text-white/60">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+                  <Clock className="h-5 w-5" />
                 </div>
                 <div>
-                  <span className="font-medium block text-white/80">Seg-Sex, 8h às 18h</span>
-                  <span className="text-xs text-white/50">Horário de atendimento</span>
+                  <span className="block font-medium text-white/80">Seg-Sex, 8h às 18h</span>
+                  <span className="text-xs text-white/50">Horário comercial</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Legal Links */}
           <div>
-            <h4 className="font-bold text-white mb-5 text-lg flex items-center gap-2">
-              <Shield className="w-5 h-5 text-primary" />
-              Legal
+            <h4 className="mb-5 flex items-center gap-2 text-lg font-bold text-white">
+              <Shield className="h-5 w-5 text-primary" />
+              Navegação
             </h4>
             <ul className="space-y-3">
-              {footerLinks.legal.map((link) => (
+              {footerLinks.institucional.map((link) => (
                 <li key={link.name}>
-                  <Link
-                    to={link.href}
-                    className="text-white/70 hover:text-primary transition-colors text-sm flex items-center gap-2 group py-1"
+                  <a
+                    href={link.href}
+                    onClick={(e) => scrollToSection(e, link.href)}
+                    className="group flex items-center gap-2 py-1 text-sm text-white/70 transition-colors hover:text-primary"
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary/50 transition-colors group-hover:bg-primary" />
                     {link.name}
-                  </Link>
+                  </a>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Support Links */}
           <div>
-            <h4 className="font-bold text-white mb-5 text-lg flex items-center gap-2">
-              <Mail className="w-5 h-5 text-primary" />
-              Suporte
+            <h4 className="mb-5 flex items-center gap-2 text-lg font-bold text-white">
+              <Mail className="h-5 w-5 text-primary" />
+              Contato e legal
             </h4>
             <ul className="space-y-3">
-              {footerLinks.support.map((link) => (
+              {footerLinks.legal.map((link) => (
                 <li key={link.name}>
-                  {link.href.startsWith('#') ? (
-                    <a
-                      href={link.href}
-                      onClick={(e) => scrollToFaq(e, link.href)}
-                      className="text-white/70 hover:text-primary transition-colors text-sm flex items-center gap-2 group cursor-pointer py-1"
+                  {link.href.startsWith('/') ? (
+                    <Link
+                      to={link.href}
+                      className="group flex items-center gap-2 py-1 text-sm text-white/70 transition-colors hover:text-primary"
                     >
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary/50 transition-colors group-hover:bg-primary" />
                       {link.name}
-                    </a>
-                  ) : link.href.startsWith('http') || link.href.startsWith('mailto') ? (
+                    </Link>
+                  ) : (
                     <a
                       href={link.href}
                       target={link.href.startsWith('http') ? '_blank' : undefined}
                       rel={link.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                      className="text-white/70 hover:text-primary transition-colors text-sm flex items-center gap-2 group py-1"
+                      className="group flex items-center gap-2 py-1 text-sm text-white/70 transition-colors hover:text-primary"
                     >
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary/50 transition-colors group-hover:bg-primary" />
                       {link.name}
                     </a>
-                  ) : (
-                    <Link
-                      to={link.href}
-                      className="text-white/70 hover:text-primary transition-colors text-sm flex items-center gap-2 group py-1"
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary/50 group-hover:bg-primary transition-colors" />
-                      {link.name}
-                    </Link>
                   )}
                 </li>
               ))}
@@ -202,46 +175,25 @@ export function AppFooter() {
         </div>
       </div>
 
-      {/* Bottom Bar */}
       <div className="border-t border-white/10">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            {/* Copyright */}
-            <p className="text-sm text-white/60 text-center md:text-left">
-              © {currentYear} RenoveJá+. Todos os direitos reservados.
-            </p>
+        <div className="container mx-auto flex flex-col items-center justify-between gap-4 px-4 py-6 md:flex-row">
+          <p className="text-center text-sm text-white/60 md:text-left">
+            © {currentYear} RenoveJá+. Todos os direitos reservados.
+          </p>
 
-            {/* Social Links */}
-            <div className="flex items-center gap-3">
-              {socialLinks.map((social) => (
-                <a
-                  key={social.label}
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-primary hover:text-white transition-all hover:scale-110"
-                  aria-label={social.label}
-                >
-                  <social.icon className="w-5 h-5" />
-                </a>
-              ))}
-            </div>
-
-            {/* Certifications */}
-            <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
-              <span className="flex items-center gap-2 text-white/80 bg-white/10 px-4 py-2.5 rounded-full hover:bg-white/20 transition-all duration-300 shadow-soft">
-                <Shield className="w-4 h-4 text-primary" />
-                SSL/TLS
-              </span>
-              <span className="flex items-center gap-2 text-white/80 bg-white/10 px-4 py-2.5 rounded-full hover:bg-white/20 transition-all duration-300 shadow-soft">
-                <CheckCircle2 className="w-4 h-4 text-[#25D366]" />
-                LGPD
-              </span>
-              <span className="flex items-center gap-2 text-white/80 bg-white/10 px-4 py-2.5 rounded-full hover:bg-white/20 transition-all duration-300 shadow-soft">
-                <Award className="w-4 h-4 text-primary" />
-                CFM
-              </span>
-            </div>
+          <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
+            <span className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2.5 text-white/80">
+              <Shield className="h-4 w-4 text-primary" />
+              SSL/TLS
+            </span>
+            <span className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2.5 text-white/80">
+              <CheckCircle2 className="h-4 w-4 text-[#25D366]" />
+              LGPD
+            </span>
+            <span className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2.5 text-white/80">
+              <Shield className="h-4 w-4 text-primary" />
+              CFM
+            </span>
           </div>
         </div>
       </div>

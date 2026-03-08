@@ -1,23 +1,38 @@
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { MessageCircle } from 'lucide-react';
 
 export function WhatsAppButton() {
+  const [showButton, setShowButton] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const hero = document.getElementById('hero');
+      const trigger = hero ? hero.offsetHeight * 0.65 : 500;
+      setShowButton(window.scrollY > trigger);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  if (!showButton) return null;
+
   return (
     <motion.a
       href="https://wa.me/5511986318000"
       target="_blank"
       rel="noopener noreferrer"
-      initial={{ scale: 0, opacity: 0 }}
+      initial={{ scale: 0.8, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      transition={{ delay: 1, type: 'spring', stiffness: 200 }}
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.95 }}
-      className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-[#25D366] text-white px-5 py-4 rounded-full shadow-2xl hover:shadow-[0_8px_32px_rgba(37,211,102,0.4)] transition-shadow group"
+      transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.96 }}
+      className="group fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-full bg-[#25D366] px-5 py-4 text-white shadow-2xl transition-shadow hover:shadow-[0_8px_32px_rgba(37,211,102,0.4)]"
     >
-      <MessageCircle className="w-6 h-6" />
-      <span className="font-semibold hidden sm:inline-block group-hover:inline-block transition-all">
-        Falar no WhatsApp
-      </span>
+      <MessageCircle className="h-6 w-6" />
+      <span className="hidden font-semibold sm:inline-block">Falar sobre parceria</span>
     </motion.a>
   );
 }

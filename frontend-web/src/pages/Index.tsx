@@ -19,10 +19,10 @@ const Index = () => {
         <AppHeroSection />
         <AppStepsSection />
         <AppBenefitsSection />
-        <AppScreensSection />
         <AppTutorialSection />
-        <AppPricingSection />
+        <AppScreensSection />
         <AppTestimonialsSection />
+        <AppPricingSection />
         <AppFAQSection />
         <AppCTASection />
       </main>
