@@ -218,6 +218,7 @@ export default function VideoCallScreenInner() {
     callJoined: callState === 'joined',
     consultationActive: !!canStartRecording && callState === 'joined',
     onSendError: (msg) => setTranscriptionError(msg),
+    onSendSuccess: () => setTranscriptionError(null),
   });
 
   // ── Panel animation ──
@@ -630,15 +631,21 @@ export default function VideoCallScreenInner() {
 
   const panelX = panelAnim.interpolate({ inputRange: [0, 1], outputRange: [PANEL_WIDTH + 20, 0] });
 
+  // Em PiP: local em tela cheia (evita tela preta do SurfaceView em overlay pequeno)
+  const localIsMain = isInPipMode;
+  const remoteIsMain = !isInPipMode;
+
   return (
     <View style={S.container}>
-      {/* Remote video */}
+      {/* Remote video — full screen normal; overlay pequeno em PiP */}
       {remoteParticipant?.videoTrack?.persistentTrack != null ? (
-        <DailyMediaView
-          videoTrack={remoteParticipant.videoTrack.persistentTrack}
-          audioTrack={remoteParticipant.audioTrack?.persistentTrack ?? null}
-          mirror={false} zOrder={0} style={S.remote} objectFit="cover"
-        />
+        <View collapsable={false} style={remoteIsMain ? S.remote : S.pipRemote}>
+          <DailyMediaView
+            videoTrack={remoteParticipant.videoTrack.persistentTrack}
+            audioTrack={remoteParticipant.audioTrack?.persistentTrack ?? null}
+            mirror={false} zOrder={remoteIsMain ? 0 : 1} style={remoteIsMain ? S.remote : S.pipVid} objectFit="cover"
+          />
+        </View>
       ) : (
         <View style={[S.remote, S.noVid]}>
           <View style={S.waitCircle}>
@@ -649,12 +656,12 @@ export default function VideoCallScreenInner() {
         </View>
       )}
 
-      {/* Local PiP — em modo PiP usa posição menor para destacar o remoto */}
+      {/* Local PiP — em PiP vira tela cheia (SurfaceView renderiza melhor em área principal) */}
       {localParticipant?.videoTrack?.persistentTrack != null && !isCameraOff && (
-        <View style={[S.pip, { top: isInPipMode ? 8 : insets.top + 52 }]}>
+        <View collapsable={false} style={[localIsMain ? S.remote : S.pip, { top: localIsMain ? 0 : insets.top + 52 }]}>
           <DailyMediaView
             videoTrack={localParticipant.videoTrack.persistentTrack}
-            audioTrack={null} mirror={isFrontCamera} zOrder={1} style={S.pipVid} objectFit="cover"
+            audioTrack={null} mirror={isFrontCamera} zOrder={localIsMain ? 0 : 1} style={localIsMain ? S.remote : S.pipVid} objectFit="cover"
           />
           {isMuted && (
             <View style={S.pipMute}><Ionicons name="mic-off" size={10} color={colors.white} /></View>
@@ -1044,6 +1051,7 @@ const S = StyleSheet.create({
   waitSub: { color: colors.textSecondary, fontSize: 13 },
 
   pip: { position: 'absolute', left: 12, width: 100, height: 136, borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: colors.primary, zIndex: 15, backgroundColor: colors.text },
+  pipRemote: { position: 'absolute', right: 12, top: 8, width: 100, height: 136, borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: colors.primary, zIndex: 15, backgroundColor: colors.text },
   pipVid: { flex: 1 },
   pipMute: { position: 'absolute', bottom: 4, left: 4, width: 18, height: 18, borderRadius: 9, backgroundColor: colors.error, justifyContent: 'center', alignItems: 'center' },
 

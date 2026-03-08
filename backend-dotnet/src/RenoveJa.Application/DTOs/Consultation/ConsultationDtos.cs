@@ -1,5 +1,8 @@
 namespace RenoveJa.Application.DTOs.Consultation;
 
+/// <summary>Payload para envio de texto já transcrito (Daily.co nativo).</summary>
+public record TranscribeTextRequestDto(Guid RequestId, string Text, string? Speaker);
+
 /// <summary>Payload enviado via SignalR para atualização da transcrição no painel do médico.</summary>
 public record TranscriptUpdateDto(string FullText);
 

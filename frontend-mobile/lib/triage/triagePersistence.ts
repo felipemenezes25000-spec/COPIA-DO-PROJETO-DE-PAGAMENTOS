@@ -205,6 +205,19 @@ export async function setBannerFloatingPosition(pos: BannerFloatingPosition): Pr
   scheduleSave();
 }
 
+/** Retorna se a Dra. Renoveja estava expandida ao último fechamento. */
+export async function getBannerExpanded(): Promise<boolean> {
+  const state = await load();
+  return state.bannerExpanded ?? false;
+}
+
+/** Salva estado expandido da Dra. Renoveja (para restaurar ao remontar). */
+export async function setBannerExpanded(expanded: boolean): Promise<void> {
+  const state = await load();
+  state.bannerExpanded = expanded;
+  scheduleSave();
+}
+
 /** Último status orientado por pedido (memória de jornada). */
 export async function getJourneyStatus(requestId: string): Promise<string | null> {
   if (!requestId) return null;

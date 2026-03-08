@@ -298,7 +298,7 @@ export default function ConsultationScreen() {
           <Text style={styles.stepHint}>Passo 2 — Toque no − para diminuir ou no + para aumentar os minutos. O preço atualiza na hora.</Text>
         )}
         <Text style={styles.minutesHint}>
-          A chamada encerra automaticamente ao atingir o tempo. Minutos não usados viram saldo em banco de{'\u00A0'}horas.
+          A chamada encerra automaticamente ao atingir o tempo. Minutos não usados viram saldo em{'\u00A0'}banco de horas.
         </Text>
         <View style={styles.minutesStepperRow}>
           <TouchableOpacity
@@ -325,7 +325,10 @@ export default function ConsultationScreen() {
         )}
         <TextInput
           ref={symptomsRef}
-          style={[styles.textArea, !isFormValid && symptoms.trim().length < 10 && styles.inputError]}
+          style={[
+            styles.textArea,
+            symptoms.trim().length > 0 && symptoms.trim().length < 10 && styles.inputError,
+          ]}
           placeholder="O que você está sentindo? Desde quando? O que gostaria de esclarecer?"
           placeholderTextColor={colors.textMuted}
           value={symptoms}
@@ -455,6 +458,7 @@ function makeStyles(colors: DesignColors) {
       color: colors.text,
       textAlign: 'center',
       marginTop: s.xs,
+      alignSelf: 'stretch',
     },
     overline: {
       ...t.variants.overline,
@@ -466,6 +470,7 @@ function makeStyles(colors: DesignColors) {
       color: colors.text,
       marginBottom: s.sm,
       lineHeight: 20,
+      alignSelf: 'stretch',
     },
     typeRow: {
       flexDirection: 'row',
@@ -509,6 +514,7 @@ function makeStyles(colors: DesignColors) {
       color: colors.textSecondary,
       marginBottom: s.sm,
       lineHeight: 18,
+      alignSelf: 'stretch',
     },
     minutesStepperRow: {
       flexDirection: 'row',
@@ -537,6 +543,7 @@ function makeStyles(colors: DesignColors) {
       color: colors.text,
       minWidth: 72,
       textAlign: 'center',
+      lineHeight: 48,
     },
     textArea: {
       backgroundColor: colors.surface,
@@ -544,11 +551,13 @@ function makeStyles(colors: DesignColors) {
       borderWidth: 1,
       borderColor: colors.border,
       paddingHorizontal: s.md,
-      paddingVertical: s.md,
+      paddingTop: s.md,
+      paddingBottom: s.md,
       fontSize: t.fontSize.md,
       color: colors.text,
       minHeight: 120,
       marginBottom: s.lg,
+      overflow: 'hidden',
     },
     inputError: {
       borderColor: colors.error,

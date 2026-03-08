@@ -442,6 +442,7 @@ function makeStyles(colors: DesignColors) {
     },
     assistantCard: {
       marginTop: s.md,
+      marginBottom: s.sm,
       borderWidth: 1,
       borderColor: colors.primarySoft,
       backgroundColor: colors.primarySoft + '66',
@@ -450,6 +451,7 @@ function makeStyles(colors: DesignColors) {
       shadowRadius: 0,
       shadowOffset: { width: 0, height: 0 },
       elevation: 0,
+      overflow: 'hidden',
     },
     assistantCardLoading: {
       opacity: 0.95,
@@ -478,6 +480,7 @@ function makeStyles(colors: DesignColors) {
       fontSize: 12,
       lineHeight: 18,
       color: colors.textSecondary,
+      alignSelf: 'stretch',
     },
     assistantGood: {
       marginTop: 8,

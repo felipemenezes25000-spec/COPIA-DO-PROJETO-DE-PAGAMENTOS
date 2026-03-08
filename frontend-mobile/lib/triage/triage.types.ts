@@ -160,6 +160,8 @@ export interface TriagePersistedState {
   bannerPositionMode?: BannerPositionMode;
   /** Posição quando flutuante (persistida entre sessões) */
   bannerFloatingPosition?: BannerFloatingPosition;
+  /** Se true, Dra. Renoveja reabre expandida ao remontar (após navegação) */
+  bannerExpanded?: boolean;
   /** Memória de jornada por pedido (último status orientado) */
   journeyByRequest?: Record<string, { status: string; at: number }>;
   /** Versão do schema (para migrações futuras) */

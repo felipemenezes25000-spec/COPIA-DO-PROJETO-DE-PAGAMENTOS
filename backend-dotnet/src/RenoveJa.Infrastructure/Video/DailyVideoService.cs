@@ -242,19 +242,70 @@ public class DailyVideoService : IDailyVideoService
     }
 
     // --- Internal DTOs for Daily API responses ---
+    // Daily API pode retornar created_at e exp como string (ISO) ou number (Unix) conforme versão.
 
     private class DailyRoomResponse
     {
         [JsonPropertyName("id")] public string Id { get; set; } = "";
         [JsonPropertyName("name")] public string Name { get; set; } = "";
         [JsonPropertyName("url")] public string Url { get; set; } = "";
-        [JsonPropertyName("created_at")] public long CreatedAt { get; set; }
+        [JsonPropertyName("created_at")]
+        [JsonConverter(typeof(DailyTimestampConverter))]
+        public long CreatedAt { get; set; }
         [JsonPropertyName("config")] public DailyRoomConfig? Config { get; set; }
     }
 
     private class DailyRoomConfig
     {
-        [JsonPropertyName("exp")] public long? Exp { get; set; }
+        [JsonPropertyName("exp")]
+        [JsonConverter(typeof(DailyNullableTimestampConverter))]
+        public long? Exp { get; set; }
+    }
+
+    private sealed class DailyTimestampConverter : JsonConverter<long>
+    {
+        public override long Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.Number)
+                return reader.GetInt64();
+            if (reader.TokenType == JsonTokenType.String)
+            {
+                var s = reader.GetString();
+                if (!string.IsNullOrEmpty(s) && long.TryParse(s, out var unix))
+                    return unix;
+                if (!string.IsNullOrEmpty(s) && DateTimeOffset.TryParse(s, out var dto))
+                    return dto.ToUnixTimeSeconds();
+            }
+            throw new JsonException($"Cannot convert token type {reader.TokenType} to Unix timestamp");
+        }
+
+        public override void Write(Utf8JsonWriter writer, long value, JsonSerializerOptions options) =>
+            writer.WriteNumberValue(value);
+    }
+
+    private sealed class DailyNullableTimestampConverter : JsonConverter<long?>
+    {
+        public override long? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.Null || reader.TokenType == JsonTokenType.None)
+                return null;
+            if (reader.TokenType == JsonTokenType.Number)
+                return reader.GetInt64();
+            if (reader.TokenType == JsonTokenType.String)
+            {
+                var s = reader.GetString();
+                if (string.IsNullOrEmpty(s)) return null;
+                if (long.TryParse(s, out var unix)) return unix;
+                if (DateTimeOffset.TryParse(s, out var dto)) return dto.ToUnixTimeSeconds();
+            }
+            throw new JsonException($"Cannot convert token type {reader.TokenType} to Unix timestamp");
+        }
+
+        public override void Write(Utf8JsonWriter writer, long? value, JsonSerializerOptions options)
+        {
+            if (value.HasValue) writer.WriteNumberValue(value.Value);
+            else writer.WriteNullValue();
+        }
     }
 
     private class DailyTokenResponse

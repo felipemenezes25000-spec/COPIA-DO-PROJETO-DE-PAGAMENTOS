@@ -33,6 +33,8 @@ import {
   getBannerFloatingPosition,
   setBannerFloatingPosition,
   setBannerPositionMode,
+  getBannerExpanded,
+  setBannerExpanded,
 } from '../../lib/triage/triagePersistence';
 import { AssistantBanner } from './AssistantBanner';
 import type { CTAAction } from '../../lib/triage/triage.types';
@@ -67,6 +69,7 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
   const pulseScale = useSharedValue(1);
 
   const bannerWidth = Math.min(screenW - padding * 2, BANNER_WIDTH);
+  const expandedHeight = Math.min(180, screenH - (insets.top ?? 0) - (insets.bottom ?? 0) - padding * 2);
 
   const topLimitFab = (insets.top ?? 0) + padding;
   const maxXFabInit = screenW - FAB_SIZE - padding;
@@ -76,16 +79,30 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
     let cancelled = false;
     (async () => {
       try {
-        const pos = await getBannerFloatingPosition();
-        if (!cancelled && pos && Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
-          // Garantir que posição salva esteja dentro da tela visível
-          const x = Math.max(padding, Math.min(maxXFabInit, pos.x));
-          const y = Math.max(topLimitFab, Math.min(maxYFabInit, pos.y));
+        const [pos, wasExpanded] = await Promise.all([
+          getBannerFloatingPosition(),
+          getBannerExpanded(),
+        ]);
+        if (!cancelled && screenW > 0 && screenH > 0) {
+          let x: number;
+          let y: number;
+          if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
+            x = Math.max(padding, Math.min(maxXFabInit, pos.x));
+            y = Math.max(topLimitFab, Math.min(maxYFabInit, pos.y));
+          } else {
+            x = screenW - padding - FAB_SIZE;
+            y = screenH - (insets.bottom ?? 0) - CTA_EXCLUSION_ZONE - FAB_SIZE;
+          }
+          if (wasExpanded) {
+            const maxXExp = screenW - bannerWidth - padding;
+            const bottomLimitExp = screenH - expandedHeight - (insets.bottom ?? 0) - padding;
+            x = Math.max(padding, Math.min(maxXExp, x));
+            y = Math.max(topLimitFab, Math.min(bottomLimitExp, y));
+            void setBannerFloatingPosition({ x, y, anchor: 'bottom-right' });
+          }
           translateX.value = x;
           translateY.value = y;
-        } else if (!cancelled) {
-          translateX.value = screenW - padding - FAB_SIZE;
-          translateY.value = screenH - (insets.bottom ?? 0) - CTA_EXCLUSION_ZONE - FAB_SIZE;
+          setExpanded(!!wasExpanded);
         }
         if (!cancelled) setInitialized(true);
       } catch {
@@ -97,8 +114,24 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
       }
     })();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- init runs once, shared values/insets are refs
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- init runs once
   }, []);
+
+  // Re-clamp posição quando dimensões da tela mudam (rotação, teclado, navegação) — evita teleporte
+  useEffect(() => {
+    if (!initialized || screenW <= 0 || screenH <= 0) return;
+    const topL = (insets.top ?? 0) + padding;
+    const bottomLFab = screenH - FAB_SIZE - (insets.bottom ?? 0) - CTA_EXCLUSION_ZONE;
+    const maxXF = screenW - FAB_SIZE - padding;
+    const maxXExp = screenW - bannerWidth - padding;
+    const bottomLExp = screenH - expandedHeight - (insets.bottom ?? 0) - CTA_EXCLUSION_ZONE;
+    const clampX = expanded ? Math.max(padding, Math.min(maxXExp, translateX.value)) : Math.max(padding, Math.min(maxXF, translateX.value));
+    const clampY = expanded ? Math.max(topL, Math.min(bottomLExp, translateY.value)) : Math.max(topL, Math.min(bottomLFab, translateY.value));
+    translateX.value = clampX;
+    translateY.value = clampY;
+    if (expanded) void savePosition(clampX, clampY);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- savePosition estável
+  }, [screenW, screenH, insets.top, insets.bottom, initialized, expanded, bannerWidth, expandedHeight, padding]);
 
   // Bolinha pisca quando há recomendação relevante (pulse suave)
   useEffect(() => {
@@ -122,7 +155,6 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
     await setBannerFloatingPosition({ x, y, anchor: 'bottom-right' });
   }, []);
 
-  const expandedHeight = Math.min(180, screenH - (insets.top ?? 0) - (insets.bottom ?? 0) - padding * 2);
   const handleExpand = useCallback(() => {
     const topLimit = (insets.top ?? 0) + padding;
     const bottomLimit = screenH - expandedHeight - (insets.bottom ?? 0) - padding;
@@ -136,12 +168,14 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
     translateX.value = withSpring(x, SPRING_CONFIG);
     translateY.value = withSpring(y, SPRING_CONFIG);
     setExpanded(true);
+    void setBannerExpanded(true);
     savePosition(x, y);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- translateX/Y are shared value refs
   }, [screenW, screenH, bannerWidth, padding, insets, expandedHeight]);
 
   const handleCollapse = useCallback(() => {
     setExpanded(false);
+    void setBannerExpanded(false);
   }, []);
 
   // Auto-expande para mensagens de maior urgência/relevância e evita “sumir”

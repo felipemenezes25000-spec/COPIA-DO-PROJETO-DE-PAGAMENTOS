@@ -27,6 +27,8 @@ interface UseDailyTranscriptionOptions {
   consultationActive: boolean;
   /** Callback quando envio ao backend falha (Ponto 5: feedback de erro) */
   onSendError?: (message: string) => void;
+  /** Callback quando envio ao backend tem sucesso (limpa erro anterior) */
+  onSendSuccess?: () => void;
 }
 
 export function useDailyTranscription({
@@ -37,13 +39,16 @@ export function useDailyTranscription({
   callJoined,
   consultationActive,
   onSendError,
+  onSendSuccess,
 }: UseDailyTranscriptionOptions): { isTranscribing: boolean } {
   const startedRef = useRef(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const consultationActiveRef = useRef(consultationActive);
   const onSendErrorRef = useRef(onSendError);
+  const onSendSuccessRef = useRef(onSendSuccess);
   consultationActiveRef.current = consultationActive;
   onSendErrorRef.current = onSendError;
+  onSendSuccessRef.current = onSendSuccess;
 
   const sendToBackend = useCallback(
     async (text: string, speaker: 'medico' | 'paciente') => {
@@ -51,8 +56,10 @@ export function useDailyTranscription({
       if (!consultationActiveRef.current) return; // Backend rejeita se status não for InConsultation/Paid
       try {
         await transcribeTextChunk(requestId, text.trim(), speaker);
+        onSendSuccessRef.current?.();
       } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : 'Erro ao enviar transcrição';
+        const err = e as { message?: string };
+        const msg = typeof err?.message === 'string' ? err.message : 'Erro ao enviar transcrição';
         if (__DEV__) console.warn('[DailyTranscription] Erro ao enviar:', e);
         onSendErrorRef.current?.(msg);
       }

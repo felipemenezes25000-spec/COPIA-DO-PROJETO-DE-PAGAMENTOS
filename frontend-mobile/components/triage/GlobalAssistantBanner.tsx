@@ -40,6 +40,8 @@ function shouldHideBanner(
   if (pathname.includes('help-faq')) return true;
   // Notificações/Alertas — ícone flutuante sobrepõe os cards de notificação
   if (pathname.includes('notifications')) return true;
+  // New-request (prescription, exam, consultation) — FAB sobrepõe assistant card e causa texto corrompido
+  if (pathname.includes('new-request')) return true;
   // Painel do médico e rotas médico: doctor-request, doctor-patient, doctor-patient-summary, certificate
   if (pathname.includes('(doctor)') || pathname.includes('doctor-') || pathname.includes('certificate/')) return true;
   return false;
