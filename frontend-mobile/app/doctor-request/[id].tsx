@@ -9,6 +9,7 @@ import {
   Alert,
   Platform,
   KeyboardAvoidingView,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useListBottomPadding } from '../../lib/ui/responsive';
@@ -325,7 +326,7 @@ function ConsultationPostSection({ request, router }: { request: NonNullable<Ret
   const { colors } = useAppTheme();
   const s = useMemo(() => makeStyles(colors), [colors]);
   if (request.requestType !== 'consultation' || request.status !== 'consultation_finished') return null;
-  if (!request.consultationTranscript && !request.consultationAnamnesis && !request.consultationAiSuggestions) return null;
+  if (!request.consultationTranscript && !request.consultationAnamnesis && !request.consultationAiSuggestions && !request.consultationEvidence) return null;
 
   return (
     <>
@@ -389,7 +390,9 @@ function ConsultationPostSection({ request, router }: { request: NonNullable<Ret
       {(request.consultationAiSuggestions || (() => {
         try {
           const ana = JSON.parse(request.consultationAnamnesis || '{}');
-          return Array.isArray(ana.medicamentos_sugeridos) && ana.medicamentos_sugeridos.length > 0;
+          const hasMeds = Array.isArray(ana.medicamentos_sugeridos) && ana.medicamentos_sugeridos.length > 0;
+          const hasExams = Array.isArray(ana.exames_sugeridos) && ana.exames_sugeridos.length > 0;
+          return hasMeds || hasExams;
         } catch { return false; }
       })()) && (
         <DoctorCard style={[s.cardMargin, { borderWidth: 1, borderColor: colors.accent }]}>
@@ -416,23 +419,80 @@ function ConsultationPostSection({ request, router }: { request: NonNullable<Ret
             try {
               const ana = JSON.parse(request.consultationAnamnesis || '{}');
               const meds: string[] = Array.isArray(ana.medicamentos_sugeridos) ? ana.medicamentos_sugeridos : [];
-              if (meds.length === 0) return null;
+              const examList: string[] = Array.isArray(ana.exames_sugeridos) ? ana.exames_sugeridos : [];
+              if (meds.length === 0 && examList.length === 0) return null;
               return (
                 <View style={{ marginTop: 8 }}>
-                  <Text style={[s.anaLabel, { marginBottom: 6 }]}>MEDICAMENTOS SUGERIDOS</Text>
-                  <View style={s.medChipsRow}>
-                    {meds.map((m, i) => (
-                      <TouchableOpacity key={i} style={s.medChip} onPress={async () => { await Clipboard.setStringAsync(String(m ?? '')); showToast({ message: 'Copiado!', type: 'success' }); }}>
-                        <Text style={s.medChipText}>{m ?? ''}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                  {meds.length > 0 && (
+                    <>
+                      <Text style={[s.anaLabel, { marginBottom: 6 }]}>MEDICAMENTOS SUGERIDOS</Text>
+                      <View style={s.medChipsRow}>
+                        {meds.map((m, i) => (
+                          <TouchableOpacity key={i} style={s.medChip} onPress={async () => { await Clipboard.setStringAsync(String(m ?? '')); showToast({ message: 'Copiado!', type: 'success' }); }}>
+                            <Text style={s.medChipText}>{m ?? ''}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </>
+                  )}
+                  {examList.length > 0 && (
+                    <View style={{ marginTop: meds.length > 0 ? 12 : 0 }}>
+                      <Text style={[s.anaLabel, { marginBottom: 6 }]}>EXAMES SUGERIDOS</Text>
+                      <View style={s.medChipsRow}>
+                        {examList.map((ex, i) => (
+                          <TouchableOpacity key={i} style={s.medChip} onPress={async () => { await Clipboard.setStringAsync(String(ex ?? '')); showToast({ message: 'Copiado!', type: 'success' }); }}>
+                            <Text style={s.medChipText}>{ex ?? ''}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                  )}
                 </View>
               );
             } catch { return null; }
           })()}
         </DoctorCard>
       )}
+
+      {request.consultationEvidence && request.consultationEvidence.trim() && (() => {
+        try {
+          const evidence = JSON.parse(request.consultationEvidence || '[]') as Array<{ provider?: string; url?: string; title?: string; source?: string; clinicalRelevance?: string }>;
+          if (!Array.isArray(evidence) || evidence.length === 0) return null;
+          return (
+            <DoctorCard style={[s.cardMargin, { borderWidth: 1, borderColor: colors.accent }]}>
+              <View style={s.aiHeader}>
+                <Ionicons name="library" size={18} color={colors.primary} />
+                <Text style={s.aiTitle}>ARTIGOS CIENTÍFICOS (APOIO AO CID)</Text>
+              </View>
+              <View style={s.aiDisclaimer}>
+                <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />
+                <Text style={s.aiDisclaimerText}>Fontes: PubMed, Europe PMC, Semantic Scholar. Links diretos para os artigos.</Text>
+              </View>
+              {evidence.map((item, i) => (
+                <View key={i} style={[s.anaField, { marginBottom: 12 }]}>
+                  <View style={s.anaLabelRow}>
+                    <Ionicons name="book-outline" size={12} color={colors.primary} />
+                    <Text style={[s.anaLabel, { color: colors.primary }]}>{item.provider ?? 'Fonte'}</Text>
+                  </View>
+                  <Text style={[s.anaValue, { fontFamily: typography.fontFamily.medium }]}>{item.title ?? item.source ?? '—'}</Text>
+                  {item.clinicalRelevance && (
+                    <Text style={[s.anaValue, { fontSize: 12, color: colors.textMuted, marginTop: 4 }]}>{item.clinicalRelevance}</Text>
+                  )}
+                  {item.url && (
+                    <TouchableOpacity
+                      style={[s.aiSummaryActionBtn, { marginTop: 6, alignSelf: 'flex-start' }]}
+                      onPress={() => Linking.openURL(item.url!)}
+                    >
+                      <Ionicons name="open-outline" size={14} color={colors.primary} />
+                      <Text style={s.aiSummaryActionText}>Abrir artigo</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+            </DoctorCard>
+          );
+        } catch { return null; }
+      })()}
 
       {request.consultationTranscript && request.consultationTranscript.trim() && (
         <DoctorCard style={s.cardMargin}>
@@ -456,16 +516,28 @@ function ConsultationPostSection({ request, router }: { request: NonNullable<Ret
         try {
           const ana = JSON.parse(request.consultationAnamnesis || '{}');
           const meds: string[] = Array.isArray(ana.medicamentos_sugeridos) ? ana.medicamentos_sugeridos : [];
-          if (meds.length === 0) return null;
+          const examList: string[] = Array.isArray(ana.exames_sugeridos) ? ana.exames_sugeridos : [];
+          if (meds.length === 0 && examList.length === 0) return null;
           return (
             <View style={[s.cardMargin, { marginBottom: 8 }]}>
-              <AppButton
-                title="Criar Receita Baseada na Consulta"
-                variant="doctorPrimary"
-                trailing={<Ionicons name="chevron-forward" size={20} color={colors.white} />}
-                onPress={() => router.push({ pathname: '/doctor-request/editor/[id]' as never, params: { id: request.id, prefillMeds: JSON.stringify(meds) } })}
-                style={{ width: '100%' }}
-              />
+              {meds.length > 0 && (
+                <AppButton
+                  title="Criar Receita Baseada na Consulta"
+                  variant="doctorPrimary"
+                  trailing={<Ionicons name="chevron-forward" size={20} color={colors.white} />}
+                  onPress={() => router.push({ pathname: '/doctor-request/editor/[id]' as never, params: { id: request.id, prefillMeds: JSON.stringify(meds) } })}
+                  style={{ width: '100%' }}
+                />
+              )}
+              {examList.length > 0 && (
+                <AppButton
+                  title="Criar Pedido de Exame Baseado na Consulta"
+                  variant="outline"
+                  trailing={<Ionicons name="flask-outline" size={20} color={colors.primary} />}
+                  onPress={() => router.push({ pathname: '/new-request/exam' as never, params: { prefillExams: JSON.stringify(examList) } })}
+                  style={{ width: '100%', marginTop: meds.length > 0 ? 8 : 0 }}
+                />
+              )}
             </View>
           );
         } catch { return null; }

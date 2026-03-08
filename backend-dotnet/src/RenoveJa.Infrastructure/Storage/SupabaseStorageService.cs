@@ -233,6 +233,46 @@ public class SupabaseStorageService : IStorageService
         return await DownloadAsync(path, cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task<string?> CreateSignedUrlAsync(string path, int expiresInSeconds, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        try
+        {
+            var bucket = GetBucketForPath(path);
+            var url = $"{_config.Url.TrimEnd('/')}/storage/v1/object/sign/{bucket}/{path}";
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, url);
+            request.Headers.Add("apikey", _config.ServiceKey);
+            request.Headers.Add("Authorization", $"Bearer {_config.ServiceKey}");
+            request.Content = new StringContent(
+                System.Text.Json.JsonSerializer.Serialize(new { expiresIn = expiresInSeconds }),
+                System.Text.Encoding.UTF8,
+                "application/json");
+
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            var signedUrl = root.TryGetProperty("signedURL", out var sp) ? sp.GetString()
+                : root.TryGetProperty("signed_url", out var sp2) ? sp2.GetString()
+                : null;
+            if (string.IsNullOrWhiteSpace(signedUrl)) return null;
+
+            // signedURL pode vir relativo (/object/sign/...) — prefixar com base
+            if (signedUrl.StartsWith("/", StringComparison.Ordinal))
+                return $"{_config.Url.TrimEnd('/')}/storage/v1{signedUrl}";
+            return signedUrl;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     /// <summary>
     /// Extrai o PATH do objeto a partir de uma URL pública do Supabase Storage.
     /// Ex.: {base}/storage/v1/object/public/{bucket}/{path} -> {path}
@@ -258,4 +298,7 @@ public class SupabaseStorageService : IStorageService
 
         return string.IsNullOrWhiteSpace(path) ? null : path.Trim();
     }
+
+    /// <inheritdoc />
+    public string? ExtractPathFromStorageUrl(string url) => ExtractPathFromPublicUrl(url);
 }

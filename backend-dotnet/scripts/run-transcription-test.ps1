@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Script completo de teste de transcrição (Deepgram) - RenoveJa
+    Script completo de teste de transcrição (Whisper/OpenAI) - RenoveJa
 
 .DESCRIPTION
     Gera áudio falado, verifica/inicia o backend e testa o endpoint de transcrição.
@@ -18,7 +18,7 @@
     .\run-transcription-test.ps1 -AudioFile "C:\meu-audio.wav"
 
 .NOTES
-    Requer: .NET SDK, Deepgram:ApiKey no .env, ASPNETCORE_ENVIRONMENT=Development
+    Requer: .NET SDK, OpenAI:ApiKey no .env, ASPNETCORE_ENVIRONMENT=Development
 #>
 
 [CmdletBinding()]
@@ -223,8 +223,10 @@ $httpCode = $null
 $responseBody = ""
 
 # Tenta curl primeiro (mais confiavel para upload)
-$curlPath = Get-Command curl.exe -ErrorAction SilentlyContinue
-if ($curlPath) {
+$curlExe = if (Get-Command curl.exe -ErrorAction SilentlyContinue) { "curl.exe" }
+          elseif (Test-Path "C:\Windows\System32\curl.exe") { "C:\Windows\System32\curl.exe" }
+          else { $null }
+if ($curlExe) {
     try {
         $tempOut = [System.IO.Path]::GetTempFileName()
         # Path com barras normais para compatibilidade com curl no Windows
@@ -238,16 +240,16 @@ if ($curlPath) {
             "-H", "Accept: application/json",
             $script:TranscribeUrl
         )
-        $codeOutput = & curl.exe $curlArgs 2>&1
+        $codeOutput = & $curlExe $curlArgs 2>&1
         $httpCode = $codeOutput -replace "`n.*", ""
         $responseBody = Get-Content $tempOut -Raw -ErrorAction SilentlyContinue
         Remove-Item $tempOut -Force -ErrorAction SilentlyContinue
     } catch {
-        $curlPath = $null
+        $curlExe = $null
     }
 }
 
-# Fallback: PowerShell 6+ tem -Form para upload; senao depende de curl
+# Fallback: PowerShell 6+ tem -Form; senao usa .NET HttpClient (PS 5.1)
 if (-not $httpCode -or $httpCode -eq "") {
     if ($PSVersionTable.PSVersion.Major -ge 6) {
         try {
@@ -268,9 +270,24 @@ if (-not $httpCode -or $httpCode -eq "") {
             }
         }
     } else {
-        Write-LogErr "curl.exe nao disponivel. Windows 10+ inclui curl."
-        Write-LogErr "Alternativa: use PowerShell 7+ (pwsh) que suporta -Form"
-        exit 1
+        # PowerShell 5.1: HttpClient + MultipartFormDataContent
+        try {
+            Add-Type -AssemblyName System.Net.Http
+            $client = New-Object System.Net.Http.HttpClient
+            $client.Timeout = [TimeSpan]::FromSeconds(60)
+            $content = New-Object System.Net.Http.MultipartFormDataContent
+            $fileStream = [System.IO.File]::OpenRead($audioPath)
+            $streamContent = New-Object System.Net.Http.StreamContent($fileStream)
+            $streamContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse("audio/wav")
+            $content.Add($streamContent, "file", [System.IO.Path]::GetFileName($audioPath))
+            $response = $client.PostAsync($script:TranscribeUrl, $content).Result
+            $fileStream.Close()
+            $httpCode = [int]$response.StatusCode
+            $responseBody = $response.Content.ReadAsStringAsync().Result
+        } catch {
+            Write-LogErr "Erro no upload: $($_.Exception.Message)"
+            exit 1
+        }
     }
 }
 
@@ -298,7 +315,7 @@ if ($httpCode -eq "200" -or $httpCode -eq 200) {
             Write-LogOk "SUCESSO! Transcricao funcionando corretamente."
         } else {
             Write-LogWarn "Transcricao vazia. Verifique:"
-            Write-LogWarn "  - OpenAI:ApiKey no arquivo .env da pasta RenoveJa.Api"
+            Write-LogWarn "  - OpenAI:ApiKey no arquivo .env da pasta RenoveJa.Api (transcrição usa Whisper)"
             Write-LogWarn "  - ASPNETCORE_ENVIRONMENT=Development no .env"
         }
     } catch {

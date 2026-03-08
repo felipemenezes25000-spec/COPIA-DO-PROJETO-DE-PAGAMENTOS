@@ -97,7 +97,7 @@ public class ConsultationController(
         var rawText = await transcriptionService.TranscribeAsync(audioBytes, file.FileName, cancellationToken);
         if (string.IsNullOrWhiteSpace(rawText))
         {
-            logger.LogWarning("[Transcribe] TRANSCRICAO_NAO_OCORRE: Deepgram retornou vazio. RequestId={RequestId} | Verifique logs [Deepgram] para causa (API key, áudio sem fala, etc.)",
+            logger.LogWarning("[Transcribe] TRANSCRICAO_NAO_OCORRE: Whisper retornou vazio. RequestId={RequestId} | Verifique logs [Whisper] para causa (OpenAI key, áudio sem fala, etc.)",
                 requestId);
             return Ok(new { transcribed = false, message = "No speech detected or transcription unavailable." });
         }
@@ -140,7 +140,19 @@ public class ConsultationController(
                     if (result != null)
                     {
                         var suggestionsJson = System.Text.Json.JsonSerializer.Serialize(result.Suggestions);
-                        sessionStore.UpdateAnamnesis(requestId, result.AnamnesisJson, suggestionsJson);
+                        var evidenceJson = result.Evidence.Count > 0
+                            ? System.Text.Json.JsonSerializer.Serialize(result.Evidence.Select(e => new
+                            {
+                                provider = e.Provider,
+                                url = e.Url,
+                                title = e.Title,
+                                source = e.Source,
+                                translatedAbstract = e.TranslatedAbstract,
+                                clinicalRelevance = e.ClinicalRelevance,
+                                relevantExcerpts = e.RelevantExcerpts
+                            }))
+                            : null;
+                        sessionStore.UpdateAnamnesis(requestId, result.AnamnesisJson, suggestionsJson, evidenceJson);
                         await hubContext.Clients.Group(group)
                             .SendAsync("AnamnesisUpdate", new AnamnesisUpdateDto(result.AnamnesisJson));
                         await hubContext.Clients.Group(group)
@@ -230,7 +242,7 @@ public class ConsultationController(
         var labeledText = $"{prefix} {dto.Text.Trim()}";
 
         sessionStore.EnsureSession(requestId, request.PatientId);
-        sessionStore.AppendTranscript(requestId, labeledText);
+        sessionStore.AppendTranscript(requestId, labeledText, dto.StartTimeSeconds);
         var fullText = sessionStore.GetTranscript(requestId);
 
         var group = VideoSignalingHub.GroupName(requestId.ToString());
@@ -257,7 +269,19 @@ public class ConsultationController(
                     if (result != null)
                     {
                         var suggestionsJson = System.Text.Json.JsonSerializer.Serialize(result.Suggestions);
-                        sessionStore.UpdateAnamnesis(requestId, result.AnamnesisJson, suggestionsJson);
+                        var evidenceJson = result.Evidence.Count > 0
+                            ? System.Text.Json.JsonSerializer.Serialize(result.Evidence.Select(e => new
+                            {
+                                provider = e.Provider,
+                                url = e.Url,
+                                title = e.Title,
+                                source = e.Source,
+                                translatedAbstract = e.TranslatedAbstract,
+                                clinicalRelevance = e.ClinicalRelevance,
+                                relevantExcerpts = e.RelevantExcerpts
+                            }))
+                            : null;
+                        sessionStore.UpdateAnamnesis(requestId, result.AnamnesisJson, suggestionsJson, evidenceJson);
                         await hubContext.Clients.Group(group)
                             .SendAsync("AnamnesisUpdate", new AnamnesisUpdateDto(result.AnamnesisJson));
                         await hubContext.Clients.Group(group)
@@ -283,7 +307,7 @@ public class ConsultationController(
 
     /// <summary>
     /// Endpoint de teste de transcrição (apenas Development).
-    /// Aceita um arquivo de áudio e retorna o resultado da transcrição (Deepgram), sem precisar de consulta ativa.
+    /// Aceita um arquivo de áudio e retorna o resultado da transcrição (OpenAI Whisper), sem precisar de consulta ativa.
     /// Útil para validar OpenAI:ApiKey e o fluxo de transcrição.
     /// </summary>
     [AllowAnonymous]

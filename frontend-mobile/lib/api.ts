@@ -402,12 +402,14 @@ export async function getTimeBankBalance(consultationType: string): Promise<{ ba
 export async function transcribeTextChunk(
   requestId: string,
   text: string,
-  speaker: 'medico' | 'paciente'
+  speaker: 'medico' | 'paciente',
+  startTimeSeconds?: number
 ): Promise<{ ok: boolean; fullLength?: number }> {
   return apiClient.post('/api/consultation/transcribe-text', {
     requestId,
     text,
     speaker,
+    ...(startTimeSeconds != null && startTimeSeconds >= 0 && { startTimeSeconds }),
   });
 }
 
@@ -423,6 +425,16 @@ export async function transcribeAudioChunk(
   // React Native FormData accepts { uri, name, type } objects for file uploads
   formData.append('file', audioBlob as unknown as Blob);
   return apiClient.post('/api/consultation/transcribe', formData, true);
+}
+
+/** Obtém signed URL para download do .txt da transcrição (bucket privado). Médico ou paciente. */
+export async function getTranscriptDownloadUrl(
+  requestId: string,
+  expiresIn = 3600
+): Promise<{ signedUrl: string; expiresIn: number }> {
+  return apiClient.get(
+    `/api/requests/${requestId}/transcript-download-url?expiresIn=${Math.min(86400, Math.max(60, expiresIn))}`
+  );
 }
 
 /**

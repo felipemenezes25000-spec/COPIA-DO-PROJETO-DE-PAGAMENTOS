@@ -186,6 +186,15 @@ public static class PushNotificationRules
             channel: PushChannel.Quiet, highPriority: false,
             category: PushCategory.System);
 
+    /// <summary>Médico encerrou a consulta — notifica o paciente com prioridade.</summary>
+    public static PushNotificationRequest ConsultationFinished(Guid patientId, Guid requestId) =>
+        BuildRequest(patientId, "consultation_finished", requestId, RequestType.Consultation, RequestStatus.ConsultationFinished,
+            "Consulta finalizada",
+            "Sua consulta foi encerrada. Obrigado!",
+            deepLinkSuffix: $"consultation-summary/{requestId}",
+            category: PushCategory.Consultations,
+            bypassQuietHours: true);
+
     // ── Lembretes (pedido parado) ───────────────────────────────────────────
 
     /// <summary>Lembrete: pagamento pendente há mais de 6h (paciente).</summary>

@@ -1,10 +1,10 @@
 /**
  * Tela de Resumo da Consulta — Exibida após o médico encerrar a videochamada.
  * Mostra: anamnese estruturada, transcrição, sugestões IA, notas clínicas.
- * O médico pode revisar, editar e salvar no prontuário.
+ * Anamnese e nota clínica são salvos automaticamente no prontuário do paciente.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -50,8 +50,7 @@ export default function ConsultationSummaryScreen() {
   const [request, setRequest] = useState<RequestResponseDto | null>(null);
   const [expandedTranscript, setExpandedTranscript] = useState(false);
   const [clinicalNote, setClinicalNote] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const initialSaveDone = useRef(false);
 
   // Parse data
   const anamnesis = useMemo(() => {
@@ -85,26 +84,48 @@ export default function ConsultationSummaryScreen() {
         setRequest(r);
         setClinicalNote(r.notes ?? '');
       })
-      .catch((e) => {
+      .catch(() => {
         Alert.alert('Erro', 'Não foi possível carregar o resumo da consulta.');
         router.back();
       })
       .finally(() => setLoading(false));
   }, [rid, router]);
 
-  const handleSaveToRecord = async () => {
+  /** Salva anamnese e nota clínica no prontuário automaticamente. */
+  const saveToRecord = useCallback(async (anamnesisJson: string | null, plan: string) => {
     if (!rid) return;
-    setSaving(true);
     try {
-      await saveConsultationSummary(rid, { plan: clinicalNote.trim() || undefined });
-      setSaved(true);
-      Alert.alert('Sucesso', 'Nota clínica salva no prontuário.');
+      await saveConsultationSummary(rid, {
+        anamnesis: anamnesisJson ?? undefined,
+        plan: plan.trim() || undefined,
+      });
     } catch {
-      Alert.alert('Erro', 'Não foi possível salvar no prontuário. Tente novamente.');
-    } finally {
-      setSaving(false);
+      // Silencioso — o backend já salvou na finalização; este é um refresh
     }
-  };
+  }, [rid]);
+
+  const lastSavedNote = useRef<string | null>(null);
+  const userHasEdited = useRef(false);
+
+  /** Auto-save ao carregar: garante anamnese e nota no prontuário. */
+  useEffect(() => {
+    if (!request || !rid || initialSaveDone.current) return;
+    initialSaveDone.current = true;
+    const plan = request.notes ?? '';
+    lastSavedNote.current = plan;
+    saveToRecord(request.consultationAnamnesis ?? null, plan);
+  }, [request, rid, saveToRecord]);
+
+  /** Auto-save ao editar a nota clínica (debounce 2s). Só quando o usuário alterou. */
+  useEffect(() => {
+    if (!rid || !request || !userHasEdited.current) return;
+    if (lastSavedNote.current === clinicalNote) return;
+    const t = setTimeout(() => {
+      lastSavedNote.current = clinicalNote;
+      saveToRecord(request.consultationAnamnesis ?? null, clinicalNote);
+    }, 2000);
+    return () => clearTimeout(t);
+  }, [clinicalNote, rid, request, saveToRecord]);
 
   const copyText = async (text: string, label: string) => {
     await Clipboard.setStringAsync(text);
@@ -131,6 +152,13 @@ export default function ConsultationSummaryScreen() {
       lines.push('Medicamentos Sugeridos:');
       for (const m of anamnesis.medicamentos_sugeridos) {
         lines.push(`  • ${m}`);
+      }
+    }
+    if (Array.isArray(anamnesis.exames_sugeridos)) {
+      lines.push('');
+      lines.push('Exames Sugeridos:');
+      for (const ex of anamnesis.exames_sugeridos) {
+        lines.push(`  • ${ex}`);
       }
     }
     copyText(lines.join('\n'), 'Anamnese');
@@ -247,6 +275,25 @@ export default function ConsultationSummaryScreen() {
                 <Text style={S.disclaimer}>* Sugestões da IA — decisão final do médico</Text>
               </View>
             )}
+
+            {/* Suggested exams */}
+            {Array.isArray(anamnesis.exames_sugeridos) && anamnesis.exames_sugeridos.length > 0 && (
+              <View style={S.medsBlock}>
+                <View style={S.fieldLabel}>
+                  <Ionicons name="flask" size={15} color={colors.primaryLight} />
+                  <Text style={[S.fieldLabelText, { color: colors.primaryLight }]}>
+                    EXAMES SUGERIDOS
+                  </Text>
+                </View>
+                {(anamnesis.exames_sugeridos as string[]).map((ex: string, i: number) => (
+                  <View key={i} style={S.medItem}>
+                    <Text style={S.medNum}>{i + 1}.</Text>
+                    <Text style={S.medText}>{ex}</Text>
+                  </View>
+                ))}
+                <Text style={S.disclaimer}>* Sugestões da IA — decisão final do médico</Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -283,10 +330,13 @@ export default function ConsultationSummaryScreen() {
           </View>
           <TextInput
             style={S.clinicalNoteInput}
-            placeholder="Digite ou edite a nota clínica para salvar no prontuário..."
+            placeholder="Digite ou edite a nota clínica (salva automaticamente no prontuário)"
             placeholderTextColor={colors.textMuted}
             value={clinicalNote}
-            onChangeText={setClinicalNote}
+            onChangeText={(t) => {
+              userHasEdited.current = true;
+              setClinicalNote(t);
+            }}
             multiline
             numberOfLines={4}
           />
@@ -346,20 +396,6 @@ export default function ConsultationSummaryScreen() {
 
       {/* Bottom actions */}
       <View style={[S.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
-        <TouchableOpacity
-          style={[S.actionBtn, S.actionBtnSecondary]}
-          onPress={handleSaveToRecord}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
-            <Ionicons name="save-outline" size={20} color={colors.primary} />
-          )}
-          <Text style={[S.actionBtnText, { color: colors.primary }]}>
-            {saved ? 'Salvo' : 'Salvar no prontuário'}
-          </Text>
-        </TouchableOpacity>
         <TouchableOpacity
           style={S.actionBtn}
           onPress={() => router.back()}
@@ -482,10 +518,5 @@ function makeStyles(colors: DesignColors) {
     borderRadius: 14,
   },
   actionBtnText: { color: colors.white, fontSize: 16, fontWeight: '700' },
-  actionBtnSecondary: {
-    backgroundColor: 'rgba(44,177,255,0.15)',
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
   });
 }

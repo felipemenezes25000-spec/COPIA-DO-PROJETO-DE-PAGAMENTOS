@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, shadows } from '../../lib/theme';
+import { spacing, shadows } from '../../lib/theme';
+import { useAppTheme } from '../../lib/ui/useAppTheme';
+import type { DesignColors } from '../../lib/designSystem';
 
 interface PaymentHeaderProps {
   title?: string;
@@ -9,7 +11,11 @@ interface PaymentHeaderProps {
   iconColor?: string;
 }
 
-export function PaymentHeader({ title = 'Pagamento', onBack, iconColor = colors.primary }: PaymentHeaderProps) {
+export function PaymentHeader({ title = 'Pagamento', onBack, iconColor }: PaymentHeaderProps) {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const icon = iconColor ?? colors.primary;
+
   return (
     <View style={styles.header}>
       <TouchableOpacity
@@ -19,7 +25,7 @@ export function PaymentHeader({ title = 'Pagamento', onBack, iconColor = colors.
         accessibilityRole="button"
         accessibilityLabel="Voltar"
       >
-        <Ionicons name="arrow-back" size={24} color={iconColor} />
+        <Ionicons name="arrow-back" size={24} color={icon} />
       </TouchableOpacity>
       <Text style={styles.headerTitle}>{title}</Text>
       <View style={styles.placeholder} />
@@ -27,23 +33,25 @@ export function PaymentHeader({ title = 'Pagamento', onBack, iconColor = colors.
   );
 }
 
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-    ...shadows.card,
-  },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
-  placeholder: { width: 44 },
-});
+function makeStyles(colors: DesignColors) {
+  return StyleSheet.create({
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    backBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surface,
+      ...shadows.card,
+    },
+    headerTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
+    placeholder: { width: 44 },
+  });
+}

@@ -30,6 +30,8 @@ interface UseDailyCallOptions {
   roomUrl: string;
   /** Meeting token gerado pelo backend */
   token: string;
+  /** Se o usuário local é o médico. Médico permanece na sala quando paciente sai; só médico encerra. */
+  isDoctor?: boolean;
   /** Callback quando o participante remoto entra */
   onRemoteJoined?: () => void;
   /** Callback quando a chamada é encerrada */
@@ -41,6 +43,7 @@ interface UseDailyCallOptions {
 export function useDailyCall({
   roomUrl,
   token,
+  isDoctor = false,
   onRemoteJoined,
   onCallEnded,
   onError,
@@ -145,15 +148,26 @@ export function useDailyCall({
       });
 
       call.on('participant-left' as DailyEvent, (event: any) => {
-        if (event && !event.participant?.local) {
+        const participant = event?.participant;
+        // Participante remoto saiu (paciente para o médico, médico para o paciente)
+        const remoteLeft = participant && !participant.local;
+        // Usuário local foi ejetado (ex.: tempo esgotado)
+        const localEjected = participant?.local === true;
+
+        if (remoteLeft) {
           setRemoteParticipant(null);
-          onCallEnded?.('remote-left');
+          // Paciente saiu: médico permanece na sala. Só o médico encerra a consulta.
+          // Paciente pode voltar enquanto houver tempo. NUNCA chamar onCallEnded para médico aqui.
+          if (!isDoctor) {
+            onCallEnded?.('remote-left');
+          }
         }
-        if (event?.participant?.local) {
+        if (localEjected) {
           onCallEnded?.('ejected');
         }
       });
 
+      // left-meeting só dispara quando o usuário LOCAL sai. Paciente saindo NÃO dispara isso no médico.
       call.on('left-meeting' as DailyEvent, () => {
         setCallState('idle');
         stopQualityMonitor();
@@ -177,7 +191,7 @@ export function useDailyCall({
       setErrorMessage(msg);
       onError?.(msg);
     }
-  }, [roomUrl, token, updateParticipants, startQualityMonitor, stopQualityMonitor, onRemoteJoined, onCallEnded, onError]);
+  }, [roomUrl, token, isDoctor, updateParticipants, startQualityMonitor, stopQualityMonitor, onRemoteJoined, onCallEnded, onError]);
 
   // --- Leave ---
 

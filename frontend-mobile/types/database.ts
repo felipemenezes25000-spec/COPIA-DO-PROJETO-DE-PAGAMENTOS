@@ -124,6 +124,8 @@ export interface RequestResponseDto {
   consultationAnamnesis?: string | null;
   /** Sugestões da IA da consulta (JSON array de strings). */
   consultationAiSuggestions?: string | null;
+  /** Artigos científicos (provider, url, title, clinicalRelevance) que apoiam o CID sugerido. */
+  consultationEvidence?: string | null;
   /** Tipo de consulta: 'psicologo' | 'medico_clinico' */
   consultationType?: string | null;
   /** Minutos contratados na criação da consulta */

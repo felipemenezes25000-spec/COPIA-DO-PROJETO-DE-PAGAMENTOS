@@ -81,10 +81,13 @@ public class SemanticScholarEvidenceService : IEvidenceSearchService
                 var source = !string.IsNullOrEmpty(pmid)
                     ? $"Semantic Scholar PMID:{pmid}"
                     : !string.IsNullOrEmpty(paperId)
-                        ? $"Semantic Scholar"
+                        ? "Semantic Scholar"
                         : "Semantic Scholar";
+                var url = !string.IsNullOrEmpty(paperId)
+                    ? $"https://www.semanticscholar.org/paper/{paperId}"
+                    : null;
 
-                items.Add(new EvidenceItemDto(title, abstractText, source, null, Provider: EvidenceProvider.SemanticScholar));
+                items.Add(new EvidenceItemDto(title, abstractText, source, null, Provider: EvidenceProvider.SemanticScholar, Url: url));
             }
         }
         catch (Exception) { /* ignore */ }

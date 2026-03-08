@@ -94,6 +94,9 @@ public interface IRequestService
     /// <summary>Médico encerra a consulta, persiste notas, deleta sala Daily e notifica paciente.</summary>
     Task<RequestResponseDto> FinishConsultationAsync(Guid id, Guid doctorId, FinishConsultationDto? dto, CancellationToken cancellationToken = default);
 
+    /// <summary>Retorna signed URL para download do .txt da transcrição (bucket privado). Médico ou paciente da consulta.</summary>
+    Task<string?> GetTranscriptDownloadUrlAsync(Guid id, Guid userId, int expiresInSeconds = 3600, CancellationToken cancellationToken = default);
+
     Task<RequestResponseDto> SignAsync(
         Guid id,
         SignRequestDto dto,

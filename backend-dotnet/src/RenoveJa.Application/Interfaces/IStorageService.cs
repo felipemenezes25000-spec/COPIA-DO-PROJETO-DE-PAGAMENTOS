@@ -76,4 +76,16 @@ public interface IStorageService
     /// Retorna null se a URL não for do nosso storage ou o download falhar.
     /// </summary>
     Task<byte[]?> DownloadFromStorageUrlAsync(string publicUrl, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Cria uma signed URL para download temporário (buckets privados).
+    /// Retorna null se falhar.
+    /// </summary>
+    Task<string?> CreateSignedUrlAsync(string path, int expiresInSeconds, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Extrai o path do objeto a partir de uma URL do storage (pública ou signed).
+    /// Retorna null se não for do nosso storage.
+    /// </summary>
+    string? ExtractPathFromStorageUrl(string url);
 }

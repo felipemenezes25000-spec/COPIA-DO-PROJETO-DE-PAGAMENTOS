@@ -216,25 +216,7 @@ builder.Services.Configure<MercadoPagoConfig>(
 builder.Services.Configure<OpenAIConfig>(
     builder.Configuration.GetSection(OpenAIConfig.SectionName));
 
-// Configure Deepgram (Speech-to-Text da consulta)
-builder.Services.Configure<DeepgramConfig>(options =>
-{
-    var deepgramSection = builder.Configuration.GetSection("Deepgram");
-    options.ApiKey = (_envVars.GetValueOrDefault("DEEPGRAM_API_KEY")
-        ?? Environment.GetEnvironmentVariable("DEEPGRAM_API_KEY")
-        ?? _envVars.GetValueOrDefault("Deepgram__ApiKey")
-        ?? Environment.GetEnvironmentVariable("Deepgram__ApiKey")
-        ?? deepgramSection["ApiKey"]
-        ?? string.Empty).Trim();
-    options.Model = (_envVars.GetValueOrDefault("DEEPGRAM_MODEL")
-        ?? Environment.GetEnvironmentVariable("DEEPGRAM_MODEL")
-        ?? deepgramSection["Model"]
-        ?? "nova-2").Trim();
-    options.Language = (_envVars.GetValueOrDefault("DEEPGRAM_LANGUAGE")
-        ?? Environment.GetEnvironmentVariable("DEEPGRAM_LANGUAGE")
-        ?? deepgramSection["Language"]
-        ?? "pt-BR").Trim();
-});
+// Transcrição usa OpenAI Whisper (mesma chave OpenAI:ApiKey)
 
 // Configure SMTP para e-mails (recuperação de senha)
 builder.Services.Configure<SmtpConfig>(
@@ -362,7 +344,7 @@ builder.Services.AddScoped<IClinicalSummaryService, RenoveJa.Infrastructure.AiRe
 builder.Services.AddScoped<ITriageEnrichmentService, RenoveJa.Infrastructure.AiReading.OpenAiTriageEnrichmentService>();
 builder.Services.AddScoped<IPrescriptionVerifyRepository, RenoveJa.Infrastructure.Repositories.PrescriptionVerifyRepository>();
 builder.Services.AddSingleton<IConsultationSessionStore, RenoveJa.Infrastructure.ConsultationAnamnesis.ConsultationSessionStore>();
-builder.Services.AddScoped<ITranscriptionService, RenoveJa.Infrastructure.Transcription.DeepgramTranscriptionService>();
+builder.Services.AddScoped<ITranscriptionService, RenoveJa.Infrastructure.Transcription.WhisperTranscriptionService>();
 builder.Services.AddScoped<IPubMedService, RenoveJa.Infrastructure.PubMed.PubMedService>();
 builder.Services.AddScoped<RenoveJa.Infrastructure.Evidence.EuropePmcEvidenceService>();
 builder.Services.AddScoped<RenoveJa.Infrastructure.Evidence.SemanticScholarEvidenceService>();

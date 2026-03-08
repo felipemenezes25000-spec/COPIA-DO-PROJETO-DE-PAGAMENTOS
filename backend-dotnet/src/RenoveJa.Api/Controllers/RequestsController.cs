@@ -617,6 +617,23 @@ public class RequestsController(
     }
 
     /// <summary>
+    /// Retorna signed URL para download do .txt da transcrição (bucket privado).
+    /// Médico ou paciente da consulta. expiresIn: segundos (padrão 3600).
+    /// </summary>
+    [HttpGet("{id}/transcript-download-url")]
+    public async Task<IActionResult> GetTranscriptDownloadUrl(
+        Guid id,
+        [FromQuery] int expiresIn = 3600,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = GetUserId();
+        var url = await requestService.GetTranscriptDownloadUrlAsync(id, userId, Math.Clamp(expiresIn, 60, 86400), cancellationToken);
+        if (url == null)
+            return NotFound(new { error = "Transcrição não encontrada ou sem permissão." });
+        return Ok(new { signedUrl = url, expiresIn });
+    }
+
+    /// <summary>
     /// Atualiza o status de uma solicitação (médico).
     /// </summary>
     [HttpPut("{id}/status")]

@@ -91,7 +91,8 @@ Responda em um ÚNICO JSON válido, sem markdown, com exatamente estes campos:
   },
   "cid_sugerido": "string — Hipótese (CID-10) mais provável (ex: 'Hipótese (CID): J06.9 - Infecção aguda das vias aéreas superiores') ou vazio se não há dados suficientes",
   "alertas_vermelhos": ["array de strings — sinais de alarme que requerem atenção imediata, ex: 'Dor torácica com irradiação para o braço esquerdo — avaliar SCA'"],
-  "medicamentos_sugeridos": ["array de strings — opções terapêuticas com dosagem indicativa, ex: 'Dipirona 500mg VO 6/6h por 5 dias (analgesia/antitérmica)'"],
+  "medicamentos_sugeridos": ["array de strings — SEMPRE inclua 1-4 opções terapêuticas com dosagem indicativa quando houver queixa clara, ex: 'Dipirona 500mg VO 6/6h por 5 dias (analgesia/antitérmica)', 'Amoxicilina 500mg VO 8/8h por 7 dias (se infecção bacteriana)'"],
+  "exames_sugeridos": ["array de strings — exames complementares relevantes para o diagnóstico/conduta, ex: 'Hemograma completo', 'Glicemia de jejum', 'TSH', 'Raio-X de tórax', 'PCR', 'Creatinina'"],
   "suggestions": ["array de até 4 strings — use frases curtas em formato clínico, incluindo pelo menos uma hipótese diagnóstica e uma conduta geral, ex: 'Hipótese (CID): J06.9 - Infecção aguda de vias aéreas superiores' e 'Conduta: Visando continuidade do tratamento, prescrevo analgesia sintomática e oriento retorno se piora dos sintomas'"]
 }
 
@@ -106,7 +107,8 @@ REGRAS:
 - Se um campo não tiver dados, use string vazia ou array vazio []
 - Não invente informações que não estejam no transcript
 - Alertas vermelhos: apenas se houver base clara no transcript (não suponha)
-- Medicamentos sugeridos: inclua apenas se a queixa principal estiver clara
+- Medicamentos sugeridos: OBRIGATÓRIO incluir 1-4 opções quando houver queixa principal e hipótese diagnóstica — use nomenclatura padrão (nome + dosagem + via + posologia)
+- Exames sugeridos: OBRIGATÓRIO incluir 1-5 exames complementares relevantes para a hipótese (laboratoriais, imagem, etc.) — use nomes técnicos (Hemograma, TSH, PCR, Raio-X de tórax)
 - Nas suggestions, dê preferência a frases que possam ser facilmente coladas em um prontuário clínico profissional
 - Seja objetivo e use terminologia médica adequada
 - Responda APENAS o JSON, sem texto antes ou depois
@@ -208,6 +210,8 @@ REGRAS:
                 enrichedObj["alertas_vermelhos"] = avEl.GetRawText();
             if (root.TryGetProperty("medicamentos_sugeridos", out var msEl) && msEl.ValueKind == JsonValueKind.Array)
                 enrichedObj["medicamentos_sugeridos"] = msEl.GetRawText();
+            if (root.TryGetProperty("exames_sugeridos", out var exEl) && exEl.ValueKind == JsonValueKind.Array)
+                enrichedObj["exames_sugeridos"] = exEl.GetRawText();
 
             var enrichedJson = "{" + string.Join(",", enrichedObj.Select(kv => $"\"{kv.Key}\":{kv.Value}")) + "}";
 
@@ -459,7 +463,8 @@ Apenas o JSON, sem markdown.
                     TranslatedAbstract: excerpts.Count > 0 ? string.Join("\n\n", excerpts) : null,
                     RelevantExcerpts: excerpts.Count > 0 ? excerpts : null,
                     ClinicalRelevance: !string.IsNullOrEmpty(relevance) ? relevance : null,
-                    Provider: item.Provider));
+                    Provider: item.Provider,
+                    Url: item.Url));
                 idx++;
             }
             return result;

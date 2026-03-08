@@ -44,18 +44,20 @@ export function useDailyTranscription({
   const startedRef = useRef(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const consultationActiveRef = useRef(consultationActive);
+  const localSessionIdRef = useRef(localSessionId);
   const onSendErrorRef = useRef(onSendError);
   const onSendSuccessRef = useRef(onSendSuccess);
   consultationActiveRef.current = consultationActive;
+  localSessionIdRef.current = localSessionId;
   onSendErrorRef.current = onSendError;
   onSendSuccessRef.current = onSendSuccess;
 
   const sendToBackend = useCallback(
-    async (text: string, speaker: 'medico' | 'paciente') => {
+    async (text: string, speaker: 'medico' | 'paciente', startTimeSeconds?: number) => {
       if (!requestId || !text?.trim()) return;
       if (!consultationActiveRef.current) return; // Backend rejeita se status não for InConsultation/Paid
       try {
-        await transcribeTextChunk(requestId, text.trim(), speaker);
+        await transcribeTextChunk(requestId, text.trim(), speaker, startTimeSeconds);
         onSendSuccessRef.current?.();
       } catch (e: unknown) {
         const err = e as { message?: string };
@@ -77,14 +79,44 @@ export function useDailyTranscription({
       const text = event?.text ?? event?.message?.text ?? '';
       if (!text?.trim()) return;
 
-      const participantId = event?.participantId ?? event?.participant_id ?? '';
-      const isLocal = participantId === localSessionId;
+      // Deepgram/Daily: start (segundos desde início da transcrição), start_time, ou message.start
+      const startTimeSeconds =
+        event?.start ??
+        event?.start_time ??
+        event?.message?.start ??
+        event?.message?.start_time;
+
+      // Daily.co pode usar participantId, participant_id, session_id ou participant.session_id
+      const eventParticipantId =
+        event?.participantId ??
+        event?.participant_id ??
+        event?.session_id ??
+        event?.participant?.session_id ??
+        '';
+
+      // Resolve local session_id: prioridade call.participants() (sempre atual) > prop
+      const participants = call.participants?.();
+      const resolvedLocalId =
+        participants?.local?.session_id ?? localSessionIdRef.current ?? null;
+
+      if (!resolvedLocalId) {
+        if (__DEV__) console.warn('[DailyTranscription] localSessionId ainda não disponível — ignorando chunk');
+        return;
+      }
+
+      // Sem participantId no evento, não dá para saber quem falou — não enviar (evita misturar)
+      if (!eventParticipantId) {
+        if (__DEV__) console.warn('[DailyTranscription] Evento sem participantId — ignorando chunk');
+        return;
+      }
+
+      const isLocal = eventParticipantId === resolvedLocalId;
 
       const speaker: 'medico' | 'paciente' = isDoctor
         ? (isLocal ? 'medico' : 'paciente')
         : (isLocal ? 'paciente' : 'medico');
 
-      if (isDoctor) sendToBackend(text, speaker);
+      if (isDoctor) sendToBackend(text, speaker, typeof startTimeSeconds === 'number' ? startTimeSeconds : undefined);
     };
 
     const startTranscription = async () => {

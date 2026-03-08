@@ -82,8 +82,13 @@ public class EuropePmcEvidenceService : IEvidenceSearchService
                     : !string.IsNullOrEmpty(pmcid)
                         ? $"Europe PMC {pmcid}"
                         : "Europe PMC";
+                var url = !string.IsNullOrEmpty(pmid)
+                    ? $"https://europepmc.org/article/MED/{pmid}"
+                    : !string.IsNullOrEmpty(pmcid)
+                        ? $"https://europepmc.org/article/{pmcid}"
+                        : null;
 
-                items.Add(new EvidenceItemDto(title, abstractText, source, null, Provider: EvidenceProvider.EuropePmc));
+                items.Add(new EvidenceItemDto(title, abstractText, source, null, Provider: EvidenceProvider.EuropePmc, Url: url));
             }
         }
         catch (Exception) { /* ignore */ }

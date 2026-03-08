@@ -87,6 +87,8 @@ public record RequestResponseDto(
     string? ConsultationTranscript = null,
     string? ConsultationAnamnesis = null,
     string? ConsultationAiSuggestions = null,
+    /// <summary>JSON com artigos científicos (provider, url, title, clinicalRelevance) que apoiam o CID sugerido.</summary>
+    string? ConsultationEvidence = null,
     string? ConsultationType = null,
     int? ContractedMinutes = null,
     decimal? PricePerMinute = null,

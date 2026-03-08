@@ -9,11 +9,11 @@ public interface IConsultationSessionStore
     /// <summary>Garante que existe uma sessão para o requestId (paciente). Chamar ao iniciar a captura de áudio.</summary>
     void EnsureSession(Guid requestId, Guid patientId);
 
-    /// <summary>Acumula texto transcrito na sessão.</summary>
-    void AppendTranscript(Guid requestId, string text);
+    /// <summary>Acumula texto transcrito na sessão. startTimeSeconds opcional (Deepgram/Daily).</summary>
+    void AppendTranscript(Guid requestId, string text, double? startTimeSeconds = null);
 
-    /// <summary>Atualiza anamnese e sugestões na sessão.</summary>
-    void UpdateAnamnesis(Guid requestId, string? anamnesisJson, string? suggestionsJson);
+    /// <summary>Atualiza anamnese, sugestões e evidências (artigos científicos) na sessão.</summary>
+    void UpdateAnamnesis(Guid requestId, string? anamnesisJson, string? suggestionsJson, string? evidenceJson = null);
 
     /// <summary>Obtém o transcript acumulado (somente leitura).</summary>
     string GetTranscript(Guid requestId);
@@ -25,10 +25,17 @@ public interface IConsultationSessionStore
     ConsultationSessionData? GetAndRemove(Guid requestId);
 }
 
+/// <summary>Segmento de transcrição com timestamp (para .txt formatado).</summary>
+/// <param name="StartTimeSeconds">Segundos desde início da transcrição (Deepgram/Daily), quando disponível.</param>
+public record TranscriptSegment(string Speaker, string Text, DateTime ReceivedAtUtc, double? StartTimeSeconds = null);
+
 /// <summary>Dados da sessão ao encerrar a consulta.</summary>
+/// <param name="EvidenceJson">JSON com artigos científicos (biblioteca, url, título, relevância) que apoiam o CID sugerido.</param>
 public record ConsultationSessionData(
     Guid RequestId,
     Guid PatientId,
     string? TranscriptText,
+    IReadOnlyList<TranscriptSegment>? TranscriptSegments,
     string? AnamnesisJson,
-    string? AiSuggestionsJson);
+    string? AiSuggestionsJson,
+    string? EvidenceJson = null);

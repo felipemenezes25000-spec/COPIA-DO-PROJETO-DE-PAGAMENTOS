@@ -292,7 +292,7 @@ class ApiClient {
       try {
         const err = await response.json();
         msg = err.message || err.error || msg;
-      } catch {}
+      } catch { }
       throw { message: msg, status: response.status };
     }
     return response.blob();

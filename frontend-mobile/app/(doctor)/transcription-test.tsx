@@ -18,7 +18,7 @@ export default function TranscriptionTestScreen() {
 
   useEffect(() => {
     if (isExpoGo) return;
-    import('./transcription-test-content')
+    import('../../components/doctor/TranscriptionTestContent')
       .then((m) => setContent(() => m.default))
       .catch((e) => setErr(e instanceof Error ? e : new Error(String(e))));
   }, []);

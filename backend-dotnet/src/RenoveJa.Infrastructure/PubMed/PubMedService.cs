@@ -116,8 +116,9 @@ public class PubMedService : IPubMedService
 
                 var pmid = article.Descendants().FirstOrDefault(e => e.Name.LocalName == "PMID")?.Value ?? "";
                 var source = string.IsNullOrEmpty(pmid) ? "PubMed" : $"PubMed PMID:{pmid}";
+                var url = string.IsNullOrEmpty(pmid) ? null : $"https://pubmed.ncbi.nlm.nih.gov/{pmid}/";
 
-                items.Add(new EvidenceItemDto(title, abstractStr, source, null, Provider: EvidenceProvider.PubMed));
+                items.Add(new EvidenceItemDto(title, abstractStr, source, null, Provider: EvidenceProvider.PubMed, Url: url));
             }
         }
         catch (Exception)

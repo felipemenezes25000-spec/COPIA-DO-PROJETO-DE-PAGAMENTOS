@@ -106,6 +106,36 @@ public class RequestService(
         return null;
     }
 
+    /// <summary>
+    /// Monta o conteúdo .txt da transcrição no formato:
+    /// Paciente minuto X segundo Y fala
+    /// Médico minuto X segundo Y fala
+    /// Usa consultation_started_at como baseline; se null, usa o primeiro segmento.
+    /// </summary>
+    private static string? BuildTranscriptTxtContent(ConsultationSessionData sessionData, DateTime? consultationStartedAt)
+    {
+        var segments = sessionData.TranscriptSegments;
+        if (segments == null || segments.Count == 0)
+            return sessionData.TranscriptText; // Fallback: texto bruto se não houver segmentos
+
+        var baseline = consultationStartedAt?.ToUniversalTime()
+            ?? segments[0].ReceivedAtUtc;
+
+        var sb = new StringBuilder();
+        foreach (var seg in segments)
+        {
+            double elapsedSeconds;
+            if (seg.StartTimeSeconds.HasValue && seg.StartTimeSeconds.Value >= 0)
+                elapsedSeconds = seg.StartTimeSeconds.Value;
+            else
+                elapsedSeconds = Math.Max(0, (seg.ReceivedAtUtc - baseline).TotalSeconds);
+            var minutes = (int)(elapsedSeconds / 60);
+            var seconds = (int)(elapsedSeconds % 60);
+            sb.AppendLine($"{seg.Speaker} minuto {minutes} segundo {seconds} {seg.Text}");
+        }
+        return sb.ToString().TrimEnd();
+    }
+
     /// <summary>Retorna a data/hora atual em horário de Brasília (America/Sao_Paulo), com fallback para UTC.</summary>
     private static DateTime GetBrazilNow()
     {
@@ -564,13 +594,13 @@ public class RequestService(
         var result = new List<RequestResponseDto>();
         foreach (var r in requests)
         {
-            string? ct = null, ca = null, cs = null;
+            string? ct = null, ca = null, cs = null, ce = null;
             // Transcrição/anamnese/resumo pós-consulta só para o médico atribuído (nunca para o paciente).
             if (r.RequestType == RequestType.Consultation && r.DoctorId == userId && anamnesisByRequest.TryGetValue(r.Id, out var a))
             {
-                ct = a.TranscriptText; ca = a.AnamnesisJson; cs = a.AiSuggestionsJson;
+                ct = a.TranscriptText; ca = a.AnamnesisJson; cs = a.AiSuggestionsJson; ce = a.EvidenceJson;
             }
-            result.Add(MapRequestToDto(r, ct, ca, cs));
+            result.Add(MapRequestToDto(r, ct, ca, cs, ce));
         }
         logger.LogInformation("[GetUserRequests] final count after filters: {Count}", result.Count);
         return result;
@@ -603,12 +633,12 @@ public class RequestService(
         var dtos = new List<RequestResponseDto>();
         foreach (var r in requests)
         {
-            string? ct = null, ca = null, cs = null;
+            string? ct = null, ca = null, cs = null, ce = null;
             if (r.RequestType == RequestType.Consultation && anamnesisByRequest.TryGetValue(r.Id, out var a))
             {
-                ct = a.TranscriptText; ca = a.AnamnesisJson; cs = a.AiSuggestionsJson;
+                ct = a.TranscriptText; ca = a.AnamnesisJson; cs = a.AiSuggestionsJson; ce = a.EvidenceJson;
             }
-            dtos.Add(MapRequestToDto(r, ct, ca, cs));
+            dtos.Add(MapRequestToDto(r, ct, ca, cs, ce));
         }
         return dtos;
     }
@@ -712,26 +742,27 @@ public class RequestService(
             throw new KeyNotFoundException("Request not found");
 
         // Transcrição, anamnese e resumo pós-consulta só aparecem para o médico atribuído (nunca para o paciente).
-        string? ct = null, ca = null, cs = null;
+        string? ct = null, ca = null, cs = null, ce = null;
         if (isAssignedDoctor)
         {
             var consultationData = await GetConsultationAnamnesisIfAnyAsync(request.Id, request.RequestType, cancellationToken);
             ct = consultationData.Transcript;
             ca = consultationData.AnamnesisJson;
             cs = consultationData.SuggestionsJson;
+            ce = consultationData.EvidenceJson;
         }
-        return MapRequestToDto(request, ct, ca, cs);
+        return MapRequestToDto(request, ct, ca, cs, ce);
     }
 
-    private async Task<(string? Transcript, string? AnamnesisJson, string? SuggestionsJson)> GetConsultationAnamnesisIfAnyAsync(
+    private async Task<(string? Transcript, string? AnamnesisJson, string? SuggestionsJson, string? EvidenceJson)> GetConsultationAnamnesisIfAnyAsync(
         Guid requestId,
         RequestType requestType,
         CancellationToken cancellationToken)
     {
-        if (requestType != RequestType.Consultation) return (null, null, null);
+        if (requestType != RequestType.Consultation) return (null, null, null, null);
         var a = await consultationAnamnesisRepository.GetByRequestIdAsync(requestId, cancellationToken);
-        if (a == null) return (null, null, null);
-        return (a.TranscriptText, a.AnamnesisJson, a.AiSuggestionsJson);
+        if (a == null) return (null, null, null, null);
+        return (a.TranscriptText, a.AnamnesisJson, a.AiSuggestionsJson, a.EvidenceJson);
     }
 
     /// <summary>
@@ -1139,13 +1170,14 @@ public class RequestService(
         if (sessionData != null)
         {
             string? transcriptFileUrl = null;
-            if (!string.IsNullOrWhiteSpace(sessionData.TranscriptText))
+            var contentToSave = BuildTranscriptTxtContent(sessionData, request.ConsultationStartedAt);
+            if (!string.IsNullOrWhiteSpace(contentToSave))
             {
                 try
                 {
                     var path = $"transcripts/{id}.txt";
-                    var bytes = Encoding.UTF8.GetBytes(sessionData.TranscriptText);
-                    var result = await storageService.UploadAsync(path, bytes, "text/plain; charset=utf-8", cancellationToken);
+                    var bytes = Encoding.UTF8.GetBytes(contentToSave);
+                    var result = await storageService.UploadAsync(path, bytes, "text/plain", cancellationToken);
                     if (result.Success && !string.IsNullOrEmpty(result.Url))
                     {
                         transcriptFileUrl = result.Url;
@@ -1161,6 +1193,11 @@ public class RequestService(
                     logger.LogWarning(ex, "[FinishConsultation] Exceção ao fazer upload da transcrição para Storage: RequestId={RequestId}", id);
                 }
             }
+            else
+            {
+                logger.LogInformation("[FinishConsultation] Transcrição vazia — não salvando .txt. RequestId={RequestId} hasTranscript={Has} hasSegments={Segments}",
+                    id, !string.IsNullOrWhiteSpace(sessionData.TranscriptText), sessionData.TranscriptSegments?.Count ?? 0);
+            }
 
             try
             {
@@ -1172,16 +1209,18 @@ public class RequestService(
                         ["transcript"] = existing.TranscriptText,
                         ["transcript_file_url"] = existing.TranscriptFileUrl,
                         ["anamnesis_json"] = existing.AnamnesisJson,
-                        ["ai_suggestions_json"] = existing.AiSuggestionsJson
+                        ["ai_suggestions_json"] = existing.AiSuggestionsJson,
+                        ["evidence_json"] = existing.EvidenceJson
                     };
-                    existing.Update(sessionData.TranscriptText, transcriptFileUrl, sessionData.AnamnesisJson, sessionData.AiSuggestionsJson);
+                    existing.Update(sessionData.TranscriptText, transcriptFileUrl, sessionData.AnamnesisJson, sessionData.AiSuggestionsJson, sessionData.EvidenceJson);
                     await consultationAnamnesisRepository.UpdateAsync(existing, cancellationToken);
                     var newValues = new Dictionary<string, object?>
                     {
                         ["transcript"] = existing.TranscriptText,
                         ["transcript_file_url"] = existing.TranscriptFileUrl,
                         ["anamnesis_json"] = existing.AnamnesisJson,
-                        ["ai_suggestions_json"] = existing.AiSuggestionsJson
+                        ["ai_suggestions_json"] = existing.AiSuggestionsJson,
+                        ["evidence_json"] = existing.EvidenceJson
                     };
                     await auditService.LogModificationAsync(doctorId, "Update", "ConsultationAnamnesis", existing.Id, oldValues, newValues, cancellationToken: cancellationToken);
                 }
@@ -1193,7 +1232,8 @@ public class RequestService(
                         sessionData.TranscriptText,
                         transcriptFileUrl,
                         sessionData.AnamnesisJson,
-                        sessionData.AiSuggestionsJson);
+                        sessionData.AiSuggestionsJson,
+                        sessionData.EvidenceJson);
                     await consultationAnamnesisRepository.CreateAsync(entity, cancellationToken);
                     var newValues = new Dictionary<string, object?>
                     {
@@ -1201,7 +1241,8 @@ public class RequestService(
                         ["transcript"] = entity.TranscriptText,
                         ["transcript_file_url"] = entity.TranscriptFileUrl,
                         ["anamnesis_json"] = entity.AnamnesisJson,
-                        ["ai_suggestions_json"] = entity.AiSuggestionsJson
+                        ["ai_suggestions_json"] = entity.AiSuggestionsJson,
+                        ["evidence_json"] = entity.EvidenceJson
                     };
                     await auditService.LogModificationAsync(doctorId, "Create", "ConsultationAnamnesis", entity.Id, oldValues: null, newValues: newValues, cancellationToken: cancellationToken);
                 }
@@ -1241,8 +1282,28 @@ public class RequestService(
             "Sua consulta foi encerrada. Obrigado!",
             cancellationToken,
             new Dictionary<string, object?> { ["requestId"] = request.Id.ToString() });
+        await pushDispatcher.SendAsync(PushNotificationRules.ConsultationFinished(request.PatientId, request.Id), cancellationToken);
 
         return MapRequestToDto(request);
+    }
+
+    /// <inheritdoc />
+    public async Task<string?> GetTranscriptDownloadUrlAsync(Guid id, Guid userId, int expiresInSeconds = 3600, CancellationToken cancellationToken = default)
+    {
+        var request = await requestRepository.GetByIdAsync(id, cancellationToken);
+        if (request == null) return null;
+        if (request.RequestType != RequestType.Consultation) return null;
+
+        var isDoctor = request.DoctorId == userId;
+        var isPatient = request.PatientId == userId;
+        if (!isDoctor && !isPatient) return null;
+
+        var anamnesis = await consultationAnamnesisRepository.GetByRequestIdAsync(id, cancellationToken);
+        if (anamnesis?.TranscriptFileUrl == null) return null;
+
+        var path = storageService.ExtractPathFromStorageUrl(anamnesis.TranscriptFileUrl)
+            ?? $"transcripts/{id}.txt";
+        return await storageService.CreateSignedUrlAsync(path, expiresInSeconds, cancellationToken);
     }
 
     /// <summary>
@@ -2571,7 +2632,8 @@ public class RequestService(
         MedicalRequest request,
         string? consultationTranscript = null,
         string? consultationAnamnesis = null,
-        string? consultationAiSuggestions = null)
+        string? consultationAiSuggestions = null,
+        string? consultationEvidence = null)
     {
         var signedUrl = request.SignedDocumentUrl;
         if (!string.IsNullOrWhiteSpace(_apiBaseUrl) && !string.IsNullOrWhiteSpace(signedUrl))
@@ -2620,6 +2682,7 @@ public class RequestService(
             consultationTranscript,
             consultationAnamnesis,
             consultationAiSuggestions,
+            consultationEvidence,
             request.ConsultationType,
             request.ContractedMinutes,
             request.PricePerMinute,

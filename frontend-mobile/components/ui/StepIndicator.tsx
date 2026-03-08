@@ -7,9 +7,11 @@ interface StepIndicatorProps {
   current: number;
   total: number;
   labels?: string[];
+  /** Oculta as linhas conectoras entre os passos (evita artefatos visuais em algumas telas). */
+  showConnectorLines?: boolean;
 }
 
-export function StepIndicator({ current, total, labels }: StepIndicatorProps) {
+export function StepIndicator({ current, total, labels, showConnectorLines = true }: StepIndicatorProps) {
   const { colors, typography } = useAppTheme();
   const steps = useMemo(() => Array.from({ length: total }, (_, i) => i + 1), [total]);
   const safeCurrent = Math.min(Math.max(current, 1), total);
@@ -48,7 +50,7 @@ export function StepIndicator({ current, total, labels }: StepIndicatorProps) {
                 {label}
               </Text>
             ) : null}
-            {idx < total - 1 && (
+            {showConnectorLines && idx < total - 1 && (
               <View style={[s.line, { backgroundColor: n < safeCurrent ? colors.primary : colors.borderLight }]} />
             )}
           </View>
@@ -65,8 +67,9 @@ const s = StyleSheet.create({
     marginTop: uiTokens.spacing.md,
     marginBottom: uiTokens.spacing.sm,
     paddingHorizontal: uiTokens.screenPaddingHorizontal,
+    overflow: 'hidden',
   },
-  stepCol: { flex: 1, alignItems: 'center' },
+  stepCol: { flex: 1, alignItems: 'center', overflow: 'hidden' },
   circle: {
     width: 26,
     height: 26,

@@ -10,19 +10,19 @@ Ao iniciar a consulta e o paciente falar, procure por:
 |-----|-------------|
 | `[Transcribe] Chunk recebido: RequestId=..., Size=..., Stream=...` | Chunk de áudio chegou ao backend |
 | `[Transcribe] Chunk de áudio ausente ou vazio` | Frontend enviou arquivo vazio |
-| `[Transcribe] Transcrição retornou vazio` | Deepgram não detectou fala ou retornou vazio |
+| `[Transcribe] Transcrição retornou vazio` | Whisper não detectou fala ou retornou vazio |
 | `[Transcribe] Transcrição OK: RequestId=..., TextLength=...` | Transcrição funcionou |
-| `[Deepgram] DEEPGRAM_API_KEY não configurada` | **Chave Deepgram ausente** — transcrição não funciona |
-| `[Deepgram] API erro: StatusCode=401` | Chave Deepgram inválida ou expirada |
-| `[Deepgram] API erro: StatusCode=4xx/5xx` | Erro na API Deepgram |
-| `[Deepgram] Nenhuma fala detectada no áudio` | Áudio sem voz ou muito curto |
+| `[Whisper] OpenAI:ApiKey não configurada` | **Chave OpenAI ausente** — transcrição não funciona |
+| `[Whisper] API erro: StatusCode=401` | Chave OpenAI inválida ou expirada |
+| `[Whisper] API erro: StatusCode=4xx/5xx` | Erro na API Whisper |
+| `[Whisper] Nenhuma fala detectada no áudio` | Áudio sem voz ou muito curto |
 | `BadRequest("Consultation must be in progress to transcribe")` | Status da consulta não é `in_consultation` |
 | `BadRequest("Audio file is required")` | Arquivo não chegou corretamente |
 
 ### 2. Variáveis de ambiente
 
-- **DEEPGRAM_API_KEY** ou **Deepgram__ApiKey** deve estar configurada no `.env` ou nas variáveis do Render
-- Sem a chave, o backend loga `[Deepgram] DEEPGRAM_API_KEY não configurada` e retorna transcrição vazia
+- **OpenAI__ApiKey** deve estar configurada no `.env` ou nas variáveis do Render (transcrição usa mesma chave que GPT-4o)
+- Sem a chave, o backend loga `[Whisper] OpenAI:ApiKey não configurada` e retorna transcrição vazia
 
 ### 3. Fluxo esperado
 
@@ -31,7 +31,7 @@ Ao iniciar a consulta e o paciente falar, procure por:
 3. **Paciente** recebe atualização (RequestUpdated via SignalR ou polling) → `canStartRecording` = true
 4. **Paciente** com `callState === 'joined'` → inicia gravação automaticamente
 5. A cada **10 segundos** o paciente envia um chunk de áudio para o backend
-6. Backend transcreve via Deepgram → envia TranscriptUpdate via SignalR para o médico
+6. Backend transcreve via Whisper (OpenAI) → envia TranscriptUpdate via SignalR para o médico
 
 ---
 
@@ -51,8 +51,8 @@ Ao iniciar a consulta e o paciente falar, procure por:
 
 ### C) Backend recebe mas não transcreve
 
-- **DEEPGRAM_API_KEY ausente** — verifique `.env` e variáveis do Render
-- **Formato de áudio** — m4a (mobile) e webm (web) são suportados; Deepgram pode falhar com alguns codecs
+- **OpenAI__ApiKey ausente** — verifique `.env` e variáveis do Render (mesma chave que GPT-4o)
+- **Formato de áudio** — m4a (mobile) e webm (web) são suportados; Whisper pode falhar com alguns codecs
 
 ### D) Transcrição OK mas médico não vê
 

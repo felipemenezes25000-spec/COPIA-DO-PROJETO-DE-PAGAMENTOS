@@ -67,6 +67,7 @@ public class ConsultationAnamnesisRepository(SupabaseClient supabase) : IConsult
             model.TranscriptFileUrl,
             model.AnamnesisJson,
             model.AiSuggestionsJson,
+            model.EvidenceJson,
             model.CreatedAt);
     }
 
@@ -81,6 +82,7 @@ public class ConsultationAnamnesisRepository(SupabaseClient supabase) : IConsult
             TranscriptFileUrl = entity.TranscriptFileUrl,
             AnamnesisJson = entity.AnamnesisJson,
             AiSuggestionsJson = entity.AiSuggestionsJson,
+            EvidenceJson = entity.EvidenceJson,
             CreatedAt = entity.CreatedAt
         };
     }

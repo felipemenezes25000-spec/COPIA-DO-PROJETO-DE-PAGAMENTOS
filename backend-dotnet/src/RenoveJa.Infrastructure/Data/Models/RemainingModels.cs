@@ -42,6 +42,8 @@ public class ConsultationAnamnesisModel
     public string? AnamnesisJson { get; set; }
     [System.Text.Json.Serialization.JsonPropertyName("ai_suggestions_json")]
     public string? AiSuggestionsJson { get; set; }
+    [System.Text.Json.Serialization.JsonPropertyName("evidence_json")]
+    public string? EvidenceJson { get; set; }
     [System.Text.Json.Serialization.JsonPropertyName("created_at")]
     public DateTime CreatedAt { get; set; }
 }

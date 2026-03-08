@@ -1,7 +1,8 @@
 namespace RenoveJa.Application.DTOs.Consultation;
 
 /// <summary>Payload para envio de texto já transcrito (Daily.co nativo).</summary>
-public record TranscribeTextRequestDto(Guid RequestId, string Text, string? Speaker);
+/// <param name="StartTimeSeconds">Segundos desde o início da transcrição (Deepgram/Daily), opcional.</param>
+public record TranscribeTextRequestDto(Guid RequestId, string Text, string? Speaker, double? StartTimeSeconds = null);
 
 /// <summary>Payload enviado via SignalR para atualização da transcrição no painel do médico.</summary>
 public record TranscriptUpdateDto(string FullText);
@@ -24,6 +25,7 @@ public static class EvidenceProvider
 }
 
 /// <summary>Item de evidência: artigo científico com trechos relevantes e relevância clínica para apoio ao diagnóstico.</summary>
+/// <param name="Url">Link direto para o artigo na biblioteca de origem (PubMed, Europe PMC, Semantic Scholar).</param>
 public record EvidenceItemDto(
     string Title,
     string Abstract,
@@ -31,7 +33,8 @@ public record EvidenceItemDto(
     string? TranslatedAbstract,
     IReadOnlyList<string>? RelevantExcerpts = null,
     string? ClinicalRelevance = null,
-    string? Provider = null);
+    string? Provider = null,
+    string? Url = null);
 
 /// <summary>Resultado do serviço de anamnese: JSON estruturado + sugestões + evidências (apoio à decisão).</summary>
 public record ConsultationAnamnesisResult(string AnamnesisJson, IReadOnlyList<string> Suggestions, IReadOnlyList<EvidenceItemDto> Evidence);

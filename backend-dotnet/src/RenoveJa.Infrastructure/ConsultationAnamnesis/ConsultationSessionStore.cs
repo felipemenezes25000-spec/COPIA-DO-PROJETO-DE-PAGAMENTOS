@@ -8,6 +8,7 @@ namespace RenoveJa.Infrastructure.ConsultationAnamnesis;
 /// <summary>
 /// Store em memória (IMemoryCache) do estado da sessão de consulta por requestId.
 /// Thread-safe por requestId via lock no objeto de estado.
+/// Armazena segmentos com timestamp para gerar .txt no formato "Paciente minuto X segundo Y fala".
 /// </summary>
 public class ConsultationSessionStore : IConsultationSessionStore
 {
@@ -37,7 +38,7 @@ public class ConsultationSessionStore : IConsultationSessionStore
             _logger.LogInformation("[ConsultationSession] Sessão criada RequestId={RequestId} PatientId={PatientId}", requestId, patientId);
     }
 
-    public void AppendTranscript(Guid requestId, string text)
+    public void AppendTranscript(Guid requestId, string text, double? startTimeSeconds = null)
     {
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -50,14 +51,37 @@ public class ConsultationSessionStore : IConsultationSessionStore
             _logger.LogWarning("[ConsultationSession] TRANSCRICAO_PERDIDA: Sessão não encontrada ao append. RequestId={RequestId} textLen={Len}", requestId, text.Length);
             return;
         }
+        var trimmed = text.Trim();
+        var receivedAt = DateTime.UtcNow;
+        string speaker;
+        string segmentText;
+        if (trimmed.StartsWith("[Médico]", StringComparison.OrdinalIgnoreCase))
+        {
+            speaker = "Médico";
+            segmentText = trimmed.Length > 8 ? trimmed[8..].Trim() : string.Empty;
+        }
+        else if (trimmed.StartsWith("[Paciente]", StringComparison.OrdinalIgnoreCase))
+        {
+            speaker = "Paciente";
+            segmentText = trimmed.Length > 10 ? trimmed[10..].Trim() : string.Empty;
+        }
+        else
+        {
+            speaker = "Transcrição";
+            segmentText = trimmed;
+        }
         lock (state.Lock)
         {
-            state.TranscriptBuilder.Append(' ').Append(text.Trim());
-            _logger.LogDebug("[ConsultationSession] Transcript append RequestId={RequestId} totalLen={Len}", requestId, state.TranscriptBuilder.Length);
+            state.TranscriptBuilder.Append(' ').Append(trimmed);
+            if (!string.IsNullOrWhiteSpace(segmentText))
+            {
+                state.TranscriptSegments.Add(new TranscriptSegment(speaker, segmentText, receivedAt, startTimeSeconds));
+            }
+            _logger.LogDebug("[ConsultationSession] Transcript append RequestId={RequestId} totalLen={Len} segments={Count} startTime={StartTime}", requestId, state.TranscriptBuilder.Length, state.TranscriptSegments.Count, startTimeSeconds);
         }
     }
 
-    public void UpdateAnamnesis(Guid requestId, string? anamnesisJson, string? suggestionsJson)
+    public void UpdateAnamnesis(Guid requestId, string? anamnesisJson, string? suggestionsJson, string? evidenceJson = null)
     {
         var key = KeyPrefix + requestId;
         if (!_cache.TryGetValue(key, out SessionState? state) || state == null) return;
@@ -65,6 +89,7 @@ public class ConsultationSessionStore : IConsultationSessionStore
         {
             if (anamnesisJson != null) state.AnamnesisJson = anamnesisJson;
             if (suggestionsJson != null) state.AiSuggestionsJson = suggestionsJson;
+            if (evidenceJson != null) state.EvidenceJson = evidenceJson;
         }
     }
 
@@ -93,16 +118,20 @@ public class ConsultationSessionStore : IConsultationSessionStore
         var key = KeyPrefix + requestId;
         if (!_cache.TryGetValue(key, out SessionState? state) || state == null) return null;
         string transcript;
+        IReadOnlyList<TranscriptSegment> segments;
         string? anamnesisJson;
         string? suggestionsJson;
+        string? evidenceJson;
         lock (state.Lock)
         {
             transcript = state.TranscriptBuilder.ToString().Trim();
+            segments = state.TranscriptSegments.ToList();
             anamnesisJson = state.AnamnesisJson;
             suggestionsJson = state.AiSuggestionsJson;
+            evidenceJson = state.EvidenceJson;
         }
         _cache.Remove(key);
-        return new ConsultationSessionData(requestId, state.PatientId, transcript, anamnesisJson, suggestionsJson);
+        return new ConsultationSessionData(requestId, state.PatientId, transcript, segments, anamnesisJson, suggestionsJson, evidenceJson);
     }
 
     private sealed class SessionState
@@ -110,8 +139,10 @@ public class ConsultationSessionStore : IConsultationSessionStore
         public readonly object Lock = new();
         public readonly Guid PatientId;
         public readonly StringBuilder TranscriptBuilder = new();
+        public readonly List<TranscriptSegment> TranscriptSegments = new();
         public string? AnamnesisJson;
         public string? AiSuggestionsJson;
+        public string? EvidenceJson;
 
         public SessionState(Guid patientId)
         {

@@ -95,29 +95,29 @@ type TranscriptEntry = {
 function parseTranscriptEntries(rawTranscript: string): TranscriptEntry[] {
   if (!rawTranscript.trim()) return [];
 
-  return rawTranscript
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      if (line.startsWith('[Médico]')) {
+  // Backend envia "[Médico] texto [Paciente] texto [Médico] texto..." concatenado com espaços, sem quebras de linha.
+  // Split por lookahead para separar cada bloco por speaker (cada bloco começa com [Médico] ou [Paciente]).
+  const segments = rawTranscript.split(/(?=\[Médico\]|\[Paciente\])/);
+
+  return segments
+    .map((seg) => {
+      const t = seg.trim();
+      if (!t) return null;
+      if (t.startsWith('[Médico]')) {
         return {
           speaker: 'medico' as const,
-          text: line.replace('[Médico]', '').trim(),
+          text: t.replace(/^\[Médico\]\s*/, '').trim(),
         };
       }
-      if (line.startsWith('[Paciente]')) {
+      if (t.startsWith('[Paciente]')) {
         return {
           speaker: 'paciente' as const,
-          text: line.replace('[Paciente]', '').trim(),
+          text: t.replace(/^\[Paciente\]\s*/, '').trim(),
         };
       }
-      return {
-        speaker: 'outro' as const,
-        text: line,
-      };
+      return { speaker: 'outro' as const, text: t };
     })
-    .filter((entry) => !!entry.text);
+    .filter((e): e is TranscriptEntry => e !== null && !!e.text);
 }
 
 // ──── Main Screen ────
@@ -196,6 +196,7 @@ export default function VideoCallScreenInner() {
   } = useDailyCall({
     roomUrl: roomUrl ?? '',
     token: meetingToken ?? '',
+    isDoctor,
     onRemoteJoined: () => {
       if (!connReportedRef.current && rid) {
         connReportedRef.current = true;
@@ -418,7 +419,7 @@ export default function VideoCallScreenInner() {
     }
   }, [callState, remoteParticipant, rid]);
 
-  // Patient: ao entrar na chamada, busca status imediatamente (evita esperar poll para iniciar transcrição)
+  // Patient: ao entrar na chamada ou ao ver o médico, busca status imediatamente (timer e transcrição)
   useEffect(() => {
     if (isDoctor || !rid || callState !== 'joined') return;
     fetchRequestById(rid)
@@ -427,9 +428,9 @@ export default function VideoCallScreenInner() {
         if (r.status) setRequestStatus(r.status);
       })
       .catch(() => {});
-  }, [isDoctor, rid, callState]);
+  }, [isDoctor, rid, callState, remoteParticipant]);
 
-  // Patient: ao receber RequestUpdated (ex.: médico iniciou), atualiza status imediatamente
+  // Patient: ao receber RequestUpdated (ex.: médico iniciou, chamada conectada), atualiza status imediatamente
   const refetchRequestForPatient = useCallback(() => {
     if (isDoctor || !rid) return;
     fetchRequestById(rid)
@@ -441,7 +442,7 @@ export default function VideoCallScreenInner() {
   }, [isDoctor, rid]);
   useRequestUpdated(isDoctor ? undefined : rid, refetchRequestForPatient);
 
-  // Server-synced timer
+  // Server-synced timer (médico e paciente usam consultationStartedAt do backend)
   useEffect(() => {
     if (!consultationStartedAt) return;
     const update = () => {
@@ -453,17 +454,19 @@ export default function VideoCallScreenInner() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [consultationStartedAt]);
 
-  // Patient: poll consultationStartedAt e requestStatus
+  // Patient: poll consultationStartedAt e requestStatus — primeira busca imediata, depois a cada 1s
   useEffect(() => {
     if (isDoctor || !rid || consultationStartedAt) return;
-    const poll = setInterval(() => {
+    const fetchSync = () => {
       fetchRequestById(rid)
         .then(r => {
           if (r.consultationStartedAt) setConsultationStartedAt(r.consultationStartedAt);
           if (r.status) setRequestStatus(r.status);
         })
         .catch(() => {});
-    }, 2000);
+    };
+    fetchSync();
+    const poll = setInterval(fetchSync, 1000);
     return () => clearInterval(poll);
   }, [isDoctor, rid, consultationStartedAt]);
 
@@ -651,8 +654,22 @@ export default function VideoCallScreenInner() {
           <View style={S.waitCircle}>
             <Ionicons name="person-circle-outline" size={72} color={colors.textSecondary} />
           </View>
-          <Text style={S.waitTitle}>{callState === 'joining' ? 'Entrando na sala...' : 'Aguardando participante'}</Text>
-          <Text style={S.waitSub}>{isDoctor ? 'O paciente será notificado' : 'O médico entrará em breve'}</Text>
+          <Text style={S.waitTitle}>
+            {callState === 'joining'
+              ? 'Entrando na sala...'
+              : isDoctor && timerStarted
+                ? 'Paciente saiu da chamada'
+                : 'Aguardando participante'}
+          </Text>
+          <Text style={S.waitSub}>
+            {callState === 'joining'
+              ? (isDoctor ? 'O paciente será notificado' : 'O médico entrará em breve')
+              : isDoctor && timerStarted
+                ? 'Pode voltar enquanto houver tempo. Só o médico encerra a consulta.'
+                : isDoctor
+                  ? 'O paciente será notificado'
+                  : 'O médico entrará em breve'}
+          </Text>
         </View>
       )}
 

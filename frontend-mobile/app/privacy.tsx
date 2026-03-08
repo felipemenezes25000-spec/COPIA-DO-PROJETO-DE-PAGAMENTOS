@@ -39,7 +39,7 @@ export default function PrivacyScreen() {
           </Section>
 
           <Section title="3.2. Uso de IA e operadores">
-            Imagens de receita e exame são enviadas a provedor de IA (OpenAI) para análise e triagem — o médico sempre decide. O áudio da consulta é transcrito por provedor externo (Deepgram) e o texto pode ser processado por IA para anamnese. Não há gravação de áudio nem vídeo; apenas texto e dados estruturados são armazenados. Esses provedores são tratados como operadores com obrigações de confidencialidade e proteção de dados equivalentes às nossas.
+            Imagens de receita e exame são enviadas a provedor de IA (OpenAI) para análise e triagem — o médico sempre decide. O áudio da consulta é transcrito por provedor externo (OpenAI Whisper) e o texto pode ser processado por IA para anamnese. Não há gravação de áudio nem vídeo; apenas texto e dados estruturados são armazenados. Esses provedores são tratados como operadores com obrigações de confidencialidade e proteção de dados equivalentes às nossas.
           </Section>
 
           <Section title="3.1. Dados do assistente virtual e conduta médica">
