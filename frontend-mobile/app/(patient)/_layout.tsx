@@ -85,7 +85,7 @@ export default function PatientLayout() {
         options={{
           title: 'Início',
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name={focused ? 'home' : 'home-outline'} color={color} focused={focused} variant="patient" />
+            <TabBarIcon name={focused ? 'home' : 'home-outline'} color={color} focused={focused} activeColor={colors.primary} />
           ),
         }}
       />
@@ -94,7 +94,7 @@ export default function PatientLayout() {
         options={{
           title: 'Pedidos',
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name={focused ? 'document-text' : 'document-text-outline'} color={color} focused={focused} variant="patient" />
+            <TabBarIcon name={focused ? 'document-text' : 'document-text-outline'} color={color} focused={focused} activeColor={colors.primary} />
           ),
         }}
       />
@@ -103,7 +103,7 @@ export default function PatientLayout() {
         options={{
           title: 'Prontuário',
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name={focused ? 'folder-open' : 'folder-open-outline'} color={color} focused={focused} variant="patient" />
+            <TabBarIcon name={focused ? 'folder-open' : 'folder-open-outline'} color={color} focused={focused} activeColor={colors.primary} />
           ),
         }}
       />
@@ -117,7 +117,7 @@ export default function PatientLayout() {
                 name={focused ? 'notifications' : 'notifications-outline'}
                 color={color}
                 focused={focused}
-                variant="patient"
+                activeColor={colors.primary}
               />
             ),
           }}
@@ -127,7 +127,7 @@ export default function PatientLayout() {
         options={{
           title: 'Perfil',
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name={focused ? 'person' : 'person-outline'} color={color} focused={focused} variant="patient" />
+            <TabBarIcon name={focused ? 'person' : 'person-outline'} color={color} focused={focused} activeColor={colors.primary} />
           ),
         }}
       />

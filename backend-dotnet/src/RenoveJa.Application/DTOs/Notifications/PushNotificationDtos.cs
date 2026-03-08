@@ -23,6 +23,7 @@ public enum PushCategory
 
 /// <summary>
 /// Payload padrão para push conforme spec — sempre incluir para deep link + roteamento.
+/// TargetRole permite que o frontend filtre notificações por contexto (doctor/patient).
 /// </summary>
 public record PushNotificationPayload(
     string Type,
@@ -33,6 +34,8 @@ public record PushNotificationPayload(
     string? RequestId = null,
     string? RequestType = null,
     string? Status = null,
+    /// <summary>"doctor" ou "patient" — permite filtrar notificações no frontend por role ativo.</summary>
+    string? TargetRole = null,
     IReadOnlyDictionary<string, object?>? Extra = null
 );
 

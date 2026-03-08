@@ -22,7 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import Constants from 'expo-constants';
-import { typography, gradients, doctorDS } from '../../lib/themeDoctor';
+import { doctorDS } from '../../lib/themeDoctor';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../lib/designSystem';
 import { useAuth } from '../../contexts/AuthContext';
@@ -32,7 +32,6 @@ import { haptics } from '../../lib/haptics';
 import { FadeIn } from '../../components/ui/FadeIn';
 import { motionTokens } from '../../lib/ui/motion';
 
-// No-op na New Architecture — evita warning
 const isNewArch = typeof (global as unknown as { __turboModuleRegistry?: unknown }).__turboModuleRegistry !== 'undefined';
 if (Platform.OS === 'android' && !isNewArch && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -40,15 +39,115 @@ if (Platform.OS === 'android' && !isNewArch && UIManager.setLayoutAnimationEnabl
 
 const pad = doctorDS.screenPaddingHorizontal;
 
+// ── Configuração de menu com cor por categoria ─────────────────
+interface MenuItemDef {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  route?: string;
+  value?: string;
+  iconColor: string;
+  iconBg: string;
+}
+
+interface MenuSectionDef {
+  title: string;
+  items: MenuItemDef[];
+}
+
+function buildMenuSections(
+  colors: DesignColors,
+  doctor: { crm?: string; crmState?: string; specialty?: string } | null
+): MenuSectionDef[] {
+  return [
+    {
+      title: 'PROFISSIONAL',
+      items: [
+        {
+          icon: 'shield-checkmark',
+          label: 'Certificado Digital',
+          route: '/certificate/upload',
+          iconColor: colors.info,
+          iconBg: colors.infoLight,
+        },
+        {
+          icon: 'medical',
+          label: 'Especialidade',
+          value: doctor?.specialty ?? '—',
+          iconColor: colors.success,
+          iconBg: colors.successLight,
+        },
+      ],
+    },
+    {
+      title: 'CONTA',
+      items: [
+        {
+          icon: 'lock-closed-outline',
+          label: 'Alterar Senha',
+          route: '/change-password',
+          iconColor: colors.primary,
+          iconBg: colors.primarySoft,
+        },
+        {
+          icon: 'settings-outline',
+          label: 'Configurações',
+          route: '/settings',
+          iconColor: colors.textSecondary,
+          iconBg: colors.surfaceSecondary,
+        },
+      ],
+    },
+    {
+      title: 'SUPORTE',
+      items: [
+        {
+          icon: 'help-circle-outline',
+          label: 'Ajuda e FAQ',
+          route: '/help-faq',
+          iconColor: colors.warning,
+          iconBg: colors.warningLight,
+        },
+        {
+          icon: 'document-text-outline',
+          label: 'Termos de Uso',
+          route: '/terms',
+          iconColor: colors.textMuted,
+          iconBg: colors.surfaceSecondary,
+        },
+        {
+          icon: 'information-circle-outline',
+          label: 'Sobre',
+          route: '/about',
+          iconColor: colors.textMuted,
+          iconBg: colors.surfaceSecondary,
+        },
+        ...(__DEV__
+          ? [{
+              icon: 'mic' as const,
+              label: 'Testar transcrição IA',
+              route: '/(doctor)/transcription-test',
+              iconColor: colors.accent,
+              iconBg: colors.accentSoft,
+            }]
+          : []),
+      ],
+    },
+  ];
+}
+
 export default function DoctorProfile() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, doctorProfile: doctor, signOut, refreshUser } = useAuth();
-  const { colors } = useAppTheme({ role: 'doctor' });
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { colors, gradients, scheme } = useAppTheme({ role: 'doctor' });
+  const isDark = scheme === 'dark';
+  const styles = useMemo(() => makeStyles(colors, isDark), [colors, isDark]);
+
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [avatarPreviewUri, setAvatarPreviewUri] = useState<string | null>(null);
   const [avatarImageError, setAvatarImageError] = useState(false);
+
+  const menuSections = useMemo(() => buildMenuSections(colors, doctor ?? null), [colors, doctor]);
 
   const doLogout = () => {
     signOut()
@@ -66,9 +165,7 @@ export default function DoctorProfile() {
 
   const handleLogout = () => {
     if (Platform.OS === 'web') {
-      if (window.confirm('Deseja realmente sair?')) {
-        doLogout();
-      }
+      if (window.confirm('Deseja realmente sair?')) doLogout();
     } else {
       Alert.alert('Sair', 'Deseja realmente sair?', [
         { text: 'Cancelar', style: 'cancel' },
@@ -79,7 +176,7 @@ export default function DoctorProfile() {
 
   const firstName = user?.name?.split(' ')[0] || 'Médico';
   const initials = user?.name
-    ? user.name.split(' ').slice(0, 2).map(n => n[0]?.toUpperCase()).join('')
+    ? user.name.split(' ').slice(0, 2).map((n) => n[0]?.toUpperCase()).join('')
     : '?';
 
   const pickAvatarFromGallery = async () => {
@@ -102,7 +199,7 @@ export default function DoctorProfile() {
   const takeAvatarPhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permissão necessária', 'Precisamos de acesso à câmera para tirar sua foto.');
+      Alert.alert('Permissão necessária', 'Precisamos de acesso à câmera.');
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -141,144 +238,146 @@ export default function DoctorProfile() {
     }
   };
 
-  const menuSections = [
-    {
-      title: 'PROFISSIONAL',
-      items: [
-        { icon: 'shield-checkmark' as const, label: 'Certificado Digital', route: '/certificate/upload' },
-        { icon: 'medical' as const, label: 'Especialidade', route: undefined, value: doctor?.specialty ?? '\u2014' },
-      ],
-    },
-    {
-      title: 'CONTA',
-      items: [
-        { icon: 'lock-closed-outline' as const, label: 'Alterar Senha', route: '/change-password' },
-        { icon: 'settings-outline' as const, label: 'Configurações', route: '/settings' },
-      ],
-    },
-    {
-      title: 'SUPORTE',
-      items: [
-        { icon: 'help-circle-outline' as const, label: 'Ajuda e FAQ', route: '/help-faq' },
-        { icon: 'document-text-outline' as const, label: 'Termos de Uso', route: '/terms' },
-        { icon: 'information-circle-outline' as const, label: 'Sobre', route: '/about' },
-        ...(__DEV__ ? [{ icon: 'mic' as const, label: 'Testar transcrição IA', route: '/(doctor)/transcription-test' }] : []),
-      ],
-    },
-  ];
-
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={[styles.container]}
+      showsVerticalScrollIndicator={false}
+    >
       <StatusBar style="light" translucent backgroundColor="transparent" />
+
+      {/* ── HEADER GRADIENTE ── */}
       <LinearGradient
-        colors={[...gradients.doctorHeader]}
+        colors={gradients.doctorHeader as unknown as [string, string, ...string[]]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.header, { paddingTop: insets.top + 24 }]}
+        style={[styles.header, { paddingTop: insets.top + 28 }]}
       >
+        {/* Avatar */}
         <Pressable
-          style={({ pressed }) => [styles.avatarWrap, pressed && styles.avatarWrapPressed]}
-          onPress={() => {
-            haptics.selection();
-            void pickAvatar();
-          }}
+          style={({ pressed }) => [styles.avatarWrap, pressed && { opacity: 0.85 }]}
+          onPress={() => { haptics.selection(); void pickAvatar(); }}
           disabled={avatarLoading}
           accessibilityRole="button"
           accessibilityLabel="Alterar foto de perfil"
         >
-          <View style={styles.avatarCircle}>
-            {user?.avatarUrl && !avatarImageError ? (
-              <Image
-                source={{ uri: user.avatarUrl }}
-                style={styles.avatarImage}
-                resizeMode="cover"
-                onError={() => setAvatarImageError(true)}
-              />
-            ) : (
-              <Text style={styles.avatarText}>{initials}</Text>
-            )}
+          <View style={styles.avatarRing}>
+            <View style={styles.avatarCircle}>
+              {user?.avatarUrl && !avatarImageError ? (
+                <Image
+                  source={{ uri: user.avatarUrl }}
+                  style={styles.avatarImage}
+                  resizeMode="cover"
+                  onError={() => setAvatarImageError(true)}
+                />
+              ) : (
+                <Text style={[styles.avatarText, { color: colors.headerOverlayText }]}>{initials}</Text>
+              )}
+            </View>
           </View>
           {avatarLoading ? (
             <View style={styles.avatarOverlay}>
-              <ActivityIndicator size="small" color={colors.white} />
+              <ActivityIndicator size="small" color={colors.headerOverlayText} />
             </View>
           ) : (
-            <View style={styles.avatarBadge}>
-              <Ionicons name="camera" size={16} color={colors.white} />
+            <View style={[styles.cameraBtn, { backgroundColor: colors.primary, borderColor: colors.headerOverlayText }]}>
+              <Ionicons name="camera" size={14} color={colors.headerOverlayText} />
             </View>
           )}
         </Pressable>
-        <Text style={styles.headerName} numberOfLines={1} ellipsizeMode="tail">Dr(a). {firstName}</Text>
-        <Text style={styles.headerEmail} numberOfLines={1} ellipsizeMode="tail">{user?.email || ''}</Text>
+
+        {/* Nome + email */}
+        <Text style={[styles.headerName, { color: colors.headerOverlayText }]} numberOfLines={1}>
+          Dr(a). {firstName}
+        </Text>
+        <Text style={[styles.headerEmail, { color: colors.headerOverlayTextMuted }]} numberOfLines={1}>
+          {user?.email || ''}
+        </Text>
+
+        {/* Card de identidade profissional */}
         {doctor && (
-          <View style={styles.crmBadge}>
-            <Ionicons name="medical" size={12} color={colors.white} />
-            <Text style={styles.crmText}>CRM {doctor.crm}/{doctor.crmState} {'\u00B7'} {doctor.specialty}</Text>
+          <View style={[styles.identityCard, { backgroundColor: colors.headerOverlaySurface, borderColor: colors.headerOverlayBorder }]}>
+            <View style={styles.identityItem}>
+              <Ionicons name="card-outline" size={14} color={colors.headerOverlayTextMuted} />
+              <Text style={[styles.identityLabel, { color: colors.headerOverlayTextMuted }]}>CRM</Text>
+              <Text style={[styles.identityValue, { color: colors.headerOverlayText }]}>
+                {doctor.crm}/{doctor.crmState}
+              </Text>
+            </View>
+            <View style={[styles.identityDivider, { backgroundColor: colors.headerOverlayDivider }]} />
+            <View style={styles.identityItem}>
+              <Ionicons name="medical-outline" size={14} color={colors.headerOverlayTextMuted} />
+              <Text style={[styles.identityLabel, { color: colors.headerOverlayTextMuted }]}>Especialidade</Text>
+              <Text style={[styles.identityValue, { color: colors.headerOverlayText }]} numberOfLines={1}>
+                {doctor.specialty}
+              </Text>
+            </View>
           </View>
         )}
       </LinearGradient>
 
-      <FadeIn visible {...motionTokens.fade.doctorSection} delay={40} fill={false}>
-      {/* Menu Sections */}
-      {menuSections.map((section) => (
-        <View key={section.title} style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>{section.title}</Text>
-          <View style={styles.menuItemsColumn}>
-            {section.items.map((item) =>
-              item.route != null ? (
-                <Pressable
-                  key={item.label}
-                  style={({ pressed }) => [styles.menuItemCard, pressed && styles.menuItemPressed]}
-                  onPress={() => {
-                    haptics.selection();
-                    router.push(item.route as Parameters<typeof router.push>[0]);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel={item.label}
-                >
-                  <View style={styles.menuIconWrap}>
-                    <Ionicons name={item.icon} size={20} color={colors.primary} />
-                  </View>
-                  <Text style={styles.menuLabel}>{item.label}</Text>
-                  <View style={styles.menuChevronWrap}>
-                    <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-                  </View>
-                </Pressable>
-              ) : (
-                <View key={item.label} style={styles.menuItemCard}>
-                  <View style={styles.menuIconWrap}>
-                    <Ionicons name={item.icon} size={20} color={colors.primary} />
-                  </View>
-                  <Text style={styles.menuLabel}>{item.label}</Text>
-                  <Text style={styles.menuValue} numberOfLines={1} ellipsizeMode="tail">
-                    {(item as { value?: string }).value ?? '—'}
-                  </Text>
-                </View>
-              )
-            )}
+      {/* ── MENU ── */}
+      <FadeIn visible {...motionTokens.fade.doctorSection} delay={50} fill={false}>
+        {menuSections.map((section) => (
+          <View key={section.title} style={styles.menuSection}>
+            <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{section.title}</Text>
+            <View style={[styles.menuGroup, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}>
+              {section.items.map((item, idx) => (
+                <React.Fragment key={item.label}>
+                  {idx > 0 && <View style={[styles.itemDivider, { backgroundColor: colors.borderLight }]} />}
+                  {item.route != null ? (
+                    <Pressable
+                      style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
+                      onPress={() => {
+                        haptics.selection();
+                        router.push(item.route as Parameters<typeof router.push>[0]);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={item.label}
+                    >
+                      <View style={[styles.menuIconWrap, { backgroundColor: item.iconBg }]}>
+                        <Ionicons name={item.icon} size={19} color={item.iconColor} />
+                      </View>
+                      <Text style={[styles.menuLabel, { color: colors.text }]}>{item.label}</Text>
+                      <Ionicons name="chevron-forward" size={15} color={colors.textMuted} />
+                    </Pressable>
+                  ) : (
+                    <View style={styles.menuItem}>
+                      <View style={[styles.menuIconWrap, { backgroundColor: item.iconBg }]}>
+                        <Ionicons name={item.icon} size={19} color={item.iconColor} />
+                      </View>
+                      <Text style={[styles.menuLabel, { color: colors.text }]}>{item.label}</Text>
+                      <Text style={[styles.menuValue, { color: colors.textMuted }]} numberOfLines={1} ellipsizeMode="tail">
+                        {item.value ?? '—'}
+                      </Text>
+                    </View>
+                  )}
+                </React.Fragment>
+              ))}
+            </View>
           </View>
+        ))}
+
+        {/* Logout */}
+        <View style={styles.logoutSection}>
+          <TouchableOpacity
+            style={[styles.logoutBtn, { backgroundColor: colors.errorLight, borderColor: colors.error + '30' }]}
+            onPress={() => { haptics.selection(); handleLogout(); }}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Sair da conta"
+          >
+            <Ionicons name="log-out-outline" size={18} color={colors.error} />
+            <Text style={[styles.logoutText, { color: colors.error }]}>Sair da conta</Text>
+          </TouchableOpacity>
         </View>
-      ))}
 
-      <TouchableOpacity
-        style={styles.logoutBtn}
-        onPress={() => {
-          haptics.selection();
-          handleLogout();
-        }}
-        activeOpacity={0.8}
-        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        accessibilityRole="button"
-        accessibilityLabel="Sair da conta"
-      >
-        <Ionicons name="log-out-outline" size={18} color={colors.error} />
-        <Text style={styles.logoutText}>Sair da conta</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.version}>RenoveJá+ v{Constants.expoConfig?.version ?? '1.0.0'}</Text>
-      <View style={{ height: insets.bottom + 24 }} />
+        <Text style={[styles.version, { color: colors.textMuted }]}>
+          RenoveJá+ v{Constants.expoConfig?.version ?? '1.0.0'}
+        </Text>
+        <View style={{ height: insets.bottom + 28 }} />
       </FadeIn>
 
+      {/* ── MODAL PREVIEW AVATAR ── */}
       <Modal
         visible={!!avatarPreviewUri}
         transparent
@@ -286,11 +385,13 @@ export default function DoctorProfile() {
         onRequestClose={() => setAvatarPreviewUri(null)}
       >
         <View style={styles.previewOverlay}>
-          <View style={styles.previewCard}>
-            <Text style={styles.previewTitle}>Pré-visualizar foto</Text>
-            <Text style={styles.previewSubtitle}>Confira como sua foto ficará no perfil.</Text>
+          <View style={[styles.previewCard, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.previewTitle, { color: colors.text }]}>Pré-visualizar foto</Text>
+            <Text style={[styles.previewSubtitle, { color: colors.textMuted }]}>
+              Confira como sua foto ficará no perfil.
+            </Text>
 
-            <View style={styles.previewAvatarCircle}>
+            <View style={[styles.previewAvatarCircle, { borderColor: colors.primarySoft, backgroundColor: colors.background }]}>
               {avatarPreviewUri ? (
                 <Image source={{ uri: avatarPreviewUri }} style={styles.previewAvatarImage} resizeMode="cover" />
               ) : null}
@@ -298,39 +399,32 @@ export default function DoctorProfile() {
 
             <View style={styles.previewActions}>
               <TouchableOpacity
-                style={[styles.previewBtn, styles.previewBtnGhost]}
-                onPress={() => {
-                  setAvatarPreviewUri(null);
-                  void pickAvatar();
-                }}
+                style={[styles.previewBtn, styles.previewBtnGhost, { borderColor: colors.borderLight, backgroundColor: colors.background }]}
+                onPress={() => { setAvatarPreviewUri(null); void pickAvatar(); }}
                 disabled={avatarLoading}
               >
-                <Text style={styles.previewBtnGhostText}>Recortar / escolher outra</Text>
+                <Text style={[styles.previewBtnText, { color: colors.textMuted }]}>Escolher outra</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
-                style={[styles.previewBtn, styles.previewBtnPrimary, avatarLoading && { opacity: 0.7 }]}
+                style={[styles.previewBtn, { backgroundColor: colors.primary, opacity: avatarLoading ? 0.7 : 1 }]}
                 onPress={() => { void saveAvatar(); }}
                 disabled={avatarLoading}
               >
                 {avatarLoading ? (
-                  <ActivityIndicator size="small" color={colors.white} />
+                  <ActivityIndicator size="small" color={colors.headerOverlayText} />
                 ) : (
-                  <Text style={styles.previewBtnPrimaryText}>Salvar foto</Text>
+                  <Text style={[styles.previewBtnText, { color: colors.headerOverlayText }]}>Salvar foto</Text>
                 )}
               </TouchableOpacity>
             </View>
 
             <TouchableOpacity
-              style={styles.previewInlineCamera}
-              onPress={() => {
-                setAvatarPreviewUri(null);
-                void takeAvatarPhoto();
-              }}
+              style={styles.previewCameraLink}
+              onPress={() => { setAvatarPreviewUri(null); void takeAvatarPhoto(); }}
               disabled={avatarLoading}
             >
-              <Ionicons name="camera-outline" size={16} color={colors.primary} />
-              <Text style={styles.previewInlineCameraText}>Tirar nova foto agora</Text>
+              <Ionicons name="camera-outline" size={15} color={colors.primary} />
+              <Text style={[styles.previewCameraText, { color: colors.primary }]}>Tirar nova foto</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -339,269 +433,245 @@ export default function DoctorProfile() {
   );
 }
 
-function makeStyles(colors: DesignColors) {
+function makeStyles(colors: DesignColors, _isDark: boolean) {
   return StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+    container: { flex: 1, backgroundColor: colors.background },
 
-  header: {
-    alignItems: 'center',
-    paddingBottom: 24,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-  },
-  avatarWrap: {
-    position: 'relative',
-    marginBottom: 14,
-  },
-  avatarWrapPressed: {
-    opacity: 0.9,
-  },
-  avatarCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderWidth: 2.5,
-    borderColor: 'rgba(255,255,255,0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  avatarOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    borderRadius: 34,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.9)',
-  },
-  avatarText: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: colors.white,
-    letterSpacing: 1,
-  },
-  headerName: {
-    fontSize: 18,
-    fontFamily: typography.fontFamily.bold,
-    fontWeight: '700',
-    color: colors.white,
-    letterSpacing: 0.5,
-  },
-  headerEmail: {
-    fontSize: 13,
-    fontFamily: typography.fontFamily.regular,
-    color: 'rgba(255,255,255,0.7)',
-    marginTop: 4,
-  },
-  crmBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 12,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 100,
-  },
-  crmText: {
-    fontSize: 12,
-    fontFamily: typography.fontFamily.semibold,
-    fontWeight: '600',
-    color: colors.white,
-    letterSpacing: 0.3,
-  },
+    // Header
+    header: {
+      alignItems: 'center',
+      paddingBottom: 28,
+      paddingHorizontal: pad,
+      borderBottomLeftRadius: 36,
+      borderBottomRightRadius: 36,
+    },
 
-  menuSection: {
-    marginTop: 18,
-    paddingHorizontal: pad,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontFamily: typography.fontFamily.bold,
-    fontWeight: '700',
-    color: colors.textMuted,
-    letterSpacing: 1.2,
-    marginBottom: 10,
-    marginLeft: 4,
-  },
-  menuItemsColumn: {
-    gap: 6,
-  },
-  menuItemCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  menuItemPressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.99 }],
-  },
-  menuIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  menuLabel: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: typography.fontFamily.medium,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  menuValue: {
-    fontSize: 13,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.textMuted,
-    minWidth: 0,
-    flexShrink: 1,
-    maxWidth: '50%',
-    textAlign: 'right',
-  },
-  menuChevronWrap: {
-    alignSelf: 'stretch',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
-  },
+    // Avatar
+    avatarWrap: { position: 'relative', marginBottom: 14 },
+    avatarRing: {
+      width: 92,
+      height: 92,
+      borderRadius: 46,
+      padding: 3,
+      backgroundColor: 'rgba(255,255,255,0.22)',
+    },
+    avatarCircle: {
+      flex: 1,
+      borderRadius: 44,
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    avatarImage: { width: '100%', height: '100%' },
+    avatarText: {
+      fontSize: 28,
+      fontWeight: '800',
+      letterSpacing: 1,
+    },
+    avatarOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0,0,0,0.38)',
+      borderRadius: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    cameraBtn: {
+      position: 'absolute',
+      bottom: 2,
+      right: 2,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+    },
 
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginHorizontal: pad,
-    marginTop: 20,
-    paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: colors.errorLight,
-    borderWidth: 1,
-    borderColor: colors.errorLight,
-  },
-  logoutText: {
-    fontSize: 13,
-    fontFamily: typography.fontFamily.bold,
-    fontWeight: '700',
-    color: colors.error,
-    letterSpacing: 0.6,
-  },
+    headerName: {
+      fontSize: 20,
+      fontWeight: '800',
+      letterSpacing: 0.3,
+    },
+    headerEmail: {
+      fontSize: 13,
+      fontWeight: '500',
+      marginTop: 3,
+      marginBottom: 16,
+    },
 
-  version: {
-    fontSize: 12,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: 16,
-    letterSpacing: 1,
-  },
+    // Identity card
+    identityCard: {
+      flexDirection: 'row',
+      borderRadius: 16,
+      borderWidth: 1,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      alignSelf: 'stretch',
+    },
+    identityItem: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      flexWrap: 'wrap',
+    },
+    identityLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      letterSpacing: 0.3,
+    },
+    identityValue: {
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    identityDivider: {
+      width: 1,
+      alignSelf: 'stretch',
+      marginHorizontal: 12,
+    },
 
-  previewOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  previewCard: {
-    width: '100%',
-    maxWidth: 360,
-    backgroundColor: colors.surface,
-    borderRadius: 18,
-    padding: 18,
-  },
-  previewTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  previewSubtitle: {
-    marginTop: 4,
-    fontSize: 13,
-    color: colors.textMuted,
-  },
-  previewAvatarCircle: {
-    alignSelf: 'center',
-    marginTop: 16,
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    overflow: 'hidden',
-    borderWidth: 3,
-    borderColor: colors.primarySoft,
-    backgroundColor: colors.background,
-  },
-  previewAvatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  previewActions: {
-    marginTop: 18,
-    flexDirection: 'row',
-    gap: 10,
-  },
-  previewBtn: {
-    flex: 1,
-    borderRadius: 12,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  previewBtnGhost: {
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.background,
-  },
-  previewBtnGhostText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textMuted,
-  },
-  previewBtnPrimary: {
-    backgroundColor: colors.primary,
-  },
-  previewBtnPrimaryText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.white,
-  },
-  previewInlineCamera: {
-    marginTop: 10,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-  },
-  previewInlineCameraText: {
-    fontSize: 13,
-    color: colors.primary,
-    fontWeight: '600',
-  },
+    // Menu
+    menuSection: {
+      marginTop: 20,
+      paddingHorizontal: pad,
+    },
+    sectionTitle: {
+      fontSize: 11,
+      fontWeight: '700',
+      letterSpacing: 1.2,
+      marginBottom: 10,
+      marginLeft: 2,
+    },
+    menuGroup: {
+      borderRadius: 16,
+      borderWidth: 1,
+      overflow: 'hidden',
+    },
+    menuItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 15,
+      paddingHorizontal: 14,
+    },
+    menuItemPressed: {
+      opacity: 0.8,
+      backgroundColor: 'rgba(0,0,0,0.03)',
+    },
+    menuIconWrap: {
+      width: 38,
+      height: 38,
+      borderRadius: 11,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 13,
+      flexShrink: 0,
+    },
+    menuLabel: {
+      flex: 1,
+      fontSize: 15,
+      fontWeight: '500',
+    },
+    menuValue: {
+      fontSize: 13,
+      maxWidth: '45%',
+      textAlign: 'right',
+      flexShrink: 1,
+    },
+    itemDivider: {
+      height: 1,
+      marginLeft: 14 + 38 + 13,
+    },
+
+    // Logout
+    logoutSection: {
+      paddingHorizontal: pad,
+      marginTop: 24,
+    },
+    logoutBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 15,
+      borderRadius: 16,
+      borderWidth: 1,
+    },
+    logoutText: {
+      fontSize: 14,
+      fontWeight: '700',
+      letterSpacing: 0.4,
+    },
+
+    version: {
+      fontSize: 11,
+      textAlign: 'center',
+      marginTop: 16,
+      letterSpacing: 0.8,
+    },
+
+    // Modal
+    previewOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 24,
+    },
+    previewCard: {
+      width: '100%',
+      maxWidth: 360,
+      borderRadius: 20,
+      padding: 20,
+    },
+    previewTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+    },
+    previewSubtitle: {
+      marginTop: 4,
+      fontSize: 13,
+    },
+    previewAvatarCircle: {
+      alignSelf: 'center',
+      marginTop: 16,
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      overflow: 'hidden',
+      borderWidth: 3,
+    },
+    previewAvatarImage: { width: '100%', height: '100%' },
+    previewActions: {
+      marginTop: 18,
+      flexDirection: 'row',
+      gap: 10,
+    },
+    previewBtn: {
+      flex: 1,
+      borderRadius: 14,
+      minHeight: 46,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    previewBtnGhost: {
+      borderWidth: 1,
+    },
+    previewBtnText: {
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    previewCameraLink: {
+      marginTop: 12,
+      alignSelf: 'center',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingVertical: 6,
+    },
+    previewCameraText: {
+      fontSize: 13,
+      fontWeight: '600',
+    },
   });
 }

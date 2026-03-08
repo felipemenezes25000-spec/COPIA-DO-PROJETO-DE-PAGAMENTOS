@@ -1,25 +1,61 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
+import Index from '@/pages/Index';
 import Verify from '@/pages/Verify';
 import Cookies from '@/pages/Cookies';
+import AdminLogin from '@/pages/admin/AdminLogin';
+import AdminDashboard from '@/pages/admin/AdminDashboard';
+import AdminMedicos from '@/pages/admin/AdminMedicos';
+import AdminConfiguracoes from '@/pages/admin/AdminConfiguracoes';
+import AdminNotFound from '@/pages/admin/AdminNotFound';
+import { AdminSubdomainRedirect } from '@/components/AdminSubdomainRedirect';
+import { isAuthenticated } from '@/services/adminApi';
+
+function AdminProtectedRoute({ children }: { children: React.ReactNode }) {
+  if (!isAuthenticated()) {
+    return <Navigate to="/admin/login" replace />;
+  }
+  return <>{children}</>;
+}
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/verify/:id" element={<Verify />} />
-      <Route path="/cookies" element={<Cookies />} />
-    </Routes>
-  );
-}
+    <>
+      <Toaster position="top-center" richColors closeButton />
+      <AdminSubdomainRedirect />
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/verify/:id" element={<Verify />} />
+        <Route path="/cookies" element={<Cookies />} />
 
-function Home() {
-  return (
-    <div style={{ padding: 24, maxWidth: 600, margin: '0 auto', fontFamily: 'system-ui, sans-serif' }}>
-      <h1>RenoveJá+</h1>
-      <p>Use o link de verificação que você recebeu (ex.: /verify/&lt;id&gt;) para validar uma receita.</p>
-      <footer style={{ marginTop: 32, fontSize: 12, color: '#64748b' }}>
-        <a href="/cookies" style={{ color: '#2563eb', textDecoration: 'none' }}>Política de Cookies</a>
-      </footer>
-    </div>
+        {/* Admin — renovejasaude.com.br/admin */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route
+          path="/admin"
+          element={
+            <AdminProtectedRoute>
+              <AdminDashboard />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/medicos"
+          element={
+            <AdminProtectedRoute>
+              <AdminMedicos />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/configuracoes"
+          element={
+            <AdminProtectedRoute>
+              <AdminConfiguracoes />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route path="/admin/*" element={<AdminNotFound />} />
+      </Routes>
+    </>
   );
 }

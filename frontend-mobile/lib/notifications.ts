@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 import { registerPushToken, unregisterPushToken as unregisterPushTokenApi } from './api';
 import { colors } from './theme';
 
-// Configure notification behavior
+// Configure notification behavior — role filtering is handled in PushNotificationContext
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -54,20 +54,47 @@ export async function registerForPushNotifications(
       console.error('Error saving push token:', error);
     }
 
-    // Configure notification channels for Android (spec: default=heads-up, quiet=sem heads-up)
+    // ── Android Notification Channels ──
+    // Canais separados permitem que o usuário configure granularmente no sistema Android.
     if (Platform.OS === 'android') {
+      // Canal principal: pagamentos, documentos prontos, consultas prontas
       await Notifications.setNotificationChannelAsync('default', {
         name: 'Importantes',
-        description: 'Pagamentos, documento pronto, consulta',
+        description: 'Pagamentos confirmados, documentos prontos, consultas prontas',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: colors.info,
+        enableLights: true,
+        enableVibrate: true,
+        sound: 'default',
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+        bypassDnd: false,
       });
+
+      // Canal silencioso: atualizações de status, lembretes
       await Notifications.setNotificationChannelAsync('quiet', {
         name: 'Informativos',
-        description: 'Em análise, lembretes',
+        description: 'Atualizações de status, lembretes',
         importance: Notifications.AndroidImportance.DEFAULT,
-        vibrationPattern: [0],
+        vibrationPattern: [0, 100],
+        enableLights: false,
+        enableVibrate: true,
+        sound: 'default',
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+      });
+
+      // Canal de consulta: alta prioridade para médico pronto, consulta iniciando
+      await Notifications.setNotificationChannelAsync('consultation', {
+        name: 'Consultas',
+        description: 'Médico pronto, consulta iniciando, chamada de vídeo',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 400, 200, 400],
+        lightColor: '#10B981',
+        enableLights: true,
+        enableVibrate: true,
+        sound: 'default',
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+        bypassDnd: false,
       });
     }
 

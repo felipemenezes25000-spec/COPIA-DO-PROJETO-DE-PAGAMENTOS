@@ -77,8 +77,15 @@ export default function VideoCallScreenInner() {
   const router = useRouter();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
-  const { colors } = useAppTheme({ scheme: 'light' });
-  const S = useMemo(() => makeStyles(colors), [colors]);
+  // Video overlay is always dark (#0F172A background).
+  // Use system theme for modals/dialogs, but video-specific dark colors for overlays.
+  const systemTheme = useAppTheme();
+  const darkTheme = useAppTheme({ scheme: 'dark' });
+  // Overlay colors (top bar, controls, badges) — always dark background context
+  const colors = darkTheme.colors;
+  // Modal/dialog colors — follow system preference
+  const modalColors = systemTheme.colors;
+  const S = useMemo(() => makeStyles(colors, modalColors), [colors, modalColors]);
   const qColor = useCallback((q: ConnectionQuality) => {
     return q === 'good' ? colors.success : q === 'poor' ? colors.warning : q === 'bad' ? colors.error : colors.textMuted;
   }, [colors]);
@@ -99,10 +106,33 @@ export default function VideoCallScreenInner() {
   const [callSeconds, setCallSeconds] = useState(0);
   const [consultationStartedAt, setConsultationStartedAt] = useState<string | null>(null);
   const [requestStatus, setRequestStatus] = useState<string | null>(null);
+
+  // Reset state on rid change — enables patient rejoin without stale state
+  useEffect(() => {
+    setLoading(true);
+    setError('');
+    setEnding(false);
+    setRoomUrl(null);
+    setMeetingToken(null);
+    setCallSeconds(0);
+  }, [rid]);
   const connReportedRef = useRef(false);
   const alertedRef = useRef<Set<number>>(new Set());
   const autoFinishedRef = useRef(false);
+  /** Prevents double router.back() when leave() triggers both 'left-meeting' and .then() callback */
+  const leavingRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Reset all refs on mount — critical for patient rejoin (component may remount with same params)
+  useEffect(() => {
+    connReportedRef.current = false;
+    alertedRef.current = new Set();
+    autoFinishedRef.current = false;
+    leavingRef.current = false;
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [rid]);
 
   // Doctor: timer control — médico controla quando iniciar a contagem
   const [timerStarted, setTimerStarted] = useState(false);
@@ -157,6 +187,9 @@ export default function VideoCallScreenInner() {
       }
     },
     onCallEnded: (reason) => {
+      // Skip navigation if we're already handling leave in onEndPress .then() callback
+      // This prevents the double router.back() bug that makes patient unable to rejoin
+      if (leavingRef.current && reason === 'left') return;
       if (reason === 'ejected') Alert.alert('Tempo esgotado', 'O tempo contratado expirou.');
       if (reason === 'meeting-ended') Alert.alert('Sessão encerrada', 'A videochamada foi encerrada.');
       cleanup();
@@ -518,7 +551,7 @@ export default function VideoCallScreenInner() {
   const onEndPress = useCallback(() => {
     if (isDoctor) {
       const title = 'Encerrar consulta';
-      const msg = 'Apenas o médico pode encerrar a consulta. Isso desconecta médico e paciente. Deseja encerrar agora?';
+      const msg = 'Conforme Resolução CFM nº 2.454/2026, a decisão final é sempre do médico.\n\nIsso encerra a consulta para ambos. Deseja encerrar agora?';
       Alert.alert(title, msg, [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Encerrar', style: 'destructive', onPress: () => doEnd(false) },
@@ -528,14 +561,21 @@ export default function VideoCallScreenInner() {
       const rem = contractedMinutes ? contractedMinutes * 60 - callSeconds : null;
       const unusedMin = rem != null && rem > 0 ? Math.floor(rem / 60) : 0;
       const msg = unusedMin > 0
-        ? `Você ainda tem ~${unusedMin} minuto(s) restantes.\n\nSó o médico encerra a consulta. Ao sair, o tempo não utilizado vai pro seu banco de horas. Pode voltar à sala enquanto houver tempo.`
-        : 'Só o médico encerra a consulta. Você pode sair e voltar à sala enquanto houver tempo. Deseja sair agora?';
+        ? `Você ainda tem ~${unusedMin} minuto(s) restante(s).\n\nVocê pode voltar à sala a qualquer momento pelo detalhe do pedido. Só o médico pode encerrar a consulta.`
+        : 'Você pode voltar à sala pelo detalhe do pedido enquanto houver tempo. Só o médico encerra a consulta.\n\nDeseja sair agora?';
       Alert.alert('Sair da chamada', msg, [
         { text: 'Continuar', style: 'cancel' },
         {
           text: unusedMin > 0 ? 'Sair e guardar saldo' : 'Sair',
           style: 'destructive',
-          onPress: () => leave().then(() => { cleanup(); router.back(); }),
+          onPress: () => {
+            leavingRef.current = true;
+            leave().then(() => {
+              cleanup();
+              // Navigate to request-detail (not back) so patient sees clear rejoin button
+              router.replace(`/request-detail/${rid}` as any);
+            }).catch(() => { leavingRef.current = false; });
+          },
         },
       ]);
     }
@@ -589,9 +629,10 @@ export default function VideoCallScreenInner() {
 
   const panelX = panelAnim.interpolate({ inputRange: [0, 1], outputRange: [PANEL_WIDTH + 20, 0] });
 
-  // Em PiP: local em tela cheia (evita tela preta do SurfaceView em overlay pequeno)
-  const localIsMain = isInPipMode;
-  const remoteIsMain = !isInPipMode;
+  // PiP: remote sempre principal — evita SurfaceView conflict no overlay pequeno do Android
+  // Local é mostrado como mini-preview apenas quando NÃO em PiP
+  const localIsMain = false;
+  const remoteIsMain = true;
 
   return (
     <View style={S.container}>
@@ -614,26 +655,30 @@ export default function VideoCallScreenInner() {
               ? 'Entrando na sala...'
               : isDoctor && timerStarted
                 ? 'Paciente saiu da chamada'
-                : 'Aguardando participante'}
+                : !isDoctor && timerStarted
+                  ? 'Você voltou à sala'
+                  : 'Aguardando participante'}
           </Text>
           <Text style={S.waitSub}>
             {callState === 'joining'
-              ? (isDoctor ? 'O paciente será notificado' : 'O médico entrará em breve')
+              ? (isDoctor ? 'O paciente será notificado' : 'Conectando à sala do médico...')
               : isDoctor && timerStarted
-                ? 'Pode voltar enquanto houver tempo. Só o médico encerra a consulta.'
-                : isDoctor
-                  ? 'O paciente será notificado'
-                  : 'O médico entrará em breve'}
+                ? 'O paciente pode voltar enquanto houver tempo.\nSó você (médico) encerra a consulta — Res. CFM nº 2.454/2026.'
+                : !isDoctor && timerStarted
+                  ? 'Aguardando o médico na sala. Sua consulta continua.'
+                  : isDoctor
+                    ? 'O paciente será notificado para entrar'
+                    : 'O médico entrará em breve'}
           </Text>
         </View>
       )}
 
-      {/* Local PiP — em PiP vira tela cheia (SurfaceView renderiza melhor em área principal) */}
-      {localParticipant?.videoTrack?.persistentTrack != null && !isCameraOff && (
-        <View collapsable={false} style={[localIsMain ? S.remote : S.pip, { top: localIsMain ? 0 : insets.top + 52 }]}>
+      {/* Local PiP — oculto em PiP (SurfaceView conflita com janela pequena Android) */}
+      {localParticipant?.videoTrack?.persistentTrack != null && !isCameraOff && !isInPipMode && (
+        <View collapsable={false} style={[S.pip, { top: insets.top + 52 }]}>
           <DailyMediaView
             videoTrack={localParticipant.videoTrack.persistentTrack}
-            audioTrack={null} mirror={isFrontCamera} zOrder={localIsMain ? 0 : 1} style={localIsMain ? S.remote : S.pipVid} objectFit="cover"
+            audioTrack={null} mirror={isFrontCamera} zOrder={1} style={S.pipVid} objectFit="cover"
           />
           {isMuted && (
             <View style={S.pipMute}><Ionicons name="mic-off" size={10} color={colors.white} /></View>
@@ -729,7 +774,7 @@ export default function VideoCallScreenInner() {
         <View style={[S.earlyLeaveHint, { bottom: 80 + insets.bottom + 12 }]}>
           <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />
           <Text style={S.earlyLeaveText}>
-            Só o médico encerra a consulta. Pode sair e voltar enquanto houver tempo. Tempo restante vai pro banco de horas.
+            Só o médico encerra a consulta (CFM 2.454/2026). Pode sair e voltar pelo detalhe do pedido.
           </Text>
         </View>
       )}
@@ -824,7 +869,8 @@ export default function VideoCallScreenInner() {
 
 type VideoColors = { primary: string; text: string; textMuted: string; textSecondary: string; white: string; black: string; error: string; warning: string; success: string; successLight: string; destructive: string; primaryLight: string; border: string; errorLight: string; surface: string };
 
-function makeStyles(colors: VideoColors) {
+function makeStyles(colors: VideoColors, modalColors?: VideoColors) {
+  const mc = modalColors || colors;
   return StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0F172A' },
   center: { justifyContent: 'center', alignItems: 'center', gap: 12 },
@@ -840,7 +886,7 @@ function makeStyles(colors: VideoColors) {
   pipVid: { flex: 1 },
   pipMute: { position: 'absolute', bottom: 4, left: 4, width: 18, height: 18, borderRadius: 9, backgroundColor: colors.error, justifyContent: 'center', alignItems: 'center' },
 
-  top: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, paddingBottom: 10, backgroundColor: 'rgba(248,250,252,0.95)', zIndex: 20 },
+  top: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, paddingBottom: 10, backgroundColor: 'rgba(15,23,42,0.92)', zIndex: 20 },
   topL: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   qPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   qDot: { width: 7, height: 7, borderRadius: 4 },
@@ -848,7 +894,7 @@ function makeStyles(colors: VideoColors) {
   aiPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, backgroundColor: 'rgba(44,177,255,0.15)' },
   aiDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary },
   aiTxt: { fontSize: 12, fontWeight: '700', color: colors.primary },
-  tPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16, backgroundColor: 'rgba(241,245,249,0.95)' },
+  tPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16, backgroundColor: 'rgba(30,41,59,0.85)' },
   tPillUrg: { backgroundColor: 'rgba(251,191,36,0.4)' },
   tPillCrit: { backgroundColor: colors.destructive },
   tTxt: { color: colors.text, fontSize: 13, fontWeight: '700', fontVariant: ['tabular-nums'] },
@@ -918,7 +964,7 @@ function makeStyles(colors: VideoColors) {
   panelFoot: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: 'rgba(30,41,59,0.8)', borderTopWidth: 1, borderTopColor: 'rgba(51,65,85,0.3)' },
   panelFootTxt: { fontSize: 12, color: colors.textSecondary },
 
-  ctrl: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 20, paddingTop: 14, backgroundColor: 'rgba(248,250,252,0.98)' },
+  ctrl: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 20, paddingTop: 14, backgroundColor: 'rgba(15,23,42,0.95)' },
   cb: { width: 56, height: 64, borderRadius: 16, backgroundColor: colors.text, justifyContent: 'center', alignItems: 'center', gap: 4 },
   cbOn: { backgroundColor: 'rgba(239,68,68,0.6)' },
   endCb: { backgroundColor: colors.destructive },
@@ -931,16 +977,16 @@ function makeStyles(colors: VideoColors) {
   retryTxt: { color: colors.white, fontWeight: '700' },
 
   mOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  mCard: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 12 },
+  mCard: { backgroundColor: mc.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 12 },
   mHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  mTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
-  mSub: { fontSize: 13, color: colors.textMuted },
-  mInput: { backgroundColor: colors.surface, borderRadius: 12, padding: 14, minHeight: 120, maxHeight: 200, color: colors.text, fontSize: 14, lineHeight: 22, borderWidth: 1, borderColor: colors.border },
+  mTitle: { fontSize: 18, fontWeight: '700', color: mc.text },
+  mSub: { fontSize: 13, color: mc.textMuted },
+  mInput: { backgroundColor: mc.surface, borderRadius: 12, padding: 14, minHeight: 120, maxHeight: 200, color: mc.text, fontSize: 14, lineHeight: 22, borderWidth: 1, borderColor: mc.border },
   mActs: { flexDirection: 'row', gap: 12, marginTop: 8 },
   mBtnSec: { flex: 1, height: 48, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.06)', justifyContent: 'center', alignItems: 'center' },
-  mBtnSecT: { color: colors.textMuted, fontWeight: '600', fontSize: 14 },
-  mBtnPri: { flex: 2, height: 48, borderRadius: 12, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
-  mBtnPriT: { color: colors.white, fontWeight: '700', fontSize: 14 },
+  mBtnSecT: { color: mc.textMuted, fontWeight: '600', fontSize: 14 },
+  mBtnPri: { flex: 2, height: 48, borderRadius: 12, backgroundColor: mc.primary, justifyContent: 'center', alignItems: 'center' },
+  mBtnPriT: { color: mc.white, fontWeight: '700', fontSize: 14 },
 
   // Doctor: Start Timer button
   startTimerOverlay: { position: 'absolute', left: 16, right: 16, bottom: 100, zIndex: 30, alignItems: 'center' },
@@ -963,7 +1009,7 @@ function makeStyles(colors: VideoColors) {
   bankText: { color: colors.success, fontSize: 12, fontWeight: '600' },
 
   // Patient: Early leave hint
-  earlyLeaveHint: { position: 'absolute', left: 12, right: 12, zIndex: 25, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: 'rgba(248,250,252,0.95)' },
+  earlyLeaveHint: { position: 'absolute', left: 12, right: 12, zIndex: 25, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: 'rgba(30,41,59,0.92)' },
   earlyLeaveText: { color: colors.textMuted, fontSize: 12, flex: 1 },
   });
 }

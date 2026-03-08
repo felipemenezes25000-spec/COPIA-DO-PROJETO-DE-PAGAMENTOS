@@ -45,19 +45,18 @@ export default function DoctorLayout() {
           tabBarStyle: {
             backgroundColor: colors.surface,
             borderTopColor: colors.borderLight,
-            borderTopWidth: 1,
+            borderTopWidth: isDark ? 0.5 : 1,
             height: tabBarHeight,
             paddingBottom: tabBarPaddingBottom,
             paddingTop: TAB_BAR_PADDING_TOP,
-            overflow: 'hidden',
             ...Platform.select({
               ios: {
                 shadowColor: colors.black,
-                shadowOffset: { width: 0, height: -2 },
-                shadowOpacity: 0.06,
-                shadowRadius: 12,
+                shadowOffset: { width: 0, height: -4 },
+                shadowOpacity: isDark ? 0.25 : 0.08,
+                shadowRadius: 16,
               },
-              android: { elevation: 8 },
+              android: { elevation: 10 },
             }),
           },
           tabBarItemStyle: {
@@ -69,10 +68,11 @@ export default function DoctorLayout() {
             marginBottom: 2,
           },
           tabBarLabelStyle: {
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: '700',
-            letterSpacing: 0.2,
+            letterSpacing: 0.3,
             textAlign: 'center',
+            marginTop: 2,
           },
           tabBarBadgeStyle: {
             backgroundColor: colors.error,
@@ -90,7 +90,7 @@ export default function DoctorLayout() {
           options={{
             title: 'Painel',
             tabBarIcon: ({ color, focused }) => (
-              <TabBarIcon name={focused ? 'grid' : 'grid-outline'} color={color} focused={focused} variant="doctor" />
+              <TabBarIcon name={focused ? 'grid' : 'grid-outline'} color={color} focused={focused} activeColor={colors.primary} />
             ),
           }}
         />
@@ -99,7 +99,7 @@ export default function DoctorLayout() {
           options={{
             title: 'Pedidos',
             tabBarIcon: ({ color, focused }) => (
-              <TabBarIcon name={focused ? 'stats-chart' : 'stats-chart-outline'} color={color} focused={focused} variant="doctor" />
+              <TabBarIcon name={focused ? 'stats-chart' : 'stats-chart-outline'} color={color} focused={focused} activeColor={colors.primary} />
             ),
           }}
         />
@@ -120,7 +120,7 @@ export default function DoctorLayout() {
           options={{
             title: 'Perfil',
             tabBarIcon: ({ color, focused }) => (
-              <TabBarIcon name={focused ? 'person' : 'person-outline'} color={color} focused={focused} variant="doctor" />
+              <TabBarIcon name={focused ? 'person' : 'person-outline'} color={color} focused={focused} activeColor={colors.primary} />
             ),
           }}
         />

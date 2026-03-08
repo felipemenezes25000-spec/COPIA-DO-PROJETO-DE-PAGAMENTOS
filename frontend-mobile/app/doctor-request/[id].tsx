@@ -39,6 +39,9 @@ import { PatientInfoCard } from '../../components/doctor-request/PatientInfoCard
 import { AiCopilotSection } from '../../components/doctor-request/AiCopilotSection';
 import { PrescriptionImageGallery } from '../../components/doctor-request/PrescriptionImageGallery';
 import { DoctorActionButtons } from '../../components/doctor-request/DoctorActionButtons';
+import { AnamnesisCard } from '../../components/prontuario/AnamnesisCard';
+import { ConductForm } from '../../components/prontuario/ConductForm';
+import { parseAnamnesis, parseSuggestions, parseEvidence, displayMedicamento, displayExame } from '../../lib/domain/anamnesis';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -225,7 +228,7 @@ export default function DoctorRequestDetail() {
 /* ---- Inline sub-sections (kept in the same file for simplicity) ---- */
 
 function DetailsCard({ request }: { request: NonNullable<ReturnType<typeof useDoctorRequest>['request']> }) {
-  const { colors } = useAppTheme();
+  const { colors } = useAppTheme({ role: 'doctor' });
   const s = useMemo(() => makeStyles(colors), [colors]);
   return (
     <DoctorCard style={s.cardMargin}>
@@ -258,7 +261,7 @@ function DetailsCard({ request }: { request: NonNullable<ReturnType<typeof useDo
 }
 
 function MedicationsCard({ medications }: { medications: string[] | null }) {
-  const { colors } = useAppTheme();
+  const { colors } = useAppTheme({ role: 'doctor' });
   const s = useMemo(() => makeStyles(colors), [colors]);
   if (!medications || medications.length === 0) return null;
   return (
@@ -281,7 +284,7 @@ function MedicationsCard({ medications }: { medications: string[] | null }) {
 }
 
 function ExamsCard({ exams }: { exams: string[] | null }) {
-  const { colors } = useAppTheme();
+  const { colors } = useAppTheme({ role: 'doctor' });
   const s = useMemo(() => makeStyles(colors), [colors]);
   if (!exams || exams.length === 0) return null;
   return (
@@ -306,7 +309,7 @@ function ExamsCard({ exams }: { exams: string[] | null }) {
 }
 
 function SymptomsCard({ symptoms }: { symptoms: string | null }) {
-  const { colors } = useAppTheme();
+  const { colors } = useAppTheme({ role: 'doctor' });
   const s = useMemo(() => makeStyles(colors), [colors]);
   if (!symptoms) return null;
   return (
@@ -323,188 +326,81 @@ function SymptomsCard({ symptoms }: { symptoms: string | null }) {
 }
 
 function ConsultationPostSection({ request, router }: { request: NonNullable<ReturnType<typeof useDoctorRequest>['request']>; router: ReturnType<typeof useRouter> }) {
-  const { colors } = useAppTheme();
+  const { colors } = useAppTheme({ role: 'doctor' });
   const s = useMemo(() => makeStyles(colors), [colors]);
   if (request.requestType !== 'consultation' || request.status !== 'consultation_finished') return null;
   if (!request.consultationTranscript && !request.consultationAnamnesis && !request.consultationAiSuggestions && !request.consultationEvidence) return null;
 
+  const anamnesis = parseAnamnesis(request.consultationAnamnesis);
+  const suggestions = parseSuggestions(request.consultationAiSuggestions);
+  const evidence = parseEvidence(request.consultationEvidence);
+  const hasMeds = (anamnesis?.medicamentos_sugeridos?.length ?? 0) > 0;
+  const hasExams = (anamnesis?.exames_sugeridos?.length ?? 0) > 0;
+
   return (
     <>
-      {request.consultationAnamnesis && request.consultationAnamnesis.trim() && (() => {
-        let ana: Record<string, unknown> = {};
-        try { ana = JSON.parse(request.consultationAnamnesis || '{}'); } catch { /* ignore */ }
-        const fields: { key: string; label: string; icon: string }[] = [
-          { key: 'queixa_principal', label: 'Queixa Principal', icon: 'chatbubble-ellipses' },
-          { key: 'historia_doenca_atual', label: 'História da Doença Atual', icon: 'time' },
-          { key: 'sintomas', label: 'Sintomas', icon: 'thermometer' },
-          { key: 'medicamentos_em_uso', label: 'Medicamentos em Uso', icon: 'medical' },
-          { key: 'alergias', label: 'Alergias', icon: 'warning' },
-          { key: 'antecedentes_relevantes', label: 'Antecedentes', icon: 'document-text' },
-          { key: 'cid_sugerido', label: 'CID Sugerido', icon: 'code-slash' },
-        ];
-        return (
-          <DoctorCard style={[s.cardMargin, s.aiCard]}>
-            <View style={s.aiHeader}>
-              <Ionicons name="document-text" size={18} color={colors.primary} />
-              <Text style={s.aiTitle}>ANAMNESE ESTRUTURADA</Text>
-              <View style={[s.riskBadge, { backgroundColor: colors.primarySoft }]}>
-                <Ionicons name="sparkles" size={10} color={colors.primary} />
-                <Text style={[s.riskText, { color: colors.primary }]}>IA</Text>
-              </View>
-            </View>
-            <View style={s.aiDisclaimer}>
-              <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />
-              <Text style={s.aiDisclaimerText}>Gerado por IA — revisão médica obrigatória. CFM Res. 2.299/2021.</Text>
-            </View>
-            {fields.map(({ key, label, icon }) => {
-              const val = ana[key];
-              if (!val || (typeof val === 'string' && !val.trim())) return null;
-              const display = Array.isArray(val) ? val.join(', ') : String(val);
-              const isAlert = key === 'alergias';
-              const isCid = key === 'cid_sugerido';
-              return (
-                <View key={key} style={s.anaField}>
-                  <View style={s.anaLabelRow}>
-                    <Ionicons name={icon as IoniconName} size={12} color={isAlert ? colors.destructive : colors.textMuted} />
-                    <Text style={[s.anaLabel, isAlert && { color: colors.destructive }]}>{label}</Text>
-                  </View>
-                  <Text style={[s.anaValue, isCid && { color: colors.primary, fontFamily: typography.fontFamily.bold }]}>{display}</Text>
-                </View>
-              );
-            })}
-            {Array.isArray(ana.alertas_vermelhos) && (ana.alertas_vermelhos as unknown[]).length > 0 && (
-              <View style={s.redFlagBlock}>
-                <View style={s.anaLabelRow}>
-                  <Ionicons name="alert-circle" size={14} color={colors.error} />
-                  <Text style={[s.anaLabel, { color: colors.error }]}>ALERTAS DE GRAVIDADE</Text>
-                </View>
-                {(ana.alertas_vermelhos as string[]).map((flag, i) => (
-                  <View key={i} style={s.redFlagItem}><Text style={s.redFlagText}>{flag}</Text></View>
-                ))}
-              </View>
-            )}
-          </DoctorCard>
-        );
-      })()}
+      {anamnesis && Object.keys(anamnesis).length > 0 && (
+        <AnamnesisCard
+          data={anamnesis}
+          compact
+          showAlerts
+          showMedsSuggestions
+          showExamsSuggestions
+          style={s.cardMargin}
+        />
+      )}
 
-      {(request.consultationAiSuggestions || (() => {
-        try {
-          const ana = JSON.parse(request.consultationAnamnesis || '{}');
-          const hasMeds = Array.isArray(ana.medicamentos_sugeridos) && ana.medicamentos_sugeridos.length > 0;
-          const hasExams = Array.isArray(ana.exames_sugeridos) && ana.exames_sugeridos.length > 0;
-          return hasMeds || hasExams;
-        } catch { return false; }
-      })()) && (
+      {suggestions.length > 0 && (
         <DoctorCard style={[s.cardMargin, { borderWidth: 1, borderColor: colors.accent }]}>
           <View style={s.aiHeader}>
             <Ionicons name="bulb" size={18} color={colors.primaryLight} />
             <Text style={s.aiTitle}>SUGESTÕES CLÍNICAS DA IA</Text>
           </View>
-          {request.consultationAiSuggestions && (() => {
-            try {
-              const items = JSON.parse(request.consultationAiSuggestions || '[]') as string[];
-              return items.map((item, i) => {
-                const text = typeof item === 'string' ? item : '';
-                const isRedFlag = text.startsWith('🚨');
-                return (
-                  <View key={i} style={[s.suggestionItem, isRedFlag && s.suggestionItemDanger]}>
-                    <Ionicons name={isRedFlag ? 'alert-circle' : 'bulb-outline'} size={16} color={isRedFlag ? colors.error : colors.primaryLight} />
-                    <Text style={[s.suggestionText, isRedFlag && { color: colors.error }]}>{text.replace('🚨 ', '')}</Text>
-                  </View>
-                );
-              });
-            } catch { return null; }
-          })()}
-          {(() => {
-            try {
-              const ana = JSON.parse(request.consultationAnamnesis || '{}');
-              const medsRaw = Array.isArray(ana.medicamentos_sugeridos) ? ana.medicamentos_sugeridos : [];
-              const examsRaw = Array.isArray(ana.exames_sugeridos) ? ana.exames_sugeridos : [];
-              const medDisplay = (m: unknown): string => {
-                if (typeof m === 'string') return m;
-                const o = m as { nome?: string; dose?: string; via?: string; posologia?: string; duracao?: string; indicacao?: string };
-                const parts = [o.nome, o.dose, o.via, o.posologia, o.duracao].filter(Boolean);
-                const base = parts.join(' ');
-                return o.indicacao ? `${base} (${o.indicacao})` : base;
-              };
-              const examDisplay = (e: unknown): string => {
-                if (typeof e === 'string') return e;
-                const o = e as { nome?: string; descricao?: string; o_que_afere?: string; indicacao?: string };
-                return o.nome ?? '';
-              };
-              if (medsRaw.length === 0 && examsRaw.length === 0) return null;
-              return (
-                <View style={{ marginTop: 8 }}>
-                  {medsRaw.length > 0 && (
-                    <>
-                      <Text style={[s.anaLabel, { marginBottom: 6 }]}>MEDICAMENTOS SUGERIDOS</Text>
-                      <View style={s.medChipsRow}>
-                        {medsRaw.map((m: unknown, i: number) => (
-                          <TouchableOpacity key={i} style={s.medChip} onPress={async () => { await Clipboard.setStringAsync(medDisplay(m)); showToast({ message: 'Copiado!', type: 'success' }); }}>
-                            <Text style={s.medChipText} numberOfLines={2}>{medDisplay(m)}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </>
-                  )}
-                  {examsRaw.length > 0 && (
-                    <View style={{ marginTop: medsRaw.length > 0 ? 12 : 0 }}>
-                      <Text style={[s.anaLabel, { marginBottom: 6 }]}>EXAMES SUGERIDOS</Text>
-                      <View style={s.medChipsRow}>
-                        {examsRaw.map((ex: unknown, i: number) => (
-                          <TouchableOpacity key={i} style={s.medChip} onPress={async () => { await Clipboard.setStringAsync(examDisplay(ex)); showToast({ message: 'Copiado!', type: 'success' }); }}>
-                            <Text style={s.medChipText} numberOfLines={2}>{examDisplay(ex)}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </View>
-                  )}
-                </View>
-              );
-            } catch { return null; }
-          })()}
+          {suggestions.map((item, i) => {
+            const isRedFlag = item.startsWith('🚨');
+            return (
+              <View key={i} style={[s.suggestionItem, isRedFlag && s.suggestionItemDanger]}>
+                <Ionicons name={isRedFlag ? 'alert-circle' : 'bulb-outline'} size={16} color={isRedFlag ? colors.error : colors.primaryLight} />
+                <Text style={[s.suggestionText, isRedFlag && { color: colors.error }]}>{item.replace('🚨 ', '')}</Text>
+              </View>
+            );
+          })}
         </DoctorCard>
       )}
 
-      {request.consultationEvidence && request.consultationEvidence.trim() && (() => {
-        try {
-          const evidence = JSON.parse(request.consultationEvidence || '[]') as { provider?: string; url?: string; title?: string; source?: string; clinicalRelevance?: string }[];
-          if (!Array.isArray(evidence) || evidence.length === 0) return null;
-          return (
-            <DoctorCard style={[s.cardMargin, { borderWidth: 1, borderColor: colors.accent }]}>
-              <View style={s.aiHeader}>
-                <Ionicons name="library" size={18} color={colors.primary} />
-                <Text style={s.aiTitle}>ARTIGOS CIENTÍFICOS (APOIO AO CID)</Text>
+      {evidence.length > 0 && (
+        <DoctorCard style={[s.cardMargin, { borderWidth: 1, borderColor: colors.accent }]}>
+          <View style={s.aiHeader}>
+            <Ionicons name="library" size={18} color={colors.primary} />
+            <Text style={s.aiTitle}>ARTIGOS CIENTÍFICOS (APOIO AO CID)</Text>
+          </View>
+          <View style={s.aiDisclaimer}>
+            <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />
+            <Text style={s.aiDisclaimerText}>Fontes: PubMed, Europe PMC, Semantic Scholar.</Text>
+          </View>
+          {evidence.map((item, i) => (
+            <View key={i} style={[s.anaField, { marginBottom: 12 }]}>
+              <View style={s.anaLabelRow}>
+                <Ionicons name="book-outline" size={12} color={colors.primary} />
+                <Text style={[s.anaLabel, { color: colors.primary }]}>{item.provider ?? 'Fonte'}</Text>
               </View>
-              <View style={s.aiDisclaimer}>
-                <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />
-                <Text style={s.aiDisclaimerText}>Fontes: PubMed, Europe PMC, Semantic Scholar. Links diretos para os artigos.</Text>
-              </View>
-              {evidence.map((item, i) => (
-                <View key={i} style={[s.anaField, { marginBottom: 12 }]}>
-                  <View style={s.anaLabelRow}>
-                    <Ionicons name="book-outline" size={12} color={colors.primary} />
-                    <Text style={[s.anaLabel, { color: colors.primary }]}>{item.provider ?? 'Fonte'}</Text>
-                  </View>
-                  <Text style={[s.anaValue, { fontFamily: typography.fontFamily.medium }]}>{item.title ?? item.source ?? '—'}</Text>
-                  {item.clinicalRelevance && (
-                    <Text style={[s.anaValue, { fontSize: 12, color: colors.textMuted, marginTop: 4 }]}>{item.clinicalRelevance}</Text>
-                  )}
-                  {item.url && (
-                    <TouchableOpacity
-                      style={[s.aiSummaryActionBtn, { marginTop: 6, alignSelf: 'flex-start' }]}
-                      onPress={() => Linking.openURL(item.url!)}
-                    >
-                      <Ionicons name="open-outline" size={14} color={colors.primary} />
-                      <Text style={s.aiSummaryActionText}>Abrir artigo</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              ))}
-            </DoctorCard>
-          );
-        } catch { return null; }
-      })()}
+              <Text style={[s.anaValue, { fontFamily: typography.fontFamily.medium }]}>{item.title ?? item.source ?? '—'}</Text>
+              {item.clinicalRelevance && (
+                <Text style={[s.anaValue, { fontSize: 12, color: colors.textMuted, marginTop: 4 }]}>{item.clinicalRelevance}</Text>
+              )}
+              {item.url && (
+                <TouchableOpacity
+                  style={[s.aiSummaryActionBtn, { marginTop: 6, alignSelf: 'flex-start' }]}
+                  onPress={() => Linking.openURL(item.url!)}
+                >
+                  <Ionicons name="open-outline" size={14} color={colors.primary} />
+                  <Text style={s.aiSummaryActionText}>Abrir artigo</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ))}
+        </DoctorCard>
+      )}
 
       {request.consultationTranscript && request.consultationTranscript.trim() && (
         <DoctorCard style={s.cardMargin}>
@@ -524,49 +420,31 @@ function ConsultationPostSection({ request, router }: { request: NonNullable<Ret
         </DoctorCard>
       )}
 
-      {(() => {
-        try {
-          const ana = JSON.parse(request.consultationAnamnesis || '{}');
-          const medsRaw = Array.isArray(ana.medicamentos_sugeridos) ? ana.medicamentos_sugeridos : [];
-          const examsRaw = Array.isArray(ana.exames_sugeridos) ? ana.exames_sugeridos : [];
-          const medDisplay = (m: unknown): string => {
-            if (typeof m === 'string') return m;
-            const o = m as { nome?: string; dose?: string; via?: string; posologia?: string; duracao?: string; indicacao?: string };
-            const parts = [o.nome, o.dose, o.via, o.posologia, o.duracao].filter(Boolean);
-            const base = parts.join(' ');
-            return o.indicacao ? `${base} (${o.indicacao})` : base;
-          };
-          const examDisplay = (e: unknown): string => {
-            if (typeof e === 'string') return e;
-            const o = e as { nome?: string };
-            return o.nome ?? '';
-          };
-          const medsForPrefill = medsRaw.map((m: unknown) => medDisplay(m));
-          const examsForPrefill = examsRaw.map((e: unknown) => examDisplay(e));
-          if (medsRaw.length === 0 && examsRaw.length === 0) return null;
-          return (
-            <View style={[s.cardMargin, { marginBottom: 8 }]}>
-              {medsRaw.length > 0 && (
-                <AppButton
-                  title="Criar Receita Baseada na Consulta"
-                  variant="doctorPrimary"
-                  trailing={<Ionicons name="chevron-forward" size={20} color={colors.white} />}
-                  onPress={() => router.push({ pathname: '/doctor-request/editor/[id]' as never, params: { id: request.id, prefillMeds: JSON.stringify(medsForPrefill) } })}
-                  style={{ width: '100%' }}
-                />
-              )}
-              {examsRaw.length > 0 && (
-                <AppButton
-                  title="Criar Pedido de Exame Baseado na Consulta"
-                  variant="outline"
-                  trailing={<Ionicons name="flask-outline" size={20} color={colors.primary} />}
-                  onPress={() => router.push({ pathname: '/new-request/exam' as never, params: { prefillExams: JSON.stringify(examsForPrefill) } })}
-                  style={{ width: '100%', marginTop: medsRaw.length > 0 ? 8 : 0 }}
-                />
-              )}
-            </View>
-          );
-        } catch { return null; }
+      {(hasMeds || hasExams) && (() => {
+        const medsForPrefill = (anamnesis?.medicamentos_sugeridos ?? []).map((m) => displayMedicamento(m));
+        const examsForPrefill = (anamnesis?.exames_sugeridos ?? []).map((e) => displayExame(e));
+        return (
+          <View style={[s.cardMargin, { marginBottom: 8 }]}>
+            {hasMeds && (
+              <AppButton
+                title="Criar Receita Baseada na Consulta"
+                variant="doctorPrimary"
+                trailing={<Ionicons name="chevron-forward" size={20} color={colors.white} />}
+                onPress={() => router.push({ pathname: '/doctor-request/editor/[id]' as never, params: { id: request.id, prefillMeds: JSON.stringify(medsForPrefill) } })}
+                style={{ width: '100%' }}
+              />
+            )}
+            {hasExams && (
+              <AppButton
+                title="Criar Pedido de Exame Baseado na Consulta"
+                variant="outline"
+                trailing={<Ionicons name="flask-outline" size={20} color={colors.primary} />}
+                onPress={() => router.push({ pathname: '/new-request/exam' as never, params: { prefillExams: JSON.stringify(examsForPrefill) } })}
+                style={{ width: '100%', marginTop: hasMeds ? 8 : 0 }}
+              />
+            )}
+          </View>
+        );
       })()}
     </>
   );
@@ -581,103 +459,28 @@ function ConductSection({ request, conductNotes, setConductNotes, includeConduct
   savingConduct: boolean;
   handleSaveConduct: () => Promise<void>;
 }) {
-  const { colors } = useAppTheme();
-  const s = useMemo(() => makeStyles(colors), [colors]);
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const suggestion = request.aiConductSuggestion || '';
+  const s = useMemo(() => makeStyles(useAppTheme({ role: 'doctor' }).colors), []);
   if (request.requestType !== 'consultation') return null;
 
   return (
-    <DoctorCard style={[s.cardMargin, s.formCard]}>
-      <View style={s.formHeader}>
-        <Ionicons name="journal" size={18} color={colors.primary} />
-        <Text style={s.formTitle}>PRONTUÁRIO / CONDUTA DA CONSULTA</Text>
-      </View>
-      <Text style={s.formDesc}>
-        Campo livre para registrar evolução, hipótese (CID) e conduta em linguagem clínica.
-        Somente o médico pode editar; o texto compõe o histórico do paciente.
-      </Text>
-      {request.aiConductSuggestion && (
-        <View style={{ marginBottom: spacing.sm }}>
-          <View style={s.aiHeader}>
-            <Ionicons name="bulb" size={16} color={colors.primary} />
-            <Text style={s.aiTitle}>Sugestão de conduta da IA</Text>
-          </View>
-          <Text style={[s.aiSummary, { fontSize: 13, lineHeight: 20, color: colors.textSecondary, marginTop: spacing.xs }]}>{suggestion}</Text>
-          <TouchableOpacity
-            style={s.aiSummaryActionBtn}
-            onPress={() => setSheetOpen(true)}
-          >
-            <Ionicons name="ellipsis-horizontal-circle-outline" size={16} color={colors.primary} />
-            <Text style={s.aiSummaryActionText}>Ações da IA</Text>
-          </TouchableOpacity>
-          <AIActionSheet
-            visible={sheetOpen}
-            onClose={() => setSheetOpen(false)}
-            title="Ações da sugestão de conduta"
-            subtitle="Copie ou aplique no prontuário com um toque."
-            actions={[
-              {
-                key: 'copy',
-                label: 'Copiar sugestão',
-                icon: 'copy-outline',
-                onPress: async () => {
-                  await Clipboard.setStringAsync(suggestion);
-                  showToast({ message: 'Sugestão copiada', type: 'success' });
-                },
-              },
-              {
-                key: 'apply',
-                label: 'Aplicar no prontuário',
-                icon: 'checkmark-done-outline',
-                onPress: () => {
-                  const next = conductNotes && conductNotes.trim().length > 0
-                    ? `${conductNotes.trim()}\n\n${suggestion}`
-                    : suggestion;
-                  setConductNotes(next);
-                },
-              },
-              {
-                key: 'discard',
-                label: 'Descartar',
-                icon: 'trash-outline',
-                destructive: true,
-                onPress: () => {},
-              },
-            ]}
-          />
-        </View>
-      )}
-      <TextInput
-        style={s.formTextArea}
-        placeholder={'Sugestão de estruturação:\nQueixa e duração: ...\nEvolução / anamnese: ...\nHipótese diagnóstica (CID): ...\nConduta: Visando continuidade do tratamento, prescrevo...'}
-        value={conductNotes}
-        onChangeText={setConductNotes}
-        multiline
-        textAlignVertical="top"
-        placeholderTextColor={colors.textMuted}
-      />
-      <TouchableOpacity
-        style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm }}
-        onPress={() => setIncludeConductInPdf(prev => !prev)}
-        activeOpacity={0.7}
-      >
-        <View style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 1, borderColor: includeConductInPdf ? colors.primary : colors.border, backgroundColor: includeConductInPdf ? colors.primary : 'transparent', alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
-          {includeConductInPdf && <Ionicons name="checkmark" size={14} color={colors.white} />}
-        </View>
-        <Text style={{ fontSize: 13, color: colors.textSecondary, flex: 1 }}>
-          Incluir esta conduta no PDF e no histórico compartilhado com o paciente.
-        </Text>
-      </TouchableOpacity>
-      <View style={s.formBtns}>
-        <AppButton title="Salvar no prontuário" variant="doctorPrimary" onPress={handleSaveConduct} loading={savingConduct} style={s.primaryBtnFlex} />
-      </View>
-    </DoctorCard>
+    <ConductForm
+      legacyConductNotes={conductNotes}
+      aiSuggestion={request.aiConductSuggestion}
+      anamnesisJson={request.consultationAnamnesis}
+      includeConductInPdf={includeConductInPdf}
+      onIncludeConductInPdfChange={(v) => setIncludeConductInPdf(v)}
+      saving={savingConduct}
+      onSave={(_data, combinedText) => {
+        setConductNotes(combinedText);
+        handleSaveConduct();
+      }}
+      style={s.cardMargin}
+    />
   );
 }
 
 function SignedDocumentCard({ request }: { request: NonNullable<ReturnType<typeof useDoctorRequest>['request']> }) {
-  const { colors } = useAppTheme();
+  const { colors } = useAppTheme({ role: 'doctor' });
   const s = useMemo(() => makeStyles(colors), [colors]);
   if (!request.signedDocumentUrl) return null;
 
@@ -737,7 +540,7 @@ function makeStyles(colors: DesignColors) {
   aiTitle: { fontSize: 13, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.text, flex: 1, letterSpacing: 0.8 },
   riskBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: 8 },
   riskText: { fontSize: 12, fontFamily: typography.fontFamily.bold, fontWeight: '700' },
-  aiDisclaimer: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: spacing.sm, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: 'rgba(0,119,182,0.06)', borderRadius: 6 },
+  aiDisclaimer: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: spacing.sm, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: colors.primaryGhost, borderRadius: 6 },
   aiDisclaimerText: { fontSize: 12, fontFamily: typography.fontFamily.regular, color: colors.textMuted, fontStyle: 'italic' },
   aiSummary: { fontSize: 15, fontFamily: typography.fontFamily.regular, color: colors.text, lineHeight: 24 },
   aiSummaryActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 10 },
@@ -747,7 +550,7 @@ function makeStyles(colors: DesignColors) {
   medIndex: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   medIndexText: { fontSize: 12, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.primary },
   medCardText: { fontSize: 14, fontFamily: typography.fontFamily.medium, fontWeight: '500', color: colors.text, flex: 1, lineHeight: 20 },
-  symptomsBlock: { borderLeftWidth: 3, borderLeftColor: colors.warning, paddingLeft: 12, paddingVertical: 4, backgroundColor: colors.warningLight + '40', borderRadius: 4 },
+  symptomsBlock: { borderLeftWidth: 3, borderLeftColor: colors.warning, paddingLeft: 12, paddingVertical: 4, backgroundColor: colors.warningLight, borderRadius: 4 },
   symptomsText: { fontSize: 14, fontFamily: typography.fontFamily.regular, color: colors.textSecondary, lineHeight: 22, fontStyle: 'italic' },
   anaField: { marginBottom: 10, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   anaLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4 },

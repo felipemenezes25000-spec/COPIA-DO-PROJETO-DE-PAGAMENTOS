@@ -15,6 +15,11 @@ jest.mock('react-native', () => ({
   Platform: { OS: 'ios' },
 }));
 
+jest.mock('expo-file-system/legacy', () => ({
+  copyAsync: jest.fn(({ from }: { from: string; to: string }) => Promise.resolve()),
+  cacheDirectory: 'file:///cache/',
+}));
+
 jest.mock('../lib/analytics', () => ({
   trackApiLatency: jest.fn(),
 }));

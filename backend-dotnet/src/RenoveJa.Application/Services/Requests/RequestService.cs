@@ -368,7 +368,8 @@ public class RequestService(
 
         if (req != null && req.Status != RequestStatus.Rejected)
         {
-            await pushDispatcher.SendAsync(PushNotificationRules.Submitted(userId, req.Id, RequestType.Prescription), cancellationToken);
+            // Paciente acabou de enviar — push "Pedido enviado" desnecessário
+            // await pushDispatcher.SendAsync(PushNotificationRules.Submitted(userId, req.Id, RequestType.Prescription), cancellationToken);
             await NotifyAvailableDoctorsOfNewRequestAsync("receita", req, cancellationToken);
             await requestEventsPublisher.NotifyNewRequestToDoctorsAsync(req.Id, "submitted", "Nova receita na fila", cancellationToken);
         }
@@ -425,7 +426,8 @@ public class RequestService(
 
         if (req != null && req.Status != RequestStatus.Rejected)
         {
-            await pushDispatcher.SendAsync(PushNotificationRules.Submitted(userId, req.Id, RequestType.Exam), cancellationToken);
+            // Paciente acabou de enviar — push "Pedido enviado" desnecessário
+            // await pushDispatcher.SendAsync(PushNotificationRules.Submitted(userId, req.Id, RequestType.Exam), cancellationToken);
             await NotifyAvailableDoctorsOfNewRequestAsync("exame", req, cancellationToken);
             await requestEventsPublisher.NotifyNewRequestToDoctorsAsync(req.Id, "submitted", "Novo exame na fila", cancellationToken);
         }
@@ -517,7 +519,8 @@ public class RequestService(
             medicalRequest = await requestRepository.UpdateAsync(medicalRequest, cancellationToken) ?? medicalRequest;
         }
 
-        await pushDispatcher.SendAsync(PushNotificationRules.Submitted(userId, medicalRequest.Id, RequestType.Consultation), cancellationToken);
+        // Paciente acabou de enviar — push "Pedido enviado" desnecessário
+        // await pushDispatcher.SendAsync(PushNotificationRules.Submitted(userId, medicalRequest.Id, RequestType.Consultation), cancellationToken);
 
         await NotifyAvailableDoctorsOfNewRequestAsync("consulta", medicalRequest, cancellationToken);
         await requestEventsPublisher.NotifyNewRequestToDoctorsAsync(medicalRequest.Id, "submitted", "Nova consulta na fila", cancellationToken);
@@ -905,19 +908,9 @@ public class RequestService(
             request.AssignDoctor(doctorUser.Id, doctorUser.Name);
             request = await requestRepository.UpdateAsync(request, cancellationToken);
 
-            await CreateNotificationAsync(
-                request.PatientId,
-                "Médico Atribuído",
-                $"Sua solicitação foi atribuída ao Dr(a). {doctorUser.Name}",
-                cancellationToken,
-                new Dictionary<string, object?> { ["requestId"] = request.Id.ToString() });
-
-            await CreateNotificationAsync(
-                doctorUser.Id,
-                "Nova Solicitação",
-                $"Você recebeu uma nova solicitação de {request.PatientName}",
-                cancellationToken,
-                new Dictionary<string, object?> { ["requestId"] = request.Id.ToString() });
+            // "Seu pedido está em análise" — push informativo desnecessário (paciente já vê na tela)
+            // await pushDispatcher.SendAsync(PushNotificationRules.InReview(request.PatientId, request.Id, request.RequestType), cancellationToken);
+            await pushDispatcher.SendAsync(PushNotificationRules.RequestAssigned(doctorUser.Id, request.Id, request.RequestType), cancellationToken);
         }
 
         return MapRequestToDto(request);
@@ -969,12 +962,7 @@ public class RequestService(
         videoRoom = await videoRoomRepository.CreateAsync(videoRoom, cancellationToken);
 
         await PublishRequestUpdatedAsync(request, "Médico aceitou — efetue o pagamento", cancellationToken);
-        await CreateNotificationAsync(
-            request.PatientId,
-            "Médico aceitou sua consulta",
-            "Efetue o pagamento para continuar e entrar na sala de vídeo.",
-            cancellationToken,
-            new Dictionary<string, object?> { ["requestId"] = request.Id.ToString() });
+        await pushDispatcher.SendAsync(PushNotificationRules.ApprovedPendingPayment(request.PatientId, request.Id, RequestType.Consultation), cancellationToken);
 
         return (MapRequestToDto(request), MapVideoRoomToDto(videoRoom));
     }
@@ -1082,22 +1070,7 @@ public class RequestService(
                 }
             }
 
-            await CreateNotificationAsync(
-                request.PatientId,
-                "Chamada conectada",
-                "O tempo da consulta está contando agora.",
-                cancellationToken,
-                new Dictionary<string, object?> { ["requestId"] = request.Id.ToString() });
-            if (request.DoctorId.HasValue)
-            {
-                await CreateNotificationAsync(
-                    request.DoctorId.Value,
-                    "Chamada conectada",
-                    "O tempo da consulta está contando agora.",
-                    cancellationToken,
-                    new Dictionary<string, object?> { ["requestId"] = request.Id.ToString() });
-            }
-
+            // Paciente e médico já estão na chamada — não enviar push redundante.
             // Enviar RequestUpdated para que paciente e médico atualizem o timer imediatamente (consultationStartedAt)
             await PublishRequestUpdatedAsync(request, "Chamada conectada", cancellationToken);
         }
@@ -1276,12 +1249,6 @@ public class RequestService(
         }
 
         await PublishRequestUpdatedAsync(request, "Consulta finalizada", cancellationToken);
-        await CreateNotificationAsync(
-            request.PatientId,
-            "Consulta Finalizada",
-            "Sua consulta foi encerrada. Obrigado!",
-            cancellationToken,
-            new Dictionary<string, object?> { ["requestId"] = request.Id.ToString() });
         await pushDispatcher.SendAsync(PushNotificationRules.ConsultationFinished(request.PatientId, request.Id), cancellationToken);
 
         return MapRequestToDto(request);

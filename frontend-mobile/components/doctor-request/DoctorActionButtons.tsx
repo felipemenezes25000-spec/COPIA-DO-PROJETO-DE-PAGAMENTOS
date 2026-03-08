@@ -59,7 +59,7 @@ export function DoctorActionButtons({
   onToggleSignForm,
   isInQueue,
 }: DoctorActionButtonsProps) {
-  const { colors, typography, spacing, borderRadius } = useAppTheme();
+  const { colors, typography, spacing, borderRadius } = useAppTheme({ role: 'doctor' });
   
   // Dynamic styles
   const styles = useMemo(() => makeStyles(colors, typography, spacing, borderRadius), [colors, typography, spacing, borderRadius]);

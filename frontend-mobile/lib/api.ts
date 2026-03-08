@@ -1,3 +1,5 @@
+import * as FileSystem from 'expo-file-system/legacy';
+import { Platform } from 'react-native';
 import { apiClient } from './api-client';
 import { logApiError } from './logger';
 import {
@@ -32,12 +34,26 @@ export async function changePassword(currentPassword: string, newPassword: strin
   });
 }
 
+/** Copia URI content:// para file:// no Android (FormData não lê content:// corretamente). */
+async function ensureFileUriForUpload(uri: string): Promise<{ uri: string; filename: string }> {
+  const needsCopy = Platform.OS === 'android' && uri.startsWith('content://');
+  if (!needsCopy) {
+    const filename = uri.split('/').pop() ?? 'avatar.jpg';
+    return { uri, filename };
+  }
+  const ext = uri.includes('.png') ? '.png' : '.jpg';
+  const dest = `${FileSystem.cacheDirectory}avatar_${Date.now()}${ext}`;
+  await FileSystem.copyAsync({ from: uri, to: dest });
+  return { uri: dest, filename: `avatar${ext}` };
+}
+
 export async function updateAvatar(uri: string, filename?: string): Promise<UserDto> {
+  const { uri: uploadUri, filename: uploadFilename } = await ensureFileUriForUpload(uri);
   const formData = new FormData();
-  const name = filename ?? uri.split('/').pop() ?? 'avatar.jpg';
+  const name = filename ?? uploadFilename;
   const type = name.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
   formData.append('avatar', {
-    uri,
+    uri: uploadUri,
     name,
     type,
   } as unknown as Blob);

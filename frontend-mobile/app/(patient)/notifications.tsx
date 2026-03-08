@@ -6,13 +6,14 @@ import {
   SectionList,
   TouchableOpacity,
   RefreshControl,
+  Animated,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useListBottomPadding } from '../../lib/ui/responsive';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, borderRadius } from '../../lib/theme';
+import { spacing } from '../../lib/theme';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../lib/designSystem';
 import { uiTokens } from '../../lib/ui/tokens';
@@ -23,6 +24,8 @@ import { AppHeader, AppSegmentedControl, AppEmptyState, TopSummaryStrip } from '
 import { SkeletonList } from '../../components/ui/SkeletonLoader';
 import { showToast } from '../../components/ui/Toast';
 import { haptics } from '../../lib/haptics';
+
+// ── Helpers ────────────────────────────────────────────────────
 
 function getDateGroup(dateStr: string): string {
   const d = new Date(dateStr);
@@ -35,23 +38,88 @@ function getDateGroup(dateStr: string): string {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' });
 }
 
-type NotificationFilterKey = 'all' | 'payment' | 'request' | 'other';
+type NotificationFilterKey = 'all' | 'payment' | 'request' | 'consultation';
 
-function getNotificationFilterType(item: NotificationResponseDto): Exclude<NotificationFilterKey, 'all'> {
+/** Categoriza notificação para filtros do paciente */
+function categorizeNotification(item: NotificationResponseDto): Exclude<NotificationFilterKey, 'all'> {
   const t = (item.title || '').toLowerCase();
   const m = (item.message || '').toLowerCase();
-  const hasPayment = item.data?.paymentId != null || t.includes('pagamento') || m.includes('pagamento') || t.includes('pago') || m.includes('pago');
-  const hasRequest = t.includes('solicita') || m.includes('solicita') || t.includes('pedido') || m.includes('pedido') || t.includes('novo') || m.includes('novo');
-  if (hasPayment) return 'payment';
-  if (hasRequest) return 'request';
-  return 'other';
+  const data = item.data || {};
+  const status = (data.status as string || '').toLowerCase();
+  const type = (data.type as string || '').toLowerCase();
+
+  // Consultas
+  if (type.includes('consultation') || type.includes('doctor_ready') || type.includes('no_show') ||
+      t.includes('consulta') || t.includes('médico') || t.includes('videochamada') || status.includes('consultation')) {
+    return 'consultation';
+  }
+
+  // Pagamentos
+  if (data.paymentId != null || type.includes('payment') ||
+      t.includes('pagamento') || m.includes('pagamento') || t.includes('pago') || m.includes('pago') ||
+      status === 'approvedpendingpayment' || status === 'paid') {
+    return 'payment';
+  }
+
+  return 'request';
+}
+
+/** Ícone e cor por tipo de evento — mais expressivo para o paciente */
+function getNotificationVisual(item: NotificationResponseDto, colors: DesignColors): {
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+  bgColor: string;
+  label: string;
+} {
+  const type = (item.data?.type as string || '').toLowerCase();
+  const status = (item.data?.status as string || '').toLowerCase();
+
+  // Documento pronto
+  if (type.includes('signed') || status === 'signed' || (item.data?.documentAvailable)) {
+    return { icon: 'document-text', color: colors.success, bgColor: colors.successLight, label: 'Pronto' };
+  }
+  // Consulta
+  if (type.includes('consultation') || type.includes('doctor_ready')) {
+    return { icon: 'videocam', color: '#8B5CF6', bgColor: '#EDE9FE', label: 'Consulta' };
+  }
+  // Pagamento confirmado
+  if (status === 'paid') {
+    return { icon: 'checkmark-circle', color: colors.success, bgColor: colors.successLight, label: 'Pago' };
+  }
+  // Pagamento pendente / falha
+  if (type.includes('payment') || status === 'approvedpendingpayment') {
+    return { icon: 'card', color: colors.warning, bgColor: colors.warningLight, label: 'Pagamento' };
+  }
+  // Aprovado
+  if (status === 'approvedpendingpayment') {
+    return { icon: 'thumbs-up', color: colors.info, bgColor: colors.infoLight, label: 'Aprovado' };
+  }
+  // Em análise
+  if (status === 'inreview' || status === 'submitted') {
+    return { icon: 'hourglass', color: colors.info, bgColor: colors.infoLight, label: 'Em análise' };
+  }
+  // Rejeitado
+  if (status === 'rejected') {
+    return { icon: 'close-circle', color: colors.error, bgColor: colors.errorLight, label: 'Revisão' };
+  }
+  // Cancelado
+  if (status === 'cancelled') {
+    return { icon: 'ban', color: colors.textMuted, bgColor: colors.surfaceSecondary, label: 'Cancelado' };
+  }
+  // Lembrete
+  if (type.includes('reminder')) {
+    return { icon: 'alarm', color: colors.warning, bgColor: colors.warningLight, label: 'Lembrete' };
+  }
+
+  // Padrão
+  return { icon: 'notifications', color: colors.primary, bgColor: colors.primarySoft, label: 'Atualização' };
 }
 
 const FILTER_ITEMS: { key: NotificationFilterKey; label: string }[] = [
   { key: 'all', label: 'Todos' },
+  { key: 'request', label: 'Pedidos' },
   { key: 'payment', label: 'Pagamentos' },
-  { key: 'request', label: 'Solicitações' },
-  { key: 'other', label: 'Outros' },
+  { key: 'consultation', label: 'Consultas' },
 ];
 
 const ListSeparator = () => <View style={{ height: 10 }} />;
@@ -61,20 +129,30 @@ export default function PatientNotifications() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { refreshUnreadCount, markAllReadOptimistic, decrementUnreadCount } = useNotifications();
-  const [notifications, setNotifications] = useState<NotificationResponseDto[]>([]);
+  const [allNotifications, setAllNotifications] = useState<NotificationResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
   const [activeFilter, setActiveFilter] = useState<NotificationFilterKey>('all');
 
-  const { colors, gradients } = useAppTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { colors, gradients, scheme } = useAppTheme();
+  const isDark = scheme === 'dark';
+  const styles = useMemo(() => makeStyles(colors, isDark), [colors, isDark]);
+
+  // ── FILTRO POR ROLE: só mostra notificações destinadas ao paciente ──
+  const notifications = useMemo(() => {
+    return allNotifications.filter(n => {
+      const targetRole = n.data?.targetRole as string | undefined;
+      // Mostrar se: sem targetRole (legado) OU targetRole === 'patient'
+      return !targetRole || targetRole === 'patient';
+    });
+  }, [allNotifications]);
 
   const loadData = useCallback(async (withFeedback = false) => {
     try {
       setError(false);
       const response = await getNotifications({ page: 1, pageSize: 50 });
-      setNotifications(response.items || []);
+      setAllNotifications(response.items || []);
       if (withFeedback) {
         showToast({ message: 'Notificações atualizadas', type: 'success' });
       }
@@ -109,10 +187,10 @@ export default function PatientNotifications() {
 
   const handleMarkAllRead = async () => {
     try {
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setAllNotifications(prev => prev.map(n => ({ ...n, read: true })));
       await markAllReadOptimistic();
       haptics.success();
-      showToast({ message: 'Todas as notificações foram marcadas como lidas', type: 'success' });
+      showToast({ message: 'Todas marcadas como lidas', type: 'success' });
     } catch (error) {
       console.error('Error marking all as read:', error);
       haptics.error();
@@ -121,12 +199,20 @@ export default function PatientNotifications() {
 
   const handleMarkRead = async (id: string, item?: NotificationResponseDto) => {
     decrementUnreadCount();
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    setAllNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     try {
       await markNotificationAsRead(id);
       haptics.selection();
-      const requestId = item?.data?.requestId;
-      if (requestId) {
+
+      // ── NAVEGAÇÃO INTELIGENTE: usar deepLink se disponível ──
+      const deepLink = item?.data?.deepLink as string | undefined;
+      const requestId = item?.data?.requestId as string | undefined;
+
+      if (typeof deepLink === 'string' && deepLink.includes('/')) {
+        // Extrair path do deepLink (renoveja://request-detail/xxx → /request-detail/xxx)
+        const path = deepLink.replace('renoveja://', '/');
+        router.push(path as any);
+      } else if (requestId) {
         router.push(`/request-detail/${requestId}`);
       }
     } catch (error) {
@@ -135,31 +221,22 @@ export default function PatientNotifications() {
     }
   };
 
-  const getIcon = (type: string) => {
-    switch (type) {
-      case 'success': return { name: 'checkmark-circle' as const, color: colors.success };
-      case 'warning': return { name: 'warning' as const, color: colors.warning };
-      case 'error': return { name: 'alert-circle' as const, color: colors.error };
-      default: return { name: 'information-circle' as const, color: colors.info };
-    }
-  };
-
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
-    const hours = Math.floor(diff / 3600000);
-    if (hours < 1) return 'Agora';
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Agora';
+    if (mins < 60) return `${mins} min`;
+    const hours = Math.floor(mins / 60);
     if (hours < 24) return `${hours}h atrás`;
     const days = Math.floor(hours / 24);
     if (days === 1) return 'Ontem';
-    return `${days} dias atrás`;
+    return `${days}d atrás`;
   };
 
   const renderItem = ({ item }: { item: NotificationResponseDto }) => {
-    const icon = getIcon(item.notificationType);
-    const hours = Math.floor((Date.now() - new Date(item.createdAt).getTime()) / 3600000);
-    const urgency = !item.read && hours <= 6 ? 'Urgente' : hours <= 24 ? 'Hoje' : 'Recente';
+    const visual = getNotificationVisual(item, colors);
 
     return (
       <TouchableOpacity
@@ -169,37 +246,42 @@ export default function PatientNotifications() {
         accessibilityRole="button"
         accessibilityLabel={`Notificação: ${item.title}`}
       >
-        <View style={[styles.iconContainer, { backgroundColor: icon.color + '15' }]}>
-          <Ionicons name={icon.name} size={22} color={icon.color} />
+        <View style={[styles.iconContainer, { backgroundColor: isDark ? visual.color + '20' : visual.bgColor }]}>
+          <Ionicons name={visual.icon} size={20} color={visual.color} />
         </View>
         <View style={styles.cardContent}>
-          <Text style={[styles.cardTitle, !item.read && styles.cardTitleUnread]}>{item.title}</Text>
-          <Text style={styles.cardMessage} numberOfLines={3}>{item.message}</Text>
+          <View style={styles.titleRow}>
+            <Text style={[styles.cardTitle, !item.read && styles.cardTitleUnread]} numberOfLines={1}>
+              {item.title}
+            </Text>
+            {!item.read && <View style={styles.unreadDot} />}
+          </View>
+          <Text style={styles.cardMessage} numberOfLines={2}>{item.message}</Text>
           <View style={styles.metaRow}>
             <Text style={styles.cardDate}>{formatDate(item.createdAt)}</Text>
-            <View style={[styles.urgencyBadge, urgency === 'Urgente' && styles.urgencyBadgeHigh]}>
-              <Text style={[styles.urgencyText, urgency === 'Urgente' && styles.urgencyTextHigh]}>{urgency}</Text>
+            <View style={[styles.categoryBadge, { backgroundColor: isDark ? visual.color + '15' : visual.bgColor }]}>
+              <Text style={[styles.categoryText, { color: visual.color }]}>{visual.label}</Text>
             </View>
           </View>
         </View>
-        {!item.read && <View style={styles.unreadDot} />}
+        <Ionicons name="chevron-forward" size={16} color={colors.textMuted} style={{ marginLeft: 4 }} />
       </TouchableOpacity>
     );
   };
 
   const counts = useMemo(() => {
     const all = notifications.length;
-    const payment = notifications.filter((n) => getNotificationFilterType(n) === 'payment').length;
-    const request = notifications.filter((n) => getNotificationFilterType(n) === 'request').length;
-    const other = notifications.filter((n) => getNotificationFilterType(n) === 'other').length;
-    return { all, payment, request, other };
+    const payment = notifications.filter((n) => categorizeNotification(n) === 'payment').length;
+    const request = notifications.filter((n) => categorizeNotification(n) === 'request').length;
+    const consultation = notifications.filter((n) => categorizeNotification(n) === 'consultation').length;
+    return { all, payment, request, consultation };
   }, [notifications]);
 
   const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
 
   const filteredNotifications = useMemo(() => {
     if (activeFilter === 'all') return notifications;
-    return notifications.filter((n) => getNotificationFilterType(n) === activeFilter);
+    return notifications.filter((n) => categorizeNotification(n) === activeFilter);
   }, [activeFilter, notifications]);
 
   const sections = Object.entries(
@@ -215,7 +297,7 @@ export default function PatientNotifications() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" translucent backgroundColor="transparent" />
+      <StatusBar style={isDark ? 'light' : 'dark'} translucent backgroundColor="transparent" />
       <View style={[styles.headerWrap, { paddingTop: insets.top + 12 }]}>
         <View style={styles.headerClip}>
           <AppHeader
@@ -230,7 +312,7 @@ export default function PatientNotifications() {
                 accessibilityRole="button"
                 accessibilityLabel="Marcar todas notificações como lidas"
               >
-                <Text style={styles.markAll}>Marcar lidas</Text>
+                <Ionicons name="checkmark-done" size={18} color={colors.white} />
               </TouchableOpacity>
             ) : (
               <View style={{ width: 44 }} />
@@ -238,11 +320,12 @@ export default function PatientNotifications() {
           />
         </View>
       </View>
+
       <TopSummaryStrip
         items={[
           { label: 'Total', value: counts.all },
           { label: 'Não lidas', value: unreadCount },
-          { label: 'Pagamentos', value: counts.payment },
+          { label: 'Consultas', value: counts.consultation },
         ]}
       />
 
@@ -300,7 +383,7 @@ export default function PatientNotifications() {
   );
 }
 
-function makeStyles(colors: DesignColors) {
+function makeStyles(colors: DesignColors, isDark: boolean) {
   return StyleSheet.create({
   container: {
     flex: 1,
@@ -314,111 +397,104 @@ function makeStyles(colors: DesignColors) {
     borderRadius: 22,
     overflow: 'hidden',
   },
-
-  markAllBtn: { paddingVertical: spacing.xs, paddingHorizontal: spacing.sm },
-  markAll: { fontSize: 13, color: colors.white, fontWeight: '600' },
+  markAllBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   listContent: { paddingHorizontal: uiTokens.screenPaddingHorizontal, paddingTop: 6 },
   groupLabel: {
     fontSize: 12,
     fontWeight: '700',
     color: colors.textMuted,
-    letterSpacing: 0.2,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
     marginTop: spacing.md,
     marginBottom: spacing.sm,
   },
-  sectionGap: { height: spacing.sm },
-  separator: { height: spacing.sm },
   card: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.card,
-    padding: spacing.md,
+    borderRadius: 16,
+    padding: 14,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: isDark ? colors.border : 'transparent',
+    shadowColor: isDark ? 'transparent' : '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: isDark ? 0 : 2,
   },
   cardUnread: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: isDark ? colors.primarySoft : '#F0F9FF',
     borderLeftWidth: 3,
     borderLeftColor: colors.primary,
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.full,
+    width: 42,
+    height: 42,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.md,
+    marginRight: 12,
     flexShrink: 0,
   },
   cardContent: {
     flex: 1,
     minWidth: 0,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   cardTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.text,
+    flex: 1,
   },
   cardTitleUnread: {
     fontWeight: '700',
-  },
-  cardMessage: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  cardDate: {
-    fontSize: 12,
-    color: colors.textMuted,
-  },
-  metaRow: {
-    marginTop: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  urgencyBadge: {
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  urgencyBadgeHigh: {
-    backgroundColor: colors.errorLight,
-    borderColor: colors.error,
-  },
-  urgencyText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  urgencyTextHigh: {
-    color: colors.error,
   },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: colors.primary,
-    marginLeft: spacing.sm,
     flexShrink: 0,
   },
-  empty: {
-    alignItems: 'center',
-    paddingTop: 64,
-    gap: spacing.sm,
+  cardMessage: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 3,
+    lineHeight: 18,
   },
-  emptyIconWrap: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: colors.primaryLight,
+  metaRow: {
+    marginTop: 8,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
   },
-  emptyTitle: { fontSize: 17, fontWeight: '600', color: colors.textSecondary },
-  emptySubtitle: { fontSize: 14, color: colors.textMuted },
+  cardDate: {
+    fontSize: 11,
+    color: colors.textMuted,
+    fontWeight: '500',
+  },
+  categoryBadge: {
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  categoryText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
   });
 }

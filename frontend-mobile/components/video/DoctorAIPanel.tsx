@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
+import { ANA_FIELDS as SHARED_ANA_FIELDS } from '../../lib/domain/anamnesis';
 
 // ── Types ──
 
@@ -92,20 +93,9 @@ const CONFIDENCE_CONFIG: Record<string, { color: string; label: string }> = {
   baixa: { color: '#DC2626', label: 'Confiança Baixa' },
 };
 
-// ── Anamnesis field definitions ──
+// ── Anamnesis field definitions (source: lib/domain/anamnesis.ts) ──
 
-const ANA_FIELDS = [
-  { key: 'queixa_principal', label: 'Queixa Principal', icon: 'chatbubble-ellipses' },
-  { key: 'historia_doenca_atual', label: 'HDA', icon: 'time' },
-  { key: 'sintomas', label: 'Sintomas', icon: 'thermometer' },
-  { key: 'revisao_sistemas', label: 'Revisão de Sistemas', icon: 'body' },
-  { key: 'medicamentos_em_uso', label: 'Medicamentos em Uso', icon: 'medical' },
-  { key: 'alergias', label: 'Alergias', icon: 'warning' },
-  { key: 'antecedentes_pessoais', label: 'Antecedentes Pessoais', icon: 'document-text' },
-  { key: 'antecedentes_familiares', label: 'Antecedentes Familiares', icon: 'people' },
-  { key: 'habitos_vida', label: 'Hábitos de Vida', icon: 'fitness' },
-  { key: 'outros', label: 'Outros', icon: 'ellipsis-horizontal' },
-] as const;
+const ANA_FIELDS = SHARED_ANA_FIELDS;
 
 // ── Helpers ──
 
@@ -403,7 +393,7 @@ export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPane
                   return (
                     <View key={key} style={S.af}>
                       <View style={S.afL}>
-                        <Ionicons name={icon as 'chatbubble-ellipses' | 'time' | 'thermometer' | 'body' | 'medical' | 'warning' | 'document-text' | 'people' | 'fitness' | 'ellipsis-horizontal'} size={11} color={isAlert ? colors.error : colors.textMuted} />
+                        <Ionicons name={icon as any} size={11} color={isAlert ? colors.error : colors.textMuted} />
                         <Text style={[S.afLT, isAlert && { color: colors.error }]}>{label}</Text>
                       </View>
                       <Text style={S.afV}>{d}</Text>

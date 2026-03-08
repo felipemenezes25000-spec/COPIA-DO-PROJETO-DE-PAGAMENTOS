@@ -104,9 +104,12 @@ function getGradients(scheme: ColorScheme) {
 // ─── Header overlay (texto sobre gradiente azul — sempre claro) ───
 const HEADER_OVERLAY = {
   headerOverlayText: '#FFFFFF',
-  headerOverlayTextMuted: 'rgba(255,255,255,0.85)',
-  headerOverlayBorder: 'rgba(255,255,255,0.4)',
-  headerOverlaySurface: 'rgba(255,255,255,0.25)',
+  headerOverlayTextMuted: 'rgba(255,255,255,0.75)',
+  headerOverlayTextSubtle: 'rgba(255,255,255,0.55)',
+  headerOverlayBorder: 'rgba(255,255,255,0.25)',
+  headerOverlaySurface: 'rgba(255,255,255,0.18)',
+  headerOverlaySurfaceActive: 'rgba(255,255,255,0.28)',
+  headerOverlayDivider: 'rgba(255,255,255,0.12)',
 };
 
 // ─── Factory ─────────────────────────────────────────────────
@@ -145,6 +148,7 @@ export function createTokens(role: AppRole, scheme: ColorScheme) {
     
     secondarySoft: isDoctor && isDark ? '#3A2010' : '#FFF3E6',
     accentSoft: isDark ? '#2E1065' : '#EDE9FE',
+    warningYellow: isDark ? '#FACC15' : '#EAB308',
   };
 
   const borderRadius = {

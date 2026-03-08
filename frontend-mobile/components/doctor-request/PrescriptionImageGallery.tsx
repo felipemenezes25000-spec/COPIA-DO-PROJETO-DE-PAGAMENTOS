@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '../../lib/themeDoctor';
 import { DoctorCard } from '../ui/DoctorCard';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
+import type { DesignColors } from '../../lib/designSystem';
 import { CompatibleImage } from '../CompatibleImage';
 import { ZoomableImage } from '../ZoomableImage';
 
@@ -77,7 +78,7 @@ export function PrescriptionImageGallery({ images, label, iconBackgroundColor, s
   );
 }
 
-function makeStyles(colors: { textMuted: string; white: string }) {
+function makeStyles(colors: DesignColors) {
   return StyleSheet.create({
     sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
     sectionIconWrap: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
@@ -86,12 +87,12 @@ function makeStyles(colors: { textMuted: string; white: string }) {
     imageScroll: { marginTop: 4 },
     img: { width: 160, height: 200, borderRadius: 14 },
     thumbContainer: { marginRight: 10, position: 'relative' },
-    zoomBadge: { position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 12, padding: 5, alignItems: 'center', justifyContent: 'center' },
-    imgCounter: { position: 'absolute', top: 8, left: 8, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
+    zoomBadge: { position: 'absolute', bottom: 8, right: 8, backgroundColor: colors.overlayBackground, borderRadius: 12, padding: 5, alignItems: 'center', justifyContent: 'center' },
+    imgCounter: { position: 'absolute', top: 8, left: 8, backgroundColor: colors.overlayBackground, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
     imgCounterText: { fontSize: 12, fontFamily: typography.fontFamily.semibold, fontWeight: '600', color: colors.white },
-    modalContainer: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.95)', justifyContent: 'center', alignItems: 'center' },
+    modalContainer: { flex: 1, backgroundColor: colors.modalOverlay, justifyContent: 'center', alignItems: 'center' },
     modalImageWrapper: { flex: 1, width: '100%', alignSelf: 'stretch' },
     modalImageFull: { flex: 1, width: '100%', minHeight: 300 },
-    modalCloseButton: { position: 'absolute', top: Platform.OS === 'web' ? 20 : 60, right: spacing.md, zIndex: 10, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 25, padding: 10, width: 50, height: 50, justifyContent: 'center', alignItems: 'center' },
+    modalCloseButton: { position: 'absolute', top: Platform.OS === 'web' ? 20 : 60, right: spacing.md, zIndex: 10, backgroundColor: colors.overlayBackground, borderRadius: 25, padding: 10, width: 50, height: 50, justifyContent: 'center', alignItems: 'center' },
   });
 }

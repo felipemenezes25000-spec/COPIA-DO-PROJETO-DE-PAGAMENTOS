@@ -12,13 +12,45 @@ const Notifications = isExpoGo ? null : require('expo-notifications');
 
 if (Notifications) {
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
+    handleNotification: async (notification: any) => {
+      // ── FILTRO POR ROLE ──
+      // Se a notificação tem targetRole, só mostra se bater com o role ativo.
+      // Isso evita que o médico receba heads-up de notificações de paciente e vice-versa.
+      const data = notification?.request?.content?.data ?? {};
+      const targetRole = data?.targetRole as string | undefined;
+
+      // Importar user role dinâmicamente (evita circular dependency)
+      let currentRole: string | null = null;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        const storedUser = await AsyncStorage.getItem('@renoveja:user');
+        if (storedUser) {
+          const parsed = JSON.parse(storedUser);
+          currentRole = parsed?.role ?? null;
+        }
+      } catch {}
+
+      // Se targetRole está definido e não bate com o role ativo, suprime heads-up
+      if (targetRole && currentRole && targetRole !== currentRole) {
+        return {
+          shouldShowAlert: false,
+          shouldPlaySound: false,
+          shouldSetBadge: true, // Still update badge count
+          shouldShowBanner: false,
+          shouldShowList: true, // Still show in notification center
+        };
+      }
+
+      // Notificação relevante para o role ativo — mostrar com tudo
+      return {
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      };
+    },
   });
 }
 
@@ -37,19 +69,30 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
   const coldStartHandled = useRef(false);
   userRef.current = user;
 
-  /** Navega para a tela correta com base no role e no requestId/deepLink da notificação. */
+  /**
+   * Navega para a tela correta com base no deepLink da notificação.
+   * 
+   * PRIORIDADE:
+   * 1. deepLink completo (renoveja://...) → Linking.openURL → resolve pelo expo-router
+   * 2. requestId + targetRole → rota específica do role correto
+   * 3. requestId + user.role (fallback legado)
+   */
   const handleNotificationNavigation = useCallback(
     (data: Record<string, unknown>) => {
-      const deepLink = data?.deepLink;
-      const requestId = data?.requestId;
+      const deepLink = data?.deepLink as string | undefined;
+      const requestId = data?.requestId as string | undefined;
+      const targetRole = data?.targetRole as string | undefined;
 
+      // 1. Deep link completo → preferido (já contém a rota correta)
       if (typeof deepLink === 'string' && deepLink.startsWith('renoveja://')) {
         Linking.openURL(deepLink).catch(() => {});
         return;
       }
+
+      // 2. Se temos requestId, navegar baseado em targetRole (não no role do user logado)
       if (requestId && typeof requestId === 'string') {
-        const u = userRef.current;
-        const path = u?.role === 'doctor'
+        const effectiveRole = targetRole || userRef.current?.role;
+        const path = effectiveRole === 'doctor'
           ? `/doctor-request/${requestId}`
           : `/request-detail/${requestId}`;
         router.push(path as any);

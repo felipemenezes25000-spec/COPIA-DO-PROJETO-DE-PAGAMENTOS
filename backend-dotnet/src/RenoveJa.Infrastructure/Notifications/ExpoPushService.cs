@@ -145,7 +145,8 @@ public class ExpoPushService : IPushNotificationSender
             ["deepLink"] = p.DeepLink,
             ["category"] = p.Category.ToString().ToLowerInvariant(),
             ["collapseKey"] = p.CollapseKey,
-            ["ts"] = p.Ts
+            ["ts"] = p.Ts,
+            ["targetRole"] = p.TargetRole
         };
         if (!string.IsNullOrEmpty(p.RequestId)) d["requestId"] = p.RequestId;
         if (!string.IsNullOrEmpty(p.RequestType)) d["requestType"] = p.RequestType;

@@ -126,7 +126,8 @@ public class PushNotificationDispatcher : IPushNotificationDispatcher
             ["deepLink"] = p.DeepLink,
             ["requestId"] = p.RequestId,
             ["requestType"] = p.RequestType,
-            ["status"] = p.Status
+            ["status"] = p.Status,
+            ["targetRole"] = p.TargetRole
         };
         if (p.Extra != null)
             foreach (var kv in p.Extra)

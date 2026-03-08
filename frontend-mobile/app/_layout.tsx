@@ -18,9 +18,7 @@ import { NotificationProvider } from '../contexts/NotificationContext';
 import { RequestsEventsProvider } from '../contexts/RequestsEventsContext';
 import { TriageAssistantProvider } from '../contexts/TriageAssistantProvider';
 import { GlobalRequestUpdatedToast } from '../components/GlobalRequestUpdatedToast';
-import { RequestUpdateBanner } from '../components/RequestUpdateBanner';
 import { OfflineBanner } from '../components/OfflineBanner';
-import { GlobalAssistantBanner } from '../components/triage/GlobalAssistantBanner';
 import { ToastProvider } from '../components/ui/Toast';
 import { ModalVisibilityProvider } from '../contexts/ModalVisibilityContext';
 import { ColorSchemeProvider, useColorSchemeContext } from '../contexts/ColorSchemeContext';
@@ -147,8 +145,6 @@ export default function RootLayout() {
                 <Stack.Screen name="about" options={motionTokens.nav.softPush} />
                 <Stack.Screen name="help-faq" options={motionTokens.nav.softPush} />
                 </Stack>
-                <RequestUpdateBanner />
-                <GlobalAssistantBanner />
               </View>
             </ToastProvider>
             </TriageAssistantProvider>

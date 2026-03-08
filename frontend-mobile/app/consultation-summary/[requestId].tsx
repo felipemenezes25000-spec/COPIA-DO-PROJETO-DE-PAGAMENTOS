@@ -24,8 +24,7 @@ import { useAppTheme } from '../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../lib/designSystem';
 import { fetchRequestById, saveConsultationSummary } from '../../lib/api';
 import type { RequestResponseDto } from '../../types/database';
-
-// ── Anamnesis fields mapping ──
+import { ANA_FIELDS_COMPACT as ANA_FIELDS, parseAnamnesis, anamnesisToText } from '../../lib/domain/anamnesis';
 
 export default function ConsultationSummaryScreen() {
   const { requestId } = useLocalSearchParams<{ requestId: string }>();
@@ -33,16 +32,6 @@ export default function ConsultationSummaryScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
   const S = useMemo(() => makeStyles(colors), [colors]);
-  const ANA_FIELDS = useMemo(() => [
-    { key: 'queixa_principal', label: 'Queixa Principal', icon: 'chatbubble-ellipses' as const, color: colors.primary },
-    { key: 'historia_doenca_atual', label: 'História da Doença Atual', icon: 'time' as const, color: colors.primary },
-    { key: 'sintomas', label: 'Sintomas', icon: 'thermometer' as const, color: colors.warning },
-    { key: 'medicamentos_em_uso', label: 'Medicamentos em Uso', icon: 'medical' as const, color: colors.primaryLight },
-    { key: 'alergias', label: 'Alergias', icon: 'warning' as const, color: colors.error },
-    { key: 'antecedentes_relevantes', label: 'Antecedentes', icon: 'document-text' as const, color: colors.textMuted },
-    { key: 'cid_sugerido', label: 'CID Sugerido', icon: 'code-slash' as const, color: colors.success },
-    { key: 'outros', label: 'Outras Informações', icon: 'ellipsis-horizontal' as const, color: colors.textMuted },
-  ], [colors]);
 
   const rid = (Array.isArray(requestId) ? requestId[0] : requestId) ?? '';
 
@@ -52,15 +41,10 @@ export default function ConsultationSummaryScreen() {
   const [clinicalNote, setClinicalNote] = useState('');
   const initialSaveDone = useRef(false);
 
-  // Parse data
-  const anamnesis = useMemo(() => {
-    if (!request?.consultationAnamnesis) return null;
-    try {
-      return JSON.parse(request.consultationAnamnesis);
-    } catch {
-      return null;
-    }
-  }, [request?.consultationAnamnesis]);
+  const anamnesis = useMemo(
+    () => parseAnamnesis(request?.consultationAnamnesis),
+    [request?.consultationAnamnesis]
+  );
 
   const suggestions = useMemo(() => {
     if (!request?.consultationAiSuggestions) return [];
@@ -134,34 +118,7 @@ export default function ConsultationSummaryScreen() {
 
   const copyFullAnamnesis = () => {
     if (!anamnesis) return;
-    const lines: string[] = [];
-    for (const { key, label } of ANA_FIELDS) {
-      const val = anamnesis[key];
-      if (!val || (typeof val === 'string' && !val.trim())) continue;
-      const display = Array.isArray(val) ? val.join(', ') : String(val);
-      lines.push(`${label}: ${display}`);
-    }
-    // Add alerts if present
-    if (Array.isArray(anamnesis.alertas_vermelhos)) {
-      for (const a of anamnesis.alertas_vermelhos) {
-        lines.push(`⚠️ ALERTA: ${a}`);
-      }
-    }
-    if (Array.isArray(anamnesis.medicamentos_sugeridos)) {
-      lines.push('');
-      lines.push('Medicamentos Sugeridos:');
-      for (const m of anamnesis.medicamentos_sugeridos) {
-        lines.push(`  • ${m}`);
-      }
-    }
-    if (Array.isArray(anamnesis.exames_sugeridos)) {
-      lines.push('');
-      lines.push('Exames Sugeridos:');
-      for (const ex of anamnesis.exames_sugeridos) {
-        lines.push(`  • ${ex}`);
-      }
-    }
-    copyText(lines.join('\n'), 'Anamnese');
+    copyText(anamnesisToText(anamnesis, ANA_FIELDS), 'Anamnese');
   };
 
   if (loading) {
@@ -224,16 +181,17 @@ export default function ConsultationSummaryScreen() {
               </TouchableOpacity>
             </View>
 
-            {ANA_FIELDS.map(({ key, label, icon, color }) => {
+            {ANA_FIELDS.map(({ key, label, icon, severity }) => {
               const val = anamnesis[key];
               if (!val || (typeof val === 'string' && !val.trim())) return null;
               const display = Array.isArray(val) ? val.join(', ') : String(val);
               const isAlert = key === 'alergias';
+              const fieldColor = severity === 'danger' ? colors.error : severity === 'warning' ? colors.warning : severity === 'success' ? colors.success : severity === 'info' ? colors.primaryLight : colors.textMuted;
               return (
                 <View key={key} style={S.field}>
                   <View style={S.fieldLabel}>
-                    <View style={[S.fieldIcon, { backgroundColor: `${color}15` }]}>
-                      <Ionicons name={icon as any} size={13} color={color} />
+                    <View style={[S.fieldIcon, { backgroundColor: `${fieldColor}15` }]}>
+                      <Ionicons name={icon as any} size={13} color={fieldColor} />
                     </View>
                     <Text style={[S.fieldLabelText, isAlert && { color: colors.error }]}>{label}</Text>
                   </View>

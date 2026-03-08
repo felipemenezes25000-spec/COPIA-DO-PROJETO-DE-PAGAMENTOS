@@ -22,32 +22,8 @@ export interface DoctorHeaderProps {
 export function DoctorHeader({ title, subtitle, onBack, right }: DoctorHeaderProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { gradients } = useAppTheme({ role: 'doctor' });
+  const { gradients, colors } = useAppTheme({ role: 'doctor' });
   const handleBack = onBack ?? (() => router.back());
-
-  const content = (
-    <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
-      <TouchableOpacity
-        onPress={handleBack}
-        style={styles.backButton}
-        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        accessibilityLabel="Voltar"
-      >
-        <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-      </TouchableOpacity>
-      <View style={styles.titleWrap}>
-        <Text style={styles.title} numberOfLines={1}>
-          {title}
-        </Text>
-        {subtitle && (
-          <Text style={styles.subtitle} numberOfLines={1}>
-            {subtitle}
-          </Text>
-        )}
-      </View>
-      <View style={styles.rightSlot}>{right ?? <View style={styles.placeholder} />}</View>
-    </View>
-  );
 
   return (
     <LinearGradient
@@ -55,7 +31,30 @@ export function DoctorHeader({ title, subtitle, onBack, right }: DoctorHeaderPro
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
     >
-      {content}
+      <View style={[styles.container, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity
+          onPress={handleBack}
+          style={[styles.backButton, { backgroundColor: colors.headerOverlaySurface, borderColor: colors.headerOverlayBorder }]}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+        >
+          <Ionicons name="chevron-back" size={22} color={colors.headerOverlayText} />
+        </TouchableOpacity>
+
+        <View style={styles.titleWrap}>
+          <Text style={[styles.title, { color: colors.headerOverlayText }]} numberOfLines={1}>
+            {title}
+          </Text>
+          {!!subtitle && (
+            <Text style={[styles.subtitle, { color: colors.headerOverlayTextMuted }]} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          )}
+        </View>
+
+        <View style={styles.rightSlot}>{right ?? <View style={styles.placeholder} />}</View>
+      </View>
     </LinearGradient>
   );
 }
@@ -65,40 +64,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: doctorDS.screenPaddingHorizontal,
-    paddingBottom: 16,
+    paddingBottom: 18,
   },
   backButton: {
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   titleWrap: {
     flex: 1,
     alignItems: 'center',
     marginHorizontal: 8,
+    minWidth: 0,
   },
   title: {
-    fontSize: 16,
+    fontSize: 17,
     fontFamily: typography.fontFamily.bold,
     fontWeight: '700',
-    color: '#FFFFFF',
     textAlign: 'center',
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
   },
   subtitle: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.85)',
     marginTop: 3,
     textAlign: 'center',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
     textTransform: 'uppercase',
+    fontWeight: '600',
   },
   rightSlot: {
     minWidth: 44,
     alignItems: 'flex-end',
+    flexShrink: 0,
   },
   placeholder: {
     width: 44,
