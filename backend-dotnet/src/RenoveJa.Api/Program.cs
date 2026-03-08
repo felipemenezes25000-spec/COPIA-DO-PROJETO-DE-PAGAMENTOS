@@ -375,6 +375,7 @@ builder.Services.AddCors(options =>
     {
         "https://renovejasaude.com.br",
         "https://www.renovejasaude.com.br",
+        "https://admin.renovejasaude.com.br",
         "https://app.renovejasaude.com.br",
         "https://validar.iti.gov.br",
         "https://h-validar.iti.gov.br",
