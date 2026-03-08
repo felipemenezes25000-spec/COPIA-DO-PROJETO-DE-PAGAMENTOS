@@ -39,7 +39,7 @@
     "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.13",
     "expo-crypto": "^15.0.8",
-    "expo-dev-client": "^55.0.11",
+    "expo-dev-client": "~6.0.20",
     "expo-device": "~8.0.10",
     "expo-document-picker": "^14.0.8",
     "expo-file-system": "~19.0.21",
@@ -97,13 +97,18 @@
     "typescript": "~5.9.2"
   },
   "overrides": {
-    "lightningcss": "1.31.1"
+    "lightningcss": "1.31.1",
+    "expo-dev-launcher": "6.0.20",
+    "expo-dev-menu": "7.0.18"
   },
   "expo": {
     "doctor": {
       "reactNativeDirectoryCheck": {
         "exclude": ["react-native-background-timer", "@daily-co/react-native-daily-js", "@daily-co/react-native-webrtc", "expo-pip"],
         "listUnknownPackages": false
+      },
+      "install": {
+        "exclude": ["eas-cli"]
       }
     }
   },
