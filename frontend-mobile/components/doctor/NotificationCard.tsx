@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { DesignColors } from '../../lib/designSystem';
 import { NotificationResponseDto } from '../../types/database';
@@ -22,104 +22,131 @@ interface NotificationCardProps {
 export function NotificationCard({ item, visual, colors, isDark, onPress, timeAgo }: NotificationCardProps) {
   const isUnread = !item.read;
 
+  // FIX: No Android, elevation + overflow:'hidden' + borderRadius cria artefato
+  // cinza ao redor do card. Solução: separar a sombra em um wrapper externo
+  // e remover overflow:'hidden' do card principal.
+  const cardBg = isUnread
+    ? (isDark ? colors.primarySoft : colors.surface)
+    : colors.surface;
+
+  const cardBorderColor = isUnread
+    ? colors.primary + '25'
+    : (isDark ? colors.border : colors.borderLight);
+
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.card,
-        {
-          backgroundColor: isUnread
-            ? isDark
-              ? colors.primarySoft
-              : colors.primaryGhost
-            : colors.surface,
-          borderColor: isUnread ? colors.primary + '30' : (isDark ? colors.border : colors.borderLight),
-          shadowColor: colors.black,
-        },
-        isUnread && styles.cardUnread,
-        pressed && styles.pressed,
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={`Notificação: ${item.title}`}
-    >
-      {/* Borda lateral de destaque para não lidas */}
-      {isUnread && (
-        <View style={[styles.unreadStrip, { backgroundColor: colors.primary }]} />
-      )}
-
-      {/* Ícone */}
-      <View
-        style={[
-          styles.iconWrap,
-          { backgroundColor: visual.color + (isDark ? '22' : '14') },
+    <View style={[
+      styles.cardOuter,
+      Platform.OS === 'android' && (isUnread ? styles.cardOuterElevatedAndroid : styles.cardOuterAndroid),
+      Platform.OS === 'ios' && (isUnread ? styles.cardOuterElevatedIos : styles.cardOuterIos),
+    ]}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.card,
+          {
+            backgroundColor: cardBg,
+            borderColor: cardBorderColor,
+          },
+          pressed && styles.pressed,
         ]}
+        accessibilityRole="button"
+        accessibilityLabel={`Notificação: ${item.title}`}
       >
-        <Ionicons name={visual.icon} size={20} color={visual.color} />
-      </View>
+        {/* Borda lateral de destaque para não lidas */}
+        {isUnread && (
+          <View style={[styles.unreadStrip, { backgroundColor: colors.primary }]} />
+        )}
 
-      {/* Corpo */}
-      <View style={styles.body}>
-        <View style={styles.titleRow}>
-          <Text
-            style={[
-              styles.title,
-              { color: colors.text },
-              isUnread && styles.titleUnread,
-            ]}
-            numberOfLines={1}
-          >
-            {item.title}
-          </Text>
-          {isUnread && (
-            <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />
-          )}
+        {/* Ícone */}
+        <View
+          style={[
+            styles.iconWrap,
+            { backgroundColor: visual.color + (isDark ? '22' : '14') },
+          ]}
+        >
+          <Ionicons name={visual.icon} size={20} color={visual.color} />
         </View>
 
-        <Text
-          style={[styles.message, { color: colors.textSecondary }]}
-          numberOfLines={2}
-        >
-          {item.message}
-        </Text>
-
-        <View style={styles.metaRow}>
-          <Text style={[styles.time, { color: colors.textMuted }]}>{timeAgo}</Text>
-          <View
-            style={[styles.categoryPill, { backgroundColor: visual.color + '18' }]}
-          >
-            <Text style={[styles.categoryLabel, { color: visual.color }]}>
-              {visual.label}
+        {/* Corpo */}
+        <View style={styles.body}>
+          <View style={styles.titleRow}>
+            <Text
+              style={[
+                styles.title,
+                { color: colors.text },
+                isUnread && styles.titleUnread,
+              ]}
+              numberOfLines={1}
+            >
+              {item.title}
             </Text>
+            {isUnread && (
+              <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />
+            )}
+          </View>
+
+          <Text
+            style={[styles.message, { color: colors.textSecondary }]}
+            numberOfLines={2}
+          >
+            {item.message}
+          </Text>
+
+          <View style={styles.metaRow}>
+            <Text style={[styles.time, { color: colors.textMuted }]}>{timeAgo}</Text>
+            <View
+              style={[styles.categoryPill, { backgroundColor: visual.color + '18' }]}
+            >
+              <Text style={[styles.categoryLabel, { color: visual.color }]}>
+                {visual.label}
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      <Ionicons
-        name="chevron-forward"
-        size={15}
-        color={colors.textMuted}
-        style={styles.chevron}
-        importantForAccessibility="no"
-      />
-    </Pressable>
+        <Ionicons
+          name="chevron-forward"
+          size={15}
+          color={colors.textMuted}
+          style={styles.chevron}
+          importantForAccessibility="no"
+        />
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // FIX: Wrapper externo para sombras — evita o artefato cinza do Android
+  cardOuter: {
+    borderRadius: 16,
+  },
+  cardOuterAndroid: {
+    elevation: 1,
+  },
+  cardOuterElevatedAndroid: {
+    elevation: 2,
+  },
+  cardOuterIos: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+  },
+  cardOuterElevatedIos: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+  },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 16,
     borderWidth: 1,
-    overflow: 'hidden',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 1,
-  },
-  cardUnread: {
-    shadowOpacity: 0.08,
-    elevation: 2,
+    // FIX: removido overflow:'hidden' — era a causa do artefato cinza no Android
+    // quando combinado com elevation e borderRadius.
+    // A unreadStrip usa borderRadius próprio para compensar.
   },
   pressed: {
     transform: [{ scale: 0.985 }],
@@ -129,6 +156,8 @@ const styles = StyleSheet.create({
     width: 3,
     alignSelf: 'stretch',
     flexShrink: 0,
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
   },
   iconWrap: {
     width: 44,

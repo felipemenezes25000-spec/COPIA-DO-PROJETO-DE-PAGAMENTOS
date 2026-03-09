@@ -33,6 +33,13 @@ const LOG_RENDER = __DEV__ && false;
 const WHATSAPP_NUMBER = '5511986318000';
 const SMALL_SCREEN_HEIGHT = 700;
 
+// Fallback Google OAuth — garante botão ativo mesmo quando extra/env não carrega (APK antigo, cache)
+const GOOGLE_FALLBACK = {
+  web: '598286841038-j095u3iopiqltpgbvu0f5od924etobk7.apps.googleusercontent.com',
+  android: '598286841038-780e9kksjoscthg0g611virnchlb7kcr.apps.googleusercontent.com',
+  ios: '598286841038-28ili7c5stg5524sicropmm7s7nkq936.apps.googleusercontent.com',
+};
+
 export default function Login() {
   const router = useRouter();
   const { signIn, signInWithGoogle } = useAuth();
@@ -51,11 +58,11 @@ export default function Login() {
 
   const extra = Constants.expoConfig?.extra as Record<string, string> | undefined;
   const googleWebClientId =
-    (extra?.googleWebClientId || process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '').trim() || undefined;
+    (extra?.googleWebClientId || process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '').trim() || GOOGLE_FALLBACK.web;
   const googleAndroidClientId =
-    (extra?.googleAndroidClientId || process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '').trim() || undefined;
+    (extra?.googleAndroidClientId || process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '').trim() || GOOGLE_FALLBACK.android;
   const googleIosClientId =
-    (extra?.googleIosClientId || process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '').trim() || undefined;
+    (extra?.googleIosClientId || process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '').trim() || GOOGLE_FALLBACK.ios;
 
   const hasGoogleConfig = !!(googleWebClientId || googleAndroidClientId || googleIosClientId);
 
