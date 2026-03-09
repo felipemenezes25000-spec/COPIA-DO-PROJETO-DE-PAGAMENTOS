@@ -42,7 +42,6 @@ export default function Login() {
   const { isDark } = useColorSchemeContext();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
-  // Gradiente de fundo: azul suave no light, escuro no dark
   const AUTH_GRADIENT: [string, string, ...string[]] = isDark
     ? [colors.background, colors.surfaceSecondary, '#1A3A5C']
     : [theme.colors.background.secondary, theme.colors.accent.soft, theme.colors.accent.main];
@@ -62,10 +61,7 @@ export default function Login() {
 
   useEffect(() => {
     if (googleWebClientId) {
-      GoogleSignin.configure({
-        webClientId: googleWebClientId,
-        offlineAccess: false,
-      });
+      GoogleSignin.configure({ webClientId: googleWebClientId, offlineAccess: false });
     }
   }, [googleWebClientId]);
 
@@ -100,14 +96,12 @@ export default function Login() {
 
   const handleLogin = useCallback(async () => {
     Keyboard.dismiss();
-
     const result = validate(loginSchema, { email, password });
     if (!result.success) {
       setErrors((result.errors as { email?: string; password?: string }) ?? {});
       Alert.alert('Campos obrigatórios', result.firstError ?? 'Preencha email e senha.');
       return;
     }
-
     setErrors({});
     setLoading(true);
     try {
@@ -154,9 +148,7 @@ export default function Login() {
     if (!hasGoogleConfig || !googleWebClientId?.trim()) {
       if (__DEV__) {
         console.warn('[Login] Google OAuth não configurado.', {
-          googleWebClientId,
-          googleAndroidClientId,
-          googleIosClientId,
+          googleWebClientId, googleAndroidClientId, googleIosClientId,
         });
       }
       Alert.alert(
@@ -169,17 +161,10 @@ export default function Login() {
     try {
       await GoogleSignin.hasPlayServices();
       const response = await GoogleSignin.signIn();
-
-      if ((response as { type?: string })?.type === 'cancelled') {
-        return;
-      }
-
+      if ((response as { type?: string })?.type === 'cancelled') return;
       const idToken = (response as { data?: { idToken?: string }; idToken?: string })?.data?.idToken
         ?? (response as { idToken?: string })?.idToken;
-      if (!idToken) {
-        throw new Error('Google não retornou o ID Token.');
-      }
-
+      if (!idToken) throw new Error('Google não retornou o ID Token.');
       const user = await signInWithGoogle(idToken);
       const dest = !user.profileComplete
         ? (user.role === 'doctor' ? '/(auth)/complete-doctor' : '/(auth)/complete-profile')
@@ -189,12 +174,8 @@ export default function Login() {
       setTimeout(() => router.replace(dest as any), 0);
     } catch (error: unknown) {
       const err = error as { code?: string; message?: string };
-      if (err?.code === statusCodes.SIGN_IN_CANCELLED) {
-        return;
-      }
-      if (err?.code === statusCodes.IN_PROGRESS) {
-        return;
-      }
+      if (err?.code === statusCodes.SIGN_IN_CANCELLED) return;
+      if (err?.code === statusCodes.IN_PROGRESS) return;
       if (err?.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
         Alert.alert('Erro', 'Google Play Services não disponível neste dispositivo.');
         return;
@@ -216,19 +197,15 @@ export default function Login() {
   }, []);
 
   const content = (
-    /* Card único centralizado no gradiente */
     <View style={[styles.card, isSmallScreen && styles.cardSmall]}>
 
-      {/* Logo + tagline no topo do card */}
+      {/* Logo + tagline */}
       <View style={[styles.logoSection, isSmallScreen && styles.logoSectionSmall]}>
         <Logo size="small" variant="dark" compact />
         <Text style={[styles.tagline, isSmallScreen && styles.taglineSmall]}>
           Renove sua receita e pedido de exames.{'\n'}Rápido e sem burocracia.
         </Text>
       </View>
-
-      {/* Separador visual */}
-      <View style={styles.cardDivider} />
 
       {/* Inputs */}
       <AppInput
@@ -261,18 +238,7 @@ export default function Login() {
         containerStyle={styles.inputLast}
       />
 
-      <AppButton
-        title="Entrar"
-        onPress={handleLogin}
-        loading={loading}
-        disabled={loading}
-        variant="primary"
-        fullWidth
-        size="md"
-        style={styles.loginButtonWrap}
-      />
-
-      {/* Esqueceu senha */}
+      {/* Esqueceu senha — acima do botão */}
       <TouchableOpacity
         onPress={handleForgotPassword}
         style={styles.forgotRow}
@@ -281,48 +247,62 @@ export default function Login() {
         <Text style={styles.forgotText}>Esqueceu sua senha?</Text>
       </TouchableOpacity>
 
-      {/* OU */}
+      <AppButton
+        title="Entrar"
+        onPress={handleLogin}
+        loading={loading}
+        disabled={loading}
+        variant="primary"
+        fullWidth
+        size="lg"
+        style={styles.loginButtonWrap}
+      />
+
+      {/* Separador OU */}
       <View style={styles.dividerRow}>
         <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>ou</Text>
+        <Text style={styles.dividerText}>ou continue com</Text>
         <View style={styles.dividerLine} />
       </View>
 
-      {/* Botões sociais */}
-      <AppButton
-        title="Continuar com Google"
-        onPress={handleGooglePress}
-        loading={googleLoading}
-        disabled={!hasGoogleConfig || googleLoading}
-        variant="outline"
-        fullWidth
-        icon="logo-google"
-        style={styles.socialButton}
-      />
-      <AppButton
-        title="Continuar com Apple (em breve)"
-        onPress={() => {}}
-        disabled
-        variant="outline"
-        fullWidth
-        icon="logo-apple"
-        style={styles.socialButtonLast}
-      />
+      {/* Botões sociais lado a lado */}
+      <View style={styles.socialRow}>
+        <AppButton
+          title="Google"
+          onPress={handleGooglePress}
+          loading={googleLoading}
+          disabled={!hasGoogleConfig || googleLoading}
+          variant="outline"
+          fullWidth
+          icon="logo-google"
+          style={styles.socialButton}
+        />
+        <AppButton
+          title="Apple"
+          onPress={() => {}}
+          disabled
+          variant="outline"
+          fullWidth
+          icon="logo-apple"
+          style={styles.socialButton}
+        />
+      </View>
 
       {/* Rodapé */}
-      <TouchableOpacity
-        onPress={openWhatsApp}
-        style={styles.whatsappLink}
-        activeOpacity={0.7}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      >
-        <Text style={styles.whatsappLinkText}>Precisa de ajuda? Fale no WhatsApp</Text>
-      </TouchableOpacity>
-
-      <View style={styles.registerRow}>
-        <Text style={styles.registerText}>Não tem uma conta? </Text>
-        <TouchableOpacity onPress={handleRegister} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={styles.registerLink}>Crie agora!</Text>
+      <View style={styles.footerSection}>
+        <View style={styles.registerRow}>
+          <Text style={styles.registerText}>Não tem uma conta? </Text>
+          <TouchableOpacity onPress={handleRegister} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={styles.registerLink}>Crie agora</Text>
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity
+          onPress={openWhatsApp}
+          style={styles.whatsappLink}
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={styles.whatsappLinkText}>Precisa de ajuda? Fale no WhatsApp</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -346,7 +326,7 @@ export default function Login() {
             style={styles.scrollView}
             contentContainerStyle={[
               styles.scrollContent,
-              { paddingBottom: Math.max(60, windowHeight * 0.15) },
+              { paddingBottom: Math.max(60, windowHeight * 0.12) },
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -370,50 +350,44 @@ function makeStyles(colors: DesignColors) {
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingTop: 20,
+    justifyContent: 'center',
   },
 
-  // Card único — contém TUDO (logo + form + social + links)
+  // Card v2: mais generoso, cantos mais arredondados
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 28,
+    borderRadius: 24,
     paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 20,
-    ...theme.shadows.card,
+    paddingTop: 28,
+    paddingBottom: 24,
+    ...theme.shadows.elevated,
   },
   cardSmall: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 16,
+    paddingTop: 20,
+    paddingBottom: 18,
   },
 
-  // Logo + tagline (topo do card)
   logoSection: {
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 20,
   },
   logoSectionSmall: {
-    marginBottom: 8,
+    marginBottom: 14,
   },
   tagline: {
-    marginTop: 8,
-    fontSize: 13,
+    marginTop: 10,
+    fontSize: 14,
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 19,
+    lineHeight: 20,
+    fontFamily: 'PlusJakartaSans_400Regular',
   },
   taglineSmall: {
     fontSize: 12,
     marginTop: 6,
     lineHeight: 17,
-  },
-
-  // Separador fino entre header e form
-  cardDivider: {
-    height: 1,
-    backgroundColor: colors.borderLight,
-    marginBottom: 10,
   },
 
   // Inputs
@@ -424,28 +398,29 @@ function makeStyles(colors: DesignColors) {
     marginBottom: 0,
   },
 
-  // Esqueceu senha
+  // Esqueceu senha — acima do botão, alinhado à direita
   forgotRow: {
     alignSelf: 'flex-end',
-    marginTop: 6,
-    marginBottom: 16,
+    marginTop: 4,
+    marginBottom: 4,
   },
   forgotText: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
+    fontFamily: 'PlusJakartaSans_600SemiBold',
     color: colors.primary,
   },
 
   loginButtonWrap: {
-    marginTop: 12,
-    marginBottom: 8,
+    marginTop: 8,
+    marginBottom: 4,
   },
 
-  // Separador OU
+  // Separador v2
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 12,
+    marginVertical: 16,
     gap: 12,
   },
   dividerLine: {
@@ -456,23 +431,43 @@ function makeStyles(colors: DesignColors) {
   dividerText: {
     fontSize: 12,
     fontWeight: '500',
+    fontFamily: 'PlusJakartaSans_500Medium',
     color: colors.textMuted,
-    letterSpacing: 0.5,
   },
 
-  // Botões sociais
+  // Social v2: botões lado a lado
+  socialRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
   socialButton: {
+    flex: 1,
     height: 48,
-    marginBottom: 10,
-  },
-  socialButtonLast: {
-    height: 48,
-    marginBottom: 0,
   },
 
-  // WhatsApp
+  // Footer v2: mais espaço
+  footerSection: {
+    marginTop: 20,
+    alignItems: 'center',
+    gap: 10,
+  },
+  registerRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+  },
+  registerText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontFamily: 'PlusJakartaSans_400Regular',
+  },
+  registerLink: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: colors.primary,
+  },
   whatsappLink: {
-    marginTop: 14,
     alignSelf: 'center',
   },
   whatsappLinkText: {
@@ -480,23 +475,6 @@ function makeStyles(colors: DesignColors) {
     color: colors.textMuted,
     textDecorationLine: 'underline',
     fontWeight: '400',
-  },
-
-  // Crie agora
-  registerRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 10,
-    flexWrap: 'wrap',
-  },
-  registerText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  registerLink: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.primary,
   },
   });
 }

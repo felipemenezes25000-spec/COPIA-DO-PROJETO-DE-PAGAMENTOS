@@ -27,28 +27,21 @@ export function AppCard({
 
   const cardStyles: ViewStyle = {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.card,
+    borderRadius: 20,
     overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    ...(variant === 'outlined' ? { borderWidth: 1, borderColor: colors.borderLight } : {}),
-    ...(selected ? { borderColor: colors.primary, backgroundColor: colors.surfaceSecondary } : {}), // primarySoft removido, usando surface sec
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    ...(variant === 'outlined' ? { borderWidth: 1.5, borderColor: colors.border } : {}),
+    ...(selected ? { borderColor: colors.primary, borderWidth: 2, backgroundColor: colors.primarySoft } : {}),
     ...(variant === 'default' ? shadows.card : {}),
     ...(variant === 'elevated' ? shadows.elevated : {}),
-  } as ViewStyle; // Cast to avoid TS complexity with shadows type
+  } as ViewStyle;
 
   const paddingStyle = !noPadding ? { padding: spacing.md } : undefined;
-
-  // Selected state override
-  const selectedStyle = selected ? {
-    borderColor: colors.primary,
-    backgroundColor: colors.primarySoft, // Now safe from theme hook
-  } : undefined;
 
   const combinedStyles: StyleProp<ViewStyle> = [
     cardStyles,
     paddingStyle,
-    selectedStyle,
     style,
   ];
 
@@ -58,7 +51,7 @@ export function AppCard({
         onPress={onPress}
         style={({ pressed }) => [
           combinedStyles,
-          pressed && { opacity: 0.88, transform: [{ scale: 0.98 }] },
+          pressed && { opacity: 0.9, transform: [{ scale: 0.985 }] },
         ]}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}

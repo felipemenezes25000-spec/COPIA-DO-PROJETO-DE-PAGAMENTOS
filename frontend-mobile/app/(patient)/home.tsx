@@ -24,7 +24,6 @@ import RequestCard from '../../components/RequestCard';
 import { StatsCard } from '../../components/StatsCard';
 import { LargeActionCard } from '../../components/ui/LargeActionCard';
 import { InfoCard } from '../../components/ui/InfoCard';
-import { HeaderInfo } from '../../components/ui/HeaderInfo';
 import { AppEmptyState } from '../../components/ui';
 import { SkeletonList } from '../../components/ui/SkeletonLoader';
 import { FadeIn } from '../../components/ui/FadeIn';
@@ -73,7 +72,6 @@ export default function PatientHome() {
     }
   }, [refetch]);
 
-  /** Dados derivados dos requests — uma única passagem em vez de 8 useMemo separados. */
   const derived = useMemo(() => {
     let pending = 0, toPay = 0, ready = 0;
     let prescriptionCount = 0, examCount = 0;
@@ -91,13 +89,11 @@ export default function PatientHome() {
     let followUpPriority = -1;
 
     for (const r of requests) {
-      // Stats
       const ui = getRequestUiState(r);
       if (ui.uiState === 'needs_action') pending++;
       if (needsPayment(r)) toPay++;
       if (isSignedOrDelivered(r)) ready++;
 
-      // Counts por tipo
       if (r.requestType === 'prescription') {
         prescriptionCount++;
         r.medications?.forEach(m => m && medsSet.add(m));
@@ -123,7 +119,6 @@ export default function PatientHome() {
         }
       }
 
-      // Follow-up
       if (!terminalStatuses.includes(r.status)) {
         const p = priorityMap[r.status] ?? 0;
         if (p > followUpPriority) {
@@ -166,7 +161,6 @@ export default function PatientHome() {
     recentMedications, followUpRequest, recentRequests,
   } = derived;
 
-  // Idade do paciente (dependência diferente: user.birthDate)
   const patientAge = useMemo(() => {
     const bd = user?.birthDate;
     if (!bd) return undefined;
@@ -231,6 +225,14 @@ export default function PatientHome() {
     requestType: followUpRequest?.requestType as any,
   });
 
+  // Greeting baseado no horário
+  const getGreeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Bom dia';
+    if (h < 18) return 'Boa tarde';
+    return 'Boa noite';
+  };
+
   return (
     <View style={styles.container}>
       {loading ? (
@@ -252,20 +254,20 @@ export default function PatientHome() {
             />
           }
         >
-      {/* Header: só saudação + avatar (igual ao web) */}
+      {/* ─── HEADER REDESIGN: mais limpo, saudação por horário ─── */}
       <LinearGradient
         colors={gradients.patientHeader as [string, string, ...string[]]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.header, { paddingTop: insets.top + 12 }]}
+        style={[styles.header, { paddingTop: insets.top + 16 }]}
       >
         <View style={styles.headerRow}>
           <View style={styles.headerGreeting}>
-            <Text style={styles.headerGreetingLabel}>Olá,</Text>
+            <Text style={styles.headerGreetingLabel}>{getGreeting()},</Text>
             <Text style={styles.headerGreetingName} numberOfLines={1} ellipsizeMode="tail">{firstName}</Text>
           </View>
           <Pressable
-            style={({ pressed }) => [styles.avatarBtn, pressed && { opacity: 0.8 }]}
+            style={({ pressed }) => [styles.avatarBtn, pressed && { opacity: 0.8, transform: [{ scale: 0.95 }] }]}
             onPress={() => router.push('/(patient)/profile')}
             onPressIn={haptics.selection}
             accessibilityRole="button"
@@ -276,7 +278,7 @@ export default function PatientHome() {
         </View>
       </LinearGradient>
 
-      {/* Stats: três cards brancos flutuando sobre o fundo cinza */}
+      {/* ─── STATS: 3 cards flutuantes ─── */}
       <FadeIn visible={!loading} {...motionTokens.fade.patientSection} delay={50} fill={false}>
       <View style={styles.statsRow}>
         <StatsCard
@@ -305,27 +307,32 @@ export default function PatientHome() {
         />
       </View>
 
+      {/* ─── Follow-up Card (Dra. Renoveja) ─── */}
       {followUpRequest && followUpAction ? (
         <View style={styles.section}>
-          <View style={styles.followUpCard}>
-            <Pressable
-              onPress={() => { haptics.selection(); router.push(`/request-detail/${followUpRequest.id}`); }}
-              accessibilityRole="button"
-              accessibilityLabel={`${followUpAction.title}. ${followUpAction.whatToDo}. Toque para ver detalhes.`}
-            >
-              <View style={styles.followUpHeader}>
-                <View style={styles.followUpIcon}>
-                  <Ionicons name="sparkles-outline" size={18} color={colors.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.followUpTitle}>Dra. Renoveja: seu próximo passo</Text>
-                  <Text style={styles.followUpSubtitle}>{followUpAction.title}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} importantForAccessibility="no" />
+          <Pressable
+            style={({ pressed }) => [styles.followUpCard, pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] }]}
+            onPress={() => { haptics.selection(); router.push(`/request-detail/${followUpRequest.id}`); }}
+            accessibilityRole="button"
+            accessibilityLabel={`${followUpAction.title}. ${followUpAction.whatToDo}. Toque para ver detalhes.`}
+          >
+            <View style={styles.followUpHeader}>
+              <View style={styles.followUpIcon}>
+                <Ionicons name="sparkles" size={16} color={colors.primary} />
               </View>
-              <Text style={styles.followUpBody}>{followUpAction.whatToDo}</Text>
-              <Text style={styles.followUpEta}>{followUpAction.eta}</Text>
-            </Pressable>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.followUpLabel}>Próximo passo</Text>
+                <Text style={styles.followUpTitle}>{followUpAction.title}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.textMuted} importantForAccessibility="no" />
+            </View>
+            <Text style={styles.followUpBody}>{followUpAction.whatToDo}</Text>
+            {followUpAction.eta ? (
+              <View style={styles.followUpEtaRow}>
+                <Ionicons name="time-outline" size={12} color={colors.textMuted} />
+                <Text style={styles.followUpEta}>{followUpAction.eta}</Text>
+              </View>
+            ) : null}
             {followUpAction.intent === 'pay' && needsPayment(followUpRequest) && (
               <Pressable
                 style={({ pressed }) => [styles.followUpPayCta, pressed && { opacity: 0.85 }]}
@@ -338,15 +345,15 @@ export default function PatientHome() {
                 <Ionicons name="arrow-forward" size={14} color={colors.headerOverlayTextMuted} importantForAccessibility="no" />
               </Pressable>
             )}
-          </View>
+          </Pressable>
         </View>
       ) : null}
       </FadeIn>
 
-      {/* ─── InfoCard da triagem (explicação) ─── */}
+      {/* ─── InfoCard da triagem ─── */}
       <FadeIn visible={!loading} {...motionTokens.fade.patientSection} delay={100} fill={false}>
-      <View style={styles.aiBannerWrap}>
-        {showInfoCard && (
+      {showInfoCard && (
+        <View style={styles.aiBannerWrap}>
           <InfoCard
             icon="sparkles-outline"
             title="Triagem feita com IA"
@@ -357,23 +364,19 @@ export default function PatientHome() {
               setShowInfoCard(false);
             }}
           />
-        )}
-      </View>
+        </View>
+      )}
       </FadeIn>
 
-      {/* ─── Quick Actions (largura total, menos margem) ─── */}
+      {/* ─── Quick Actions ─── */}
       <FadeIn visible={!loading} {...motionTokens.fade.patientSectionLong} delay={140} fill={false}>
       <View style={styles.actionsSection}>
-        <HeaderInfo
-          title="Falar com um profissional de saúde"
-          subtitle="Acesse um profissional médico para:"
-          accessibilityLabel="Falar com um profissional de saúde. Acesse um profissional médico para: renovar receitas, solicitar exames ou consulta por teleatendimento."
-        />
+        <Text style={styles.sectionLabel}>O QUE VOCÊ PRECISA?</Text>
         <View style={styles.actionsColumn}>
           <LargeActionCard
             icon={
               <View style={[styles.actionIconBox, { backgroundColor: colors.primarySoft }]}>
-                <Ionicons name="document-text" size={24} color={colors.primary} />
+                <Ionicons name="document-text" size={22} color={colors.primary} />
               </View>
             }
             title="Renovar Receita"
@@ -385,7 +388,7 @@ export default function PatientHome() {
           <LargeActionCard
             icon={
               <View style={[styles.actionIconBox, { backgroundColor: colors.infoLight }]}>
-                <Ionicons name="flask" size={24} color={colors.info} />
+                <Ionicons name="flask" size={22} color={colors.info} />
               </View>
             }
             title="Pedir Exame"
@@ -396,8 +399,8 @@ export default function PatientHome() {
           />
           <LargeActionCard
             icon={
-              <View style={[styles.actionIconBox, { backgroundColor: colors.accentSoft }]}>
-                <Ionicons name="videocam" size={24} color={colors.accent} />
+              <View style={[styles.actionIconBox, { backgroundColor: colors.successLight }]}>
+                <Ionicons name="videocam" size={22} color={colors.success} />
               </View>
             }
             title="Consulta Breve +"
@@ -410,11 +413,11 @@ export default function PatientHome() {
       </View>
       </FadeIn>
 
-      {/* ─── Prontuário ─── */}
+      {/* ─── Record Card v2 ─── */}
       <FadeIn visible={!loading} {...motionTokens.fade.patientSection} delay={200} fill={false}>
       <View style={styles.section}>
         <Pressable
-          style={({ pressed }) => [styles.recordCard, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}
+          style={({ pressed }) => [styles.recordCard, pressed && { opacity: 0.88, transform: [{ scale: 0.985 }] }]}
           onPress={() => {
             haptics.selection();
             router.push('/(patient)/record');
@@ -423,13 +426,15 @@ export default function PatientHome() {
           accessibilityLabel="Abrir meu prontuário médico"
         >
           <View style={styles.recordIconWrap}>
-            <Ionicons name="folder-open" size={24} color={colors.primary} />
+            <Ionicons name="folder-open" size={22} color={colors.primary} />
           </View>
           <View style={styles.recordTextWrap}>
             <Text style={styles.recordTitle}>Meu Prontuário</Text>
-            <Text style={styles.recordSubtitle}>Veja seu histórico de atendimentos, receitas e exames</Text>
+            <Text style={styles.recordSubtitle}>Histórico de atendimentos, receitas e exames</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          <View style={styles.recordChevron}>
+            <Ionicons name="arrow-forward" size={16} color={colors.primary} />
+          </View>
         </Pressable>
       </View>
       </FadeIn>
@@ -453,7 +458,6 @@ export default function PatientHome() {
               <Ionicons name="chevron-forward" size={14} color={colors.primary} />
             </Pressable>
           </View>
-          <Text style={styles.sectionHint} numberOfLines={3}>Toque em um pedido para ver os detalhes. Use "Ver todos" para ver a lista completa.</Text>
           {recentRequests.map((req) => (
             <RequestCard
               key={req.id}
@@ -476,7 +480,7 @@ export default function PatientHome() {
         </View>
       )}
       </FadeIn>
-          {/* Espaço extra para não colar na tab bar */}
+
           <View style={{ height: uiTokens.cardGap * 3 }} />
         </ScrollView>
         </FadeIn>
@@ -498,21 +502,20 @@ function makeStyles(colors: DesignColors) {
     paddingTop: 80,
     backgroundColor: colors.background,
   },
-  // ─── Header ───
+
+  // ─── Header v2: mais compacto e limpo ───
   header: {
     paddingHorizontal: uiTokens.screenPaddingHorizontal,
-    paddingBottom: 50,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+    paddingBottom: 56,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  headerGreeting: {
-    flex: 1,
-  },
+  headerGreeting: { flex: 1 },
   headerGreetingLabel: {
     fontSize: 14,
     fontFamily: 'PlusJakartaSans_500Medium',
@@ -521,16 +524,16 @@ function makeStyles(colors: DesignColors) {
     marginBottom: 2,
   },
   headerGreetingName: {
-    fontSize: 24,
+    fontSize: 26,
     fontFamily: 'PlusJakartaSans_700Bold',
     fontWeight: '800',
     color: colors.headerOverlayText,
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
   avatarBtn: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     backgroundColor: colors.headerOverlaySurface,
     borderWidth: 2,
     borderColor: colors.headerOverlayBorder,
@@ -538,27 +541,27 @@ function makeStyles(colors: DesignColors) {
     justifyContent: 'center',
   },
   avatarInitial: {
-    fontSize: 20,
+    fontSize: 18,
     fontFamily: 'PlusJakartaSans_700Bold',
     fontWeight: '700',
     color: colors.headerOverlayText,
   },
 
-  // ─── Destaque IA ───
-  aiBannerWrap: {
-    paddingHorizontal: uiTokens.screenPaddingHorizontal,
-    marginTop: 24,
-  },
-
-  // ─── Stats (flutuando sobre o cinza, igual ao web) ───
+  // ─── Stats v2 ───
   statsRow: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: -44,
+    marginTop: -40,
     marginBottom: 0,
     paddingHorizontal: uiTokens.screenPaddingHorizontal,
     zIndex: 10,
     position: 'relative',
+  },
+
+  // ─── AI Banner ───
+  aiBannerWrap: {
+    paddingHorizontal: uiTokens.screenPaddingHorizontal,
+    marginTop: 20,
   },
 
   // ─── Sections ───
@@ -573,19 +576,20 @@ function makeStyles(colors: DesignColors) {
     marginBottom: 14,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontFamily: 'PlusJakartaSans_700Bold',
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 6,
-    letterSpacing: 0.2,
+    letterSpacing: -0.1,
   },
-  sectionHint: {
-    fontSize: 13,
-    fontFamily: 'PlusJakartaSans_400Regular',
-    color: colors.textSecondary,
+  sectionLabel: {
+    fontSize: 11,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontWeight: '700',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
     marginBottom: 14,
-    lineHeight: 20,
   },
   seeAllBtn: {
     flexDirection: 'row',
@@ -598,39 +602,41 @@ function makeStyles(colors: DesignColors) {
     color: colors.primary,
   },
 
-  // ─── Actions Section ───
+  // ─── Actions v2 ───
   actionsSection: {
-    marginTop: 24,
+    marginTop: 28,
     paddingHorizontal: uiTokens.screenPaddingHorizontal,
   },
   actionsColumn: {
     flexDirection: 'column',
-    gap: 16,
+    gap: 12,
   },
   actionIconBox: {
-    width: 52,
-    height: 52,
+    width: 48,
+    height: 48,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
-  // ─── Record Card (Prontuário) ───
+  // ─── Record Card v2 ───
   recordCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 18,
+    borderRadius: 20,
     padding: 16,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.05,
     shadowRadius: 12,
-    elevation: 3,
+    elevation: 2,
   },
   recordIconWrap: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: 14,
     backgroundColor: colors.primarySoft,
     alignItems: 'center',
@@ -641,44 +647,60 @@ function makeStyles(colors: DesignColors) {
   recordTitle: {
     fontSize: 15,
     fontWeight: '700',
+    fontFamily: 'PlusJakartaSans_700Bold',
     color: colors.text,
   },
   recordSubtitle: {
     fontSize: 13,
+    fontFamily: 'PlusJakartaSans_400Regular',
     color: colors.textSecondary,
     marginTop: 2,
-    lineHeight: 18,
   },
+  recordChevron: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: colors.surfaceSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+
+  // ─── Follow-up Card v2: mais limpo ───
   followUpCard: {
     backgroundColor: colors.surface,
-    borderRadius: 18,
+    borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: colors.primary + '26',
+    borderColor: colors.primary + '20',
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.05,
     shadowRadius: 12,
     elevation: 2,
   },
-  followUpHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  followUpHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   followUpIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  followUpTitle: {
-    fontSize: 12,
+  followUpLabel: {
+    fontSize: 11,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: colors.primary,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
-  followUpSubtitle: {
-    marginTop: 2,
+  followUpTitle: {
+    marginTop: 1,
     fontSize: 15,
     fontFamily: 'PlusJakartaSans_700Bold',
     color: colors.text,
@@ -690,23 +712,28 @@ function makeStyles(colors: DesignColors) {
     color: colors.textSecondary,
     lineHeight: 19,
   },
+  followUpEtaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 8,
+  },
   followUpEta: {
-    marginTop: 6,
     fontSize: 12,
     fontFamily: 'PlusJakartaSans_500Medium',
     color: colors.textMuted,
   },
   followUpPayCta: {
-    marginTop: 12,
+    marginTop: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
     backgroundColor: colors.primary,
-    borderRadius: 12,
+    borderRadius: 14,
     paddingVertical: 13,
     paddingHorizontal: 16,
-    minHeight: 44,
+    minHeight: 46,
   },
   followUpPayCtaText: {
     color: colors.headerOverlayText,

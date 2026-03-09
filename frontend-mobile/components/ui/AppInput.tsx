@@ -15,7 +15,6 @@ const LOGIN_FOCUS_DEBUG = __DEV__ && false;
 
 interface AppInputProps extends Omit<TextInputProps, 'role'> {
   label?: string;
-  /** Exibe asterisco vermelho ao lado do label (campo obrigatório). */
   required?: boolean;
   error?: string;
   hint?: string;
@@ -49,9 +48,6 @@ export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput({
   const [hidden, setHidden] = useState(secureTextEntry);
   const focusUpdateScheduled = useRef(false);
 
-  // Defer focus state update to avoid re-layout during TextInput focus acquisition.
-  // On Android/iOS, updating parent View styles (shadow/elevation) immediately on focus
-  // can trigger a layout pass that steals focus from the TextInput.
   const handleFocus = useCallback((e: any) => {
     if (LOGIN_FOCUS_DEBUG && _logLabel) console.warn('[LOGIN_FOCUS] onFocus', _logLabel);
     onFocus?.(e);
@@ -88,9 +84,6 @@ export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput({
 
   const iconColor = focused ? colors.primary : colors.textMuted;
 
-  // Avoid shadow/elevation on focus: they trigger layout on Android and can cause focus flicker.
-  const showFocusShadow = false;
-
   return (
     <View style={[styles.container, containerStyle]}>
       {label ? (
@@ -103,12 +96,12 @@ export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput({
         style={[
           styles.inputContainer,
           { borderColor, backgroundColor: bgColor },
-          showFocusShadow && focused && styles.focusShadow,
+          focused && styles.focusRing,
           disabled && styles.disabled,
         ]}
       >
         {leftIcon && (
-          <Ionicons name={leftIcon} size={20} color={iconColor} style={styles.leftIcon} />
+          <Ionicons name={leftIcon} size={18} color={iconColor} style={styles.leftIcon} />
         )}
         <TextInput
           ref={ref}
@@ -129,33 +122,25 @@ export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput({
           >
             <Ionicons
               name={hidden ? 'eye-off-outline' : 'eye-outline'}
-              size={20}
+              size={18}
               color={colors.textMuted}
             />
           </TouchableOpacity>
         )}
       </View>
-      <View style={styles.errorContainer}>
-        {error ? <Text style={styles.errorText}>{error}</Text> : hint ? <Text style={styles.hintText}>{hint}</Text> : null}
-      </View>
+      {(error || hint) && (
+        <View style={styles.errorContainer}>
+          {error ? <Text style={styles.errorText}>{error}</Text> : hint ? <Text style={styles.hintText}>{hint}</Text> : null}
+        </View>
+      )}
     </View>
   );
 });
 
 const createStyles = (
-  spacing: {
-    sm: number;
-    md: number;
-  },
-  radius: {
-    md: number;
-  },
-  colors: {
-    primary: string;
-    text: string;
-    textMuted: string;
-    error: string;
-  }
+  spacing: { sm: number; md: number },
+  radius: { md: number },
+  colors: { primary: string; text: string; textMuted: string; error: string; border: string }
 ) => StyleSheet.create({
   container: {
     marginBottom: spacing.md,
@@ -163,6 +148,7 @@ const createStyles = (
   label: {
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: 'PlusJakartaSans_600SemiBold',
     color: colors.text,
     marginBottom: 6,
   },
@@ -173,17 +159,13 @@ const createStyles = (
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: radius.md,
+    borderRadius: 14,
     borderWidth: 1.5,
     minHeight: 52,
     paddingHorizontal: 14,
   },
-  focusShadow: {
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 2,
+  focusRing: {
+    borderWidth: 2,
   },
   disabled: {
     opacity: 0.5,
@@ -203,11 +185,12 @@ const createStyles = (
     flex: 1,
     fontSize: 15,
     fontWeight: '400',
+    fontFamily: 'PlusJakartaSans_400Regular',
     color: colors.text,
     paddingVertical: 12,
   },
   errorContainer: {
-    minHeight: 36,
+    minHeight: 22,
     justifyContent: 'flex-end',
   },
   errorText: {
@@ -223,6 +206,6 @@ const createStyles = (
     color: colors.textMuted,
     marginTop: 4,
     marginLeft: 4,
-    lineHeight: 18,
+    lineHeight: 16,
   },
 });

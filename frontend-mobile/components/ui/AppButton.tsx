@@ -19,10 +19,10 @@ export type AppButtonVariant =
   | 'outline'
   | 'ghost'
   | 'danger'
-  | 'doctorPrimary'    // Maps to primary
-  | 'doctorSecondary'  // Maps to secondary
-  | 'doctorOutline'    // Maps to outline
-  | 'doctorDanger';    // Maps to danger
+  | 'doctorPrimary'
+  | 'doctorSecondary'
+  | 'doctorOutline'
+  | 'doctorDanger';
 
 export type AppButtonSize = 'sm' | 'md' | 'lg';
 
@@ -43,9 +43,9 @@ export interface AppButtonProps {
 }
 
 const SIZE_CONFIG = {
-  sm: { height: 40, fontSize: 13, iconSize: 16, padding: 16 },
-  md: { height: 48, fontSize: 15, iconSize: 20, padding: 24 },
-  lg: { height: 56, fontSize: 17, iconSize: 24, padding: 32 },
+  sm: { height: 40, fontSize: 13, iconSize: 16, padding: 18, radius: 12 },
+  md: { height: 50, fontSize: 15, iconSize: 20, padding: 24, radius: 14 },
+  lg: { height: 56, fontSize: 17, iconSize: 24, padding: 32, radius: 16 },
 };
 
 export function AppButton({
@@ -67,49 +67,23 @@ export function AppButton({
   const isDisabled = disabled || loading;
   const sizeConf = SIZE_CONFIG[size];
 
-  // Map variants to theme tokens (usa useAppTheme para dark mode)
   const getVariantStyles = () => {
     switch (variant) {
       case 'secondary':
       case 'doctorSecondary':
-        return {
-          bg: colors.secondary,
-          text: colors.white,
-          border: 'transparent',
-          shadow: theme.shadows.button,
-        };
+        return { bg: colors.secondary, text: colors.white, border: 'transparent', shadow: theme.shadows.button };
       case 'outline':
       case 'doctorOutline':
-        return {
-          bg: 'transparent',
-          text: colors.primary,
-          border: colors.primary,
-          shadow: theme.shadows.none,
-        };
+        return { bg: 'transparent', text: colors.primary, border: colors.border, shadow: theme.shadows.none };
       case 'ghost':
-        return {
-          bg: 'transparent',
-          text: colors.primary,
-          border: 'transparent',
-          shadow: theme.shadows.none,
-        };
+        return { bg: 'transparent', text: colors.primary, border: 'transparent', shadow: theme.shadows.none };
       case 'danger':
       case 'doctorDanger':
-        return {
-          bg: colors.error,
-          text: colors.white,
-          border: 'transparent',
-          shadow: theme.shadows.button,
-        };
+        return { bg: colors.error, text: colors.white, border: 'transparent', shadow: theme.shadows.button };
       case 'primary':
       case 'doctorPrimary':
       default:
-        return {
-          bg: colors.primary,
-          text: colors.white,
-          border: 'transparent',
-          shadow: theme.shadows.button,
-        };
+        return { bg: colors.primary, text: colors.white, border: 'transparent', shadow: theme.shadows.button };
     }
   };
 
@@ -156,6 +130,7 @@ export function AppButton({
           styles.base,
           {
             height: sizeConf.height,
+            borderRadius: sizeConf.radius,
             backgroundColor: isDisabled ? colors.surfaceSecondary : stylesConf.bg,
             borderColor: isDisabled ? colors.border : stylesConf.border,
             borderWidth: stylesConf.border !== 'transparent' ? 1.5 : 0,
@@ -208,28 +183,17 @@ export function AppButton({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: 12, // Modern standardized radius
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
   },
-  fullWidth: {
-    width: '100%',
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  icon: {
-    // Margin handled inline based on title presence
-  },
+  fullWidth: { width: '100%' },
+  content: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  icon: {},
   text: {
     fontFamily: 'PlusJakartaSans_700Bold',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
     textAlign: 'center',
   },
-  pressed: {
-    opacity: 0.85,
-  },
+  pressed: { opacity: 0.85 },
 });
