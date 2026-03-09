@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../lib/designSystem';
 import { spacing, borderRadius, typography } from '../../lib/themeDoctor';
+import { SectionCard, Disclaimer, EmptySection } from './shared';
 import type { PatientClinicalSummaryStructured } from '../../lib/api';
 
 interface ClinicalOverviewTabProps {
@@ -44,7 +45,7 @@ export function ClinicalOverviewTab({
           iconColor={colors.info}
           title="Lista de problemas"
           borderColor={colors.info}
-          colors={colors}
+          
         >
           <View style={S.chipList}>
             {structured.problemList.map((p, i) => (
@@ -64,7 +65,7 @@ export function ClinicalOverviewTab({
           iconColor={colors.primary}
           title="Medicamentos em uso"
           borderColor={colors.primary}
-          colors={colors}
+          
         >
           {structured.activeMedications.map((m, i) => (
             <View key={i} style={S.medItem}>
@@ -85,7 +86,7 @@ export function ClinicalOverviewTab({
           iconColor={colors.success}
           title="Plano de cuidado"
           borderColor={colors.success}
-          colors={colors}
+          
         >
           <Text style={S.bodyText}>{structured.carePlan}</Text>
         </SectionCard>
@@ -99,7 +100,7 @@ export function ClinicalOverviewTab({
         title="Resumo narrativo"
         subtitle="Visão consolidada de consultas, receitas e exames"
         borderColor={colors.primaryLight}
-        colors={colors}
+        
       >
         {summaryLoading ? (
           <View style={S.loadingRow}>
@@ -113,9 +114,7 @@ export function ClinicalOverviewTab({
             Resumo indisponível. Use as abas para revisar o histórico completo.
           </Text>
         )}
-        <Text style={S.disclaimer}>
-          Resumo de apoio. O médico decide com base na avaliação clínica.
-        </Text>
+        <Disclaimer text="Resumo de apoio. O médico decide com base na avaliação clínica." />
       </SectionCard>
 
       {/* Dra. Renoveja insights */}
@@ -154,45 +153,8 @@ export function ClinicalOverviewTab({
             </>
           )}
         </View>
-        <Text style={S.disclaimer}>Orientação geral · Decisão clínica sempre do médico</Text>
+        <Disclaimer />
       </View>
-    </View>
-  );
-}
-
-function SectionCard({ icon, iconBg, iconColor, title, subtitle, borderColor, colors, children }: {
-  icon: string; iconBg: string; iconColor: string;
-  title: string; subtitle?: string; borderColor: string;
-  colors: DesignColors; children: React.ReactNode;
-}) {
-  return (
-    <View style={{
-      backgroundColor: colors.surface,
-      borderRadius: borderRadius.lg,
-      padding: spacing.lg,
-      borderLeftWidth: 4,
-      borderLeftColor: borderColor,
-      marginBottom: spacing.md,
-    }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md }}>
-        <View style={{
-          width: 36, height: 36, borderRadius: 10,
-          backgroundColor: iconBg,
-          alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Ionicons name={icon as any} size={18} color={iconColor} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{
-            fontSize: 15, fontFamily: typography.fontFamily.bold,
-            fontWeight: '700', color: colors.text,
-          }}>{title}</Text>
-          {subtitle && (
-            <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>{subtitle}</Text>
-          )}
-        </View>
-      </View>
-      {children}
     </View>
   );
 }

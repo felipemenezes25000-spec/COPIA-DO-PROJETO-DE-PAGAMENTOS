@@ -23,8 +23,6 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  TextInput,
-  Modal,
   Dimensions,
   Animated,
   Platform,
@@ -32,6 +30,7 @@ import {
   BackHandler,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { nav } from '../../lib/navigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { DailyMediaView } from '@daily-co/react-native-daily-js';
@@ -39,6 +38,7 @@ import ExpoPip from 'expo-pip';
 
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 import DoctorAIPanel from './DoctorAIPanel';
+import { VideoCallControls, VideoCallTopBar, VideoCallWaiting, ClinicalNotesModal } from './parts';
 import {
   startConsultation,
   finishConsultation,
@@ -543,7 +543,7 @@ export default function VideoCallScreenInner() {
     setEnding(false);
     cleanup();
     // Navigate to consultation summary to show AI anamnesis results
-    router.replace(`/consultation-summary/${rid}` as any);
+    nav.replace(router, `/consultation-summary/${rid}`);
   }, [leave, rid, clinicalNotes, cleanup, router]);
 
   const onEndPress = useCallback(() => {
@@ -571,7 +571,7 @@ export default function VideoCallScreenInner() {
             leave().then(() => {
               cleanup();
               // Navigate to request-detail (not back) so patient sees clear rejoin button
-              router.replace(`/request-detail/${rid}` as any);
+              nav.replace(router, `/request-detail/${rid}`);
             }).catch(() => { leavingRef.current = false; });
           },
         },
@@ -645,29 +645,12 @@ export default function VideoCallScreenInner() {
         </View>
       ) : (
         <View style={[S.remote, S.noVid]}>
-          <View style={S.waitCircle}>
-            <Ionicons name="person-circle-outline" size={72} color={colors.textSecondary} />
-          </View>
-          <Text style={S.waitTitle}>
-            {callState === 'joining'
-              ? 'Entrando na sala...'
-              : isDoctor && timerStarted
-                ? 'Paciente saiu da chamada'
-                : !isDoctor && timerStarted
-                  ? 'Você voltou à sala'
-                  : 'Aguardando participante'}
-          </Text>
-          <Text style={S.waitSub}>
-            {callState === 'joining'
-              ? (isDoctor ? 'O paciente será notificado' : 'Conectando à sala do médico...')
-              : isDoctor && timerStarted
-                ? 'O paciente pode voltar enquanto houver tempo.\nSó você (médico) encerra a consulta — Res. CFM nº 2.454/2026.'
-                : !isDoctor && timerStarted
-                  ? 'Aguardando o médico na sala. Sua consulta continua.'
-                  : isDoctor
-                    ? 'O paciente será notificado para entrar'
-                    : 'O médico entrará em breve'}
-          </Text>
+          <VideoCallWaiting
+            colors={colors}
+            callState={callState}
+            isDoctor={isDoctor}
+            timerStarted={timerStarted}
+          />
         </View>
       )}
 
@@ -686,24 +669,14 @@ export default function VideoCallScreenInner() {
 
       {/* Top bar — oculto em PiP para janela limpa */}
       {!isInPipMode && (
-      <View style={[S.top, { paddingTop: insets.top + 8 }]}>
-        <View style={S.topL}>
-          <View style={[S.qPill, { backgroundColor: `${qColor(quality)}22` }]}>
-            <View style={[S.qDot, { backgroundColor: qColor(quality) }]} />
-            <Text style={[S.qTxt, { color: qColor(quality) }]}>{qLabel(quality)}</Text>
-          </View>
-          {isAiActive && (
-            <View style={S.aiPill}>
-              <View style={S.aiDot} />
-              <Text style={S.aiTxt}>IA</Text>
-            </View>
-          )}
-        </View>
-        <View style={[S.tPill, urgent && S.tPillUrg, critical && S.tPillCrit]}>
-          <Ionicons name="time-outline" size={14} color={critical ? colors.white : urgent ? colors.warning : colors.textMuted} />
-          <Text style={[S.tTxt, urgent && S.tTxtUrg, critical && S.tTxtCrit]}>{timerStr}</Text>
-        </View>
-      </View>
+        <VideoCallTopBar
+          colors={colors}
+          topInset={insets.top}
+          quality={quality}
+          callSeconds={callSeconds}
+          contractedMinutes={contractedMinutes}
+          isAiActive={isAiActive}
+        />
       )}
 
       {/* Doctor: panel toggle — oculto em PiP */}
@@ -804,61 +777,31 @@ export default function VideoCallScreenInner() {
 
       {/* Controls — oculto em PiP; toque na janela expande o app */}
       {!isInPipMode && (
-      <View style={[S.ctrl, { paddingBottom: insets.bottom + 12 }]}>
-        {Platform.OS === 'android' && ExpoPip?.isAvailable?.() && (
-          <TouchableOpacity style={S.cb} onPress={() => ExpoPip.enterPipMode?.({ width: 360, height: 480 })} accessibilityRole="button" accessibilityLabel="Minimizar em janela flutuante">
-            <Ionicons name="contract-outline" size={22} color={colors.white} />
-            <Text style={S.cLbl}>Minimizar</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity style={[S.cb, isMuted && S.cbOn]} onPress={toggleMute} accessibilityRole="button" accessibilityLabel={isMuted ? 'Microfone mudo, toque para ativar' : 'Microfone ativo, toque para mutar'} accessibilityState={{ checked: isMuted }}>
-          <Ionicons name={isMuted ? 'mic-off' : 'mic'} size={22} color={colors.white} />
-          <Text style={S.cLbl}>{isMuted ? 'Mudo' : 'Mic'}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[S.cb, isCameraOff && S.cbOn]} onPress={toggleCamera} accessibilityRole="button" accessibilityLabel={isCameraOff ? 'Câmera desligada, toque para ligar' : 'Câmera ligada, toque para desligar'} accessibilityState={{ checked: isCameraOff }}>
-          <Ionicons name={isCameraOff ? 'videocam-off' : 'videocam'} size={22} color={colors.white} />
-          <Text style={S.cLbl}>{isCameraOff ? 'Off' : 'Câm'}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={S.cb} onPress={flipCamera} accessibilityRole="button" accessibilityLabel="Virar câmera frontal ou traseira">
-          <Ionicons name="camera-reverse-outline" size={22} color={colors.white} />
-          <Text style={S.cLbl}>Virar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[S.cb, S.endCb]}
-          onPress={onEndPress}
-          disabled={ending}
-          accessibilityLabel={isDoctor ? 'Encerrar consulta' : 'Sair da chamada'}
-        >
-          {ending ? <ActivityIndicator size="small" color={colors.white} /> : (
-            <Ionicons name="call" size={22} color={colors.white} style={{ transform: [{ rotate: '135deg' }] }} />
-          )}
-          <Text style={S.cLbl}>{isDoctor ? 'Encerrar' : 'Sair'}</Text>
-        </TouchableOpacity>
-      </View>
+        <VideoCallControls
+          colors={colors}
+          insetBottom={insets.bottom}
+          isMuted={isMuted}
+          isCameraOff={isCameraOff}
+          isDoctor={isDoctor}
+          ending={ending}
+          hasPip={Platform.OS === 'android' && !!(ExpoPip?.isAvailable?.())}
+          onToggleMute={toggleMute}
+          onToggleCamera={toggleCamera}
+          onFlipCamera={flipCamera}
+          onEnd={onEndPress}
+          onEnterPip={Platform.OS === 'android' && ExpoPip?.isAvailable?.() ? () => ExpoPip.enterPipMode?.({ width: 360, height: 480 }) : undefined}
+        />
       )}
 
       {/* Clinical notes modal */}
-      <Modal visible={showNotes} transparent animationType="slide">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={S.mOverlay}>
-          <View style={S.mCard}>
-            <View style={S.mHead}><Ionicons name="create-outline" size={22} color={colors.primary} /><Text style={S.mTitle}>Notas Clínicas</Text></View>
-            <Text style={S.mSub}>Adicione observações finais antes de encerrar (opcional)</Text>
-            <TextInput
-              style={S.mInput} placeholder="Diagnóstico, conduta, orientações..."
-              placeholderTextColor={colors.textMuted} multiline textAlignVertical="top"
-              value={clinicalNotes} onChangeText={setClinicalNotes} autoFocus
-            />
-            <View style={S.mActs}>
-              <TouchableOpacity style={S.mBtnSec} onPress={() => { setClinicalNotes(''); confirmEnd(); }}>
-                <Text style={S.mBtnSecT}>Pular</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={S.mBtnPri} onPress={confirmEnd}>
-                <Text style={S.mBtnPriT}>Encerrar Consulta</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      <ClinicalNotesModal
+        visible={showNotes}
+        colors={colors}
+        clinicalNotes={clinicalNotes}
+        onChangeNotes={setClinicalNotes}
+        onSkip={() => { setClinicalNotes(''); confirmEnd(); }}
+        onConfirm={confirmEnd}
+      />
     </View>
   );
 }
@@ -870,7 +813,7 @@ type VideoColors = { primary: string; text: string; textMuted: string; textSecon
 function makeStyles(colors: VideoColors, modalColors?: VideoColors) {
   const mc = modalColors || colors;
   return StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F172A' },
+  container: { flex: 1, backgroundColor: colors.background },
   center: { justifyContent: 'center', alignItems: 'center', gap: 12 },
 
   remote: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
@@ -988,7 +931,7 @@ function makeStyles(colors: VideoColors, modalColors?: VideoColors) {
 
   // Doctor: Start Timer button
   startTimerOverlay: { position: 'absolute', left: 16, right: 16, bottom: 100, zIndex: 30, alignItems: 'center' },
-  startTimerBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.success, paddingHorizontal: 24, paddingVertical: 16, borderRadius: 20, shadowColor: colors.success, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8 },
+  startTimerBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.success, paddingHorizontal: 24, paddingVertical: 16, borderRadius: 16, shadowColor: colors.success, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8 },
   startTimerTitle: { color: colors.white, fontSize: 16, fontWeight: '700' },
   startTimerSub: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 1 },
 

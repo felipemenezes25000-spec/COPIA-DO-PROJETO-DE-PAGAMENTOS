@@ -35,7 +35,7 @@ export function AppHeader({
   const handleBack = onBack || (() => router.back());
 
   const isGradient = !!gradient;
-  const textColor = isGradient ? '#FFFFFF' : colors.text;
+  const textColor = isGradient ? colors.headerOverlayText : colors.text;
   const backBgColor = isGradient ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)';
   const topPadding = skipSafeAreaTop ? 8 : insets.top + 8;
 

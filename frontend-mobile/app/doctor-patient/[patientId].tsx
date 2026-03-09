@@ -1,29 +1,25 @@
 /**
- * Prontuário Unificado do Paciente — Tela com abas.
+ * Prontuário Unificado do Paciente — Tela com abas + contadores.
  *
- * Visão Geral | Consultas | Documentos | Notas Clínicas
+ * Visão Geral | Consultas (n) | Documentos (n) | Notas (n)
  *
- * Substitui as antigas telas doctor-patient e doctor-patient-summary
- * em uma única experiência organizada e eficiente para o médico.
+ * Refatorado: FlatList para virtualização, CompactHeader extraído,
+ * contadores nas tabs, espaçamentos unificados via designSystem.
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   RefreshControl,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 
 import { spacing } from '../../lib/themeDoctor';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../lib/designSystem';
 import { useListBottomPadding } from '../../lib/ui/responsive';
@@ -43,6 +39,7 @@ import { showToast } from '../../components/ui/Toast';
 import { haptics } from '../../lib/haptics';
 import { extractAllergiesFromJson } from '../../lib/domain/anamnesis';
 
+import { CompactHeader } from '../../components/prontuario/shared';
 import { PatientIdentityCard } from '../../components/prontuario/PatientIdentityCard';
 import { AlertsBanner } from '../../components/prontuario/AlertsBanner';
 import { ClinicalOverviewTab } from '../../components/prontuario/ClinicalOverviewTab';
@@ -50,14 +47,7 @@ import { ConsultationsTab } from '../../components/prontuario/ConsultationsTab';
 import { DocumentsTab } from '../../components/prontuario/DocumentsTab';
 import { ClinicalNotesTab } from '../../components/prontuario/ClinicalNotesTab';
 
-const TAB_ITEMS = [
-  { key: 'overview', label: 'Visão Geral' },
-  { key: 'consultations', label: 'Consultas' },
-  { key: 'documents', label: 'Documentos' },
-  { key: 'notes', label: 'Notas' },
-] as const;
-
-type TabKey = (typeof TAB_ITEMS)[number]['key'];
+type TabKey = 'overview' | 'consultations' | 'documents' | 'notes';
 
 export default function DoctorPatientProntuario() {
   const { patientId } = useLocalSearchParams<{ patientId: string }>();
@@ -68,7 +58,6 @@ export default function DoctorPatientProntuario() {
   const { colors, gradients } = useAppTheme({ role: 'doctor' });
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
-  // ── State ──
   const [requests, setRequests] = useState<RequestResponseDto[]>([]);
   const [profile, setProfile] = useState<PatientProfileForDoctorDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,7 +71,6 @@ export default function DoctorPatientProntuario() {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryRefreshKey, setSummaryRefreshKey] = useState(0);
 
-  // ── Data loading ──
   const loadData = useCallback(async (withFeedback = false) => {
     if (!id) return;
     try {
@@ -133,7 +121,6 @@ export default function DoctorPatientProntuario() {
     loadData(true);
   };
 
-  // ── Derived data ──
   const sortedRequests = useMemo(() => sortRequestsByNewestFirst(requests), [requests]);
   const patientName = profile?.name ?? sortedRequests[0]?.patientName ?? 'Paciente';
 
@@ -168,7 +155,14 @@ export default function DoctorPatientProntuario() {
     );
   }, [consultations]);
 
-  // ── Triage eval ──
+  // Tabs com contadores — médico vê de imediato onde há dados
+  const tabItems = useMemo(() => [
+    { key: 'overview', label: 'Visão Geral' },
+    { key: 'consultations', label: 'Consultas', count: consultations.length || undefined },
+    { key: 'documents', label: 'Documentos', count: (prescriptions.length + exams.length) || undefined },
+    { key: 'notes', label: 'Notas', count: doctorNotes.length || undefined },
+  ], [consultations.length, prescriptions.length, exams.length, doctorNotes.length]);
+
   useTriageEval({
     context: 'doctor_prontuario',
     step: 'idle',
@@ -187,19 +181,17 @@ export default function DoctorPatientProntuario() {
     lastConsultationDays,
   });
 
-  // ── Loading state ──
   if (loading) {
     return (
       <View style={styles.loadingWrap}>
-      <CompactHeader title="Prontuário" subtitle={patientName} topInset={insets.top} onBack={() => router.back()} colors={colors} gradientColors={gradients.doctorHeader} />
-      <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
+        <CompactHeader title="Prontuário" subtitle={patientName} topInset={insets.top} onBack={() => router.back()} colors={colors} gradientColors={gradients.doctorHeader} />
+        <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
           <SkeletonList count={5} />
         </View>
       </View>
     );
   }
 
-  // ── Error state ──
   if (loadError && requests.length === 0) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -217,12 +209,44 @@ export default function DoctorPatientProntuario() {
     );
   }
 
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return (
+          <ClinicalOverviewTab
+            structured={structured}
+            narrativeSummary={summary}
+            summaryLoading={summaryLoading}
+            consultationCount={consultations.length}
+            allergies={allAllergies}
+            lastConsultationDays={lastConsultationDays}
+          />
+        );
+      case 'consultations':
+        return <ConsultationsTab consultations={consultations} />;
+      case 'documents':
+        return <DocumentsTab prescriptions={prescriptions} exams={exams} />;
+      case 'notes':
+        return (
+          <ClinicalNotesTab
+            patientId={id}
+            doctorNotes={doctorNotes}
+            onNotesChanged={setDoctorNotes}
+            requests={sortedRequests}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  const CONTENT_KEY = [{ key: 'content' }];
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {/* Fixed header */}
       <CompactHeader
         title="Prontuário"
         subtitle={patientName}
@@ -233,10 +257,9 @@ export default function DoctorPatientProntuario() {
         hasAlerts={allAllergies.length > 0 || (structured?.alerts?.length ?? 0) > 0}
       />
 
-      {/* Tabs */}
       <View style={styles.tabsWrap}>
         <AppSegmentedControl
-          items={TAB_ITEMS.map((t) => ({ key: t.key, label: t.label }))}
+          items={tabItems}
           value={activeTab}
           onValueChange={(v) => {
             haptics.selection();
@@ -247,8 +270,9 @@ export default function DoctorPatientProntuario() {
         />
       </View>
 
-      {/* Scrollable content */}
-      <ScrollView
+      <FlatList
+        data={CONTENT_KEY}
+        keyExtractor={(item) => item.key}
         keyboardShouldPersistTaps="handled"
         style={styles.scroll}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: listPadding }]}
@@ -260,140 +284,29 @@ export default function DoctorPatientProntuario() {
             colors={[colors.primary]}
           />
         }
-      >
-        {/* Patient identity + alerts — shown on all tabs */}
-        <PatientIdentityCard
-          profile={profile}
-          patientName={patientName}
-          consultationCount={consultations.length}
-          prescriptionCount={prescriptions.length}
-          examCount={exams.length}
-          allergies={allAllergies}
-        />
-
-        {/* Alerts banner (only if present) */}
-        <AlertsBanner
-          allergies={allAllergies}
-          alerts={structured?.alerts ?? []}
-          style={styles.sectionGap}
-        />
-
-        {/* Tab content */}
-        <View style={styles.tabContent}>
-          {activeTab === 'overview' && (
-            <ClinicalOverviewTab
-              structured={structured}
-              narrativeSummary={summary}
-              summaryLoading={summaryLoading}
+        renderItem={() => (
+          <View style={styles.contentWrap}>
+            <PatientIdentityCard
+              profile={profile}
+              patientName={patientName}
               consultationCount={consultations.length}
+              prescriptionCount={prescriptions.length}
+              examCount={exams.length}
               allergies={allAllergies}
-              lastConsultationDays={lastConsultationDays}
             />
-          )}
-
-          {activeTab === 'consultations' && (
-            <ConsultationsTab consultations={consultations} />
-          )}
-
-          {activeTab === 'documents' && (
-            <DocumentsTab prescriptions={prescriptions} exams={exams} />
-          )}
-
-          {activeTab === 'notes' && (
-            <ClinicalNotesTab
-              patientId={id}
-              doctorNotes={doctorNotes}
-              onNotesChanged={setDoctorNotes}
-              requests={sortedRequests}
+            <AlertsBanner
+              allergies={allAllergies}
+              alerts={structured?.alerts ?? []}
             />
-          )}
-        </View>
-      </ScrollView>
+            <View style={styles.tabContent}>
+              {renderTabContent()}
+            </View>
+          </View>
+        )}
+      />
     </KeyboardAvoidingView>
   );
 }
-
-// ── Compact Header ──
-
-function CompactHeader({
-  title,
-  subtitle,
-  topInset,
-  onBack,
-  colors,
-  gradientColors,
-  hasAlerts,
-}: {
-  title: string;
-  subtitle?: string;
-  topInset: number;
-  onBack: () => void;
-  colors: DesignColors;
-  gradientColors: string[];
-  hasAlerts?: boolean;
-}) {
-  return (
-    <LinearGradient
-      colors={gradientColors as [string, string, ...string[]]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-    >
-      <View style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: spacing.md,
-        paddingBottom: 16,
-        paddingTop: topInset + 10,
-        gap: 8,
-      }}>
-        <TouchableOpacity
-          onPress={onBack}
-          style={{
-            width: 44, height: 44, borderRadius: 14,
-            borderWidth: 1, borderColor: colors.headerOverlayBorder,
-            alignItems: 'center', justifyContent: 'center',
-            backgroundColor: colors.headerOverlaySurface,
-          }}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          accessibilityRole="button"
-          accessibilityLabel="Voltar"
-        >
-          <Ionicons name="chevron-back" size={22} color={colors.headerOverlayText} />
-        </TouchableOpacity>
-
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={{
-              fontSize: 17, fontWeight: '700', color: colors.headerOverlayText,
-              letterSpacing: 0.2, flexShrink: 1,
-            }} numberOfLines={1}>
-              {title}
-            </Text>
-            {hasAlerts && (
-              <View style={{
-                width: 8, height: 8, borderRadius: 4,
-                backgroundColor: colors.error, flexShrink: 0,
-              }} />
-            )}
-          </View>
-          {!!subtitle && (
-            <Text style={{
-              fontSize: 12, color: colors.headerOverlayTextMuted,
-              marginTop: 2, fontWeight: '600', letterSpacing: 0.3,
-              textTransform: 'uppercase',
-            }} numberOfLines={1}>
-              {subtitle}
-            </Text>
-          )}
-        </View>
-
-        <View style={{ width: 44 }} />
-      </View>
-    </LinearGradient>
-  );
-}
-
-// ── Styles ──
 
 function makeStyles(colors: DesignColors) {
   return StyleSheet.create({
@@ -408,11 +321,11 @@ function makeStyles(colors: DesignColors) {
     },
     scroll: { flex: 1 },
     scrollContent: {
-      padding: spacing.md,
-      gap: spacing.md,
+      paddingHorizontal: spacing.md,
+      paddingTop: spacing.md,
     },
-    sectionGap: {
-      marginTop: 0,
+    contentWrap: {
+      gap: spacing.md,
     },
     tabContent: {
       gap: spacing.md,

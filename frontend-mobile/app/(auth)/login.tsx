@@ -14,6 +14,7 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { nav } from '../../lib/navigation';
 import Constants from 'expo-constants';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -118,7 +119,7 @@ export default function Login() {
         : user.role === 'doctor'
         ? '/(doctor)/dashboard'
         : '/(patient)/home';
-      setTimeout(() => router.replace(dest as any), 0);
+      setTimeout(() => nav.replace(router, dest as any), 0);
     } catch (error: unknown) {
       const err = error as { status?: number; message?: string };
       const msg = err?.message || String(error) || 'Email ou senha incorretos.';
@@ -178,7 +179,7 @@ export default function Login() {
         : user.role === 'doctor'
         ? '/(doctor)/dashboard'
         : '/(patient)/home';
-      setTimeout(() => router.replace(dest as any), 0);
+      setTimeout(() => nav.replace(router, dest as any), 0);
     } catch (error: unknown) {
       const err = error as { code?: string; message?: string };
       if (err?.code === statusCodes.SIGN_IN_CANCELLED) return;

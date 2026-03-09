@@ -11,7 +11,7 @@ export const uiTokens = {
   spacing: {
     xs: spacing.xs,     // 4
     sm: spacing.sm,     // 8
-    md: 12,             // kept for backward compat — components rely on 12
+    md: 12,             // NOTE: intentionally 12 (not 16 from designSystem.spacing.md) — many components depend on 12px spacing
     lg: spacing.md,     // 16
     xl: layout.screenPaddingHorizontal, // 20
     xxl: spacing.lg,    // 24

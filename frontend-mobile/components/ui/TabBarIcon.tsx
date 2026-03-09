@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAppTheme } from '../../lib/ui/useAppTheme';
 
 interface TabBarIconProps {
   name: keyof typeof Ionicons.glyphMap;
@@ -11,7 +12,8 @@ interface TabBarIconProps {
 }
 
 export function TabBarIcon({ name, color, focused, activeColor }: TabBarIconProps) {
-  const activeIndicatorColor = activeColor ?? '#0EA5E9';
+  const { colors } = useAppTheme();
+  const activeIndicatorColor = activeColor ?? colors.primary;
   const pillWidth = useRef(new Animated.Value(focused ? 28 : 0)).current;
   const pillOpacity = useRef(new Animated.Value(focused ? 1 : 0)).current;
   const scale = useRef(new Animated.Value(focused ? 1.1 : 1)).current;

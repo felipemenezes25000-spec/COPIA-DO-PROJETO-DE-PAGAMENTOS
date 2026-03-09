@@ -3,6 +3,7 @@
  * DO NOT add new tokens here. Use designSystem.ts or useAppTheme().
  */
 import { theme, colors as themeColors, spacing as themeSpacing, borderRadius as themeBorderRadius, shadows as themeShadows, gradients as themeGradients } from '../lib/theme';
+import { typography as dsTypography } from '../lib/designSystem';
 
 export const colors = {
   ...themeColors,
@@ -32,17 +33,18 @@ export const borderRadius = { ...themeBorderRadius, xxl: 28 };
 export const shadows = themeShadows;
 
 export const typography = {
-  h1: { fontSize: 30, fontWeight: '800' as const, lineHeight: 38, letterSpacing: -0.5 },
-  h2: { fontSize: 26, fontWeight: '700' as const, lineHeight: 34, letterSpacing: -0.3 },
-  h3: { fontSize: 22, fontWeight: '700' as const, lineHeight: 30 },
-  h4: { fontSize: 18, fontWeight: '600' as const, lineHeight: 26 },
-  body: { fontSize: 16, fontWeight: '400' as const, lineHeight: 24 },
+  // Delegated from designSystem — single source of truth
+  h1: { fontSize: dsTypography.variants.h1.fontSize, fontWeight: dsTypography.variants.h1.fontWeight, lineHeight: Math.round(dsTypography.variants.h1.fontSize * dsTypography.variants.h1.lineHeight), letterSpacing: -0.5 },
+  h2: { fontSize: dsTypography.variants.h2.fontSize, fontWeight: dsTypography.variants.h2.fontWeight, lineHeight: Math.round(dsTypography.variants.h2.fontSize * dsTypography.variants.h2.lineHeight), letterSpacing: -0.3 },
+  h3: { fontSize: dsTypography.variants.h3.fontSize, fontWeight: dsTypography.variants.h3.fontWeight, lineHeight: Math.round(dsTypography.variants.h3.fontSize * dsTypography.variants.h3.lineHeight) },
+  h4: { fontSize: dsTypography.variants.title.fontSize, fontWeight: dsTypography.variants.title.fontWeight, lineHeight: Math.round(dsTypography.variants.title.fontSize * dsTypography.variants.title.lineHeight) },
+  body: { fontSize: dsTypography.variants.bodyLg.fontSize, fontWeight: dsTypography.variants.bodyLg.fontWeight, lineHeight: Math.round(dsTypography.variants.bodyLg.fontSize * dsTypography.variants.bodyLg.lineHeight) },
   bodyMedium: { fontSize: 16, fontWeight: '500' as const, lineHeight: 24 },
   bodySemiBold: { fontSize: 16, fontWeight: '600' as const, lineHeight: 24 },
-  bodySmall: { fontSize: 14, fontWeight: '400' as const, lineHeight: 20 },
+  bodySmall: { fontSize: dsTypography.variants.body2.fontSize, fontWeight: dsTypography.variants.body2.fontWeight, lineHeight: Math.round(dsTypography.variants.body2.fontSize * dsTypography.variants.body2.lineHeight) },
   bodySmallMedium: { fontSize: 14, fontWeight: '500' as const, lineHeight: 20 },
-  caption: { fontSize: 12, fontWeight: '500' as const, lineHeight: 16 },
-  captionSmall: { fontSize: 11, fontWeight: '600' as const, lineHeight: 14, letterSpacing: 0.5 },
+  caption: { fontSize: dsTypography.variants.caption.fontSize, fontWeight: '500' as const, lineHeight: Math.round(dsTypography.variants.caption.fontSize * dsTypography.variants.caption.lineHeight) },
+  captionSmall: { fontSize: dsTypography.variants.overline.fontSize, fontWeight: dsTypography.variants.overline.fontWeight, lineHeight: 14, letterSpacing: 0.5 },
   button: { fontSize: 16, fontWeight: '700' as const, lineHeight: 24 },
 };
 

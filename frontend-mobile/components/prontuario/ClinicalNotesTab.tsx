@@ -181,7 +181,7 @@ export function ClinicalNotesTab({
               {note.requestId && (
                 <TouchableOpacity
                   style={S.noteCardLink}
-                  onPress={() => router.push(`/doctor-request/${note.requestId}` as never)}
+                  onPress={() => router.push(`/doctor-request/${note.requestId}` as any)}
                   activeOpacity={0.7}
                 >
                   <Ionicons name="open-outline" size={12} color={colors.primary} />

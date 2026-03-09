@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, borderRadius, typography, theme } from '../../lib/theme';
+import { spacing, borderRadius, typography, theme } from '../../lib/theme';
 import { haptics } from '../../lib/haptics';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
         right: spacing.md,
         zIndex: theme.zIndex.toast,
         borderRadius: borderRadius.md,
-        shadowColor: colors.black,
+        shadowColor: '#020617',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.12,
         shadowRadius: 12,

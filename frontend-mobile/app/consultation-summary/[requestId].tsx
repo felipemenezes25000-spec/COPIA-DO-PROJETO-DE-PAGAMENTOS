@@ -25,6 +25,7 @@ import type { DesignColors } from '../../lib/designSystem';
 import { fetchRequestById, saveConsultationSummary } from '../../lib/api';
 import type { RequestResponseDto } from '../../types/database';
 import { ANA_FIELDS_COMPACT as ANA_FIELDS, parseAnamnesis, anamnesisToText } from '../../lib/domain/anamnesis';
+import { AnamnesisCard } from '../../components/prontuario/AnamnesisCard';
 
 export default function ConsultationSummaryScreen() {
   const { requestId } = useLocalSearchParams<{ requestId: string }>();
@@ -170,106 +171,18 @@ export default function ConsultationSummaryScreen() {
         contentContainerStyle={[S.content, { paddingBottom: insets.bottom + 20 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Anamnesis Section */}
-        {hasAnamnesis && (
-          <View style={S.section}>
-            <View style={S.sectionHeader}>
-              <Ionicons name="document-text" size={18} color={colors.primary} />
-              <Text style={S.sectionTitle}>Anamnese Estruturada</Text>
-              <TouchableOpacity style={S.copyIcon} onPress={copyFullAnamnesis}>
-                <Ionicons name="copy-outline" size={16} color={colors.primary} />
-              </TouchableOpacity>
-            </View>
-
-            {ANA_FIELDS.map(({ key, label, icon, severity }) => {
-              const val = anamnesis[key];
-              if (!val || (typeof val === 'string' && !val.trim())) return null;
-              const display = Array.isArray(val) ? val.join(', ') : String(val);
-              const isAlert = key === 'alergias';
-              const fieldColor = severity === 'danger' ? colors.error : severity === 'warning' ? colors.warning : severity === 'success' ? colors.success : severity === 'info' ? colors.primaryLight : colors.textMuted;
-              return (
-                <View key={key} style={S.field}>
-                  <View style={S.fieldLabel}>
-                    <View style={[S.fieldIcon, { backgroundColor: `${fieldColor}15` }]}>
-                      <Ionicons name={icon as any} size={13} color={fieldColor} />
-                    </View>
-                    <Text style={[S.fieldLabelText, isAlert && { color: colors.error }]}>{label}</Text>
-                  </View>
-                  <Text style={S.fieldValue}>{display}</Text>
-                </View>
-              );
-            })}
-
-            {/* Red alerts */}
-            {Array.isArray(anamnesis.alertas_vermelhos) && anamnesis.alertas_vermelhos.length > 0 && (
-              <View style={S.alertBlock}>
-                <View style={S.fieldLabel}>
-                  <Ionicons name="alert-circle" size={15} color={colors.error} />
-                  <Text style={[S.fieldLabelText, { color: colors.error, fontWeight: '700' }]}>
-                    ALERTAS VERMELHOS
-                  </Text>
-                </View>
-                {(anamnesis.alertas_vermelhos as string[]).map((a: string, i: number) => (
-                  <Text key={i} style={S.alertText}>⚠️ {a}</Text>
-                ))}
-              </View>
-            )}
-
-            {/* Suggested medications */}
-            {Array.isArray(anamnesis.medicamentos_sugeridos) && anamnesis.medicamentos_sugeridos.length > 0 && (
-              <View style={S.medsBlock}>
-                <View style={S.fieldLabel}>
-                  <Ionicons name="medkit" size={15} color={colors.primaryLight} />
-                  <Text style={[S.fieldLabelText, { color: colors.primaryLight }]}>
-                    MEDICAMENTOS SUGERIDOS
-                  </Text>
-                </View>
-                {(anamnesis.medicamentos_sugeridos as (string | { nome: string; dose?: string; via?: string; posologia?: string; duracao?: string; indicacao?: string })[]).map((m, i) => {
-                  const med = typeof m === 'string' ? { nome: m, dose: '', via: '', posologia: '', duracao: '', indicacao: '' } : { nome: m.nome ?? '', dose: m.dose ?? '', via: m.via ?? '', posologia: m.posologia ?? '', duracao: m.duracao ?? '', indicacao: m.indicacao ?? '' };
-                  const parts = [med.dose, med.via, med.posologia, med.duracao].filter(Boolean);
-                  const linha = parts.length > 0 ? ` — ${parts.join(' • ')}` : '';
-                  return (
-                    <View key={i} style={S.medItemBlock}>
-                      <View style={S.medItem}>
-                        <Text style={S.medNum}>{i + 1}.</Text>
-                        <Text style={S.medNome}>{med.nome}{linha}</Text>
-                      </View>
-                      {med.indicacao ? <Text style={S.medIndicacao}>{med.indicacao}</Text> : null}
-                    </View>
-                  );
-                })}
-                <Text style={S.disclaimer}>* Sugestões da IA — decisão final do médico</Text>
-              </View>
-            )}
-
-            {/* Suggested exams */}
-            {Array.isArray(anamnesis.exames_sugeridos) && anamnesis.exames_sugeridos.length > 0 && (
-              <View style={S.medsBlock}>
-                <View style={S.fieldLabel}>
-                  <Ionicons name="flask" size={15} color={colors.primaryLight} />
-                  <Text style={[S.fieldLabelText, { color: colors.primaryLight }]}>
-                    EXAMES SUGERIDOS
-                  </Text>
-                </View>
-                {(anamnesis.exames_sugeridos as (string | { nome: string; descricao?: string; o_que_afere?: string; indicacao?: string })[]).map((ex, i) => {
-                  const exam = typeof ex === 'string' ? { nome: ex, descricao: '', o_que_afere: '', indicacao: '' } : { nome: ex.nome ?? '', descricao: ex.descricao ?? '', o_que_afere: ex.o_que_afere ?? '', indicacao: ex.indicacao ?? '' };
-                  return (
-                    <View key={i} style={S.examItemBlock}>
-                      <View style={S.medItem}>
-                        <Text style={S.medNum}>{i + 1}.</Text>
-                        <Text style={S.medNome}>{exam.nome}</Text>
-                      </View>
-                      {exam.descricao ? <Text style={S.examDetail}>O que é: {exam.descricao}</Text> : null}
-                      {exam.o_que_afere ? <Text style={S.examDetail}>Avalia: {exam.o_que_afere}</Text> : null}
-                      {exam.indicacao ? <Text style={S.medIndicacao}>{exam.indicacao}</Text> : null}
-                    </View>
-                  );
-                })}
-                <Text style={S.disclaimer}>* Sugestões da IA — decisão final do médico</Text>
-              </View>
-            )}
-          </View>
+        {/* Anamnesis Section — shared component */}
+        {hasAnamnesis && anamnesis && (
+          <AnamnesisCard
+            data={anamnesis}
+            compact
+            showAlerts
+            showMedsSuggestions
+            showExamsSuggestions
+            style={S.section}
+          />
         )}
+
 
         {/* AI Suggestions */}
         {hasSuggestions && (

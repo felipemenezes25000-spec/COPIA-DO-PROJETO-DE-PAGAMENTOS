@@ -33,7 +33,7 @@ export const MedicationListEditor = React.memo(function MedicationListEditor({
         </Text>
       ) : (
         medications.map((med, i) => (
-          <View key={i} style={[styles.row, { borderBottomColor: colors.borderLight }]}>
+          <View key={`med-${i}-${med.slice(0, 20)}`} style={[styles.row, { borderBottomColor: colors.borderLight }]}>
             <View style={[styles.index, { backgroundColor: colors.primarySoft }]}>
               <Text style={[styles.indexText, { color: colors.primary }]}>{i + 1}</Text>
             </View>
@@ -78,7 +78,7 @@ export const ExamListEditor = React.memo(function ExamListEditor({
         Liste os exames solicitados (um por linha)
       </Text>
       {exams.map((ex, i) => (
-        <View key={i} style={[styles.row, { borderBottomColor: colors.borderLight }]}>
+        <View key={`exam-${i}-${ex.slice(0, 20)}`} style={[styles.row, { borderBottomColor: colors.borderLight }]}>
           <View style={[styles.index, { backgroundColor: colors.primarySoft }]}>
             <Text style={[styles.indexText, { color: colors.primary }]}>{i + 1}</Text>
           </View>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, ImageSourcePropType } from 'react-native';
-import { theme } from '../lib/theme';
+import { useAppTheme } from '../lib/ui/useAppTheme';
 
 const TAGLINE = 'Renove sua receita e pedido de exames.\nRápido e sem burocracia.';
 
@@ -25,8 +25,9 @@ const SIZE_MAP = {
 
 export function Logo({ size = 'medium', compact = false, variant = 'light' }: LogoProps) {
   const dims = SIZE_MAP[size];
+  const { colors } = useAppTheme();
   const isLight = variant === 'light';
-  const taglineColor = isLight ? 'rgba(255,255,255,0.9)' : theme.colors.text.tertiary;
+  const taglineColor = isLight ? 'rgba(255,255,255,0.9)' : colors.textMuted;
   const height = dims.width / LOGO_ASPECT_RATIO;
 
   return (

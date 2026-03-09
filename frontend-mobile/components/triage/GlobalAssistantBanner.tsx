@@ -1,3 +1,4 @@
+import { nav } from '../../lib/navigation';
 /**
  * GlobalAssistantBanner — Dra. Renoveja em todas as telas do paciente
  *
@@ -12,7 +13,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useModalVisibility } from '../../contexts/ModalVisibilityContext';
 import { DraggableAssistantBanner } from './DraggableAssistantBanner';
 import type { CTAAction } from '../../lib/triage/triage.types';
-import { theme } from '../../lib/theme';
+import { useAppTheme } from '../../lib/ui/useAppTheme';
 
 function shouldHideBanner(
   pathname: string | null | undefined,
@@ -54,6 +55,7 @@ export function GlobalAssistantBanner() {
   const router = useRouter();
   const { user } = useAuth();
   const { isModalOpen } = useModalVisibility();
+  const { zIndex } = useAppTheme();
   const isLoggedIn = !!user;
 
   if (shouldHideBanner(pathname, segments, isLoggedIn, user?.role)) return null;
@@ -82,14 +84,14 @@ export function GlobalAssistantBanner() {
     }
     if (action === 'abrir_pagamento') {
       if (message?.requestId) {
-        router.push(`/payment/request/${message.requestId}` as any);
+        nav.push(router, `/payment/request/${message.requestId}`);
       } else {
         router.push('/(patient)/requests');
       }
     }
     if (action === 'abrir_documento') {
       if (message?.requestId) {
-        router.push(`/request-detail/${message.requestId}` as any);
+        nav.push(router, `/request-detail/${message.requestId}`);
       } else {
         router.push('/(patient)/requests');
       }
@@ -103,7 +105,7 @@ export function GlobalAssistantBanner() {
   };
 
   return (
-    <View style={styles.wrapper} pointerEvents="box-none">
+    <View style={[styles.wrapper, { zIndex: zIndex.fixed }]} pointerEvents="box-none">
       <DraggableAssistantBanner
         onAction={handleAction}
         onCompanionPress={handleCompanionPress}
@@ -119,8 +121,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     top: 0,
-    // Mantém acima do conteúdo normal, mas abaixo de modais nativos.
-    zIndex: theme.zIndex.fixed,
+    // zIndex applied inline via dynamic theme
     pointerEvents: 'box-none',
   },
 });

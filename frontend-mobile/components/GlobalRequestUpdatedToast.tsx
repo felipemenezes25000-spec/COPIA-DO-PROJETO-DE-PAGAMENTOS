@@ -1,11 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { nav } from './ui/../lib/navigation';
 import { View, Text, StyleSheet, Modal, TouchableOpacity } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { useRequestsEvents } from '../contexts/RequestsEventsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { showToast } from './ui/Toast';
 import type { RequestUpdatedPayload } from '../lib/requestsEvents';
-import { colors } from '../lib/theme';
+import { useAppTheme } from './ui/../lib/ui/useAppTheme';
 
 /** Normaliza status para comparação (in_consultation, InConsultation, etc.) */
 function normalizeStatus(s: string | undefined): string {
@@ -52,6 +53,8 @@ export function GlobalRequestUpdatedToast() {
   const pathname = usePathname();
   const { subscribe, setPendingUpdate } = useRequestsEvents();
   const { user } = useAuth();
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const routerRef = useRef(router);
   routerRef.current = router;
   const pathnameRef = useRef(pathname);
@@ -95,7 +98,7 @@ export function GlobalRequestUpdatedToast() {
               actionLabel: 'Ver pedido',
               onAction: () => {
                 setPendingUpdate(null);
-                routerRef.current.push(path as any);
+                nav.push(routerRef.current, path as any);
               },
             }
           : {}),
@@ -116,7 +119,7 @@ export function GlobalRequestUpdatedToast() {
         clearInterval(t);
         const rid = countdownRequestId;
         setCountdownRequestId(null);
-        routerRef.current.push(`/video/${rid}` as any);
+        nav.push(routerRef.current, `/video/${rid}`);
       }
     }, 1000);
     return () => clearInterval(t);
@@ -126,7 +129,7 @@ export function GlobalRequestUpdatedToast() {
     if (countdownRequestId) {
       const rid = countdownRequestId;
       setCountdownRequestId(null);
-      routerRef.current.push(`/video/${rid}` as any);
+      nav.push(routerRef.current, `/video/${rid}`);
     }
   };
 
@@ -146,22 +149,23 @@ export function GlobalRequestUpdatedToast() {
   ) : null;
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: ReturnType<typeof import('../lib/designSystem').createTokens>['colors']) {
+  return StyleSheet.create({
   countdownOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: colors.overlayBackground,
     justifyContent: 'center',
     alignItems: 'center',
   },
   countdownCard: {
-    backgroundColor: colors.text,
+    backgroundColor: colors.surface,
     borderRadius: 24,
     padding: 32,
     alignItems: 'center',
     minWidth: 260,
   },
   countdownTitle: {
-    color: colors.border,
+    color: colors.textSecondary,
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 12,
@@ -186,8 +190,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   enterNowBtnText: {
-    color: colors.white,
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
   },
-});
+  });
+}

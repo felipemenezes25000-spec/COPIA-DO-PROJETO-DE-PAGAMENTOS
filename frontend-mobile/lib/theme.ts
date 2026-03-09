@@ -51,10 +51,10 @@ export const theme = {
     text: {
       primary: '#0F172A',
       secondary: '#475569',
-      tertiary: '#64748B',  // Fixed: was #94A3B8 (WCAG fail)
+      tertiary: '#5B6E8A',  // Fixed: matches designSystem textMuted for WCAG AA
       inverse: '#FFFFFF',
       disabled: '#CBD5E1',
-      muted: '#64748B',     // Fixed: was #94A3B8
+      muted: '#5B6E8A',     // Fixed: matches designSystem textMuted
     },
     border: {
       light: '#F1F5F9',
@@ -131,7 +131,7 @@ export const colors = {
   info: theme.colors.status.info,
   infoLight: theme.colors.status.infoLight,
   destructive: '#DC2626',
-  muted: '#E2E8F0',
+  muted: '#F1F5F9',  // delegated: designSystem.createTokens → surfaceSecondary
   statusSubmitted: theme.colors.status.warning,
   statusInReview: theme.colors.status.info,
   statusApproved: theme.colors.status.success,

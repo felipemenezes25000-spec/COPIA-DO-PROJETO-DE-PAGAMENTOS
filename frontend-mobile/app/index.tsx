@@ -19,7 +19,7 @@ export default function SplashScreen() {
 
   useEffect(() => {
     if (!loading) {
-      const delay = user ? 400 : 100;
+      const delay = user ? 100 : 100;  // Was 400ms for authenticated; reduced for faster navigation
       const t = setTimeout(async () => {
         if (hasNavigated.current) return;
         hasNavigated.current = true;

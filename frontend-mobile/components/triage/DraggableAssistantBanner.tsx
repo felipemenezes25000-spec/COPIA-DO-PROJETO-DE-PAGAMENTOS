@@ -27,7 +27,6 @@ import Animated, {
 import { Gesture, GestureDetector, Pressable as GHPressable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { theme } from '../../lib/theme';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 import { useTriageAssistant } from '../../contexts/TriageAssistantProvider';
 import {
@@ -57,7 +56,7 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
   const insets = useSafeAreaInsets();
   const { width: screenW, height: screenH } = useWindowDimensions();
   const { current } = useTriageAssistant();
-  const { colors } = useAppTheme({ role: 'patient' });
+  const { colors, zIndex, shadows } = useAppTheme({ role: 'patient' });
 
   const padding = 16;
   const [expanded, setExpanded] = useState(false);
@@ -273,7 +272,7 @@ export function DraggableAssistantBanner({ onAction, onCompanionPress, container
           top: 0,
           right: 0,
           bottom: 0,
-          zIndex: theme.zIndex.float,
+          zIndex: zIndex.float,
         },
         containerStyle,
       ]}
@@ -353,7 +352,12 @@ const styles = StyleSheet.create({
     left: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    ...theme.shadows.card,
+    // shadows applied inline via dynamic colors
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
   },
   fabInner: {
     width: '100%',
@@ -365,9 +369,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: 18,
     overflow: 'hidden',
-    ...theme.shadows.card,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
   },
   bannerScroll: {
     flexGrow: 0,

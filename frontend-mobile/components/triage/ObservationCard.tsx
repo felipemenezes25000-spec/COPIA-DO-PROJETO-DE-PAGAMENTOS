@@ -9,48 +9,15 @@
  * Compatível com o design system (theme.ts + InfoCard patterns).
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../../lib/theme';
+import { useAppTheme } from '../../lib/ui/useAppTheme';
+import type { DesignColors } from '../../lib/designSystem';
 
 type CardMode = 'auto' | 'conduct';
 
-const CONFIG: Record<CardMode, {
-  bg: string; accentColor: string; accentBg: string;
-  icon: keyof typeof Ionicons.glyphMap; iconBg: string; iconColor: string;
-  title: string; titleColor: string;
-  badgeText: string; badgeBg: string; badgeColor: string;
-}> = {
-  auto: {
-    bg: theme.colors.background.tertiary,
-    accentColor: theme.colors.primary.main,
-    accentBg: theme.colors.primary.soft,
-    icon: 'information-circle',
-    iconBg: theme.colors.primary.soft,
-    iconColor: theme.colors.primary.dark,
-    title: 'Observação',
-    titleColor: theme.colors.primary.dark,
-    badgeText: 'Plataforma',
-    badgeBg: theme.colors.accent.soft,
-    badgeColor: theme.colors.accent.dark,
-  },
-  conduct: {
-    bg: theme.colors.secondary.soft,
-    accentColor: theme.colors.secondary.dark,
-    accentBg: theme.colors.secondary.soft,
-    icon: 'clipboard',
-    iconBg: theme.colors.secondary.soft,
-    iconColor: theme.colors.secondary.dark,
-    title: 'Conduta Médica',
-    titleColor: theme.colors.secondary.dark,
-    badgeText: 'Médico',
-    badgeBg: theme.colors.secondary.soft,
-    badgeColor: theme.colors.secondary.dark,
-  },
-};
-
-interface ObservationCardProps {
+interface ObservationCardPropsinterface ObservationCardProps {
   mode: CardMode;
   text: string;
   doctorName?: string | null;
@@ -69,8 +36,44 @@ function fmtDateTime(d: string): string {
 }
 
 export function ObservationCard({ mode, text, doctorName, conductUpdatedAt }: ObservationCardProps) {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   if (!text?.trim()) return null;
 
+  const CONFIG: Record<CardMode, {
+    bg: string; accentColor: string; accentBg: string;
+    icon: keyof typeof Ionicons.glyphMap; iconBg: string; iconColor: string;
+    title: string; titleColor: string;
+    badgeText: string; badgeBg: string; badgeColor: string;
+  }> = {
+    auto: {
+      bg: colors.surfaceTertiary,
+      accentColor: colors.primary,
+      accentBg: colors.primarySoft,
+      icon: 'information-circle',
+      iconBg: colors.primarySoft,
+      iconColor: colors.primaryDark,
+      title: 'Observação',
+      titleColor: colors.primaryDark,
+      badgeText: 'Plataforma',
+      badgeBg: colors.accentSoft,
+      badgeColor: colors.accent,
+    },
+    conduct: {
+      bg: colors.successLight,
+      accentColor: colors.success,
+      accentBg: colors.successLight,
+      icon: 'clipboard',
+      iconBg: colors.successLight,
+      iconColor: colors.success,
+      title: 'Conduta Médica',
+      titleColor: colors.success,
+      badgeText: 'Médico',
+      badgeBg: colors.successLight,
+      badgeColor: colors.success,
+    },
+  };
   const c = CONFIG[mode];
   const badge = mode === 'conduct' && doctorName
     ? `Dr(a). ${doctorName}`
@@ -117,23 +120,24 @@ export function ObservationCard({ mode, text, doctorName, conductUpdatedAt }: Ob
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: DesignColors) {
+  return StyleSheet.create({
   card: {
     flexDirection: 'row',
-    borderRadius: theme.borderRadius.md,
+    borderRadius: 14,
     overflow: 'hidden',
     marginBottom: 12,
     ...Platform.select({
-      ios: theme.shadows.sm,
-      android: theme.shadows.sm,
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
+      android: { elevation: 1 },
       web: { boxShadow: '0 1px 4px rgba(0,0,0,0.04)' } as object,
     }),
   },
   accentBar: {
     width: 3.5,
     alignSelf: 'stretch',
-    borderTopLeftRadius: theme.borderRadius.md,
-    borderBottomLeftRadius: theme.borderRadius.md,
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
   },
   body: {
     flex: 1,
@@ -177,19 +181,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     fontFamily: 'PlusJakartaSans_400Regular',
-    color: theme.colors.text.secondary,
+    color: colors.textSecondary,
   },
   disclaimer: {
     fontSize: 12,
-    color: theme.colors.text.disabled,
+    color: colors.textMuted,
     fontStyle: 'italic',
     marginTop: 8,
     lineHeight: 16,
   },
   auditMeta: {
     fontSize: 11,
-    color: theme.colors.text.disabled,
+    color: colors.textMuted,
     marginTop: 6,
     lineHeight: 14,
   },
-});
+  });
+}

@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../lib/designSystem';
 import { spacing, borderRadius, typography } from '../../lib/themeDoctor';
+import { FieldRow, QuickStat } from './shared';
 import type { PatientProfileForDoctorDto } from '../../types/database';
 
 interface PatientIdentityCardProps {
@@ -85,25 +86,25 @@ export function PatientIdentityCard({
       {profile && (
         <View style={S.detailsGrid}>
           {profile.birthDate && (
-            <DetailRow icon="calendar-outline" label="Nascimento" value={fmtBirthDate(profile.birthDate)} colors={colors} />
+            <FieldRow icon="calendar-outline" label="Nascimento" value={fmtBirthDate(profile.birthDate)} />
           )}
           {profile.phone && (
-            <DetailRow icon="call-outline" label="Telefone" value={profile.phone} colors={colors} />
+            <FieldRow icon="call-outline" label="Telefone" value={profile.phone} />
           )}
           {profile.email && (
-            <DetailRow icon="mail-outline" label="E-mail" value={profile.email} colors={colors} />
+            <FieldRow icon="mail-outline" label="E-mail" value={profile.email} />
           )}
           {(profile.street || profile.city) && (
-            <DetailRow icon="location-outline" label="Endereço" value={formatAddress(profile)} colors={colors} />
+            <FieldRow icon="location-outline" label="Endereço" value={formatAddress(profile)} />
           )}
         </View>
       )}
 
       {/* Metrics bar */}
       <View style={S.metricsBar}>
-        <MetricPill icon="videocam" count={consultationCount} label="Consultas" color={colors.success} colors={colors} />
-        <MetricPill icon="document-text" count={prescriptionCount} label="Receitas" color={colors.primary} colors={colors} />
-        <MetricPill icon="flask" count={examCount} label="Exames" color={colors.info} colors={colors} />
+        <QuickStat icon="videocam" count={consultationCount} label="Consultas" color={colors.success} />
+        <QuickStat icon="document-text" count={prescriptionCount} label="Receitas" color={colors.primary} />
+        <QuickStat icon="flask" count={examCount} label="Exames" color={colors.info} />
       </View>
 
       {/* Allergies banner */}
@@ -116,32 +117,6 @@ export function PatientIdentityCard({
           <Text style={S.allergyValue}>{allergies.join(' · ')}</Text>
         </View>
       )}
-    </View>
-  );
-}
-
-function DetailRow({ icon, label, value, colors }: { icon: string; label: string; value: string; colors: DesignColors }) {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 3 }}>
-      <Ionicons name={icon as any} size={14} color={colors.textMuted} style={{ marginTop: 2 }} />
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 11, fontFamily: typography.fontFamily.bold, color: colors.textMuted, letterSpacing: 0.3, textTransform: 'uppercase' as const }}>
-          {label}
-        </Text>
-        <Text style={{ fontSize: 13, color: colors.text, lineHeight: 19 }}>{value}</Text>
-      </View>
-    </View>
-  );
-}
-
-function MetricPill({ icon, count, label, color, colors }: { icon: string; count: number; label: string; color: string; colors: DesignColors }) {
-  return (
-    <View style={{ flex: 1, alignItems: 'center', gap: 2 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-        <Ionicons name={icon as any} size={14} color={color} />
-        <Text style={{ fontSize: 18, fontFamily: typography.fontFamily.bold, fontWeight: '700', color: colors.text }}>{count}</Text>
-      </View>
-      <Text style={{ fontSize: 11, color: colors.textMuted }}>{label}</Text>
     </View>
   );
 }

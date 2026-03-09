@@ -78,20 +78,24 @@ const TABS: { key: TabKey; label: string; icon: string }[] = [
   { key: 'evidencias', label: 'Evidências', icon: 'library' },
 ];
 
-// ── Gravity badge ──
+// ── Gravity badge — colors resolved at render time via useAppTheme ──
 
-const GRAVITY_CONFIG: Record<string, { color: string; label: string; icon: string }> = {
-  verde: { color: '#16A34A', label: 'Não Urgente', icon: 'shield-checkmark' },
-  amarelo: { color: '#D97706', label: 'Pouco Urgente', icon: 'alert-circle' },
-  laranja: { color: '#EA580C', label: 'Urgente', icon: 'warning' },
-  vermelho: { color: '#DC2626', label: 'Emergência', icon: 'close-circle' },
-};
+function getGravityConfig(colors: any): Record<string, { color: string; label: string; icon: string }> {
+  return {
+    verde: { color: colors.success, label: 'Não Urgente', icon: 'shield-checkmark' },
+    amarelo: { color: colors.warning, label: 'Pouco Urgente', icon: 'alert-circle' },
+    laranja: { color: colors.error, label: 'Urgente', icon: 'warning' },
+    vermelho: { color: colors.destructive, label: 'Emergência', icon: 'close-circle' },
+  };
+}
 
-const CONFIDENCE_CONFIG: Record<string, { color: string; label: string }> = {
-  alta: { color: '#16A34A', label: 'Confiança Alta' },
-  media: { color: '#D97706', label: 'Confiança Média' },
-  baixa: { color: '#DC2626', label: 'Confiança Baixa' },
-};
+function getConfidenceConfig(colors: any): Record<string, { color: string; label: string }> {
+  return {
+    alta: { color: colors.success, label: 'Confiança Alta' },
+    media: { color: colors.warning, label: 'Confiança Média' },
+    baixa: { color: colors.destructive, label: 'Confiança Baixa' },
+  };
+}
 
 // ── Anamnesis field definitions (source: lib/domain/anamnesis.ts) ──
 
@@ -119,6 +123,8 @@ export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPane
   // Usa dark + doctor para combinar com o overlay da videochamada (evita mix light/dark).
   const { colors } = useAppTheme({ scheme: 'dark', role: 'doctor' });
   const S = useMemo(() => makeStyles(colors), [colors]);
+  const GRAVITY_CONFIG = useMemo(() => getGravityConfig(colors), [colors]);
+  const CONFIDENCE_CONFIG = useMemo(() => getConfidenceConfig(colors), [colors]);
 
   const [activeTab, setActiveTab] = useState<TabKey>('consulta');
   const [expandedEvidence, setExpandedEvidence] = useState<Set<number>>(new Set());
@@ -269,7 +275,7 @@ export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPane
               {tab.label}
             </Text>
             {tab.key === 'perguntas' && perguntasSugeridas.length > 0 && (
-              <View style={[S.tabBadge, { backgroundColor: '#EA580C' }]}>
+              <View style={[S.tabBadge, { backgroundColor: colors.error }]}>
                 <Text style={S.tabBadgeText}>{perguntasSugeridas.length}</Text>
               </View>
             )}

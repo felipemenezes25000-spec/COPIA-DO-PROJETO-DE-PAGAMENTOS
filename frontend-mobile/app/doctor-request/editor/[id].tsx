@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { nav } from '../../../lib/navigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
@@ -42,6 +43,10 @@ import { showToast } from '../../../components/ui/Toast';
 import { getApiErrorMessage } from '../../../lib/api-client';
 import { FormattedAiSummary } from '../../../components/FormattedAiSummary';
 import { ConductSection } from '../../../components/triage';
+import { SignFormCard } from '../../../components/doctor-request/editor/SignFormCard';
+import { ComplianceCard } from '../../../components/doctor-request/editor/ComplianceCard';
+import { PdfPreviewCard } from '../../../components/doctor-request/editor/PdfPreviewCard';
+import { MedicationListEditor } from '../../../components/doctor-request/editor/MedicationListEditor';
 
 const RISK_LABELS_PT: Record<string, string> = {
   low: 'Risco baixo',
@@ -471,7 +476,7 @@ export default function PrescriptionEditorScreen() {
           `${action}\n\n• ${checklist}`,
           needsDoctorProfile
             ? [
-                { text: 'IR AO MEU PERFIL', onPress: () => router.push('/(doctor)/profile' as any) },
+                { text: 'IR AO MEU PERFIL', onPress: () => nav.push(router, '/(doctor)/profile') },
                 { text: 'OK', style: 'cancel' },
               ]
             : [{ text: 'OK' }]
@@ -497,7 +502,7 @@ export default function PrescriptionEditorScreen() {
             : `Verifique os campos obrigatórios:\n\n• ${checklist}`,
           needsDoctorProfile
             ? [
-                { text: 'IR AO MEU PERFIL', onPress: () => router.push('/(doctor)/profile' as any) },
+                { text: 'IR AO MEU PERFIL', onPress: () => nav.push(router, '/(doctor)/profile') },
                 { text: 'OK', style: 'cancel' },
               ]
             : [{ text: 'OK' }]
@@ -664,21 +669,7 @@ export default function PrescriptionEditorScreen() {
           </DoctorCard>
 
           {/* Checklist de compliance — pendências visíveis durante edição */}
-          {complianceValidation && !complianceValidation.valid && (complianceValidation.messages?.length ?? 0) > 0 && (
-            <DoctorCard style={[st.cardMargin, st.complianceCard]}>
-              <View style={st.complianceHeader}>
-                <Ionicons name="alert-circle" size={20} color={colors.warning} />
-                <Text style={st.complianceTitle}>Campos obrigatórios pendentes</Text>
-              </View>
-              <Text style={st.complianceHint}>Complete antes de assinar:</Text>
-              {(complianceValidation.messages ?? []).map((msg: string, i: number) => (
-                <View key={i} style={st.complianceItem}>
-                  <Ionicons name="ellipse" size={6} color={colors.textMuted} style={{ marginTop: 6 }} />
-                  <Text style={st.complianceItemText}>{msg}</Text>
-                </View>
-              ))}
-            </DoctorCard>
-          )}
+          <ComplianceCard validation={complianceValidation} colors={colors} />
 
           {/* PDF Preview — logo abaixo dos dados para sempre aparecer na tela */}
           <DoctorCard style={[st.cardMargin, st.pdfCard]}>
@@ -1013,58 +1004,17 @@ export default function PrescriptionEditorScreen() {
 
           {/* Sign Form */}
           {showSignForm && (
-            <DoctorCard style={[st.cardMargin, st.signFormCard]}>
-              {signFormDoctorProfileBlocked && (
-                <View style={st.profileBlockedBanner}>
-                  <Ionicons name="warning" size={18} color={colors.warning} />
-                  <Text style={st.profileBlockedBannerText}>
-                    Complete endereço e telefone profissional no seu perfil para poder assinar.
-                  </Text>
-                  <TouchableOpacity
-                    style={st.profileBlockedBannerBtn}
-                    onPress={() => { setShowSignForm(false); setSignFormDoctorProfileBlocked(false); router.push('/(doctor)/profile' as any); }}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={st.profileBlockedBannerBtnText}>IR AO MEU PERFIL</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-              <View style={st.signFormHeader}>
-                <Ionicons name="shield-checkmark" size={20} color={colors.primary} />
-                <Text style={st.signFormTitle}>ASSINATURA DIGITAL</Text>
-              </View>
-              <Text style={st.signFormDesc}>
-                Ao assinar, você confirma que revisou todo o documento. A assinatura digital é válida conforme ITI/ICP-Brasil.
-              </Text>
-              <Text style={st.signLabel}>Senha do certificado A1:</Text>
-              <TextInput
-                style={st.input}
-                value={certPassword}
-                onChangeText={setCertPassword}
-                placeholder="Senha"
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-                autoComplete="off"
-                returnKeyType="done"
-                onSubmitEditing={handleSign}
-                placeholderTextColor={colors.textMuted}
-                onFocus={() => {
-                  // No Android, garantir que o campo fica visível quando o teclado abre
-                  setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 400);
-                }}
-              />
-              <View style={st.signBtns}>
-                <TouchableOpacity
-                  style={st.cancelSignBtn}
-                  onPress={() => { setShowSignForm(false); setCertPassword(''); setSignFormDoctorProfileBlocked(false); }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={st.cancelSignText}>Cancelar</Text>
-                </TouchableOpacity>
-                <AppButton title="Assinar" variant="doctorPrimary" onPress={handleSign} loading={signing} style={st.signConfirmBtn} />
-              </View>
-            </DoctorCard>
+            <SignFormCard
+              certPassword={certPassword}
+              onChangeCertPassword={setCertPassword}
+              onSign={handleSign}
+              onCancel={() => { setShowSignForm(false); setCertPassword(''); setSignFormDoctorProfileBlocked(false); }}
+              signing={signing}
+              profileBlocked={signFormDoctorProfileBlocked}
+              onGoToProfile={() => { setShowSignForm(false); setSignFormDoctorProfileBlocked(false); nav.push(router, '/(doctor)/profile'); }}
+              colors={colors}
+              scrollRef={scrollViewRef}
+            />
           )}
         </ScrollView>
 

@@ -7,6 +7,7 @@ import {
   Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { nav } from '../../../lib/navigation';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { spacing } from '../../../lib/theme';
 import { useAppTheme } from '../../../lib/ui/useAppTheme';
@@ -61,7 +62,7 @@ export default function PaymentRequestScreen() {
     try {
       const payment = await createPayment({ requestId: rid, paymentMethod: 'pix' });
       const targetUrl = `/payment/${payment.id}`;
-      router.replace(targetUrl as any);
+      nav.replace(router, targetUrl as any);
     } catch (error: unknown) {
       const msg = getApiErrorMessage(error);
       if (msg?.toLowerCase().includes('já possui pagamento aprovado')) {
@@ -71,7 +72,7 @@ export default function PaymentRequestScreen() {
           [
             {
               text: 'Ver pedido',
-              onPress: () => router.replace(`/request-detail/${rid}` as any),
+              onPress: () => nav.replace(router, `/request-detail/${rid}`),
             },
           ]
         );

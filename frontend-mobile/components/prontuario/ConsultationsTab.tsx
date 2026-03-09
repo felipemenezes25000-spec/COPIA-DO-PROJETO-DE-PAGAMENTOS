@@ -157,7 +157,7 @@ export function ConsultationsTab({ consultations }: ConsultationsTabProps) {
 
                 <TouchableOpacity
                   style={S.detailLink}
-                  onPress={() => router.push(`/doctor-request/${c.id}` as never)}
+                  onPress={() => router.push(`/doctor-request/${c.id}` as any)}
                   activeOpacity={0.7}
                 >
                   <Text style={S.detailLinkText}>Ver detalhes da consulta</Text>

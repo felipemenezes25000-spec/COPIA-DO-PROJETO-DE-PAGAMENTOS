@@ -7,6 +7,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
+import { nav } from '../lib/navigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRequestsEvents } from '../contexts/RequestsEventsContext';
@@ -32,7 +33,7 @@ export function RequestUpdateBanner() {
 
   const handleVerPedido = () => {
     setPendingUpdate(null);
-    if (path) router.push(path as any);
+    if (path) nav.push(router, path as any);
   };
 
   const handleDismiss = () => {

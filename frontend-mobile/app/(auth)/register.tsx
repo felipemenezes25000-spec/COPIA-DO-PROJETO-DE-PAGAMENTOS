@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { nav } from '../../lib/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { theme } from '../../lib/theme';
@@ -39,19 +40,8 @@ function formatCep(value: string) {
 }
 
 /* ────────── Section Header ────────── */
-function SectionHeader({ icon, title }: { icon: keyof typeof Ionicons.glyphMap; title: string }) {
-  const { colors } = useAppTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
-  return (
-    <View style={styles.sectionHeader}>
-      <View style={styles.sectionIconWrap}>
-        <Ionicons name={icon} size={16} color={colors.primary} />
-      </View>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.sectionLine} />
-    </View>
-  );
-}
+// SectionHeader imported from shared UI components — uses variant="form" for icon+line style
+import { SectionHeader } from '../../components/ui/SectionHeader';
 
 export default function Register() {
   const router = useRouter();
@@ -320,7 +310,7 @@ export default function Register() {
         Alert.alert(
           'Cadastro realizado',
           'Aguarde a aprovação do administrador para acessar o app. Você receberá retorno em breve.',
-          [{ text: 'OK', onPress: () => router.replace('/(auth)/login' as any) }]
+          [{ text: 'OK', onPress: () => nav.replace(router, '/(auth)/login') }]
         );
         return;
       }
@@ -330,21 +320,21 @@ export default function Register() {
           const upload = await uploadCertificate(certFile.uri, certPassword.trim());
           if (upload?.success) {
             await refreshUser();
-            setTimeout(() => router.replace('/(doctor)/dashboard' as any), 0);
+            setTimeout(() => nav.replace(router, '/(doctor)/dashboard'), 0);
             return;
           }
         } catch {
           Alert.alert(
             'Cadastro concluído',
             'Conta criada. O certificado não pôde ser enviado. Você será direcionado para concluir o cadastro.',
-            [{ text: 'OK', onPress: () => router.replace('/(auth)/complete-doctor' as any) }]
+            [{ text: 'OK', onPress: () => nav.replace(router, '/(auth)/complete-doctor') }]
           );
           return;
         }
       }
 
       const dest = user.role === 'doctor' ? '/(auth)/complete-doctor' : '/(patient)/home';
-      setTimeout(() => router.replace(dest as any), 0);
+      setTimeout(() => nav.replace(router, dest as any), 0);
     } catch (error: any) {
       const msg =
         error?.message ||
@@ -397,7 +387,7 @@ export default function Register() {
       <View style={styles.card}>
 
         {/* ── Dados pessoais ── */}
-        <SectionHeader icon="person-outline" title={role === 'patient' ? 'Dados para atendimento' : 'Dados pessoais'} />
+        <SectionHeader icon="person-outline" title={role === 'patient' ? 'Dados para atendimento' : 'Dados pessoais'} variant="form" />
         <AppInput
           label="Nome completo"
           required
@@ -460,7 +450,7 @@ export default function Register() {
         />
 
         {/* ── Segurança ── */}
-        <SectionHeader icon="lock-closed-outline" title="Segurança" />
+        <SectionHeader icon="lock-closed-outline" title="Segurança" variant="form" />
         <AppInput
           label="Senha"
           required
@@ -485,7 +475,7 @@ export default function Register() {
 
         {/* ── Endereço pessoal (obrigatório para paciente e médico) ── */}
         <>
-          <SectionHeader icon="location-outline" title={role === 'doctor' ? 'Endereço pessoal' : 'Endereço'} />
+          <SectionHeader icon="location-outline" title={role === 'doctor' ? 'Endereço pessoal' : 'Endereço'} variant="form" />
           <AppInput
             label="CEP"
             placeholder="00000-000"
@@ -559,7 +549,7 @@ export default function Register() {
         {/* ── Dados médicos (Médico) ── */}
         {role === 'doctor' && (
           <>
-            <SectionHeader icon="medkit-outline" title="Dados profissionais" />
+            <SectionHeader icon="medkit-outline" title="Dados profissionais" variant="form" />
             <View style={styles.row}>
               <AppInput
                 label="CRM"
@@ -706,7 +696,7 @@ export default function Register() {
             )}
 
             {/* Endereço profissional (opcional) */}
-            <SectionHeader icon="business-outline" title="Endereço profissional (opcional)" />
+            <SectionHeader icon="business-outline" title="Endereço profissional (opcional)" variant="form" />
             <AppInput
               label="CEP"
               placeholder="00000-000"
@@ -774,7 +764,7 @@ export default function Register() {
             />
 
             {/* Formação e experiência (opcional) */}
-            <SectionHeader icon="school-outline" title="Formação e experiência (opcional)" />
+            <SectionHeader icon="school-outline" title="Formação e experiência (opcional)" variant="form" />
             <AppInput
               label="Instituição de formação"
               placeholder="Ex.: USP, Unifesp..."

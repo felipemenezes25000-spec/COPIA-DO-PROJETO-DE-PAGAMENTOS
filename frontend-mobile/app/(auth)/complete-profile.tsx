@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import { nav } from '../../lib/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import { Screen } from '../../components/ui/Screen';
 import { AppInput } from '../../components/ui/AppInput';
@@ -121,7 +122,7 @@ export default function CompleteProfileScreen() {
         ...(postalCode && postalCode.length === 8 ? { postalCode } : {}),
       });
       const dest = updatedUser.role === 'doctor' ? '/(doctor)/dashboard' : '/(patient)/home';
-      setTimeout(() => router.replace(dest as any), 0);
+      setTimeout(() => nav.replace(router, dest as any), 0);
     } catch (error: any) {
       Alert.alert('Erro', error?.message || String(error) || 'Não foi possível completar o cadastro.');
     } finally {

@@ -203,7 +203,7 @@ export function DocumentsTab({ prescriptions, exams }: DocumentsTabProps) {
 
                       <TouchableOpacity
                         style={S.detailLink}
-                        onPress={() => router.push(`/doctor-request/${req.id}` as never)}
+                        onPress={() => router.push(`/doctor-request/${req.id}` as any)}
                         activeOpacity={0.7}
                       >
                         <Text style={S.detailLinkText}>Ver pedido completo</Text>

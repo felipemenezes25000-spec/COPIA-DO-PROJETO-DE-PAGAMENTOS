@@ -3,10 +3,11 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   RefreshControl,
   Pressable,
   Alert,
+  ListRenderItem,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -338,11 +339,16 @@ export default function PatientRecordScreen() {
           </View>
         ) : (
           <FadeIn visible={!loading} {...motionTokens.fade.patientRecord}>
-        <ScrollView
+        <FlatList
           style={s.container}
           contentContainerStyle={{ paddingBottom: listPadding }}
           showsVerticalScrollIndicator={false}
-          nestedScrollEnabled
+          data={activeTab === 'resumo' ? ['resumo'] : activeTab === 'timeline' ? filteredEncounters : filteredDocuments}
+          keyExtractor={(_item, idx) => {
+            if (activeTab === 'resumo') return 'resumo';
+            if (activeTab === 'timeline') return ((_item as EncounterSummaryDto)?.id ?? `enc-${idx}`);
+            return ((_item as MedicalDocumentSummaryDto)?.id ?? `doc-${idx}`);
+          }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -351,7 +357,8 @@ export default function PatientRecordScreen() {
               tintColor={colors.primary}
             />
           }
-        >
+          ListHeaderComponent={
+            <>
           <LinearGradient
             colors={gradients.patientHeader as [string, string, ...string[]]}
             start={{ x: 0, y: 0 }}
@@ -398,13 +405,27 @@ export default function PatientRecordScreen() {
           {activeTab === 'resumo' && (
             <SummaryTab summary={summary} router={router} />
           )}
-          {activeTab === 'timeline' && (
-            <TimelineTab encounters={filteredEncounters} />
-          )}
-          {activeTab === 'documentos' && (
-            <DocumentsTab documents={filteredDocuments} router={router} />
-          )}
-
+            </>
+          }
+          renderItem={({ item, index }) => {
+            if (activeTab === 'resumo') return null;
+            if (activeTab === 'timeline') {
+              return <TimelineItem encounter={item as EncounterSummaryDto} index={index} total={filteredEncounters.length} />;
+            }
+            return <DocumentItem document={item as MedicalDocumentSummaryDto} index={index} router={router} />;
+          }}
+          ListEmptyComponent={
+            activeTab !== 'resumo' ? (
+              <View style={s.tabEmptyWrap}>
+                <AppEmptyState
+                  icon={activeTab === 'timeline' ? 'time-outline' : 'document-text-outline'}
+                  title={activeTab === 'timeline' ? 'Nenhum atendimento' : 'Nenhum documento'}
+                  subtitle={activeTab === 'timeline' ? 'Seus atendimentos aparecerão aqui' : 'Seus documentos médicos aparecerão aqui'}
+                />
+              </View>
+            ) : null
+          }
+          ListFooterComponent={
           <View style={s.legalNote}>
             <Ionicons name="shield-checkmark" size={16} color={colors.textMuted} />
             <Text style={s.legalText}>
@@ -412,7 +433,8 @@ export default function PatientRecordScreen() {
               RenoveJá+. Para fins oficiais, use sempre os PDFs assinados digitalmente.
             </Text>
           </View>
-        </ScrollView>
+          }
+        />
           </FadeIn>
         )}
       </View>
@@ -559,6 +581,109 @@ function SummaryTab({
     </>
   );
 }
+
+const TimelineItem = React.memo(function TimelineItem({ encounter: enc, index: idx, total }: { encounter: EncounterSummaryDto; index: number; total: number }) {
+  const { colors, shadows } = useAppTheme();
+  const s = useMemo(() => makeStyles(colors, shadows), [colors, shadows]);
+  const ENCOUNTER_META = useMemo(() => getEncounterMeta(colors), [colors]);
+
+  const typeKey = String(enc?.type ?? '').toLowerCase();
+  const meta = ENCOUNTER_META[typeKey] ?? {
+    icon: 'ellipse' as const,
+    color: colors.textMuted,
+    bg: colors.surfaceSecondary,
+    label: String(enc?.type ?? ''),
+  };
+  const isLast = idx === total - 1;
+
+  return (
+    <View style={[s.timelineRow, { paddingHorizontal: uiTokens.screenPaddingHorizontal }]}>
+      <View style={s.timelineLineCol}>
+        <View style={[s.timelineDot, { backgroundColor: meta.color }]}>
+          <Ionicons name={meta.icon} size={14} color={colors.white} />
+        </View>
+        {!isLast && <View style={s.timelineLine} />}
+      </View>
+      <View style={[s.timelineCard, isLast && { marginBottom: 0 }]}>
+        <View style={s.timelineCardHeader}>
+          <View style={[s.timelineTypeBadge, { backgroundColor: meta.bg }]}>
+            <Text style={[s.timelineTypeText, { color: meta.color }]}>
+              {meta.label}
+            </Text>
+          </View>
+          <Text style={s.timelineDate}>{formatDatePt(enc?.startedAt)}</Text>
+        </View>
+        {enc?.mainIcd10Code && (
+          <Text style={s.timelineDescription} numberOfLines={2}>
+            {enc.mainIcd10Code}
+          </Text>
+        )}
+        <View style={s.timelineStatusRow}>
+          <View
+            style={[
+              s.timelineStatusDot,
+              { backgroundColor: enc?.finishedAt ? colors.success : colors.warning },
+            ]}
+          />
+          <Text style={s.timelineStatusText}>
+            {enc?.finishedAt ? 'Concluído' : 'Em andamento'}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+});
+
+const DocumentItem = React.memo(function DocumentItem({ document: doc, index: idx, router }: { document: MedicalDocumentSummaryDto; index: number; router: ReturnType<typeof useRouter> }) {
+  const { colors, shadows } = useAppTheme();
+  const s = useMemo(() => makeStyles(colors, shadows), [colors, shadows]);
+  const DOC_TYPE_META = useMemo(() => getDocTypeMeta(colors), [colors]);
+  const DOC_STATUS_META = useMemo(() => getDocStatusMeta(colors), [colors]);
+
+  const typeKey = String(doc.documentType ?? '').toLowerCase();
+  const typeMeta = DOC_TYPE_META[typeKey] ?? {
+    icon: 'document-outline' as const,
+    color: colors.textMuted,
+    bg: colors.surfaceSecondary,
+    label: String(doc.documentType ?? 'Documento'),
+  };
+  const statusKey = String(doc.status ?? '').toLowerCase();
+  const statusMeta = DOC_STATUS_META[statusKey] ?? {
+    color: colors.textMuted,
+    bg: colors.surfaceSecondary,
+    label: String(doc.status ?? 'Documento'),
+  };
+
+  return (
+    <View style={[s.docCard, { marginHorizontal: uiTokens.screenPaddingHorizontal, marginBottom: 10 }]}>
+      <View style={[s.docIconWrap, { backgroundColor: typeMeta.bg }]}>
+        <Ionicons name={typeMeta.icon} size={20} color={typeMeta.color} />
+      </View>
+      <View style={s.docContent}>
+        <Text style={s.docTitle}>{typeMeta.label}</Text>
+        <Text style={s.docDate}>{formatDatePt(doc.createdAt)}</Text>
+        <View style={[s.docStatusBadge, { backgroundColor: statusMeta.bg }]}>
+          <View style={[s.docStatusDot, { backgroundColor: statusMeta.color }]} />
+          <Text style={[s.docStatusText, { color: statusMeta.color }]}>
+            {statusMeta.label}
+          </Text>
+        </View>
+      </View>
+      <Pressable
+        style={({ pressed }) => [s.docActionBtn, pressed && { opacity: 0.7 }]}
+        onPress={() => {
+          Alert.alert(
+            typeMeta.label,
+            `Documento ${statusMeta.label.toLowerCase()} em ${formatDatePt(doc.createdAt)}.\n\nPara baixar o PDF assinado, acesse a tela de Pedidos e localize o pedido correspondente.`,
+            [{ text: 'OK' }, { text: 'Ir para Pedidos', onPress: () => router.push('/(patient)/requests') }]
+          );
+        }}
+      >
+        <Ionicons name="eye-outline" size={18} color={colors.primary} />
+      </Pressable>
+    </View>
+  );
+});
 
 function TimelineTab({ encounters }: { encounters: EncounterSummaryDto[] }) {
   const { colors, shadows } = useAppTheme();

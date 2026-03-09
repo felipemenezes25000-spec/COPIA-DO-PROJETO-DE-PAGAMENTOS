@@ -5,6 +5,8 @@ import { useAppTheme } from '../../lib/ui/useAppTheme';
 
 interface SectionHeaderProps {
   title: string;
+  /** Optional left-side icon (e.g. for form section headers) */
+  icon?: keyof typeof Ionicons.glyphMap;
   /** Optional right-side action text like "Ver todos" */
   actionText?: string;
   onAction?: () => void;
@@ -14,21 +16,33 @@ interface SectionHeaderProps {
   count?: number;
   /** Extra bottom margin (default: 14) */
   marginBottom?: number;
+  /** Visual variant: 'default' or 'form' (with icon circle + line) */
+  variant?: 'default' | 'form';
 }
 
 export function SectionHeader({
   title,
+  icon,
   actionText,
   onAction,
   actionIcon = 'chevron-forward',
   count,
   marginBottom = 14,
+  variant = 'default',
 }: SectionHeaderProps) {
   const { colors, typography } = useAppTheme();
 
   return (
     <View style={[styles.container, { marginBottom }]}>
       <View style={styles.titleRow}>
+        {icon && variant === 'form' && (
+          <View style={[styles.iconCircle, { backgroundColor: colors.primarySoft }]}>
+            <Ionicons name={icon} size={16} color={colors.primary} />
+          </View>
+        )}
+        {icon && variant === 'default' && (
+          <Ionicons name={icon} size={18} color={colors.primary} />
+        )}
         <Text
           style={[
             styles.title,
@@ -88,6 +102,13 @@ const styles = StyleSheet.create({
     gap: 8,
     flex: 1,
     minWidth: 0,
+  },
+  iconCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
     fontSize: 17,

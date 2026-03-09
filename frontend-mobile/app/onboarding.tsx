@@ -28,32 +28,32 @@ interface Step {
   subtitle: string;
 }
 
-function makeSteps(primaryColor: string): Step[] {
+function makeSteps(colors: DesignColors): Step[] {
   return [
     {
       icon: 'heart-outline',
-      iconColor: primaryColor,
+      iconColor: colors.primary,
       title: 'Bem-vindo à RenoveJá+',
       subtitle:
         'Sua saúde em dia, sem sair de casa. Solicite receitas, exames e consultas médicas com praticidade e segurança.',
     },
     {
       icon: 'document-text-outline',
-      iconColor: '#10B981',
+      iconColor: colors.success,
       title: 'Solicitações em minutos',
       subtitle:
         'Envie sua solicitação com foto da receita ou descrição dos sintomas. Nossos médicos analisam e respondem rapidamente.',
     },
     {
       icon: 'shield-checkmark-outline',
-      iconColor: '#8B5CF6',
+      iconColor: colors.accent,
       title: 'Seguro e confiável',
       subtitle:
         'Documentos assinados digitalmente por médicos certificados. Receitas e laudos com validade jurídica.',
     },
     {
       icon: 'notifications-outline',
-      iconColor: '#F59E0B',
+      iconColor: colors.warning,
       title: 'Acompanhe em tempo real',
       subtitle:
         'Receba notificações a cada etapa: aprovação, pagamento e entrega do documento final.',
@@ -66,7 +66,7 @@ export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const STEPS = useMemo(() => makeSteps(colors.primary), [colors.primary]);
+  const STEPS = useMemo(() => makeSteps(colors), [colors]);
   const [currentStep, setCurrentStep] = useState(0);
 
   const isLast = currentStep === STEPS.length - 1;

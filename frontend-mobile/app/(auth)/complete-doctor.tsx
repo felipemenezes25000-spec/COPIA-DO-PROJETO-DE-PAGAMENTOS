@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
+import { nav } from '../../lib/navigation';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
@@ -42,7 +43,7 @@ export default function CompleteDoctorScreen() {
       setCertificate(cert);
       if (cert) {
         await refreshUser();
-        router.replace('/(doctor)/dashboard' as any);
+        nav.replace(router, '/(doctor)/dashboard');
       }
     } catch {
       // no cert yet
@@ -84,7 +85,7 @@ export default function CompleteDoctorScreen() {
       const result = await uploadCertificate(selectedFile.uri, password, webFile);
       if (result.success) {
         await refreshUser();
-        router.replace('/(doctor)/dashboard' as any);
+        nav.replace(router, '/(doctor)/dashboard');
       } else {
         Alert.alert('Erro', result.message || 'Certificado inválido');
       }
@@ -106,7 +107,7 @@ export default function CompleteDoctorScreen() {
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Sair', style: 'destructive', onPress: async () => {
           await signOut();
-          router.replace('/(auth)/login' as any);
+          nav.replace(router, '/(auth)/login');
         }},
       ]
     );
@@ -159,7 +160,7 @@ export default function CompleteDoctorScreen() {
               Li e aceito os Termos de Uso.
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/terms' as any)} style={styles.termsLinkWrap}>
+          <TouchableOpacity onPress={() => nav.push(router, '/terms')} style={styles.termsLinkWrap}>
             <Text style={styles.termsLink}>Ler Termos de Uso</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -174,7 +175,7 @@ export default function CompleteDoctorScreen() {
               Li e aceito a Política de Privacidade.
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/privacy' as any)} style={styles.termsLinkWrap}>
+          <TouchableOpacity onPress={() => nav.push(router, '/privacy')} style={styles.termsLinkWrap}>
             <Text style={styles.termsLink}>Ler Política de Privacidade</Text>
           </TouchableOpacity>
         </AppCard>

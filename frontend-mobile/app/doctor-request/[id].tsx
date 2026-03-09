@@ -11,6 +11,7 @@ import {
   Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { nav } from '../../lib/navigation';
 import { useListBottomPadding } from '../../lib/ui/responsive';
 import * as Clipboard from 'expo-clipboard';
 import * as WebBrowser from 'expo-web-browser';
@@ -37,6 +38,7 @@ import { PatientInfoCard } from '../../components/doctor-request/PatientInfoCard
 import { AiCopilotSection } from '../../components/doctor-request/AiCopilotSection';
 import { PrescriptionImageGallery } from '../../components/doctor-request/PrescriptionImageGallery';
 import { DoctorActionButtons } from '../../components/doctor-request/DoctorActionButtons';
+import { DetailsCard, MedicationsCard, ExamsCard, SymptomsCard, SignedDocumentCard } from '../../components/doctor-request/RequestDetailCards';
 import { AnamnesisCard } from '../../components/prontuario/AnamnesisCard';
 import { ConductForm } from '../../components/prontuario/ConductForm';
 import { parseAnamnesis, parseSuggestions, parseEvidence, displayMedicamento, displayExame } from '../../lib/domain/anamnesis';
@@ -146,7 +148,7 @@ export default function DoctorRequestDetail() {
         <PatientInfoCard
           request={request}
           profile={patientProfile ?? undefined}
-          onViewRecord={() => router.push(`/doctor-patient/${request.patientId}` as never)}
+          onViewRecord={() => nav.push(router, `/doctor-patient/${request.patientId}`)}
           style={s.cardMargin}
         />
 
@@ -222,104 +224,6 @@ export default function DoctorRequestDetail() {
 }
 
 /* ---- Inline sub-sections (kept in the same file for simplicity) ---- */
-
-function DetailsCard({ request }: { request: NonNullable<ReturnType<typeof useDoctorRequest>['request']> }) {
-  const { colors } = useAppTheme({ role: 'doctor' });
-  const s = useMemo(() => makeStyles(colors), [colors]);
-  return (
-    <DoctorCard style={s.cardMargin}>
-      <View style={s.detailsGrid}>
-        <View style={s.detailItem}>
-          <Text style={s.detailItemLabel}>TIPO</Text>
-          <View style={s.detailChip}>
-            <Ionicons name={request.requestType === 'prescription' ? 'document-text' : request.requestType === 'exam' ? 'flask' : 'videocam'} size={14} color={colors.primary} />
-            <Text style={s.detailChipText}>{TYPE_LABELS[request.requestType]}</Text>
-          </View>
-        </View>
-        {request.prescriptionType && (
-          <View style={s.detailItem}>
-            <Text style={s.detailItemLabel}>MODALIDADE</Text>
-            <View style={[s.detailChip, request.prescriptionType === 'controlado' && s.detailChipWarn, request.prescriptionType === 'azul' && s.detailChipInfo]}>
-              {request.prescriptionType === 'controlado' && <Ionicons name="warning" size={13} color={colors.warning} />}
-              <Text style={[s.detailChipText, request.prescriptionType === 'controlado' && { color: colors.warning }, request.prescriptionType === 'azul' && { color: colors.info }]}>
-                {request.prescriptionType === 'simples' ? 'Simples' : request.prescriptionType === 'controlado' ? 'Controlada' : 'Azul'}
-              </Text>
-            </View>
-          </View>
-        )}
-        <View style={s.detailItem}>
-          <Text style={s.detailItemLabel}>VALOR</Text>
-          <Text style={s.detailPrice}>{formatBRL(getDisplayPrice(request.price, request.requestType, request.prescriptionType))}</Text>
-        </View>
-      </View>
-    </DoctorCard>
-  );
-}
-
-function MedicationsCard({ medications }: { medications: string[] | null }) {
-  const { colors } = useAppTheme({ role: 'doctor' });
-  const s = useMemo(() => makeStyles(colors), [colors]);
-  if (!medications || medications.length === 0) return null;
-  return (
-    <DoctorCard style={s.cardMargin}>
-      <View style={s.sectionHeader}>
-        <View style={[s.sectionIconWrap, { backgroundColor: colors.primarySoft }]}>
-          <Ionicons name="medical" size={16} color={colors.primary} />
-        </View>
-        <Text style={s.sectionLabel}>MEDICAMENTOS</Text>
-        <View style={s.sectionCountBadge}><Text style={s.sectionCountText}>{medications.length}</Text></View>
-      </View>
-      {medications.map((m, i) => (
-        <View key={i} style={[s.medCard, i > 0 && s.medCardBorder]}>
-          <View style={s.medIndex}><Text style={s.medIndexText}>{i + 1}</Text></View>
-          <Text style={s.medCardText}>{m}</Text>
-        </View>
-      ))}
-    </DoctorCard>
-  );
-}
-
-function ExamsCard({ exams }: { exams: string[] | null }) {
-  const { colors } = useAppTheme({ role: 'doctor' });
-  const s = useMemo(() => makeStyles(colors), [colors]);
-  if (!exams || exams.length === 0) return null;
-  return (
-    <DoctorCard style={s.cardMargin}>
-      <View style={s.sectionHeader}>
-        <View style={[s.sectionIconWrap, { backgroundColor: colors.accentSoft }]}>
-          <Ionicons name="flask" size={16} color={colors.primary} />
-        </View>
-        <Text style={s.sectionLabel}>EXAMES SOLICITADOS</Text>
-        <View style={s.sectionCountBadge}><Text style={s.sectionCountText}>{exams.length}</Text></View>
-      </View>
-      {exams.map((e, i) => (
-        <View key={i} style={[s.medCard, i > 0 && s.medCardBorder]}>
-          <View style={[s.medIndex, { backgroundColor: colors.accentSoft }]}>
-            <Text style={[s.medIndexText, { color: colors.primaryDark }]}>{i + 1}</Text>
-          </View>
-          <Text style={s.medCardText}>{e}</Text>
-        </View>
-      ))}
-    </DoctorCard>
-  );
-}
-
-function SymptomsCard({ symptoms }: { symptoms: string | null }) {
-  const { colors } = useAppTheme({ role: 'doctor' });
-  const s = useMemo(() => makeStyles(colors), [colors]);
-  if (!symptoms) return null;
-  return (
-    <DoctorCard style={s.cardMargin}>
-      <View style={s.sectionHeader}>
-        <View style={[s.sectionIconWrap, { backgroundColor: colors.warningLight }]}>
-          <Ionicons name="chatbubble-ellipses" size={16} color={colors.warning} />
-        </View>
-        <Text style={s.sectionLabel}>SINTOMAS RELATADOS</Text>
-      </View>
-      <View style={s.symptomsBlock}><Text style={s.symptomsText}>{symptoms}</Text></View>
-    </DoctorCard>
-  );
-}
 
 function ConsultationPostSection({ request, router }: { request: NonNullable<ReturnType<typeof useDoctorRequest>['request']>; router: ReturnType<typeof useRouter> }) {
   const { colors } = useAppTheme({ role: 'doctor' });
@@ -426,7 +330,7 @@ function ConsultationPostSection({ request, router }: { request: NonNullable<Ret
                 title="Criar Receita Baseada na Consulta"
                 variant="doctorPrimary"
                 trailing={<Ionicons name="chevron-forward" size={20} color={colors.white} />}
-                onPress={() => router.push({ pathname: '/doctor-request/editor/[id]' as never, params: { id: request.id, prefillMeds: JSON.stringify(medsForPrefill) } })}
+                onPress={() => router.push({ pathname: '/doctor-request/editor/[id]' as any, params: { id: request.id, prefillMeds: JSON.stringify(medsForPrefill) } })}
                 style={{ width: '100%' }}
               />
             )}
@@ -435,7 +339,7 @@ function ConsultationPostSection({ request, router }: { request: NonNullable<Ret
                 title="Criar Pedido de Exame Baseado na Consulta"
                 variant="outline"
                 trailing={<Ionicons name="flask-outline" size={20} color={colors.primary} />}
-                onPress={() => router.push({ pathname: '/new-request/exam' as never, params: { prefillExams: JSON.stringify(examsForPrefill) } })}
+                onPress={() => router.push({ pathname: '/new-request/exam' as any, params: { prefillExams: JSON.stringify(examsForPrefill) } })}
                 style={{ width: '100%', marginTop: hasMeds ? 8 : 0 }}
               />
             )}
@@ -475,39 +379,6 @@ function ConductSection({ request, conductNotes, setConductNotes, includeConduct
     />
   );
 }
-
-function SignedDocumentCard({ request }: { request: NonNullable<ReturnType<typeof useDoctorRequest>['request']> }) {
-  const { colors } = useAppTheme({ role: 'doctor' });
-  const s = useMemo(() => makeStyles(colors), [colors]);
-  if (!request.signedDocumentUrl) return null;
-
-  return (
-    <DoctorCard style={s.cardMargin}>
-      <View style={s.sectionHeader}>
-        <Ionicons name="document-text" size={18} color={colors.success} />
-        <Text style={s.sectionTitle}>DOCUMENTO ASSINADO</Text>
-      </View>
-      <TouchableOpacity
-        style={s.pdfBtn}
-        onPress={async () => {
-          try {
-            await WebBrowser.openBrowserAsync(request.signedDocumentUrl!);
-          } catch (e: unknown) {
-            Alert.alert('Erro', (e as Error)?.message || 'Não foi possível abrir o documento.');
-          }
-        }}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="open-outline" size={20} color={colors.primary} />
-        <Text style={s.pdfBtnText}>Visualizar PDF Assinado</Text>
-      </TouchableOpacity>
-    </DoctorCard>
-  );
-}
-
-/* ---- Styles ---- */
-
-const pad = doctorDS.screenPaddingHorizontal;
 
 function makeStyles(colors: DesignColors) {
   return StyleSheet.create({

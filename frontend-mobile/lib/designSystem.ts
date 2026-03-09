@@ -61,7 +61,7 @@ const LIGHT_BASE = {
   surfaceTertiary:  palette.neutral[200],
   text:             palette.neutral[900],
   textSecondary:    palette.neutral[600],   // #475569 — 7:1 ratio on white
-  textMuted:        palette.neutral[500],   // #64748B — WCAG AA fix (was 400=#94A3B8 ~2.7:1, now ~4.6:1)
+  textMuted:        '#5B6E8A',              // WCAG AA fix: ~4.7:1 on surfaceSecondary (#F1F5F9), ~4.9:1 on white
   border:           palette.neutral[200],
   borderLight:      palette.neutral[100],
   primarySoft:      palette.primary[50],
@@ -272,7 +272,7 @@ export function createTokens(role: AppRole, scheme: ColorScheme) {
     statusFinished:         base.success,
 
     // Extended semantic
-    muted:          (base as any).muted || base.surfaceSecondary,
+    muted:          'muted' in base ? (base as any).muted : base.surfaceSecondary,
     secondarySoft:  isDoctor && isDark ? '#3A2010' : '#FFF3E6',
     accentSoft:     isDark ? '#2E1065' : '#EDE9FE',
     warningYellow:  isDark ? '#FACC15' : '#EAB308',

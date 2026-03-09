@@ -8,6 +8,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { nav } from '../../lib/navigation';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useListBottomPadding } from '../../lib/ui/responsive';
@@ -215,7 +216,7 @@ export default function PatientNotifications() {
       if (typeof deepLink === 'string' && deepLink.includes('/')) {
         // Extrair path do deepLink (renoveja://request-detail/xxx → /request-detail/xxx)
         const path = deepLink.replace('renoveja://', '/');
-        router.push(path as any);
+        nav.push(router, path as any);
       } else if (requestId) {
         router.push(`/request-detail/${requestId}`);
       }

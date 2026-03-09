@@ -6,33 +6,22 @@
  * Nunca cobre CTA, tab bar, ou botões. Max 2 linhas.
  */
 
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, Platform, Modal } from 'react-native';
 import Reanimated, {
   FadeInDown,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../../lib/theme';
+import { useAppTheme } from '../../lib/ui/useAppTheme';
 import { uiTokens } from '../../lib/ui/tokens';
+import type { DesignColors } from '../../lib/designSystem';
 import { useTriageAssistant } from '../../contexts/TriageAssistantProvider';
 import { showToast } from '../ui/Toast';
 import type { AvatarState, CTAAction, Severity } from '../../lib/triage/triage.types';
 
 // ── Avatar palette (aligned with medical design system) ─────
 
-const AVATAR: Record<AvatarState, { bg: string; border: string; icon: keyof typeof Ionicons.glyphMap; iconColor: string }> = {
-  neutral:  { bg: theme.colors.primary.soft,    border: theme.colors.primary.main,    icon: 'medical',     iconColor: theme.colors.primary.dark },
-  alert:    { bg: theme.colors.status.warningLight, border: theme.colors.status.warning,  icon: 'alert-circle', iconColor: theme.colors.status.warning },
-  positive: { bg: theme.colors.secondary.soft,  border: theme.colors.secondary.main,  icon: 'checkmark-circle', iconColor: theme.colors.secondary.dark },
-  thinking: { bg: theme.colors.accent.soft,     border: theme.colors.accent.main,     icon: 'sparkles',    iconColor: theme.colors.accent.dark },
-};
 
-const ACCENT: Record<Severity, string> = {
-  info: theme.colors.primary.main,
-  attention: theme.colors.status.warning,
-  positive: theme.colors.secondary.main,
-  neutral: theme.colors.text.tertiary,
-};
 
 const COMPANION_TIPS = [
   'Renove receitas, peça exames ou agende consultas. Toque para tirar dúvidas.',
@@ -60,6 +49,22 @@ interface AssistantBannerProps {
 
 export function AssistantBanner({ onAction, onCompanionPress, containerStyle, hidden, embedded = false }: AssistantBannerProps) {
   const { current, dismiss, muteCurrent } = useTriageAssistant();
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
+  // Dynamic AVATAR palette (adapts to dark mode)
+  const AVATAR: Record<AvatarState, { bg: string; border: string; icon: keyof typeof Ionicons.glyphMap; iconColor: string }> = {
+    neutral:  { bg: colors.primarySoft, border: colors.primary, icon: 'medical', iconColor: colors.primaryDark },
+    alert:    { bg: colors.warningLight, border: colors.warning, icon: 'alert-circle', iconColor: colors.warning },
+    positive: { bg: colors.successLight, border: colors.success, icon: 'checkmark-circle', iconColor: colors.success },
+    thinking: { bg: colors.accentSoft, border: colors.accent, icon: 'sparkles', iconColor: colors.accent },
+  };
+  const ACCENT: Record<Severity, string> = {
+    info: colors.primary,
+    attention: colors.warning,
+    positive: colors.success,
+    neutral: colors.textMuted,
+  };
   const [expanded, setExpanded] = useState(false);
 
   const handleCTA = useCallback(() => {
@@ -90,7 +95,7 @@ export function AssistantBanner({ onAction, onCompanionPress, containerStyle, hi
   if (hidden) return null;
 
   const av = current ? AVATAR[current.avatarState] : AVATAR.neutral;
-  const accent = current ? ACCENT[current.severity] : theme.colors.primary.main;
+  const accent = current ? ACCENT[current.severity] : colors.primary;
 
   // Render content logic
   const content = (
@@ -116,7 +121,7 @@ export function AssistantBanner({ onAction, onCompanionPress, containerStyle, hi
               <Text style={styles.label}>Dra. Renoveja</Text>
               {current?.isPersonalized && (
                 <View style={styles.personalizedBadge}>
-                  <Ionicons name="sparkles" size={9} color={theme.colors.accent.main} />
+                  <Ionicons name="sparkles" size={9} color={colors.accent} />
                   <Text style={styles.personalizedText} numberOfLines={1}>personalizado</Text>
                 </View>
               )}
@@ -173,6 +178,7 @@ export function AssistantBanner({ onAction, onCompanionPress, containerStyle, hi
         entering={FadeInDown.duration(280).springify().damping(20).stiffness(180)}
         style={[styles.container, containerStyle]}
         accessibilityRole="alert"
+        accessibilityLiveRegion="polite"
         accessibilityLabel={isCompanion ? 'Dra. Renoveja, sua assistente' : `Assistente de triagem: ${current?.text}`}
       >
       {/* Accent stripe */}
@@ -216,7 +222,7 @@ export function AssistantBanner({ onAction, onCompanionPress, containerStyle, hi
                 onPress={() => setExpanded(false)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Ionicons name="close" size={20} color={theme.colors.text.secondary} />
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
               </Pressable>
             </View>
 
@@ -233,16 +239,21 @@ export function AssistantBanner({ onAction, onCompanionPress, containerStyle, hi
   );
 }
 
-// ── Styles (pixel-perfect with theme.ts) ────────────────────
+// ── Dynamic styles using useAppTheme() colors ────────────────
 
-const styles = StyleSheet.create({
+function makeStyles(colors: DesignColors) {
+  return StyleSheet.create({
   container: {
-    borderRadius: theme.borderRadius.md,
-    backgroundColor: theme.colors.background.paper,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
     overflow: 'hidden',
     marginHorizontal: uiTokens.screenPaddingHorizontal,
     marginBottom: uiTokens.cardGap,
-    ...theme.shadows.card,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
   },
   containerEmbedded: {
     backgroundColor: 'transparent',
@@ -295,7 +306,7 @@ const styles = StyleSheet.create({
   },
   personalizedText: {
     fontSize: 12,
-    color: theme.colors.accent.main,
+    color: colors.accent,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     letterSpacing: 0.3,
   },
@@ -303,7 +314,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
-    color: theme.colors.text.tertiary,
+    color: colors.textMuted,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
@@ -311,7 +322,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontFamily: 'PlusJakartaSans_400Regular',
-    color: theme.colors.text.secondary,
+    color: colors.textSecondary,
   },
   actionRow: {
     marginTop: 8,
@@ -320,7 +331,7 @@ const styles = StyleSheet.create({
   ctaBtn: {
     paddingHorizontal: 14,
     paddingVertical: 7,
-    borderRadius: theme.borderRadius.pill,
+    borderRadius: 9999,
     flexShrink: 1,
     minHeight: 32,
     maxWidth: '100%',
@@ -330,7 +341,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     fontFamily: 'PlusJakartaSans_700Bold',
-    color: theme.colors.text.inverse,
+    color: '#FFFFFF',
     letterSpacing: 0.2,
   },
   dismissBtn: {
@@ -344,10 +355,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     fontFamily: 'PlusJakartaSans_600SemiBold',
-    color: theme.colors.text.tertiary,
+    color: colors.textMuted,
   },
   btnPressed: {
-    opacity: theme.opacity.pressed,
+    opacity: 0.7,
     transform: [{ scale: 0.96 }],
   },
   footer: {
@@ -357,26 +368,26 @@ const styles = StyleSheet.create({
   },
   muteHint: {
     fontSize: 12,
-    color: theme.colors.text.disabled,
+    color: colors.textMuted,
     marginBottom: 2,
   },
   disclaimer: {
     fontSize: 12,
-    color: theme.colors.text.disabled,
+    color: colors.textMuted,
     fontStyle: 'italic',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: colors.overlayBackground,
     justifyContent: 'flex-end',
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
   },
   modalCard: {
-    backgroundColor: theme.colors.background.paper,
-    borderTopLeftRadius: theme.borderRadius.lg,
-    borderTopRightRadius: theme.borderRadius.lg,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: Platform.OS === 'ios' ? 24 : 20,
@@ -390,22 +401,23 @@ const styles = StyleSheet.create({
   modalLabel: {
     fontSize: 13,
     fontFamily: 'PlusJakartaSans_700Bold',
-    color: theme.colors.text.primary,
+    color: colors.text,
   },
   modalBadge: {
     fontSize: 12,
-    color: theme.colors.text.disabled,
+    color: colors.textMuted,
     marginTop: 2,
   },
   modalMessage: {
     fontSize: 15,
     lineHeight: 22,
     fontFamily: 'PlusJakartaSans_400Regular',
-    color: theme.colors.text.primary,
+    color: colors.text,
     marginBottom: 12,
   },
   modalDisclaimer: {
     fontSize: 12,
-    color: theme.colors.text.disabled,
+    color: colors.textMuted,
   },
-});
+  });
+}
