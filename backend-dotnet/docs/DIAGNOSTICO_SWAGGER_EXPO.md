@@ -26,7 +26,7 @@ O Swagger é servido pelo próprio backend em:
 - `http://127.0.0.1:5000/swagger` ou
 - `http://192.168.15.69:5000/swagger`
 
-As requisições “Try it out” vão para o **mesmo host** da página do Swagger. Exemplo:
+As requisições "Try it out" vão para o **mesmo host** da página do Swagger. Exemplo:
 
 - Swagger em `http://localhost:5000/swagger` → `POST /api/auth/login` → `http://localhost:5000/api/auth/login`
 
