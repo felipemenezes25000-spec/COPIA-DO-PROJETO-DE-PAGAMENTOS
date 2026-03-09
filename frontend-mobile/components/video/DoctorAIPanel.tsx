@@ -116,7 +116,8 @@ function parseExam(ex: ExameSugerido): Record<string, string> {
 // ── Main Component ──
 
 export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPanelProps) {
-  const { colors } = useAppTheme({ scheme: 'light' });
+  // Usa dark + doctor para combinar com o overlay da videochamada (evita mix light/dark).
+  const { colors } = useAppTheme({ scheme: 'dark', role: 'doctor' });
   const S = useMemo(() => makeStyles(colors), [colors]);
 
   const [activeTab, setActiveTab] = useState<TabKey>('consulta');
@@ -353,8 +354,8 @@ export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPane
                   <Text style={[S.secT, { color: colors.primary }]}>DIAGNÓSTICO DIFERENCIAL</Text>
                 </View>
                 {diagDiferencial.map((dd, i) => {
-                  const probColor = dd.probabilidade === 'alta' ? '#16A34A'
-                    : dd.probabilidade === 'media' ? '#D97706' : '#94A3B8';
+                  const probColor = dd.probabilidade === 'alta' ? colors.success
+                    : dd.probabilidade === 'media' ? colors.warning : colors.textMuted;
                   return (
                     <View key={i} style={S.ddItem}>
                       <View style={S.ddHeader}>
@@ -407,8 +408,8 @@ export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPane
             {exameFisicoDirigido.length > 0 && (
               <View style={S.examFisicoBlock}>
                 <View style={S.secH}>
-                  <Ionicons name="fitness" size={14} color="#7C3AED" />
-                  <Text style={[S.secT, { color: '#7C3AED' }]}>EXAME FÍSICO DIRIGIDO</Text>
+                  <Ionicons name="fitness" size={14} color={colors.accent} />
+                  <Text style={[S.secT, { color: colors.accent }]}>EXAME FÍSICO DIRIGIDO</Text>
                 </View>
                 <Text style={S.examFisicoText}>{exameFisicoDirigido}</Text>
               </View>
@@ -471,26 +472,26 @@ export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPane
                           ) : null}
                           {med.interacoes ? (
                             <View style={S.medDetailRow}>
-                              <Ionicons name="swap-horizontal" size={11} color="#D97706" />
-                              <Text style={[S.medDetailText, { color: '#D97706' }]}>Interações: {med.interacoes}</Text>
+                              <Ionicons name="swap-horizontal" size={11} color={colors.warning} />
+                              <Text style={[S.medDetailText, { color: colors.warning }]}>Interações: {med.interacoes}</Text>
                             </View>
                           ) : null}
                           {med.ajuste_renal ? (
                             <View style={S.medDetailRow}>
-                              <Ionicons name="water-outline" size={11} color="#7C3AED" />
-                              <Text style={[S.medDetailText, { color: '#7C3AED' }]}>Ajuste renal: {med.ajuste_renal}</Text>
+                              <Ionicons name="water-outline" size={11} color={colors.accent} />
+                              <Text style={[S.medDetailText, { color: colors.accent }]}>Ajuste renal: {med.ajuste_renal}</Text>
                             </View>
                           ) : null}
                           {med.ajuste_hepatico ? (
                             <View style={S.medDetailRow}>
-                              <Ionicons name="nutrition-outline" size={11} color="#7C3AED" />
-                              <Text style={[S.medDetailText, { color: '#7C3AED' }]}>Ajuste hepático: {med.ajuste_hepatico}</Text>
+                              <Ionicons name="nutrition-outline" size={11} color={colors.accent} />
+                              <Text style={[S.medDetailText, { color: colors.accent }]}>Ajuste hepático: {med.ajuste_hepatico}</Text>
                             </View>
                           ) : null}
                           {med.alerta_faixa_etaria ? (
                             <View style={S.medDetailRow}>
-                              <Ionicons name="person-outline" size={11} color="#D97706" />
-                              <Text style={[S.medDetailText, { color: '#D97706' }]}>{med.alerta_faixa_etaria}</Text>
+                              <Ionicons name="person-outline" size={11} color={colors.warning} />
+                              <Text style={[S.medDetailText, { color: colors.warning }]}>{med.alerta_faixa_etaria}</Text>
                             </View>
                           ) : null}
                           {med.alternativa ? (
@@ -524,12 +525,12 @@ export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPane
             {interacoesCruzadas.length > 0 && (
               <View style={S.sec}>
                 <View style={S.secH}>
-                  <Ionicons name="warning" size={14} color="#DC2626" />
-                  <Text style={[S.secT, { color: '#DC2626' }]}>INTERAÇÕES MEDICAMENTOSAS ({interacoesCruzadas.length})</Text>
+                  <Ionicons name="warning" size={14} color={colors.error} />
+                  <Text style={[S.secT, { color: colors.error }]}>INTERAÇÕES MEDICAMENTOSAS ({interacoesCruzadas.length})</Text>
                 </View>
                 {interacoesCruzadas.map((ic, i) => {
-                  const tipoColor = ic.tipo === 'grave' ? '#DC2626' : ic.tipo === 'moderada' ? '#EA580C' : '#D97706';
-                  const tipoBg = ic.tipo === 'grave' ? '#FEF2F2' : ic.tipo === 'moderada' ? '#FFF7ED' : '#FFFBEB';
+                  const tipoColor = ic.tipo === 'grave' ? colors.error : ic.tipo === 'moderada' ? colors.warning : colors.warning;
+                  const tipoBg = ic.tipo === 'grave' ? colors.errorLight : colors.warningLight;
                   const tipoLabel = ic.tipo === 'grave' ? 'GRAVE' : ic.tipo === 'moderada' ? 'MODERADA' : 'LEVE';
                   return (
                     <View key={i} style={[S.interacaoCard, { backgroundColor: tipoBg, borderColor: tipoColor + '30' }]}>
@@ -589,7 +590,7 @@ export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPane
                       ) : null}
                       {exam.interpretacao_esperada ? (
                         <View style={S.examInterpretacao}>
-                          <Ionicons name="analytics-outline" size={11} color="#7C3AED" />
+                          <Ionicons name="analytics-outline" size={11} color={colors.accent} />
                           <Text style={S.examInterpretacaoText}>Esperado: {exam.interpretacao_esperada}</Text>
                         </View>
                       ) : null}
@@ -623,8 +624,8 @@ export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPane
                 {criteriosRetorno.length > 0 && (
                   <>
                     <View style={[S.secH, { marginTop: 12 }]}>
-                      <Ionicons name="flag" size={14} color="#D97706" />
-                      <Text style={[S.secT, { color: '#D97706' }]}>CRITÉRIOS DE RETORNO</Text>
+                      <Ionicons name="flag" size={14} color={colors.warning} />
+                      <Text style={[S.secT, { color: colors.warning }]}>CRITÉRIOS DE RETORNO</Text>
                     </View>
                     {criteriosRetorno.map((c, i) => (
                       <Text key={i} style={S.criterioText}>⚠️ {c}</Text>
@@ -659,16 +660,16 @@ export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPane
             {perguntasSugeridas.length > 0 ? (
               <View style={S.sec}>
                 <View style={S.secH}>
-                  <Ionicons name="help-circle" size={14} color="#EA580C" />
-                  <Text style={[S.secT, { color: '#EA580C' }]}>PERGUNTE AO PACIENTE</Text>
+                  <Ionicons name="help-circle" size={14} color={colors.warning} />
+                  <Text style={[S.secT, { color: colors.warning }]}>PERGUNTE AO PACIENTE</Text>
                   <View style={S.badge}><Ionicons name="sparkles" size={10} color={colors.primary} /><Text style={S.badgeTxt}>IA</Text></View>
                 </View>
                 <Text style={S.perguntaIntro}>
                   Priorizadas por impacto clínico — a resposta de cada uma refina o diagnóstico
                 </Text>
                 {perguntasSugeridas.map((p, i) => {
-                  const prioColor = p.prioridade === 'alta' ? '#DC2626'
-                    : p.prioridade === 'media' ? '#EA580C' : '#94A3B8';
+                  const prioColor = p.prioridade === 'alta' ? colors.error
+                    : p.prioridade === 'media' ? colors.warning : colors.textMuted;
                   const prioLabel = p.prioridade === 'alta' ? 'CRÍTICA'
                     : p.prioridade === 'media' ? 'IMPORTANTE' : 'COMPLEMENTAR';
                   return (
@@ -697,7 +698,7 @@ export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPane
                       ) : null}
                       {p.impacto_na_conduta ? (
                         <View style={S.perguntaImpacto}>
-                          <Ionicons name="trending-up-outline" size={11} color="#7C3AED" />
+                          <Ionicons name="trending-up-outline" size={11} color={colors.accent} />
                           <Text style={S.perguntaImpactoText}>{p.impacto_na_conduta}</Text>
                         </View>
                       ) : null}
@@ -716,7 +717,7 @@ export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPane
               </View>
             ) : (
               <View style={S.emptyState}>
-                <Ionicons name="help-circle-outline" size={32} color="#EA580C" />
+                <Ionicons name="help-circle-outline" size={32} color={colors.warning} />
                 <Text style={S.emptyTitle}>Perguntas sendo geradas...</Text>
                 <Text style={S.emptySub}>
                   Perguntas priorizadas por impacto clínico serão geradas assim que houver dados do transcript.
@@ -728,8 +729,8 @@ export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPane
             {lacunasAnamnese.length > 0 && (
               <View style={S.lacunasBlock}>
                 <View style={S.secH}>
-                  <Ionicons name="alert-circle-outline" size={14} color="#D97706" />
-                  <Text style={[S.secT, { color: '#D97706' }]}>INFORMAÇÕES FALTANDO</Text>
+                  <Ionicons name="alert-circle-outline" size={14} color={colors.warning} />
+                  <Text style={[S.secT, { color: colors.warning }]}>INFORMAÇÕES FALTANDO</Text>
                 </View>
                 {lacunasAnamnese.map((l, i) => (
                   <View key={i} style={S.lacunaItem}>
@@ -813,7 +814,7 @@ export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPane
                       </View>
                       {e.conexaoComPaciente && (
                         <View style={S.evConexao}>
-                          <Ionicons name="person" size={11} color="#7C3AED" />
+                          <Ionicons name="person" size={11} color={colors.accent} />
                           <Text style={S.evConexaoText}>{e.conexaoComPaciente}</Text>
                         </View>
                       )}
@@ -875,7 +876,7 @@ export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPane
 
 // ── Styles ──
 
-type PanelColors = { primary: string; text: string; textMuted: string; textSecondary: string; white: string; error: string; success: string; border: string; surface: string; surfaceSecondary: string; primarySoft: string };
+type PanelColors = { primary: string; primaryLight: string; text: string; textMuted: string; textSecondary: string; white: string; error: string; errorLight: string; warning: string; warningLight: string; success: string; accent: string; accentSoft: string; border: string; surface: string; surfaceSecondary: string; primarySoft: string };
 
 function makeStyles(colors: PanelColors) {
   return StyleSheet.create({
@@ -925,8 +926,8 @@ function makeStyles(colors: PanelColors) {
     afV: { fontSize: 12, color: colors.textSecondary, lineHeight: 18 },
 
     // Alerts
-    alertBlock: { backgroundColor: '#FEE2E2', borderRadius: 8, padding: 10, gap: 6, borderWidth: 1, borderColor: '#FECACA' },
-    alertText: { fontSize: 12, color: '#991B1B', lineHeight: 18 },
+    alertBlock: { backgroundColor: colors.errorLight, borderRadius: 8, padding: 10, gap: 6, borderWidth: 1, borderColor: colors.error + '40' },
+    alertText: { fontSize: 12, color: colors.error, lineHeight: 18 },
 
     // Differential diagnosis
     ddItem: { backgroundColor: colors.surfaceSecondary, borderRadius: 8, padding: 10, gap: 4 },
@@ -934,12 +935,12 @@ function makeStyles(colors: PanelColors) {
     ddProbDot: { width: 8, height: 8, borderRadius: 4 },
     ddHipotese: { fontSize: 12, fontWeight: '700', color: colors.text, flex: 1 },
     ddCid: { fontSize: 11, color: colors.primary, fontWeight: '600', marginLeft: 14 },
-    ddArg: { fontSize: 11, color: '#16A34A', marginLeft: 14, lineHeight: 16 },
-    ddArgContra: { fontSize: 11, color: '#EA580C', marginLeft: 14, lineHeight: 16 },
+    ddArg: { fontSize: 11, color: colors.success, marginLeft: 14, lineHeight: 16 },
+    ddArgContra: { fontSize: 11, color: colors.warning, marginLeft: 14, lineHeight: 16 },
     ddExames: { fontSize: 11, color: colors.primary, marginLeft: 14, lineHeight: 16 },
 
     // Physical exam
-    examFisicoBlock: { backgroundColor: '#F5F3FF', borderRadius: 8, padding: 10, gap: 6, borderWidth: 1, borderColor: '#EDE9FE' },
+    examFisicoBlock: { backgroundColor: colors.accentSoft, borderRadius: 8, padding: 10, gap: 6, borderWidth: 1, borderColor: colors.accent + '40' },
     examFisicoText: { fontSize: 12, color: colors.textSecondary, lineHeight: 18 },
 
     // Medications
@@ -958,7 +959,7 @@ function makeStyles(colors: PanelColors) {
 
     // Exams
     examCard: { backgroundColor: colors.surfaceSecondary, borderRadius: 10, padding: 10, gap: 4, borderWidth: 1, borderColor: colors.border },
-    examUrgent: { backgroundColor: '#FEF2F2', borderColor: '#FECACA' },
+    examUrgent: { backgroundColor: colors.errorLight, borderColor: colors.error + '60' },
     examHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     examNumCircle: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.primarySoft, justifyContent: 'center', alignItems: 'center' },
     examNumText: { fontSize: 11, fontWeight: '800', color: colors.primary },
@@ -968,9 +969,9 @@ function makeStyles(colors: PanelColors) {
     examTuss: { fontSize: 10, color: colors.primary, fontWeight: '600', marginLeft: 30, fontFamily: 'monospace' },
     examDetail: { fontSize: 11, color: colors.textSecondary, marginLeft: 30, lineHeight: 16 },
     examIndicacao: { fontSize: 11, color: colors.textMuted, marginLeft: 30, lineHeight: 16 },
-    examPreparo: { fontSize: 11, color: '#D97706', marginLeft: 30, lineHeight: 16 },
-    examInterpretacao: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginLeft: 30, marginTop: 2, backgroundColor: '#F5F3FF', borderRadius: 6, padding: 6 },
-    examInterpretacaoText: { fontSize: 11, color: '#7C3AED', lineHeight: 16, flex: 1, fontStyle: 'italic' },
+    examPreparo: { fontSize: 11, color: colors.warning, marginLeft: 30, lineHeight: 16 },
+    examInterpretacao: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginLeft: 30, marginTop: 2, backgroundColor: colors.accentSoft, borderRadius: 6, padding: 6 },
+    examInterpretacaoText: { fontSize: 11, color: colors.accent, lineHeight: 16, flex: 1, fontStyle: 'italic' },
 
     // Drug interactions
     interacaoCard: { borderRadius: 10, padding: 12, gap: 6, borderWidth: 1 },
@@ -986,18 +987,18 @@ function makeStyles(colors: PanelColors) {
 
     // Orientations
     orientText: { fontSize: 12, color: colors.textSecondary, lineHeight: 18, paddingLeft: 4 },
-    criterioText: { fontSize: 12, color: '#B45309', lineHeight: 18, paddingLeft: 4 },
+    criterioText: { fontSize: 12, color: colors.warning, lineHeight: 18, paddingLeft: 4 },
     copyOrientBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: colors.primarySoft, alignSelf: 'flex-start' },
     copyOrientText: { fontSize: 11, color: colors.primary, fontWeight: '600' },
 
     // Suggestions
     sugItem: { flexDirection: 'row', gap: 6, alignItems: 'flex-start', paddingLeft: 4 },
-    sugDng: { backgroundColor: '#FEF2F2', borderRadius: 6, padding: 6 },
+    sugDng: { backgroundColor: colors.errorLight, borderRadius: 6, padding: 6 },
     sugTxt: { fontSize: 12, color: colors.primary, lineHeight: 18, flex: 1 },
 
     // Perguntas
     perguntaIntro: { fontSize: 11, color: colors.textMuted, lineHeight: 16, fontStyle: 'italic', marginBottom: 4 },
-    perguntaCard: { backgroundColor: '#FFF7ED', borderRadius: 10, padding: 12, gap: 8, borderWidth: 1, borderColor: '#FED7AA' },
+    perguntaCard: { backgroundColor: colors.warningLight, borderRadius: 10, padding: 12, gap: 8, borderWidth: 1, borderColor: colors.warning + '40' },
     perguntaHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     perguntaNumCircle: { width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
     perguntaNum: { fontSize: 11, fontWeight: '800' },
@@ -1009,28 +1010,28 @@ function makeStyles(colors: PanelColors) {
     perguntaObjText: { fontSize: 11, color: colors.primary, lineHeight: 16, flex: 1 },
     perguntaHip: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, paddingLeft: 4, backgroundColor: colors.surfaceSecondary, borderRadius: 6, padding: 6 },
     perguntaHipText: { fontSize: 11, color: colors.textSecondary, lineHeight: 16, flex: 1 },
-    perguntaImpacto: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, paddingLeft: 4, backgroundColor: '#F5F3FF', borderRadius: 6, padding: 6 },
-    perguntaImpactoText: { fontSize: 11, color: '#7C3AED', lineHeight: 16, flex: 1 },
+    perguntaImpacto: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, paddingLeft: 4, backgroundColor: colors.accentSoft, borderRadius: 6, padding: 6 },
+    perguntaImpactoText: { fontSize: 11, color: colors.accent, lineHeight: 16, flex: 1 },
     perguntaCopyBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingVertical: 3, paddingHorizontal: 8, borderRadius: 6, backgroundColor: colors.primarySoft },
     perguntaCopyText: { fontSize: 10, color: colors.primary, fontWeight: '600' },
     perguntaDisclaimer: { flexDirection: 'row', gap: 6, alignItems: 'flex-start', paddingHorizontal: 4, marginTop: 4 },
     perguntaDisclaimerText: { fontSize: 10, color: colors.textMuted, lineHeight: 14, flex: 1 },
 
     // Lacunas
-    lacunasBlock: { backgroundColor: '#FFFBEB', borderRadius: 10, padding: 12, gap: 8, borderWidth: 1, borderColor: '#FDE68A' },
+    lacunasBlock: { backgroundColor: colors.warningLight, borderRadius: 10, padding: 12, gap: 8, borderWidth: 1, borderColor: colors.warning + '50' },
     lacunaItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingLeft: 4 },
-    lacunaDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#D97706', marginTop: 5 },
-    lacunaText: { fontSize: 12, color: '#92400E', lineHeight: 18, flex: 1 },
+    lacunaDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.warning, marginTop: 5 },
+    lacunaText: { fontSize: 12, color: colors.warning, lineHeight: 18, flex: 1 },
 
     // Evidence
     evItem: { backgroundColor: colors.surfaceSecondary, borderRadius: 8, padding: 10, gap: 6, borderWidth: 1, borderColor: colors.border },
     evHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
     evHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     evTitle: { fontSize: 12, fontWeight: '700', color: colors.text, lineHeight: 16, flex: 1 },
-    evNivelBadge: { backgroundColor: '#7C3AED15', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-    evNivelText: { fontSize: 9, fontWeight: '700', color: '#7C3AED', letterSpacing: 0.3 },
-    evConexao: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: '#F5F3FF', borderRadius: 6, padding: 6 },
-    evConexaoText: { fontSize: 11, color: '#7C3AED', lineHeight: 15, flex: 1, fontWeight: '600' },
+    evNivelBadge: { backgroundColor: colors.accent + '20', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+    evNivelText: { fontSize: 9, fontWeight: '700', color: colors.accent, letterSpacing: 0.3 },
+    evConexao: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: colors.accentSoft, borderRadius: 6, padding: 6 },
+    evConexaoText: { fontSize: 11, color: colors.accent, lineHeight: 15, flex: 1, fontWeight: '600' },
     evRelevance: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: colors.primarySoft, borderRadius: 6, padding: 6 },
     evRelevanceText: { fontSize: 11, color: colors.primary, lineHeight: 15, flex: 1 },
     evExcerpt: { borderLeftWidth: 2, borderLeftColor: colors.primary, paddingLeft: 8, marginLeft: 4 },

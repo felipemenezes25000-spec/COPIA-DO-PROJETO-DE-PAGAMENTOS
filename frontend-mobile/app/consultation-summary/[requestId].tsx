@@ -153,14 +153,14 @@ export default function ConsultationSummaryScreen() {
           accessibilityRole="button"
           accessibilityLabel="Voltar"
         >
-          <Ionicons name="arrow-back" size={22} color={colors.border} />
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={S.headerTitle}>Resumo da Consulta</Text>
-          <Text style={S.headerSub}>{request.patientName || 'Paciente'}</Text>
+          <Text style={S.headerSub}>{request.patientName ?? 'Paciente'}</Text>
         </View>
         <View style={S.headerBadge}>
-          <Ionicons name="sparkles" size={12} color={colors.primary} />
+          <Ionicons name="sparkles" size={12} color={colors.text} />
           <Text style={S.headerBadgeText}>IA</Text>
         </View>
       </View>
@@ -386,10 +386,10 @@ export default function ConsultationSummaryScreen() {
 
 function makeStyles(colors: DesignColors) {
   return StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.black },
+  container: { flex: 1, backgroundColor: colors.background },
   center: { justifyContent: 'center', alignItems: 'center', gap: 12 },
   loadText: { color: colors.textMuted, fontSize: 14 },
-  errorText: { color: colors.errorLight, fontSize: 15 },
+  errorText: { color: colors.error, fontSize: 15 },
   backBtn: { marginTop: 12, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: colors.primary, borderRadius: 10 },
   backBtnText: { color: colors.white, fontWeight: '600' },
 
@@ -398,14 +398,14 @@ function makeStyles(colors: DesignColors) {
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: 'rgba(15,23,42,0.95)',
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(51,65,85,0.3)',
+    borderBottomColor: colors.border,
     gap: 12,
   },
-  headerBack: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(51,65,85,0.5)', justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { color: colors.border, fontSize: 17, fontWeight: '700' },
-  headerSub: { color: colors.textMuted, fontSize: 12, marginTop: 1 },
+  headerBack: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.surfaceSecondary, justifyContent: 'center', alignItems: 'center' },
+  headerTitle: { color: colors.text, fontSize: 17, fontWeight: '700' },
+  headerSub: { color: colors.textSecondary, fontSize: 12, marginTop: 1 },
   headerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -413,30 +413,30 @@ function makeStyles(colors: DesignColors) {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: 'rgba(44,177,255,0.1)',
+    backgroundColor: colors.primaryGhost,
   },
-  headerBadgeText: { fontSize: 12, fontWeight: '700', color: colors.primary },
+  headerBadgeText: { fontSize: 12, fontWeight: '700', color: colors.text },
 
   content: { padding: 16, gap: 16 },
 
   section: {
-    backgroundColor: 'rgba(30,41,59,0.6)',
+    backgroundColor: colors.surfaceSecondary,
     borderRadius: 16,
     padding: 16,
     gap: 12,
   },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionTitle: { fontSize: 13, fontWeight: '800', color: colors.textMuted, letterSpacing: 0.5, flex: 1 },
-  copyIcon: { padding: 6, borderRadius: 8, backgroundColor: 'rgba(44,177,255,0.1)' },
+  copyIcon: { padding: 6, borderRadius: 8, backgroundColor: colors.primaryGhost },
 
   field: { gap: 4, paddingLeft: 2 },
   fieldLabel: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   fieldIcon: { width: 24, height: 24, borderRadius: 6, justifyContent: 'center', alignItems: 'center' },
   fieldLabelText: { fontSize: 12, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.3, textTransform: 'uppercase' },
-  fieldValue: { fontSize: 14, color: colors.border, lineHeight: 21, paddingLeft: 30 },
+  fieldValue: { fontSize: 14, color: colors.textSecondary, lineHeight: 21, paddingLeft: 30 },
 
   alertBlock: { backgroundColor: 'rgba(239,68,68,0.1)', borderRadius: 10, padding: 12, gap: 6 },
-  alertText: { fontSize: 13, color: colors.errorLight, lineHeight: 20, paddingLeft: 22 },
+  alertText: { fontSize: 13, color: colors.error, lineHeight: 20, paddingLeft: 22 },
 
   medsBlock: { backgroundColor: 'rgba(139,92,246,0.08)', borderRadius: 10, padding: 12, gap: 6 },
   medItem: { flexDirection: 'row', gap: 6, alignItems: 'flex-start' },
@@ -464,7 +464,7 @@ function makeStyles(colors: DesignColors) {
     flexDirection: 'row',
     gap: 8,
     padding: 12,
-    backgroundColor: 'rgba(30,41,59,0.4)',
+    backgroundColor: colors.surfaceSecondary,
     borderRadius: 10,
     alignItems: 'flex-start',
   },
@@ -475,15 +475,15 @@ function makeStyles(colors: DesignColors) {
     paddingTop: 12,
     gap: 10,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(51,65,85,0.3)',
-    backgroundColor: 'rgba(15,23,42,0.95)',
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
   },
   clinicalNoteInput: {
-    backgroundColor: 'rgba(15,23,42,0.5)',
+    backgroundColor: colors.surfaceSecondary,
     borderRadius: 10,
     padding: 12,
     fontSize: 14,
-    color: colors.border,
+    color: colors.text,
     minHeight: 100,
     textAlignVertical: 'top',
   },

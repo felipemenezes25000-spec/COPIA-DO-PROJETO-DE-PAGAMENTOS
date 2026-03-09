@@ -109,7 +109,13 @@ export default function DoctorNotifications() {
   const notifications = useMemo(() => {
     return allNotifications.filter((n) => {
       const targetRole = n.data?.targetRole as string | undefined;
-      return !targetRole || targetRole === 'doctor';
+      if (targetRole && targetRole !== 'doctor') return false;
+      // Oculta notificações de teste de push (ex.: "Teste RenoveJá")
+      const type = (n.data?.type as string) || '';
+      if (type.toLowerCase() === 'test') return false;
+      const title = (n.title || '').toLowerCase();
+      if (title.includes('teste renove')) return false;
+      return true;
     });
   }, [allNotifications]);
 
@@ -254,6 +260,7 @@ export default function DoctorNotifications() {
           }}
           size="sm"
           scrollable
+          role="doctor"
         />
       </View>
 
@@ -352,7 +359,7 @@ function makeStyles(colors: DesignColors) {
     unreadBadgeText: {
       fontSize: 12,
       fontWeight: '800',
-      color: '#FFFFFF',
+      color: colors.white,
       letterSpacing: 0.2,
     },
     subtitle: {

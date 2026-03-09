@@ -16,9 +16,16 @@ import { PaymentHeader } from '../../components/payment/PaymentHeader';
 
 const TOKEN_KEY = '@renoveja:auth_token';
 
+function hexToRgba(hex: string, alpha: number): string {
+  const m = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+  if (!m) return `rgba(255,255,255,${alpha})`;
+  return `rgba(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)},${alpha})`;
+}
+
 function buildCardPaymentHtml(colors: DesignColors, publicKey: string, amount: number, requestId: string, savedCards: { id: string; mpCardId: string; lastFour: string; brand: string }[]): string {
   const escaped = (s: string) => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
   const savedCardsJson = JSON.stringify(savedCards);
+  const submittingOverlay = hexToRgba(colors.surface, 0.95);
   return `<!DOCTYPE html>
 <html><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
@@ -29,7 +36,7 @@ function buildCardPaymentHtml(colors: DesignColors, publicKey: string, amount: n
 #saveCardRow{margin:14px 0;display:flex;align-items:center;gap:10px;font-size:15px;color:${colors.textSecondary}}
 #saveCardRow input{width:20px;height:20px;accent-color:${colors.primary}}
 .error{color:${colors.error};background:${colors.errorLight};padding:12px;border-radius:8px;margin-top:12px;font-size:14px}
-.submitting{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;z-index:9999}
+.submitting{position:fixed;top:0;left:0;right:0;bottom:0;background:${submittingOverlay};display:flex;align-items:center;justify-content:center;z-index:9999}
 .submitting span{font-size:16px;color:${colors.textSecondary};margin-top:12px}
 .savedCards{margin-bottom:16px;padding:12px;background:${colors.surfaceSecondary};border-radius:8px}
 .savedCard{display:flex;align-items:center;gap:10px;padding:10px 12px;background:${colors.white};border-radius:8px;margin-bottom:8px;border:2px solid ${colors.border};cursor:pointer}

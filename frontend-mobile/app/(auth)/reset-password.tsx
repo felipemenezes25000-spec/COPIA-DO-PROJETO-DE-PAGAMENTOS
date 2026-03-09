@@ -132,7 +132,7 @@ function makeStyles(colors: DesignColors) {
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: colors.surfaceSecondary,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: spacing.sm,

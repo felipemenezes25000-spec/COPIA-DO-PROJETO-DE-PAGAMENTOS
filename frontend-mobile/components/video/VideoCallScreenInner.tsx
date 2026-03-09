@@ -76,14 +76,11 @@ export default function VideoCallScreenInner() {
   const router = useRouter();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
-  // Video overlay is always dark (#0F172A background).
-  // Use system theme for modals/dialogs, but video-specific dark colors for overlays.
-  const systemTheme = useAppTheme();
+  // Video call: tema dark unificado — overlay, modal e painel usam o mesmo tema.
+  // Evita mix light/dark bugado dentro da chamada.
   const darkTheme = useAppTheme({ scheme: 'dark' });
-  // Overlay colors (top bar, controls, badges) — always dark background context
   const colors = darkTheme.colors;
-  // Modal/dialog colors — follow system preference
-  const modalColors = systemTheme.colors;
+  const modalColors = darkTheme.colors;
   const S = useMemo(() => makeStyles(colors, modalColors), [colors, modalColors]);
   const qColor = useCallback((q: ConnectionQuality) => {
     return q === 'good' ? colors.success : q === 'poor' ? colors.warning : q === 'bad' ? colors.error : colors.textMuted;
@@ -866,7 +863,7 @@ export default function VideoCallScreenInner() {
 
 // ──── Styles (light mode: overlays legíveis, fundo escuro só para área do vídeo) ────
 
-type VideoColors = { primary: string; text: string; textMuted: string; textSecondary: string; white: string; black: string; error: string; warning: string; success: string; successLight: string; destructive: string; primaryLight: string; border: string; errorLight: string; surface: string };
+type VideoColors = { primary: string; text: string; textMuted: string; textSecondary: string; white: string; black: string; error: string; warning: string; success: string; successLight: string; destructive: string; primaryLight: string; border: string; errorLight: string; surface: string; surfaceSecondary: string };
 
 function makeStyles(colors: VideoColors, modalColors?: VideoColors) {
   const mc = modalColors || colors;
@@ -917,14 +914,14 @@ function makeStyles(colors: VideoColors, modalColors?: VideoColors) {
   doctorCountPill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(44,177,255,0.16)' },
   patientCountPill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, backgroundColor: 'rgba(34,197,94,0.16)' },
   doctorCountTxt: { fontSize: 12, fontWeight: '700', color: colors.primaryLight },
-  patientCountTxt: { fontSize: 12, fontWeight: '700', color: colors.successLight },
+  patientCountTxt: { fontSize: 12, fontWeight: '700', color: colors.success },
 
   af: { gap: 2, paddingLeft: 4 },
   afL: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   afLT: { fontSize: 12, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.3, textTransform: 'uppercase' },
   afV: { fontSize: 13, color: colors.border, lineHeight: 19 },
   rfBlock: { backgroundColor: 'rgba(239,68,68,0.1)', borderRadius: 8, padding: 8, gap: 4 },
-  rfTxt: { fontSize: 12, color: colors.errorLight, lineHeight: 18 },
+  rfTxt: { fontSize: 12, color: colors.error, lineHeight: 18 },
 
   sugItem: { flexDirection: 'row', gap: 6, alignItems: 'flex-start', paddingLeft: 4 },
   sugDng: { backgroundColor: 'rgba(239,68,68,0.1)', borderRadius: 6, padding: 6 },
@@ -982,7 +979,7 @@ function makeStyles(colors: VideoColors, modalColors?: VideoColors) {
   mSub: { fontSize: 13, color: mc.textMuted },
   mInput: { backgroundColor: mc.surface, borderRadius: 12, padding: 14, minHeight: 120, maxHeight: 200, color: mc.text, fontSize: 14, lineHeight: 22, borderWidth: 1, borderColor: mc.border },
   mActs: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  mBtnSec: { flex: 1, height: 48, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.06)', justifyContent: 'center', alignItems: 'center' },
+  mBtnSec: { flex: 1, height: 48, borderRadius: 12, backgroundColor: mc.surfaceSecondary, justifyContent: 'center', alignItems: 'center' },
   mBtnSecT: { color: mc.textMuted, fontWeight: '600', fontSize: 14 },
   mBtnPri: { flex: 2, height: 48, borderRadius: 12, backgroundColor: mc.primary, justifyContent: 'center', alignItems: 'center' },
   mBtnPriT: { color: mc.white, fontWeight: '700', fontSize: 14 },

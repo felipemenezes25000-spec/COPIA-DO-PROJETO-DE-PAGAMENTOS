@@ -174,7 +174,7 @@ function makeStyles(colors: DesignColors) {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.06)',
+    borderBottomColor: colors.border,
   },
   headerTitle: {
     fontSize: 16,
@@ -228,7 +228,7 @@ function makeStyles(colors: DesignColors) {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surfaceSecondary,
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 10,

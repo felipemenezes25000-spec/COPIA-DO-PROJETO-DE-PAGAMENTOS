@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView, ViewStyle } from 'react-native';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
+import type { AppRole } from '../../lib/designSystem';
 import { uiTokens } from '../../lib/ui/tokens';
 
 const MIN_TOUCH = 44;
@@ -23,6 +24,8 @@ interface AppSegmentedControlProps {
   /** When true, allows horizontal scrolling (useful for >4 items). */
   scrollable?: boolean;
   style?: ViewStyle;
+  /** Força tema (ex.: doctor) quando usado em rotas que podem não resolver por pathname. */
+  role?: AppRole;
 }
 
 export function AppSegmentedControl({
@@ -33,8 +36,9 @@ export function AppSegmentedControl({
   size = 'md',
   scrollable,
   style,
+  role,
 }: AppSegmentedControlProps) {
-  const { colors, typography, shadows } = useAppTheme();
+  const { colors, typography, shadows } = useAppTheme(role ? { role } : undefined);
   const muted = (colors as any).muted ?? colors.surfaceSecondary;
 
   const conf = useMemo(() => {

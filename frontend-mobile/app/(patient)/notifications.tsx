@@ -79,7 +79,7 @@ function getNotificationVisual(item: NotificationResponseDto, colors: DesignColo
   }
   // Consulta
   if (type.includes('consultation') || type.includes('doctor_ready')) {
-    return { icon: 'videocam', color: '#8B5CF6', bgColor: '#EDE9FE', label: 'Consulta' };
+    return { icon: 'videocam', color: colors.accent, bgColor: colors.accentSoft, label: 'Consulta' };
   }
   // Pagamento confirmado
   if (status === 'paid') {
@@ -142,8 +142,13 @@ export default function PatientNotifications() {
   const notifications = useMemo(() => {
     return allNotifications.filter(n => {
       const targetRole = n.data?.targetRole as string | undefined;
-      // Mostrar se: sem targetRole (legado) OU targetRole === 'patient'
-      return !targetRole || targetRole === 'patient';
+      if (targetRole && targetRole !== 'patient') return false;
+      // Oculta notificações de teste de push (ex.: "Teste RenoveJá")
+      const type = (n.data?.type as string) || '';
+      if (type.toLowerCase() === 'test') return false;
+      const title = (n.title || '').toLowerCase();
+      if (title.includes('teste renove')) return false;
+      return true;
     });
   }, [allNotifications]);
 
