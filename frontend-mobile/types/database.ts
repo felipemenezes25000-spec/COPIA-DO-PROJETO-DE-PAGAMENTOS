@@ -154,7 +154,12 @@ export interface RequestResponseDto {
 // PAYMENT TYPES (matches Payments/PaymentDtos.cs)
 // ============================================
 
-export type PaymentStatus = 'pending' | 'paid' | 'approved' | 'failed' | 'refunded' | 'cancelled';
+/** Status de pagamento. Deve espelhar PaymentStatus enum do backend.
+ *  Backend serializa via .ToString().ToLowerInvariant().
+ *  Valores canônicos: pending, approved, rejected, refunded.
+ *  NOTA: 'paid', 'failed', 'cancelled' NÃO existem no backend e foram removidos.
+ */
+export type PaymentStatus = 'pending' | 'approved' | 'rejected' | 'refunded';
 
 export interface PaymentResponseDto {
   id: string;
@@ -206,7 +211,7 @@ export interface DoctorListResponseDto {
   rating: number;
   totalConsultations: number;
   available: boolean;
-  approvalStatus?: string;
+  approvalStatus: string;
   birthDate?: string | null;
   cpf?: string | null;
   street?: string | null;
@@ -218,6 +223,13 @@ export interface DoctorListResponseDto {
   postalCode?: string | null;
   professionalAddress?: string | null;
   professionalPhone?: string | null;
+  professionalPostalCode?: string | null;
+  professionalStreet?: string | null;
+  professionalNumber?: string | null;
+  professionalNeighborhood?: string | null;
+  professionalComplement?: string | null;
+  professionalCity?: string | null;
+  professionalState?: string | null;
   university?: string | null;
   courses?: string | null;
   hospitalsServices?: string | null;
@@ -305,6 +317,12 @@ export interface PushTokenDto {
 // CLINICAL / FHIR-LITE TYPES (matches Clinical/ClinicalDtos.cs)
 // ============================================
 
+/** Tipos de encontro clínico (EncounterType enum, serializado como camelCase string) */
+export type EncounterTypeName = 'teleconsultation' | 'prescriptionRenewal' | 'examOrder' | 'followUp' | 'orientation';
+
+/** Tipos de documento médico (DocumentType enum, serializado como camelCase string) */
+export type DocumentTypeName = 'prescription' | 'examOrder' | 'medicalReport';
+
 export interface PatientSummaryDto {
   id: string;
   identifier: { cpf: string };
@@ -332,7 +350,7 @@ export interface PatientSummaryDto {
 
 export interface EncounterSummaryDto {
   id: string;
-  type: string;
+  type: EncounterTypeName;
   startedAt: string;
   finishedAt: string | null;
   mainIcd10Code: string | null;
@@ -340,7 +358,7 @@ export interface EncounterSummaryDto {
 
 export interface MedicalDocumentSummaryDto {
   id: string;
-  documentType: string;
+  documentType: DocumentTypeName;
   status: string;
   createdAt: string;
   signedAt: string | null;

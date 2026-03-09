@@ -152,6 +152,10 @@ builder.Services.AddControllers(options =>
 })
     .AddJsonOptions(o =>
     {
+        // Serializar enums como strings em vez de inteiros para compatibilidade com frontend.
+        // Necessário para EncounterType, DocumentType, etc. em DTOs do FHIR-Lite.
+        o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter(
+            System.Text.Json.JsonNamingPolicy.CamelCase));
         o.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
         o.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     });

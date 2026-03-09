@@ -283,9 +283,15 @@ export async function acceptConsultation(
   return apiClient.post(`/api/requests/${requestId}/accept-consultation`, {});
 }
 
+/** Resposta do start-consultation: request + aviso opcional de paciente crônico (CFM 2.314/2022). */
+export interface StartConsultationResponse {
+  request: RequestResponseDto;
+  chronicWarning: string | null;
+}
+
 /** Médico inicia a consulta (status Paid → InConsultation). O timer só começa quando ambos reportam chamada conectada. */
-export async function startConsultation(requestId: string): Promise<RequestResponseDto> {
-  return apiClient.post(`/api/requests/${requestId}/start-consultation`, {});
+export async function startConsultation(requestId: string): Promise<StartConsultationResponse> {
+  return apiClient.post<StartConsultationResponse>(`/api/requests/${requestId}/start-consultation`, {});
 }
 
 /** Médico ou paciente reporta que a chamada de vídeo está conectada (WebRTC). Quando ambos tiverem reportado, o timer começa. */
@@ -469,9 +475,16 @@ export async function transcribeTestAudio(
 // CONDUCT MANAGEMENT
 // ============================================
 
+/** Dados para atualizar conduta médica.
+ *  Espelha UpdateConductDto do backend (RequestDtos.cs).
+ */
 export interface UpdateConductData {
   conductNotes?: string | null;
   includeConductInPdf?: boolean;
+  /** Se informado, médico sobrescreve a observação automática (null = remover, string = editar). */
+  autoObservationOverride?: string | null;
+  /** Se true, aplica o override da observação. Se false/omitido, mantém a observação original. */
+  applyObservationOverride?: boolean;
 }
 
 export async function updateConduct(

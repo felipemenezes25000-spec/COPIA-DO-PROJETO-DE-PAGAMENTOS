@@ -41,6 +41,7 @@ import DoctorAIPanel from './DoctorAIPanel';
 import { VideoCallControls, VideoCallTopBar, VideoCallWaiting, ClinicalNotesModal } from './parts';
 import {
   startConsultation,
+  type StartConsultationResponse,
   finishConsultation,
   fetchRequestById,
   autoFinishConsultation,
@@ -351,11 +352,19 @@ export default function VideoCallScreenInner() {
     setTimerStarted(true);
     try {
       const result = await startConsultation(rid);
-      // Backend may or may not set consultationStartedAt immediately.
+      // Backend retorna { request, chronicWarning }.
+      const req = result.request;
+
+      // Exibir aviso de paciente crônico se aplicável (CFM 2.314/2022)
+      if (result.chronicWarning) {
+        // TODO: exibir alerta ao médico com result.chronicWarning
+        console.warn('[Consultation] Chronic warning:', result.chronicWarning);
+      }
+
       // If not set yet (waiting for both parties), we start the timer locally
       // so the doctor sees immediate feedback.
-      if (result.consultationStartedAt) {
-        setConsultationStartedAt(result.consultationStartedAt);
+      if (req.consultationStartedAt) {
+        setConsultationStartedAt(req.consultationStartedAt);
       } else {
         // Start timer locally — the server will sync later
         setConsultationStartedAt(new Date().toISOString());
