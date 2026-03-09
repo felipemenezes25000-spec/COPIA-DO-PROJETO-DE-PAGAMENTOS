@@ -148,6 +148,16 @@ Esse erro **sempre** indica desalinhamento entre o app e o Google Cloud Console.
      ```
    - Ou, se usar EAS: `eas build --platform android --profile development` (ou o perfil que usar).
 
+### Se o erro continuar: checklist completo
+
+| # | Verificação | Como conferir |
+|---|-------------|---------------|
+| 1 | **Não use Expo Go** | Login com Google **não funciona** no Expo Go. Use `npx expo run:android` (development build) ou um APK gerado pelo EAS. |
+| 2 | **Cliente Android no Google Cloud** | [Credenciais](https://console.cloud.google.com/apis/credentials) → **Criar credenciais** → **ID do cliente OAuth** → tipo **Android** → Pacote `com.renoveja.app` + SHA-1 `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25`. Se já existir, edite e confira o SHA-1. |
+| 3 | **Projeto correto** | No Google Cloud, use o projeto **renoveja-be43f** (mesmo do Firebase). |
+| 4 | **Rebuild completo** | Após qualquer alteração: `npx expo prebuild --clean` e depois `npx expo run:android`. Não basta recarregar o app. |
+| 5 | **google-services.json na raiz** | O arquivo deve existir em `frontend-mobile/google-services.json` para o Expo prebuild. |
+
 ### Referência
 
 - [Troubleshooting react-native-google-signin](https://react-native-google-signin.github.io/docs/troubleshooting)
