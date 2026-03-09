@@ -162,7 +162,7 @@ export default function DoctorDashboard() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { colors, gradients, shadows, scheme, borderRadius, spacing } = useAppTheme({ role: 'doctor' });
+  const { colors, gradients, shadows, scheme, borderRadius } = useAppTheme({ role: 'doctor' });
   const isDark = scheme === 'dark';
 
   const [queue, setQueue] = useState<RequestResponseDto[]>([]);
@@ -248,27 +248,11 @@ export default function DoctorDashboard() {
     ? (gradients.doctorHeader as [string, string, ...string[]])
     : (['#0369A1', '#0EA5E9'] as [string, string, ...string[]]);
 
-  // ─── Loading State ─────────────────────────────────────────
-  if (loading) {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <StatusBar style="light" />
-        <LinearGradient
-          colors={headerGradient}
-          style={[styles.headerSkeleton, { paddingTop: insets.top + 20 }]}
-        />
-        <View style={{ padding: SCREEN_PAD }}>
-          <SkeletonList count={5} />
-        </View>
-      </View>
-    );
-  }
-
   const dateStr = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long', day: 'numeric', month: 'long',
   });
 
-  // ─── Queue Item Press Handler (stable reference per item) ───
+  // ─── Hooks DEVEM vir antes de qualquer early return (Rules of Hooks) ───
   const handleQueueItemPress = useCallback(
     (item: RequestResponseDto) => {
       haptics.selection();
@@ -440,7 +424,7 @@ export default function DoctorDashboard() {
       </View>
     </>
   ), [
-    gradients, insets, colors, greetingName, displayFirst, dateStr,
+    headerGradient, insets, colors, greetingName, displayFirst, dateStr,
     isConnected, stats, hasCertificate, shadows, borderRadius, router, isDark,
   ]);
 
@@ -454,6 +438,22 @@ export default function DoctorDashboard() {
       />
     </View>
   ), []);
+
+  // ─── Loading State (após todos os hooks) ────────────────────
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar style="light" />
+        <LinearGradient
+          colors={headerGradient}
+          style={[styles.headerSkeleton, { paddingTop: insets.top + 20 }]}
+        />
+        <View style={{ padding: SCREEN_PAD }}>
+          <SkeletonList count={5} />
+        </View>
+      </View>
+    );
+  }
 
   // ─── Render ────────────────────────────────────────────────
   return (

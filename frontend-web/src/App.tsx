@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import Index from '@/pages/Index';
@@ -11,6 +12,14 @@ import AdminConfiguracoes from '@/pages/admin/AdminConfiguracoes';
 import AdminNotFound from '@/pages/admin/AdminNotFound';
 import { AdminSubdomainRedirect } from '@/components/AdminSubdomainRedirect';
 import { isAuthenticated } from '@/services/adminApi';
+import { Loader2 } from 'lucide-react';
+
+const DoctorApp = lazy(() => import('@/DoctorApp'));
+
+function isDoctorPortal(): boolean {
+  const host = window.location.hostname;
+  return host === 'medico.renovejasaude.com.br' || host.startsWith('medico.');
+}
 
 function AdminProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated()) {
@@ -19,7 +28,23 @@ function AdminProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function FallbackLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+}
+
 export default function App() {
+  if (isDoctorPortal()) {
+    return (
+      <Suspense fallback={<FallbackLoader />}>
+        <DoctorApp />
+      </Suspense>
+    );
+  }
+
   return (
     <>
       <Toaster position="top-center" richColors closeButton />

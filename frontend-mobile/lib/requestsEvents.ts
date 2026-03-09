@@ -68,7 +68,14 @@ export async function startRequestsEventsConnection(): Promise<boolean> {
       });
     });
 
-    await conn.start();
+    // Timeout 15s — Render free tier pode demorar; evita travar o app
+    const HUB_START_TIMEOUT_MS = 15_000;
+    await Promise.race([
+      conn.start(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Hub connection timeout')), HUB_START_TIMEOUT_MS)
+      ),
+    ]);
     connection = conn;
     return true;
   } catch (e) {
