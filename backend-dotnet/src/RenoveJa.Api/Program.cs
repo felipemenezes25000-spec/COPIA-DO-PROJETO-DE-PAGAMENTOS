@@ -386,6 +386,7 @@ builder.Services.AddCors(options =>
         "https://www.renovejasaude.com.br",
         "https://admin.renovejasaude.com.br",
         "https://app.renovejasaude.com.br",
+        "https://medico.renovejasaude.com.br",
         "https://validar.iti.gov.br",
         "https://h-validar.iti.gov.br",
         "https://www.validar.iti.gov.br"
@@ -416,7 +417,7 @@ builder.Services.AddCors(options =>
 
         policy.SetIsOriginAllowed(origin => IsAllowedOrigin(origin, origins))
               .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-              .WithHeaders("Authorization", "Content-Type", "Accept", "X-Requested-With", "X-Request-Id", "X-Correlation-Id")
+              .WithHeaders("Authorization", "Content-Type", "Accept", "X-Requested-With", "X-Request-Id", "X-Correlation-Id", "x-signalr-user-agent")
               .AllowCredentials();
     });
 
