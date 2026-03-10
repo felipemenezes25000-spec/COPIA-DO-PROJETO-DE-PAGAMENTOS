@@ -273,7 +273,30 @@ public class AuthService(
         if (!string.IsNullOrWhiteSpace(config?.AndroidClientId))
             allowedAudiences.Add(config.AndroidClientId);
 
-        logger.LogInformation("Google token validation: allowed audiences = {Audiences}", string.Join(", ", allowedAudiences));
+        // Decodificar o JWT para ver o audience real (sem validar)
+        try
+        {
+            var parts = request.GoogleToken.Split('.');
+            if (parts.Length >= 2)
+            {
+                var payloadBase64 = parts[1];
+                // Corrigir padding do base64
+                switch (payloadBase64.Length % 4)
+                {
+                    case 2: payloadBase64 += "=="; break;
+                    case 3: payloadBase64 += "="; break;
+                }
+                var payloadJson = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(payloadBase64));
+                var jsonDoc = System.Text.Json.JsonDocument.Parse(payloadJson);
+                var aud = jsonDoc.RootElement.TryGetProperty("aud", out var audProp) ? audProp.GetString() : "N/A";
+                var iss = jsonDoc.RootElement.TryGetProperty("iss", out var issProp) ? issProp.GetString() : "N/A";
+                logger.LogWarning("Google token DEBUG: aud={Aud}, iss={Iss}, allowedAudiences={Audiences}", aud, iss, string.Join(", ", allowedAudiences));
+            }
+        }
+        catch (Exception debugEx)
+        {
+            logger.LogWarning("Could not decode token for debug: {Message}", debugEx.Message);
+        }
 
         GoogleJsonWebSignature.Payload payload;
         try
