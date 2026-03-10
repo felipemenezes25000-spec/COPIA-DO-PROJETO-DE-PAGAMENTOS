@@ -7,6 +7,7 @@ using RenoveJa.Application.Exceptions;
 using RenoveJa.Application.Interfaces;
 using RenoveJa.Domain.Entities;
 using RenoveJa.Domain.Enums;
+using Microsoft.Extensions.Logging;
 using RenoveJa.Domain.Interfaces;
 
 namespace RenoveJa.Application.Services.Auth;
@@ -24,7 +25,8 @@ public class AuthService(
     IConsentRepository consentRepository,
     IStorageService storageService,
     IOptions<SmtpConfig> smtpConfig,
-    IOptions<GoogleAuthConfig> googleAuthConfig) : IAuthService
+    IOptions<GoogleAuthConfig> googleAuthConfig,
+    ILogger<AuthService> logger) : IAuthService
 {
     /// <summary>
     /// Registra um novo paciente na plataforma.
@@ -271,9 +273,15 @@ public class AuthService(
             var settings = new GoogleJsonWebSignature.ValidationSettings { Audience = new[] { clientId } };
             payload = await GoogleJsonWebSignature.ValidateAsync(request.GoogleToken, settings);
         }
-        catch (InvalidJwtException)
+        catch (InvalidJwtException ex)
         {
+            logger.LogWarning("Google token validation failed (InvalidJwt): {Message}. ClientId used: {ClientId}", ex.Message, clientId);
             throw new UnauthorizedAccessException("Token do Google inválido ou expirado.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Google token validation unexpected error. ClientId used: {ClientId}", clientId);
+            throw new UnauthorizedAccessException("Falha ao validar token do Google: " + ex.Message);
         }
 
         var email = payload.Email;
