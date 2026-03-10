@@ -277,8 +277,11 @@ export async function updateDoctorProfile(payload: Partial<DoctorProfile>) {
 
 export async function updateAvatar(file: File) {
   const formData = new FormData();
-  formData.append('file', file);
-  const res = await authFetch('/api/auth/avatar', { method: 'PATCH', body: formData });
+  formData.append('avatar', file);
+  const res = await authFetch('/api/auth/avatar', {
+    method: 'PATCH',
+    body: formData,
+  });
   if (!res.ok) throw new Error('Erro ao atualizar avatar');
   return res.json();
 }

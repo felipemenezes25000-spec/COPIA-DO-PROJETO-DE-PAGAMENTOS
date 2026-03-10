@@ -89,21 +89,27 @@ jobs:
             echo "⚠ ANDROID_KEYSTORE_BASE64 não configurado. Build release usará debug signing."
           else
             echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release-keystore.jks
-            echo "" >> android/gradle.properties
-            echo "RELEASE_STORE_FILE=release-keystore.jks" >> android/gradle.properties
-            echo "RELEASE_STORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> android/gradle.properties
-            echo "RELEASE_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}" >> android/gradle.properties
-            echo "RELEASE_KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}" >> android/gradle.properties
-            echo "✓ Keystore configurado para signing release"
+            node -e 'const fs=require("fs"),f="android/app/build.gradle",sp=process.env.STORE_PASS,ka=process.env.KEY_ALIAS,kp=process.env.KEY_PASS;let g=fs.readFileSync(f,"utf8");const b="    signingConfigs {\n        release {\n            storeFile file(\"release-keystore.jks\")\n            storePassword \""+sp+"\"\n            keyAlias \""+ka+"\"\n            keyPassword \""+kp+"\"\n        }\n    }";g=g.replace(/(android\s*\{)/,"$1\n"+b);g.includes("signingConfig signingConfigs.debug")?g=g.replace("signingConfig signingConfigs.debug","signingConfig signingConfigs.release"):g=g.replace(/buildTypes\s*\{/,"buildTypes {\n        release {\n            signingConfig signingConfigs.release\n        }");fs.writeFileSync(f,g);console.log("✓ signingConfigs injected")'
           fi
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Increase Gradle JVM memory
+        run: |
+          # Fix OutOfMemoryError: Metaspace during lintVitalAnalyzeRelease
+          sed -i 's/^org.gradle.jvmargs=.*//' android/gradle.properties
+          echo "" >> android/gradle.properties
+          echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError" >> android/gradle.properties
+          echo "✓ JVM args configurados: 4GB heap, 512MB Metaspace"
 
       - name: Build APK
         run: |
           cd android
           if [ "${{ github.event.inputs.build_type }}" = "release" ]; then
-            ./gradlew assembleRelease --no-daemon
+            ./gradlew assembleRelease --no-daemon -x lintVitalAnalyzeRelease
           else
             ./gradlew assembleDebug --no-daemon
           fi
