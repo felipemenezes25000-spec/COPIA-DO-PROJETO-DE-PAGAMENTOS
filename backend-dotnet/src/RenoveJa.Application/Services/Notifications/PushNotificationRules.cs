@@ -38,9 +38,10 @@ public static class PushNotificationRules
         var reqIdStr = requestId.ToString();
         var reqType = requestType.ToString().ToLowerInvariant();
         var statusStr = status.ToString();
+        var userIdShort = userId.ToString("N")[..8];
         var collapseKey = string.IsNullOrEmpty(collapseKeySuffix)
-            ? $"req_{reqIdStr}_{statusStr}".Replace(" ", "_")
-            : $"req_{reqIdStr}_{collapseKeySuffix}";
+            ? $"req_{reqIdStr}_{statusStr}_{userIdShort}".Replace(" ", "_")
+            : $"req_{reqIdStr}_{collapseKeySuffix}_{userIdShort}";
         var deepLink = string.IsNullOrEmpty(deepLinkSuffix)
             ? $"renoveja://request-detail/{reqIdStr}"
             : deepLinkSuffix.StartsWith("renoveja://") ? deepLinkSuffix : $"renoveja://{deepLinkSuffix}";

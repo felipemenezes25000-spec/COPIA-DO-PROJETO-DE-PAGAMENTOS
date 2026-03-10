@@ -12,7 +12,7 @@ public interface INotificationService
 {
     Task<List<NotificationResponseDto>> GetUserNotificationsAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<PagedResponse<NotificationResponseDto>> GetUserNotificationsPagedAsync(Guid userId, int page, int pageSize, CancellationToken cancellationToken = default);
-    Task<NotificationResponseDto> MarkAsReadAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<NotificationResponseDto> MarkAsReadAsync(Guid id, Guid userId, CancellationToken cancellationToken = default);
     Task MarkAllAsReadAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<int> GetUnreadCountAsync(Guid userId, CancellationToken cancellationToken = default);
 }
@@ -51,15 +51,19 @@ public class NotificationService(INotificationRepository notificationRepository)
     }
 
     /// <summary>
-    /// Marca uma notificação como lida.
+    /// Marca uma notificação como lida. Valida que pertence ao usuário autenticado.
     /// </summary>
     public async Task<NotificationResponseDto> MarkAsReadAsync(
         Guid id,
+        Guid userId,
         CancellationToken cancellationToken = default)
     {
         var notification = await notificationRepository.GetByIdAsync(id, cancellationToken);
         if (notification == null)
             throw new KeyNotFoundException("Notification not found");
+
+        if (notification.UserId != userId)
+            throw new UnauthorizedAccessException("You can only mark your own notifications as read");
 
         notification.MarkAsRead();
         notification = await notificationRepository.UpdateAsync(notification, cancellationToken);

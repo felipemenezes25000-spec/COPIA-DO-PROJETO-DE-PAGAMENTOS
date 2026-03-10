@@ -50,7 +50,7 @@ public class NotificationsController(INotificationService notificationService, I
         CancellationToken cancellationToken)
     {
         var userId = GetUserId();
-        var notification = await notificationService.MarkAsReadAsync(id, cancellationToken);
+        var notification = await notificationService.MarkAsReadAsync(id, userId, cancellationToken);
         return Ok(notification);
     }
 

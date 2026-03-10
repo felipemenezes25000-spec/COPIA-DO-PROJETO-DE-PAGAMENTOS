@@ -259,14 +259,15 @@ public class NotificationServiceTests
     [Fact]
     public async Task MarkAsReadAsync_ShouldMarkAndReturn()
     {
-        var notif = Notification.Create(Guid.NewGuid(), "T", "M");
+        var userId = Guid.NewGuid();
+        var notif = Notification.Create(userId, "T", "M");
 
         _notifRepoMock.Setup(r => r.GetByIdAsync(notif.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(notif);
         _notifRepoMock.Setup(r => r.UpdateAsync(It.IsAny<Notification>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Notification n, CancellationToken _) => n);
 
-        var result = await _sut.MarkAsReadAsync(notif.Id);
+        var result = await _sut.MarkAsReadAsync(notif.Id, userId);
 
         result.Read.Should().BeTrue();
         result.Id.Should().Be(notif.Id);
@@ -278,8 +279,22 @@ public class NotificationServiceTests
         _notifRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Notification?)null);
 
-        Func<Task> act = () => _sut.MarkAsReadAsync(Guid.NewGuid());
+        Func<Task> act = () => _sut.MarkAsReadAsync(Guid.NewGuid(), Guid.NewGuid());
         await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
+
+    [Fact]
+    public async Task MarkAsReadAsync_ShouldThrow_WhenNotOwner()
+    {
+        var ownerId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        var notif = Notification.Create(ownerId, "T", "M");
+
+        _notifRepoMock.Setup(r => r.GetByIdAsync(notif.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(notif);
+
+        Func<Task> act = () => _sut.MarkAsReadAsync(notif.Id, otherUserId);
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
     }
 
     [Fact]
