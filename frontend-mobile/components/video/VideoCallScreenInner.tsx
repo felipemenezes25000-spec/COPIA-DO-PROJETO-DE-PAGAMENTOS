@@ -47,11 +47,12 @@ import {
   getTimeBankBalance,
 } from '../../lib/api';
 import { createDailyRoom, fetchJoinToken } from '../../lib/api-daily';
-import { apiClient } from '../../lib/api-client';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDailyCall } from '../../hooks/useDailyCall';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
 import { useRequestUpdated } from '../../hooks/useRequestUpdated';
+import { useVideoCallEvents } from '../../hooks/useVideoCallEvents';
+import { useConsultationTimer } from '../../hooks/useConsultationTimer';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const PANEL_WIDTH = Math.min(380, SCREEN_W * 0.9);
@@ -83,9 +84,18 @@ export default function VideoCallScreenInner() {
   const [roomUrl, setRoomUrl] = useState<string | null>(null);
   const [meetingToken, setMeetingToken] = useState<string | null>(null);
   const [contractedMinutes, setContractedMinutes] = useState<number | null>(null);
-  const [callSeconds, setCallSeconds] = useState(0);
   const [consultationStartedAt, setConsultationStartedAt] = useState<string | null>(null);
   const [requestStatus, setRequestStatus] = useState<string | null>(null);
+
+  // Auto-finish callback ref (set after doEnd is defined below)
+  const doEndRef = useRef<(autoFinish?: boolean) => Promise<void>>(async () => {});
+
+  // Server-synced timer + countdown alerts — extracted hook
+  const { callSeconds, setCallSeconds } = useConsultationTimer(
+    consultationStartedAt,
+    contractedMinutes,
+    () => doEndRef.current(true),
+  );
 
   // Reset state on rid change — enables patient rejoin without stale state
   useEffect(() => {
@@ -95,23 +105,15 @@ export default function VideoCallScreenInner() {
     setRoomUrl(null);
     setMeetingToken(null);
     setCallSeconds(0);
-  }, [rid]);
+  }, [rid, setCallSeconds]);
   const connReportedRef = useRef(false);
-  const alertedRef = useRef<Set<number>>(new Set());
-  const autoFinishedRef = useRef(false);
   /** Prevents double router.back() when leave() triggers both 'left-meeting' and .then() callback */
   const leavingRef = useRef(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Reset all refs on mount — critical for patient rejoin (component may remount with same params)
+  // Reset refs on mount — critical for patient rejoin (component may remount with same params)
   useEffect(() => {
     connReportedRef.current = false;
-    alertedRef.current = new Set();
-    autoFinishedRef.current = false;
     leavingRef.current = false;
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
   }, [rid]);
 
   // Doctor: timer control — médico controla quando iniciar a contagem
@@ -125,25 +127,16 @@ export default function VideoCallScreenInner() {
   // Transcrição: Whisper via useAudioRecorder (ambos gravam microfone, backend transcreve)
   const canStartRecording = consultationStartedAt || requestStatus === 'in_consultation' || requestStatus === 'paid';
 
-  // Anamnesis & Transcript (doctor)
+  // Anamnesis & Transcript (doctor) — SignalR real-time via extracted hook
+  const {
+    anamnesis, suggestions, evidence,
+    isAiActive, transcriptionError,
+    connectSignalR, disconnectSignalR,
+  } = useVideoCallEvents(rid, isDoctor);
+
   const [panelOpen, setPanelOpen] = useState(false);
   const panelAnim = useRef(new Animated.Value(0)).current;
-  const [, setTranscript] = useState('');
-  const [anamnesis, setAnamnesis] = useState<Record<string, unknown> | null>(null);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [evidence, setEvidence] = useState<{
-    title: string;
-    abstract: string;
-    source: string;
-    translatedAbstract?: string;
-    relevantExcerpts?: string[];
-    clinicalRelevance?: string;
-    provider?: string;
-  }[]>([]);
-  const [isAiActive, setIsAiActive] = useState(false);
-  const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
   const [showBackgroundHint, setShowBackgroundHint] = useState(true);
-  const signalRRef = useRef<any>(null);
 
   // Clinical notes modal
   const [showNotes, setShowNotes] = useState(false);
@@ -202,90 +195,7 @@ export default function VideoCallScreenInner() {
     setPanelOpen(p => !p);
   }, [panelOpen, panelAnim]);
 
-  // ── SignalR for real-time transcript/anamnesis ──
-
-  const connectSignalR = useCallback(async () => {
-    if (!rid || !isDoctor) return;
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic import for SignalR
-      const signalR = require('@microsoft/signalr');
-      let apiBase = apiClient.getBaseUrl(); // e.g. 'http://192.168.x.x:5000' or '' for web
-      apiBase = apiBase.replace(/\/api\/?$/, '');
-      // Get token from stored auth (same key used by api-client.ts)
-      let authToken = '';
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports -- conditional native module
-        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-        authToken = (await AsyncStorage.getItem('@renoveja:auth_token')) ?? '';
-      } catch {}
-
-      if (!authToken) {
-        console.warn('[SignalR] No auth token found — cannot connect');
-        return;
-      }
-
-      const builder = new signalR.HubConnectionBuilder()
-        .withUrl(`${apiBase}/hubs/video`, {
-          accessTokenFactory: () => authToken,
-        })
-        .withAutomaticReconnect();
-      if (signalR.LogLevel != null) {
-        const logLevel = __DEV__ ? signalR.LogLevel.Information : signalR.LogLevel.Warning;
-        builder.configureLogging(logLevel);
-      }
-      const conn = builder.build();
-
-      conn.on('TranscriptUpdate', (data: any) => {
-        const text = data?.fullText ?? data?.FullText ?? '';
-        if (text) {
-          setTranscript(text);
-          setIsAiActive(true);
-          setTranscriptionError(null);
-        }
-      });
-
-      conn.on('AnamnesisUpdate', (data: any) => {
-        const json = data?.anamnesisJson ?? data?.AnamnesisJson ?? '';
-        try { if (json) setAnamnesis(JSON.parse(json)); } catch {}
-      });
-
-      conn.on('SuggestionUpdate', (data: any) => {
-        const items = data?.suggestions ?? data?.Suggestions ?? [];
-        if (Array.isArray(items)) setSuggestions(items);
-      });
-
-      conn.on('TranscriptionError', (data: any) => {
-        const msg = data?.message ?? data?.Message ?? 'Erro na transcrição';
-        setTranscriptionError(msg);
-      });
-
-      conn.on('EvidenceUpdate', (data: any) => {
-        const items = data?.items ?? data?.Items ?? [];
-        if (Array.isArray(items)) {
-          setEvidence(items.map((e: any) => ({
-            title: e?.title ?? e?.Title ?? '',
-            abstract: e?.abstract ?? e?.Abstract ?? '',
-            source: e?.source ?? e?.Source ?? '',
-            translatedAbstract: e?.translatedAbstract ?? e?.TranslatedAbstract,
-            relevantExcerpts: e?.relevantExcerpts ?? e?.RelevantExcerpts ?? undefined,
-            clinicalRelevance: e?.clinicalRelevance ?? e?.ClinicalRelevance ?? undefined,
-            provider: e?.provider ?? e?.Provider ?? 'PubMed',
-          })));
-        }
-      });
-
-      await conn.start();
-      await conn.invoke('JoinRoom', rid);
-      signalRRef.current = conn;
-    } catch (e) {
-      console.warn('SignalR connection failed (non-critical):', e);
-    }
-  }, [rid, isDoctor]);
-
-  const disconnectSignalR = useCallback(async () => {
-    try { await signalRRef.current?.stop(); } catch {}
-    signalRRef.current = null;
-  }, []);
+  // SignalR connectSignalR / disconnectSignalR provided by useVideoCallEvents hook above
 
   // ── Init: create room + fetch token ──
 
@@ -431,17 +341,7 @@ export default function VideoCallScreenInner() {
   }, [isDoctor, rid]);
   useRequestUpdated(isDoctor ? undefined : rid, refetchRequestForPatient);
 
-  // Server-synced timer (médico e paciente usam consultationStartedAt do backend)
-  useEffect(() => {
-    if (!consultationStartedAt) return;
-    const update = () => {
-      const e = Math.floor((Date.now() - new Date(consultationStartedAt).getTime()) / 1000);
-      setCallSeconds(Math.max(0, e));
-    };
-    update();
-    timerRef.current = setInterval(update, 1000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [consultationStartedAt]);
+  // Server-synced timer + countdown alerts handled by useConsultationTimer hook
 
   // Patient: poll consultationStartedAt — 500ms até timer iniciar (evita timer zerado por delay)
   useEffect(() => {
@@ -459,26 +359,7 @@ export default function VideoCallScreenInner() {
     return () => clearInterval(poll);
   }, [isDoctor, rid, consultationStartedAt]);
 
-  // Countdown / Auto-finish
-  const doEndRef = useRef<(autoFinish?: boolean) => Promise<void>>(async () => {});
-  useEffect(() => {
-    if (!contractedMinutes || contractedMinutes <= 0) return;
-    const rem = contractedMinutes * 60 - callSeconds;
-    if (rem === 120 && !alertedRef.current.has(120)) {
-      alertedRef.current.add(120);
-      Alert.alert('Atenção', 'A consulta termina em 2 minutos.');
-    }
-    if (rem === 60 && !alertedRef.current.has(60)) {
-      alertedRef.current.add(60);
-      Alert.alert('Atenção', 'A consulta termina em 1 minuto.');
-    }
-    if (rem <= 0 && !autoFinishedRef.current) {
-      autoFinishedRef.current = true;
-      Alert.alert('Tempo esgotado', 'O tempo contratado expirou.', [{
-        text: 'OK', onPress: () => doEndRef.current(true),
-      }]);
-    }
-  }, [callSeconds, contractedMinutes]);
+  // Countdown / auto-finish handled by useConsultationTimer hook
 
   // Dica UX: esconder após 8s (usuário pode usar o celular durante a chamada)
   useEffect(() => {
@@ -510,7 +391,6 @@ export default function VideoCallScreenInner() {
     if (Platform.OS === 'android' && ExpoPip.setPictureInPictureParams) {
       ExpoPip.setPictureInPictureParams({ autoEnterEnabled: false });
     }
-    if (timerRef.current) clearInterval(timerRef.current);
     audioRecorderRef.current.stop().catch(() => {});
     disconnectSignalR();
   }, [disconnectSignalR]);
