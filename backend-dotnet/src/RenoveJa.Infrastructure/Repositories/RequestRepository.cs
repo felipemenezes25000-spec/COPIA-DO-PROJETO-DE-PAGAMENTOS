@@ -27,6 +27,20 @@ public class RequestRepository(SupabaseClient supabase) : IRequestRepository
         return model != null ? MapToDomain(model) : null;
     }
 
+    public async Task<MedicalRequest?> GetByShortCodeAsync(string shortCode, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(shortCode) || shortCode.Length < 8)
+            return null;
+        var normalized = shortCode.ToLowerInvariant().Trim();
+        if (normalized.Length > 12)
+            normalized = normalized[..12];
+        var model = await supabase.GetSingleAsync<RequestModel>(
+            TableName,
+            filter: $"short_code=eq.{normalized}",
+            cancellationToken: cancellationToken);
+        return model != null ? MapToDomain(model) : null;
+    }
+
     public async Task<List<MedicalRequest>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         var models = await supabase.GetAllAsync<RequestModel>(
@@ -320,11 +334,15 @@ public class RequestRepository(SupabaseClient supabase) : IRequestRepository
             conductUpdatedBy: model.ConductUpdatedBy);
     }
 
+    private static string ToShortCode(Guid id) =>
+        id.ToString("N")[..12].ToLowerInvariant();
+
     private static RequestModel MapToModel(MedicalRequest request)
     {
         return new RequestModel
         {
             Id = request.Id,
+            ShortCode = ToShortCode(request.Id),
             PatientId = request.PatientId,
             PatientName = request.PatientName,
             DoctorId = request.DoctorId,

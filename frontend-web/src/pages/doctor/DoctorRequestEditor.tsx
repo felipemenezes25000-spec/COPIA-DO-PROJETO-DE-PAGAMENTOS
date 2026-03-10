@@ -94,7 +94,7 @@ export default function DoctorRequestEditor() {
       await handleSave();
       const url = request.type === 'exam' ? await getPreviewExamPdf(id) : await getPreviewPdf(id);
       setPdfUrl(url);
-    } catch (err) {
+    } catch {
       toast.error('Erro ao gerar preview');
     } finally {
       setPdfLoading(false);

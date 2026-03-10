@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { getRequests, type MedicalRequest } from '@/services/doctorApi';
+import { toShortId } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import {
   Loader2, Search, FileText, FlaskConical, Stethoscope, Filter,
@@ -210,7 +211,7 @@ export default function DoctorRequests() {
                 >
                   <Card
                     className="shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer border-border/50 hover:border-border group"
-                    onClick={() => navigate(`/pedidos/${req.id}`)}
+                    onClick={() => navigate(`/pedidos/${toShortId(req.id)}`)}
                   >
                     <CardContent className="p-4 sm:p-5">
                       <div className="flex items-center gap-4">

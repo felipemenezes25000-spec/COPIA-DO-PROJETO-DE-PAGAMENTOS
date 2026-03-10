@@ -1,7 +1,12 @@
 /**
- * API do portal do médico.
+ * API do portal do médico — VERSÃO COMPLETA.
+ * Inclui TODOS os endpoints do backend: stats, consultation flow, AI,
+ * recordings, care plans, doctor notes, triage, e mais.
+ *
  * Usa VITE_API_URL como base, token JWT em localStorage.
  */
+
+// ── Types ──
 
 export interface DoctorUser {
   id: string;
@@ -38,10 +43,10 @@ export interface MedicalRequest {
   medications?: Medication[];
   exams?: ExamItem[];
   images?: string[];
+  prescriptionImages?: string[];
+  examImages?: string[];
   notes?: string;
   doctorConductNotes?: string;
-  aiConductSuggestion?: string;
-  aiSuggestedExams?: string;
   prescriptionKind?: string;
   autoObservation?: string;
   anamnesisData?: Record<string, unknown>;
@@ -49,6 +54,25 @@ export interface MedicalRequest {
   signedDocumentUrl?: string;
   consultationAcceptedAt?: string;
   videoRoomUrl?: string;
+  rejectionReason?: string;
+  // AI fields
+  aiSummaryForDoctor?: string;
+  aiExtractedJson?: string;
+  aiRiskLevel?: string;
+  aiUrgency?: string;
+  aiReadabilityOk?: boolean;
+  aiMessageToUser?: string;
+  aiConductSuggestion?: string;
+  aiSuggestedExams?: string;
+  // Consultation time
+  consultationType?: string;
+  contractedMinutes?: number;
+  consultationStartedAt?: string;
+  doctorCallConnectedAt?: string;
+  patientCallConnectedAt?: string;
+  // Access
+  accessCode?: string;
+  signedAt?: string;
 }
 
 export interface Medication {
@@ -90,6 +114,33 @@ export interface Specialty {
   id: string;
   name: string;
 }
+
+export interface DoctorStats {
+  pendingCount: number;
+  inReviewCount: number;
+  completedCount: number;
+  totalEarnings: number;
+}
+
+export interface ConsultationSummary {
+  anamnesis?: string;
+  plan?: string;
+}
+
+export interface DoctorNote {
+  noteType: string;
+  content: string;
+  requestId?: string;
+}
+
+export interface Recording {
+  id: string;
+  duration?: number;
+  startedAt?: string;
+  status?: string;
+}
+
+// ── API Base & Auth ──
 
 function getApiBase(): string {
   const env = (import.meta.env.VITE_API_URL ?? '').trim().replace(/\/$/, '');
@@ -167,30 +218,6 @@ export async function loginDoctor(email: string, password: string) {
   return data;
 }
 
-export async function registerDoctor(payload: {
-  name: string;
-  email: string;
-  password: string;
-  phone: string;
-  cpf: string;
-  crm: string;
-  crmState: string;
-  specialtyId: string;
-}) {
-  const base = getApiBase();
-  if (!base) throw new Error('URL da API não configurada.');
-  const res = await fetch(`${base}/api/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...payload, role: 'doctor' }),
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || 'Erro ao criar conta');
-  }
-  return res.json();
-}
-
 export async function registerDoctorFull(payload: {
   name: string;
   email: string;
@@ -225,10 +252,6 @@ export function logoutDoctor() {
   window.location.href = '/login';
 }
 
-export function isDoctorAuthenticated(): boolean {
-  return !!getToken();
-}
-
 export async function getMe(): Promise<DoctorUser> {
   const res = await authFetch('/api/auth/me');
   if (!res.ok) throw new Error('Erro ao buscar perfil');
@@ -255,10 +278,7 @@ export async function updateDoctorProfile(payload: Partial<DoctorProfile>) {
 export async function updateAvatar(file: File) {
   const formData = new FormData();
   formData.append('file', file);
-  const res = await authFetch('/api/auth/avatar', {
-    method: 'PATCH',
-    body: formData,
-  });
+  const res = await authFetch('/api/auth/avatar', { method: 'PATCH', body: formData });
   if (!res.ok) throw new Error('Erro ao atualizar avatar');
   return res.json();
 }
@@ -303,6 +323,16 @@ export async function getRequestById(id: string): Promise<MedicalRequest> {
   return res.json();
 }
 
+// ── NEW: Stats ──
+
+export async function getDoctorStats(): Promise<DoctorStats> {
+  const res = await authFetch('/api/requests/stats');
+  if (!res.ok) throw new Error('Erro ao buscar estatísticas');
+  return res.json();
+}
+
+// ── Request Actions ──
+
 export async function approveRequest(id: string) {
   const res = await authFetch(`/api/requests/${id}/approve`, { method: 'POST' });
   if (!res.ok) throw new Error('Erro ao aprovar');
@@ -333,6 +363,88 @@ export async function acceptConsultation(id: string) {
   return res.json();
 }
 
+// ── NEW: Consultation Flow ──
+
+export async function startConsultation(id: string) {
+  const res = await authFetch(`/api/requests/${id}/start-consultation`, { method: 'POST' });
+  if (!res.ok) throw new Error('Erro ao iniciar consulta');
+  return res.json();
+}
+
+export async function reportCallConnected(id: string) {
+  const res = await authFetch(`/api/requests/${id}/report-call-connected`, { method: 'POST' });
+  if (!res.ok) throw new Error('Erro ao reportar conexão');
+  return res.json();
+}
+
+export async function finishConsultation(id: string, payload?: { conductNotes?: string }) {
+  const res = await authFetch(`/api/requests/${id}/finish-consultation`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {}),
+  });
+  if (!res.ok) throw new Error('Erro ao finalizar consulta');
+  return res.json();
+}
+
+export async function saveConsultationSummary(id: string, payload: ConsultationSummary) {
+  const res = await authFetch(`/api/requests/${id}/save-consultation-summary`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error('Erro ao salvar resumo');
+  return res.json();
+}
+
+export async function autoFinishConsultation(id: string) {
+  const res = await authFetch(`/api/requests/${id}/auto-finish-consultation`, { method: 'POST' });
+  if (!res.ok) throw new Error('Erro ao auto-finalizar');
+  return res.json();
+}
+
+// ── NEW: AI Re-analysis ──
+
+export async function reanalyzePrescription(id: string) {
+  const res = await authFetch(`/api/requests/${id}/reanalyze-prescription`, { method: 'POST' });
+  if (!res.ok) throw new Error('Erro ao reanalisar receita');
+  return res.json();
+}
+
+export async function reanalyzeExam(id: string) {
+  const res = await authFetch(`/api/requests/${id}/reanalyze-exam`, { method: 'POST' });
+  if (!res.ok) throw new Error('Erro ao reanalisar exame');
+  return res.json();
+}
+
+export async function reanalyzeAsDoctor(id: string) {
+  const res = await authFetch(`/api/requests/${id}/reanalyze-as-doctor`, { method: 'POST' });
+  if (!res.ok) throw new Error('Erro ao reanalisar como médico');
+  return res.json();
+}
+
+// ── NEW: Recordings ──
+
+export async function getRecordings(id: string): Promise<{ recordings: Recording[] }> {
+  const res = await authFetch(`/api/requests/${id}/recordings`);
+  if (!res.ok) throw new Error('Erro ao buscar gravações');
+  return res.json();
+}
+
+export async function getTranscriptDownloadUrl(id: string): Promise<{ url: string }> {
+  const res = await authFetch(`/api/requests/${id}/transcript-download-url`);
+  if (!res.ok) throw new Error('Erro ao buscar transcrição');
+  return res.json();
+}
+
+// ── NEW: Time Bank ──
+
+export async function getTimeBank() {
+  const res = await authFetch('/api/requests/time-bank');
+  if (!res.ok) throw new Error('Erro ao buscar banco de horas');
+  return res.json();
+}
+
+// ── Conduct ──
+
 export async function updateConduct(id: string, payload: { conductNotes: string; includeConductInPdf?: boolean }) {
   const res = await authFetch(`/api/requests/${id}/conduct`, {
     method: 'PUT',
@@ -341,6 +453,8 @@ export async function updateConduct(id: string, payload: { conductNotes: string;
   if (!res.ok) throw new Error('Erro ao atualizar conduta');
   return res.json();
 }
+
+// ── Prescription/Exam Content ──
 
 export async function updatePrescriptionContent(id: string, payload: {
   medications?: Medication[];
@@ -384,32 +498,34 @@ export async function validatePrescription(id: string) {
   return res.json();
 }
 
-export async function saveConsultationSummary(id: string, payload: { clinicalNote?: string; anamnesis?: string }) {
-  const res = await authFetch(`/api/requests/${id}/save-consultation-summary`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error('Erro ao salvar resumo');
-  return res.json();
-}
-
 // ── Patients ──
 
 export async function getPatientProfile(patientId: string): Promise<PatientProfile> {
-  const res = await authFetch(`/api/patients/${patientId}/profile-for-doctor`);
+  const res = await authFetch(`/api/requests/by-patient/${patientId}/profile`);
   if (!res.ok) throw new Error('Erro ao buscar paciente');
   return res.json();
 }
 
 export async function getPatientRequests(patientId: string) {
-  const res = await authFetch(`/api/patients/${patientId}/requests`);
+  const res = await authFetch(`/api/requests/by-patient/${patientId}`);
   if (!res.ok) throw new Error('Erro ao buscar histórico');
   return res.json();
 }
 
 export async function getPatientClinicalSummary(patientId: string) {
-  const res = await authFetch(`/api/patients/${patientId}/clinical-summary`);
+  const res = await authFetch(`/api/requests/by-patient/${patientId}/summary`);
   if (!res.ok) throw new Error('Erro ao buscar resumo clínico');
+  return res.json();
+}
+
+// ── NEW: Doctor Notes ──
+
+export async function addDoctorNote(patientId: string, note: DoctorNote) {
+  const res = await authFetch(`/api/requests/by-patient/${patientId}/doctor-notes`, {
+    method: 'POST',
+    body: JSON.stringify(note),
+  });
+  if (!res.ok) throw new Error('Erro ao adicionar nota');
   return res.json();
 }
 
@@ -452,10 +568,7 @@ export async function uploadCertificate(file: File, password: string) {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('password', password);
-  const res = await authFetch('/api/certificates/upload', {
-    method: 'POST',
-    body: formData,
-  });
+  const res = await authFetch('/api/certificates/upload', { method: 'POST', body: formData });
   if (!res.ok) throw new Error('Erro ao enviar certificado');
   return res.json();
 }
@@ -463,7 +576,7 @@ export async function uploadCertificate(file: File, password: string) {
 // ── Video ──
 
 export async function createVideoRoom(requestId: string) {
-  const res = await authFetch(`/api/video/room`, {
+  const res = await authFetch('/api/video/rooms', {
     method: 'POST',
     body: JSON.stringify({ requestId }),
   });
@@ -471,9 +584,65 @@ export async function createVideoRoom(requestId: string) {
   return res.json();
 }
 
-export async function getVideoToken(requestId: string) {
-  const res = await authFetch(`/api/video/token?requestId=${requestId}`);
+export async function getJoinToken(requestId: string) {
+  const res = await authFetch('/api/video/join-token', {
+    method: 'POST',
+    body: JSON.stringify({ requestId }),
+  });
   if (!res.ok) throw new Error('Erro ao obter token de vídeo');
+  return res.json();
+}
+
+export async function getVideoRoom(requestId: string) {
+  const res = await authFetch(`/api/video/by-request/${requestId}`);
+  if (!res.ok) return null;
+  return res.json();
+}
+
+// ── NEW: Consultation Transcription ──
+
+export async function transcribeText(requestId: string, text: string, speaker: 'medico' | 'paciente', startTimeSeconds?: number) {
+  const res = await authFetch('/api/consultation/transcribe-text', {
+    method: 'POST',
+    body: JSON.stringify({ requestId, text, speaker, startTimeSeconds }),
+  });
+  if (!res.ok) throw new Error('Erro na transcrição');
+  return res.json();
+}
+
+// ── NEW: AI Assistant ──
+
+export async function getAssistantNextAction(requestId?: string, status?: string, requestType?: string) {
+  const res = await authFetch('/api/assistant/next-action', {
+    method: 'POST',
+    body: JSON.stringify({ requestId, status, requestType }),
+  });
+  if (!res.ok) throw new Error('Erro ao buscar ação');
+  return res.json();
+}
+
+// ── NEW: Care Plans ──
+
+export async function getExamSuggestions(consultationId: string) {
+  const res = await authFetch(`/api/care-plans/consultations/${consultationId}/ai/exam-suggestions`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function generateExamSuggestions(consultationId: string) {
+  const res = await authFetch(`/api/care-plans/consultations/${consultationId}/ai/exam-suggestions`, { method: 'POST' });
+  if (!res.ok) throw new Error('Erro ao gerar sugestões');
+  return res.json();
+}
+
+// ── NEW: Triage ──
+
+export async function enrichTriage(payload: { symptoms?: string; requestType?: string }) {
+  const res = await authFetch('/api/triage/enrich', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error('Erro na triagem');
   return res.json();
 }
 
@@ -509,4 +678,20 @@ export async function fetchAddressByCep(cep: string) {
     city: data.localidade,
     state: data.uf,
   };
+}
+
+// ── Prescription Images ──
+
+export async function getPrescriptionImage(id: string, index: number): Promise<string> {
+  const res = await authFetch(`/api/requests/${id}/prescription-image/${index}`);
+  if (!res.ok) throw new Error('Erro ao buscar imagem');
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}
+
+export async function getExamImage(id: string, index: number): Promise<string> {
+  const res = await authFetch(`/api/requests/${id}/exam-image/${index}`);
+  if (!res.ok) throw new Error('Erro ao buscar imagem');
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
 }

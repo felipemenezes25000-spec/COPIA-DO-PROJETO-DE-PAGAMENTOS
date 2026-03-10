@@ -576,17 +576,30 @@ public class RequestsController(
     }
 
     /// <summary>
-    /// Obtém uma solicitação pelo ID. Somente o paciente ou o médico da solicitação podem acessar.
+    /// Obtém uma solicitação pelo ID ou short_code. Aceita UUID completo ou código curto (12 hex).
+    /// Somente o paciente ou o médico da solicitação podem acessar.
     /// </summary>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetRequest(
-        Guid id,
+        string id,
         CancellationToken cancellationToken)
     {
+        var resolvedId = await ResolveRequestIdAsync(id, cancellationToken);
+        if (resolvedId == null)
+            return NotFound();
+
         var userId = GetUserId();
-        var request = await requestService.GetRequestByIdAsync(id, userId, cancellationToken);
-        _ = auditEventService.LogReadAsync(userId, "Request", id, "api", HttpContext.Connection.RemoteIpAddress?.ToString(), HttpContext.Request.Headers.UserAgent.ToString(), cancellationToken: cancellationToken);
+        var request = await requestService.GetRequestByIdAsync(resolvedId.Value, userId, cancellationToken);
+        _ = auditEventService.LogReadAsync(userId, "Request", resolvedId.Value, "api", HttpContext.Connection.RemoteIpAddress?.ToString(), HttpContext.Request.Headers.UserAgent.ToString(), cancellationToken: cancellationToken);
         return Ok(request);
+    }
+
+    private async Task<Guid?> ResolveRequestIdAsync(string id, CancellationToken cancellationToken)
+    {
+        if (Guid.TryParse(id, out var guid))
+            return guid;
+        var req = await requestRepository.GetByShortCodeAsync(id, cancellationToken);
+        return req?.Id;
     }
 
     /// <summary>
@@ -655,12 +668,14 @@ public class RequestsController(
     [HttpPost("{id}/approve")]
     [Authorize(Roles = "doctor")]
     public async Task<IActionResult> Approve(
-        Guid id,
+        string id,
         [FromBody] ApproveRequestDto? dto,
         CancellationToken cancellationToken)
     {
+        var resolvedId = await ResolveRequestIdAsync(id, cancellationToken);
+        if (resolvedId == null) return NotFound();
         var doctorId = GetUserId();
-        var request = await requestService.ApproveAsync(id, dto ?? new ApproveRequestDto(), doctorId, cancellationToken);
+        var request = await requestService.ApproveAsync(resolvedId.Value, dto ?? new ApproveRequestDto(), doctorId, cancellationToken);
         return Ok(request);
     }
 
@@ -670,11 +685,13 @@ public class RequestsController(
     [HttpPost("{id}/reject")]
     [Authorize(Roles = "doctor")]
     public async Task<IActionResult> Reject(
-        Guid id,
+        string id,
         [FromBody] RejectRequestDto dto,
         CancellationToken cancellationToken)
     {
-        var request = await requestService.RejectAsync(id, dto, cancellationToken);
+        var resolvedId = await ResolveRequestIdAsync(id, cancellationToken);
+        if (resolvedId == null) return NotFound();
+        var request = await requestService.RejectAsync(resolvedId.Value, dto, cancellationToken);
         return Ok(request);
     }
 
@@ -697,11 +714,13 @@ public class RequestsController(
     [HttpPost("{id}/accept-consultation")]
     [Authorize(Roles = "doctor")]
     public async Task<IActionResult> AcceptConsultation(
-        Guid id,
+        string id,
         CancellationToken cancellationToken)
     {
+        var resolvedId = await ResolveRequestIdAsync(id, cancellationToken);
+        if (resolvedId == null) return NotFound();
         var doctorId = GetUserId();
-        var result = await requestService.AcceptConsultationAsync(id, doctorId, cancellationToken);
+        var result = await requestService.AcceptConsultationAsync(resolvedId.Value, doctorId, cancellationToken);
         return Ok(new AcceptConsultationResponseDto(result.Request, result.VideoRoom));
     }
 
@@ -759,15 +778,17 @@ public class RequestsController(
     [HttpPost("{id}/save-consultation-summary")]
     [Authorize(Roles = "doctor")]
     public async Task<IActionResult> SaveConsultationSummary(
-        Guid id,
+        string id,
         [FromBody] SaveConsultationSummaryDto dto,
         CancellationToken cancellationToken)
     {
+        var resolvedId = await ResolveRequestIdAsync(id, cancellationToken);
+        if (resolvedId == null) return NotFound();
         try
         {
             var doctorId = GetUserId();
             await consultationEncounterService.UpdateEncounterClinicalNotesAsync(
-                id, doctorId, dto.Anamnesis, dto.Plan, cancellationToken);
+                resolvedId.Value, doctorId, dto.Anamnesis, dto.Plan, cancellationToken);
             return Ok(new { saved = true });
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("não encontrado"))
@@ -786,11 +807,13 @@ public class RequestsController(
     /// </summary>
     [HttpPost("{id}/validate-prescription")]
     public async Task<IActionResult> ValidatePrescription(
-        Guid id,
+        string id,
         CancellationToken cancellationToken)
     {
+        var resolvedId = await ResolveRequestIdAsync(id, cancellationToken);
+        if (resolvedId == null) return NotFound();
         var userId = GetUserId();
-        var (isValid, missingFields, messages) = await requestService.ValidatePrescriptionAsync(id, userId, cancellationToken);
+        var (isValid, missingFields, messages) = await requestService.ValidatePrescriptionAsync(resolvedId.Value, userId, cancellationToken);
         if (isValid)
             return Ok(new { valid = true });
         return BadRequest(new { valid = false, missingFields, messages });
@@ -802,11 +825,13 @@ public class RequestsController(
     [HttpPost("{id}/sign")]
     [Authorize(Roles = "doctor")]
     public async Task<IActionResult> Sign(
-        Guid id,
+        string id,
         [FromBody] SignRequestDto dto,
         CancellationToken cancellationToken)
     {
-        var request = await requestService.SignAsync(id, dto, cancellationToken);
+        var resolvedId = await ResolveRequestIdAsync(id, cancellationToken);
+        if (resolvedId == null) return NotFound();
+        var request = await requestService.SignAsync(resolvedId.Value, dto, cancellationToken);
         return Ok(request);
     }
 
@@ -845,11 +870,13 @@ public class RequestsController(
     [HttpPost("{id}/reanalyze-as-doctor")]
     [Authorize(Roles = "doctor")]
     public async Task<IActionResult> ReanalyzeAsDoctor(
-        Guid id,
+        string id,
         CancellationToken cancellationToken)
     {
+        var resolvedId = await ResolveRequestIdAsync(id, cancellationToken);
+        if (resolvedId == null) return NotFound();
         var doctorId = GetUserId();
-        var request = await requestService.ReanalyzeAsDoctorAsync(id, doctorId, cancellationToken);
+        var request = await requestService.ReanalyzeAsDoctorAsync(resolvedId.Value, doctorId, cancellationToken);
         return Ok(request);
     }
 
@@ -859,11 +886,13 @@ public class RequestsController(
     [HttpPost("{id}/generate-pdf")]
     [Authorize(Roles = "doctor")]
     public async Task<IActionResult> GeneratePdf(
-        Guid id,
+        string id,
         CancellationToken cancellationToken)
     {
+        var resolvedId = await ResolveRequestIdAsync(id, cancellationToken);
+        if (resolvedId == null) return NotFound();
         var userId = GetUserId();
-        var request = await requestService.GetRequestByIdAsync(id, userId, cancellationToken);
+        var request = await requestService.GetRequestByIdAsync(resolvedId.Value, userId, cancellationToken);
 
         if (request.RequestType != "prescription")
             return BadRequest(new { error = "Apenas solicitações de receita podem gerar PDF." });
@@ -897,26 +926,30 @@ public class RequestsController(
     /// Pré-visualização do PDF da receita (base64). Médico ou paciente.
     /// </summary>
     [HttpGet("{id}/preview-pdf")]
-    public async Task<IActionResult> PreviewPdf(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> PreviewPdf(string id, CancellationToken cancellationToken)
     {
+        var resolvedId = await ResolveRequestIdAsync(id, cancellationToken);
+        if (resolvedId == null) return NotFound();
         var userId = GetUserId();
-        var bytes = await requestService.GetPrescriptionPdfPreviewAsync(id, userId, cancellationToken);
+        var bytes = await requestService.GetPrescriptionPdfPreviewAsync(resolvedId.Value, userId, cancellationToken);
         if (bytes == null || bytes.Length == 0)
             return BadRequest(new { error = "Não foi possível gerar o preview. Verifique se há medicamentos informados ou extraídos pela IA." });
-        return File(bytes, "application/pdf", $"preview-receita-{id}.pdf");
+        return File(bytes, "application/pdf", $"preview-receita-{resolvedId.Value}.pdf");
     }
 
     /// <summary>
     /// Pré-visualização do PDF de pedido de exame. Médico ou paciente.
     /// </summary>
     [HttpGet("{id}/preview-exam-pdf")]
-    public async Task<IActionResult> PreviewExamPdf(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> PreviewExamPdf(string id, CancellationToken cancellationToken)
     {
+        var resolvedId = await ResolveRequestIdAsync(id, cancellationToken);
+        if (resolvedId == null) return NotFound();
         var userId = GetUserId();
-        var bytes = await requestService.GetExamPdfPreviewAsync(id, userId, cancellationToken);
+        var bytes = await requestService.GetExamPdfPreviewAsync(resolvedId.Value, userId, cancellationToken);
         if (bytes == null || bytes.Length == 0)
             return BadRequest(new { error = "Não foi possível gerar o preview. Verifique se a solicitação é do tipo exame e se você tem acesso." });
-        return File(bytes, "application/pdf", $"preview-pedido-exame-{id}.pdf");
+        return File(bytes, "application/pdf", $"preview-pedido-exame-{resolvedId.Value}.pdf");
     }
 
     /// <summary>
@@ -1050,12 +1083,14 @@ public class RequestsController(
     [HttpPatch("{id}/prescription-content")]
     [Authorize(Roles = "doctor")]
     public async Task<IActionResult> UpdatePrescriptionContent(
-        Guid id,
+        string id,
         [FromBody] UpdatePrescriptionContentDto dto,
         CancellationToken cancellationToken)
     {
+        var resolvedId = await ResolveRequestIdAsync(id, cancellationToken);
+        if (resolvedId == null) return NotFound();
         var doctorId = GetUserId();
-        var request = await requestService.UpdatePrescriptionContentAsync(id, dto.Medications, dto.Notes, doctorId, cancellationToken, dto.PrescriptionKind);
+        var request = await requestService.UpdatePrescriptionContentAsync(resolvedId.Value, dto.Medications, dto.Notes, doctorId, cancellationToken, dto.PrescriptionKind);
         return Ok(request);
     }
 
@@ -1065,12 +1100,14 @@ public class RequestsController(
     [HttpPatch("{id}/exam-content")]
     [Authorize(Roles = "doctor")]
     public async Task<IActionResult> UpdateExamContent(
-        Guid id,
+        string id,
         [FromBody] UpdateExamContentDto dto,
         CancellationToken cancellationToken)
     {
+        var resolvedId = await ResolveRequestIdAsync(id, cancellationToken);
+        if (resolvedId == null) return NotFound();
         var doctorId = GetUserId();
-        var request = await requestService.UpdateExamContentAsync(id, dto.Exams, dto.Notes, doctorId, cancellationToken);
+        var request = await requestService.UpdateExamContentAsync(resolvedId.Value, dto.Exams, dto.Notes, doctorId, cancellationToken);
         return Ok(request);
     }
 
@@ -1116,12 +1153,14 @@ public class RequestsController(
     [HttpPut("{id}/conduct")]
     [Authorize(Roles = "doctor")]
     public async Task<IActionResult> UpdateConduct(
-        Guid id,
+        string id,
         [FromBody] UpdateConductDto dto,
         CancellationToken cancellationToken)
     {
+        var resolvedId = await ResolveRequestIdAsync(id, cancellationToken);
+        if (resolvedId == null) return NotFound();
         var doctorId = GetUserId();
-        var result = await requestService.UpdateConductAsync(id, dto, doctorId, cancellationToken);
+        var result = await requestService.UpdateConductAsync(resolvedId.Value, dto, doctorId, cancellationToken);
         return Ok(result);
     }
 

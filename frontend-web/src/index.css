@@ -249,3 +249,120 @@ html {
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--primary-glow));
 }
+
+/* ═══════════════════════════════════════════════════
+ * POLISH PATCH — CSS extras para experiência premium
+ * ═══════════════════════════════════════════════════ */
+
+/* ── Smooth theme transition ── */
+html.transitioning,
+html.transitioning *,
+html.transitioning *::before,
+html.transitioning *::after {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.15s ease !important;
+  transition-delay: 0s !important;
+}
+
+/* ── Animate-in utilities (for command palette, dialogs) ── */
+@keyframes animate-in-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes animate-in-zoom {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes animate-in-slide-top {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in {
+  animation-fill-mode: both;
+}
+.fade-in {
+  animation-name: animate-in-fade;
+}
+.zoom-in-95 {
+  animation-name: animate-in-zoom;
+}
+.slide-in-from-top-2 {
+  animation-name: animate-in-slide-top;
+}
+.duration-150 { animation-duration: 150ms; }
+.duration-200 { animation-duration: 200ms; }
+
+/* ── Focus ring for keyboard navigation (visible only with keyboard) ── */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Scrollbar — thinner on dark mode ── */
+.dark ::-webkit-scrollbar-track {
+  background: hsl(210 29% 14%);
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(210 29% 25%);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
+}
+
+/* ── Selection color — adapt to dark mode ── */
+.dark ::selection {
+  background: hsl(197 71% 52% / 0.4);
+  color: hsl(210 20% 98%);
+}
+
+/* ── Card hover micro-interaction ── */
+.group:hover .group-hover\:scale-102 {
+  transform: scale(1.02);
+}
+
+/* ── Skeleton pulse — softer animation ── */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.animate-pulse {
+  animation: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ── Bottom navigation safe area (iOS) ── */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── Standalone PWA: hide scrollbar on main content ── */
+@media all and (display-mode: standalone) {
+  main::-webkit-scrollbar {
+    width: 4px;
+  }
+}
+
+/* ── Print: hide sidebar, nav, non-essential elements ── */
+@media print {
+  aside, nav, .no-print, [aria-label="Menu principal"],
+  [aria-label="Navegação principal"] {
+    display: none !important;
+  }
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ── Reduced motion: disable all animations ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

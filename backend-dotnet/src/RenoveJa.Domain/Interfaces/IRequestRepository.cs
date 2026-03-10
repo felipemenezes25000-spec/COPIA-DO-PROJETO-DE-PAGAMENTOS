@@ -6,6 +6,8 @@ namespace RenoveJa.Domain.Interfaces;
 public interface IRequestRepository
 {
     Task<MedicalRequest?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    /// <summary>Busca por short_code (12 hex chars). Retorna o primeiro se houver colisão.</summary>
+    Task<MedicalRequest?> GetByShortCodeAsync(string shortCode, CancellationToken cancellationToken = default);
     Task<List<MedicalRequest>> GetAllAsync(CancellationToken cancellationToken = default);
     Task<List<MedicalRequest>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken = default);
     Task<List<MedicalRequest>> GetByDoctorIdAsync(Guid doctorId, CancellationToken cancellationToken = default);

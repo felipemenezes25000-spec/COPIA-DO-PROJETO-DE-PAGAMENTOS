@@ -1,8 +1,24 @@
-import { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+/**
+ * DoctorApp — Entry point do portal do médico.
+ *
+ * Premium features integradas:
+ * - Command Palette (Cmd+K)
+ * - Dark mode com persistência
+ * - Keyboard shortcuts (Cmd+1-5, Cmd+D)
+ * - Skeleton loading (ao invés de spinner)
+ * - Page transitions (framer-motion)
+ * - Shortcuts help dialog (Cmd+/)
+ */
+import { lazy, Suspense, useState } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { DoctorAuthProvider, useDoctorAuth } from '@/contexts/DoctorAuthContext';
-import { Loader2 } from 'lucide-react';
+import { CommandPalette } from '@/components/doctor/CommandPalette';
+import { ShortcutsDialog } from '@/components/doctor/ShortcutsDialog';
+import { SkeletonPage } from '@/components/ui/skeleton';
+import { useTheme } from '@/hooks/useTheme';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const DoctorLogin = lazy(() => import('@/pages/doctor/DoctorLogin'));
 const DoctorRegister = lazy(() => import('@/pages/doctor/DoctorRegister'));
@@ -18,13 +34,20 @@ const DoctorVideoCall = lazy(() => import('@/pages/doctor/DoctorVideoCall'));
 const DoctorCompleteDoctor = lazy(() => import('@/pages/doctor/DoctorCompleteDoctor'));
 
 function FullPageLoader() {
+  return <SkeletonPage />;
+}
+
+/** Wrapper com animação de transição entre páginas */
+function PageTransition({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="flex flex-col items-center gap-3">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground">Carregando...</p>
-      </div>
-    </div>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+    >
+      {children}
+    </motion.div>
   );
 }
 
@@ -34,7 +57,7 @@ function DoctorProtectedRoute({ children }: { children: React.ReactNode }) {
   if (loading) return <FullPageLoader />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!profileComplete) return <Navigate to="/completar-cadastro" replace />;
-  return <>{children}</>;
+  return <PageTransition>{children}</PageTransition>;
 }
 
 function DoctorLoginOrRedirect() {
@@ -52,36 +75,65 @@ function DoctorCompleteOnlyRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function DoctorRoutes() {
+/** Shell principal — inclui command palette, shortcuts, e dark mode */
+function DoctorShell() {
+  const { isDark, toggleDarkMode } = useTheme();
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const location = useLocation();
+
+  useKeyboardShortcuts({
+    onToggleDarkMode: toggleDarkMode,
+    onShowShortcuts: () => setShortcutsOpen(true),
+  });
+
   return (
-    <Suspense fallback={<FullPageLoader />}>
-      <Routes>
-        <Route path="/login" element={<DoctorLoginOrRedirect />} />
-        <Route path="/registro" element={<DoctorRegister />} />
-        <Route path="/completar-cadastro" element={<DoctorCompleteOnlyRoute><DoctorCompleteDoctor /></DoctorCompleteOnlyRoute>} />
+    <>
+      {/* Command Palette — always available */}
+      <CommandPalette onToggleDarkMode={toggleDarkMode} isDark={isDark} />
 
-        <Route path="/" element={<DoctorProtectedRoute><DoctorDashboard /></DoctorProtectedRoute>} />
-        <Route path="/dashboard" element={<DoctorProtectedRoute><DoctorDashboard /></DoctorProtectedRoute>} />
-        <Route path="/pedidos" element={<DoctorProtectedRoute><DoctorRequests /></DoctorProtectedRoute>} />
-        <Route path="/pedidos/:id" element={<DoctorProtectedRoute><DoctorRequestDetail /></DoctorProtectedRoute>} />
-        <Route path="/pedidos/:id/editor" element={<DoctorProtectedRoute><DoctorRequestEditor /></DoctorProtectedRoute>} />
-        <Route path="/consultas" element={<DoctorProtectedRoute><DoctorConsultations /></DoctorProtectedRoute>} />
-        <Route path="/paciente/:patientId" element={<DoctorProtectedRoute><DoctorPatientRecord /></DoctorProtectedRoute>} />
-        <Route path="/notificacoes" element={<DoctorProtectedRoute><DoctorNotifications /></DoctorProtectedRoute>} />
-        <Route path="/perfil" element={<DoctorProtectedRoute><DoctorProfile /></DoctorProtectedRoute>} />
-        <Route path="/video/:requestId" element={<DoctorProtectedRoute><DoctorVideoCall /></DoctorProtectedRoute>} />
+      {/* Shortcuts help dialog */}
+      <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Suspense>
+      {/* Routes */}
+      <Suspense fallback={<FullPageLoader />}>
+        <AnimatePresence mode="wait">
+          <Routes location={location} key={location.pathname}>
+            <Route path="/login" element={<DoctorLoginOrRedirect />} />
+            <Route path="/registro" element={<DoctorRegister />} />
+            <Route path="/completar-cadastro" element={<DoctorCompleteOnlyRoute><DoctorCompleteDoctor /></DoctorCompleteOnlyRoute>} />
+
+            <Route path="/" element={<DoctorProtectedRoute><DoctorDashboard /></DoctorProtectedRoute>} />
+            <Route path="/dashboard" element={<DoctorProtectedRoute><DoctorDashboard /></DoctorProtectedRoute>} />
+            <Route path="/pedidos" element={<DoctorProtectedRoute><DoctorRequests /></DoctorProtectedRoute>} />
+            <Route path="/pedidos/:id" element={<DoctorProtectedRoute><DoctorRequestDetail /></DoctorProtectedRoute>} />
+            <Route path="/pedidos/:id/editor" element={<DoctorProtectedRoute><DoctorRequestEditor /></DoctorProtectedRoute>} />
+            <Route path="/consultas" element={<DoctorProtectedRoute><DoctorConsultations /></DoctorProtectedRoute>} />
+            <Route path="/paciente/:patientId" element={<DoctorProtectedRoute><DoctorPatientRecord /></DoctorProtectedRoute>} />
+            <Route path="/notificacoes" element={<DoctorProtectedRoute><DoctorNotifications /></DoctorProtectedRoute>} />
+            <Route path="/perfil" element={<DoctorProtectedRoute><DoctorProfile /></DoctorProtectedRoute>} />
+            <Route path="/video/:requestId" element={<DoctorProtectedRoute><DoctorVideoCall /></DoctorProtectedRoute>} />
+
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AnimatePresence>
+      </Suspense>
+    </>
   );
 }
 
 export default function DoctorApp() {
   return (
     <DoctorAuthProvider>
-      <Toaster position="top-center" richColors closeButton />
-      <DoctorRoutes />
+      <Toaster
+        position="top-center"
+        richColors
+        closeButton
+        toastOptions={{
+          className: 'shadow-lg',
+          duration: 4000,
+        }}
+      />
+      <DoctorShell />
     </DoctorAuthProvider>
   );
 }

@@ -4,6 +4,7 @@ import { DoctorLayout } from '@/components/doctor/DoctorLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getRequests, type MedicalRequest } from '@/services/doctorApi';
+import { toShortId } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import {
   Loader2, Stethoscope, User, Calendar, Video, ArrowRight,
@@ -157,7 +158,7 @@ export default function DoctorConsultations() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => navigate(`/pedidos/${req.id}`)}
+                                onClick={() => navigate(`/pedidos/${toShortId(req.id)}`)}
                                 className="gap-1"
                               >
                                 Ver

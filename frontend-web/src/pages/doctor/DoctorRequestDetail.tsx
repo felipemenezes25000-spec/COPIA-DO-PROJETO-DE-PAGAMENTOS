@@ -39,6 +39,14 @@ function getTypeIcon(type: string) {
   }
 }
 
+/** Normaliza symptoms para array (backend pode retornar string ou string[]). */
+function normalizeSymptoms(symptoms: unknown): string[] {
+  if (Array.isArray(symptoms)) return symptoms.filter((s): s is string => typeof s === 'string');
+  if (typeof symptoms === 'string' && symptoms.trim())
+    return symptoms.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+  return [];
+}
+
 function getStatusInfo(status: string) {
   const map: Record<string, { label: string; color: string; bgColor: string }> = {
     pending: { label: 'Pendente', color: 'text-orange-600', bgColor: 'bg-orange-50 border-orange-200' },
@@ -152,6 +160,7 @@ export default function DoctorRequestDetail() {
 
   const statusInfo = getStatusInfo(request.status);
   const Icon = getTypeIcon(request.type);
+  const symptomsList = normalizeSymptoms(request.symptoms);
 
   const canApprove = request.status === 'pending';
   const canReject = ['pending', 'approved'].includes(request.status);
@@ -257,7 +266,7 @@ export default function DoctorRequestDetail() {
             </motion.div>
 
             {/* Description / symptoms */}
-            {(request.description || (request.symptoms && request.symptoms.length > 0)) && (
+            {(request.description || symptomsList.length > 0) && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
                 <Card className="shadow-sm">
                   <CardHeader className="pb-3">
@@ -268,11 +277,11 @@ export default function DoctorRequestDetail() {
                   </CardHeader>
                   <CardContent className="pt-0 space-y-3">
                     {request.description && <p className="text-sm">{request.description}</p>}
-                    {request.symptoms && request.symptoms.length > 0 && (
+                    {symptomsList.length > 0 && (
                       <div>
                         <p className="text-xs font-medium text-muted-foreground mb-2">Sintomas relatados</p>
                         <div className="flex flex-wrap gap-2">
-                          {request.symptoms.map((s, i) => (
+                          {symptomsList.map((s, i) => (
                             <Badge key={i} variant="secondary" className="text-xs">{s}</Badge>
                           ))}
                         </div>
@@ -284,7 +293,7 @@ export default function DoctorRequestDetail() {
             )}
 
             {/* Medications */}
-            {request.medications && request.medications.length > 0 && (
+            {Array.isArray(request.medications) && request.medications.length > 0 && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
                 <Card className="shadow-sm">
                   <CardHeader className="pb-3">
@@ -295,17 +304,22 @@ export default function DoctorRequestDetail() {
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="space-y-3">
-                      {request.medications.map((med, i) => (
-                        <div key={i} className="p-3 rounded-lg bg-muted/50 border border-border/50">
-                          <p className="font-medium text-sm">{med.name}</p>
-                          <div className="grid grid-cols-3 gap-2 mt-1.5 text-xs text-muted-foreground">
-                            <span>Dose: {med.dosage}</span>
-                            <span>Freq: {med.frequency}</span>
-                            <span>Duração: {med.duration}</span>
+                      {request.medications.map((med, i) => {
+                        const item = typeof med === 'object' && med && 'name' in med
+                          ? med as { name?: string; dosage?: string; frequency?: string; duration?: string; notes?: string }
+                          : { name: String(med), dosage: '—', frequency: '—', duration: '—' };
+                        return (
+                          <div key={i} className="p-3 rounded-lg bg-muted/50 border border-border/50">
+                            <p className="font-medium text-sm">{item.name || '—'}</p>
+                            <div className="grid grid-cols-3 gap-2 mt-1.5 text-xs text-muted-foreground">
+                              <span>Dose: {item.dosage ?? '—'}</span>
+                              <span>Freq: {item.frequency ?? '—'}</span>
+                              <span>Duração: {item.duration ?? '—'}</span>
+                            </div>
+                            {item.notes && <p className="text-xs text-muted-foreground mt-1">{item.notes}</p>}
                           </div>
-                          {med.notes && <p className="text-xs text-muted-foreground mt-1">{med.notes}</p>}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>

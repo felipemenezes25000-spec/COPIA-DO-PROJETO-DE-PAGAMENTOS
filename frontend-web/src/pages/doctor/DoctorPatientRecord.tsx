@@ -9,6 +9,7 @@ import {
   getPatientProfile, getPatientRequests, getPatientClinicalSummary,
   type PatientProfile, type MedicalRequest,
 } from '@/services/doctorApi';
+import { toShortId } from '@/lib/utils';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import {
@@ -227,7 +228,7 @@ export default function DoctorPatientRecord() {
                           return (
                             <button
                               key={req.id}
-                              onClick={() => navigate(`/pedidos/${req.id}`)}
+                              onClick={() => navigate(`/pedidos/${toShortId(req.id)}`)}
                               className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors text-left group"
                             >
                               <div className="p-2 rounded-lg bg-muted"><Icon className="h-4 w-4 text-muted-foreground" /></div>
@@ -273,7 +274,7 @@ export default function DoctorPatientRecord() {
                           <Card
                             key={req.id}
                             className="shadow-sm hover:shadow-md cursor-pointer transition-all group"
-                            onClick={() => navigate(`/pedidos/${req.id}`)}
+                            onClick={() => navigate(`/pedidos/${toShortId(req.id)}`)}
                           >
                             <CardContent className="p-4 flex items-center gap-4">
                               <div className="p-3 rounded-xl bg-muted"><Icon className="h-5 w-5 text-muted-foreground" /></div>

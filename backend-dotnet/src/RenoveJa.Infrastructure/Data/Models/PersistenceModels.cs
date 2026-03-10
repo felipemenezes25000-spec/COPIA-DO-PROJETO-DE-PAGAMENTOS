@@ -150,6 +150,8 @@ public class PasswordResetTokenModel
 public class RequestModel
 {
     public Guid Id { get; set; }
+    [JsonPropertyName("short_code")]
+    public string? ShortCode { get; set; }
     public Guid PatientId { get; set; }
     public string? PatientName { get; set; }
     public Guid? DoctorId { get; set; }
