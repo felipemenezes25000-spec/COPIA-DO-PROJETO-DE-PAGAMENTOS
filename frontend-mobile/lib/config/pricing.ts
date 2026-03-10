@@ -20,7 +20,7 @@ export const PRESCRIPTION_TYPE_PRICES: Record<'simples' | 'controlado' | 'azul',
 };
 
 export const FALLBACK_CONSULTATION_PRICE = 120;
-export const FALLBACK_EXAM_PRICE = 60;
+export const FALLBACK_EXAM_PRICE = 19.9;
 
 /** Preços por tipo de exame (telas de new-request). Exames de imagem: por pedido. */
 export const EXAM_TYPE_PRICES: Record<'laboratorial' | 'imagem', number> = {

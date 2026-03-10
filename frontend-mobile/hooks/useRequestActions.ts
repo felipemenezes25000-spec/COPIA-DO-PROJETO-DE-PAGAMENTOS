@@ -87,7 +87,7 @@ export function useRequestActions({
     setActionLoading(true);
     try {
       await rejectRequest(requestId, rejectionReason.trim());
-      loadData();
+      await loadData();
       onRejectSuccess();
       showToast({ message: 'Pedido rejeitado.', type: 'info' });
     } catch (e: unknown) {
@@ -175,7 +175,7 @@ export function useRequestActions({
     setActionLoading(true);
     try {
       await acceptConsultation(requestId);
-      loadData();
+      await loadData();
       showToast({ message: 'Consulta aceita!', type: 'success' });
     } catch (e: unknown) {
       showToast({ message: (e as Error)?.message || 'Falha ao aceitar.', type: 'error' });

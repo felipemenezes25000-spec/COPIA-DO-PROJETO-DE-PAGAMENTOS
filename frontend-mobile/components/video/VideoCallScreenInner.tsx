@@ -248,10 +248,13 @@ export default function VideoCallScreenInner() {
       // Backend retorna { request, chronicWarning }.
       const req = result.request;
 
-      // Exibir aviso de paciente crônico se aplicável (CFM 2.314/2022)
+      // Aviso de paciente crônico (CFM 2.314/2022) — exibir ao médico
       if (result.chronicWarning) {
-        // TODO: exibir alerta ao médico com result.chronicWarning
-        console.warn('[Consultation] Chronic warning:', result.chronicWarning);
+        Alert.alert(
+          'Atenção — Paciente Crônico',
+          result.chronicWarning,
+          [{ text: 'Entendido', style: 'default' }],
+        );
       }
 
       // If not set yet (waiting for both parties), we start the timer locally

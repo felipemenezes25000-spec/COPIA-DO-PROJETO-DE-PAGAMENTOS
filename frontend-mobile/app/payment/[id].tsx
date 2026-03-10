@@ -61,8 +61,7 @@ export default function PaymentScreen() {
   useEffect(() => {
     loadPayment();
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadPayment defined below
-  }, [paymentId]);
+  }, [paymentId, loadPayment]);
 
   // Verifica status imediatamente quando o usuário volta ao app (ex.: após pagar PIX no app do banco)
   const checkPaymentStatusOnResume = useCallback(async () => {
@@ -91,7 +90,7 @@ export default function PaymentScreen() {
     return () => subscription.remove();
   }, [screen, checkPaymentStatusOnResume]);
 
-  const loadPayment = async () => {
+  const loadPayment = useCallback(async () => {
     if (!paymentId) return;
     try {
       let data: PaymentResponseDto;
@@ -145,7 +144,8 @@ export default function PaymentScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- startPolling uses ref pattern
+  }, [paymentId, router]);
 
   const handleSelectPix = async () => {
     if (selectingPix) return;
@@ -178,7 +178,7 @@ export default function PaymentScreen() {
     router.push({ pathname: '/payment/card', params: { requestId: payment.requestId } });
   };
 
-  const startPolling = () => {
+  const startPolling = useCallback(() => {
     if (pollRef.current) clearInterval(pollRef.current);
     pollCountRef.current = 0;
     setAutoPolling(true);
@@ -207,7 +207,7 @@ export default function PaymentScreen() {
         if (__DEV__) console.warn('[Payment] polling erro:', e);
       }
     }, 5000);
-  };
+  }, [paymentId]);
 
   const handleCopyPix = async () => {
     const code = payment?.pixCopyPaste || pixCode;

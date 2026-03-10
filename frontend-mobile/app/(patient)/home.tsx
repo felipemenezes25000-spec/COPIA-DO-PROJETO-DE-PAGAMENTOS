@@ -184,11 +184,12 @@ export default function PatientHome() {
       return;
     }
     let cancelled = false;
-    getAssistantNextAction({ requestId: followUpRequest.id })
+    const currentFollowUp = followUpRequest; // capture stable ref for .catch
+    getAssistantNextAction({ requestId: currentFollowUp.id })
       .then((res) => { if (!cancelled) setFollowUpActionFromApi(res); })
       .catch(() => {
-        if (!cancelled && followUpRequest) {
-          const local = getNextBestActionForRequest(followUpRequest);
+        if (!cancelled && currentFollowUp) {
+          const local = getNextBestActionForRequest(currentFollowUp);
           setFollowUpActionFromApi({
             title: local.title,
             statusSummary: local.statusSummary,
@@ -200,7 +201,8 @@ export default function PatientHome() {
         }
       });
     return () => { cancelled = true; };
-  }, [followUpRequest?.id, followUpRequest?.status, followUpRequest]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- followUpRequest object ref is unstable; id+status are sufficient
+  }, [followUpRequest?.id, followUpRequest?.status]);
 
   const followUpAction = useMemo(() => {
     if (followUpActionFromApi) return followUpActionFromApi;

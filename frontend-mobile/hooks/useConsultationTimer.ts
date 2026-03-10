@@ -21,6 +21,8 @@ export function useConsultationTimer(
   consultationStartedAt: string | null,
   contractedMinutes: number | null,
   onAutoFinish: () => void,
+  /** Pass false when consultation has already been finished to prevent stale alerts. */
+  isActive: boolean = true,
 ): ConsultationTimerReturn {
   const [callSeconds, setCallSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -49,7 +51,7 @@ export function useConsultationTimer(
 
   // Countdown alerts + auto-finish
   useEffect(() => {
-    if (!contractedMinutes || contractedMinutes <= 0) return;
+    if (!contractedMinutes || contractedMinutes <= 0 || !isActive) return;
     const remaining = contractedMinutes * 60 - callSeconds;
 
     if (remaining === 120 && !alertedRef.current.has(120)) {
@@ -66,7 +68,7 @@ export function useConsultationTimer(
         text: 'OK', onPress: onAutoFinish,
       }]);
     }
-  }, [callSeconds, contractedMinutes, onAutoFinish]);
+  }, [callSeconds, contractedMinutes, onAutoFinish, isActive]);
 
   return { callSeconds, setCallSeconds };
 }

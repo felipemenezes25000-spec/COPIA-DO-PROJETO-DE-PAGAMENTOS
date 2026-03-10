@@ -23,7 +23,7 @@ import { spacing, borderRadius, shadows } from '../../lib/theme';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../lib/designSystem';
 import { uiTokens } from '../../lib/ui/tokens';
-import { fetchRequestById, markRequestDelivered, cancelRequest } from '../../lib/api';
+import { fetchRequestById, markRequestDelivered, cancelRequest, getDocumentDownloadUrl } from '../../lib/api';
 import { getDisplayPrice } from '../../lib/config/pricing';
 import { formatBRL, formatDateTimeBR } from '../../lib/utils/format';
 import { RequestResponseDto } from '../../types/database';
@@ -313,7 +313,7 @@ export default function RequestDetailScreen() {
   };
 
   const handleDownload = async () => {
-    if (!request?.signedDocumentUrl || documentActionLoading) return;
+    if (!requestId || documentActionLoading) return;
     if (isConnected === false) {
       Alert.alert('Sem conexão', 'Conecte-se à internet para baixar o documento.');
       return;
@@ -321,22 +321,29 @@ export default function RequestDetailScreen() {
     setDocumentActionLoading(true);
     try {
       await markAsDeliveredIfSigned();
+      // Usa URL com token temporário via proxy do backend (evita expor URL do Supabase)
+      const downloadUrl = await getDocumentDownloadUrl(requestId);
       // Tenta compartilhar/salvar o PDF usando Sharing API; fallback para browser
       if (Sharing && FileSystem) {
-        const fileName = `renoveja_${request.requestType}_${request.id.slice(0, 8)}.pdf`;
+        const fileName = `renoveja_${request!.requestType}_${request!.id.slice(0, 8)}.pdf`;
         const localUri = FileSystem.cacheDirectory + fileName;
-        const download = await FileSystem.downloadAsync(request.signedDocumentUrl, localUri);
+        const download = await FileSystem.downloadAsync(downloadUrl, localUri);
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(download.uri, { mimeType: 'application/pdf', dialogTitle: 'Salvar documento' });
           return;
         }
       }
       // Fallback: abre no browser
-      await WebBrowser.openBrowserAsync(request.signedDocumentUrl);
+      await WebBrowser.openBrowserAsync(downloadUrl);
     } catch (e: unknown) {
       // Fallback: abre no browser se download/sharing falhar
       try {
-        await WebBrowser.openBrowserAsync(request.signedDocumentUrl);
+        const fallbackUrl = request?.signedDocumentUrl;
+        if (fallbackUrl) {
+          await WebBrowser.openBrowserAsync(fallbackUrl);
+        } else {
+          throw e;
+        }
       } catch {
         Alert.alert('Erro', (e as Error)?.message || String(e) || 'Não foi possível baixar o documento');
       }
@@ -346,7 +353,7 @@ export default function RequestDetailScreen() {
   };
 
   const handleViewDocument = async () => {
-    if (!request?.signedDocumentUrl || documentActionLoading) return;
+    if (!requestId || documentActionLoading) return;
     if (isConnected === false) {
       Alert.alert('Sem conexão', 'Conecte-se à internet para visualizar o documento.');
       return;
@@ -354,7 +361,8 @@ export default function RequestDetailScreen() {
     setDocumentActionLoading(true);
     try {
       await markAsDeliveredIfSigned();
-      await WebBrowser.openBrowserAsync(request.signedDocumentUrl);
+      const viewUrl = await getDocumentDownloadUrl(requestId);
+      await WebBrowser.openBrowserAsync(viewUrl);
     } catch (e: unknown) {
       Alert.alert('Erro', (e as Error)?.message || String(e) || 'Não foi possível abrir o documento.');
     } finally {
