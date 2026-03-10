@@ -417,7 +417,7 @@ builder.Services.AddCors(options =>
 
         policy.SetIsOriginAllowed(origin => IsAllowedOrigin(origin, origins))
               .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-              .WithHeaders("Authorization", "Content-Type", "Accept", "X-Requested-With", "X-Request-Id", "X-Correlation-Id", "x-signalr-user-agent")
+              .AllowAnyHeader()
               .AllowCredentials();
     });
 
