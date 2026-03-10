@@ -1,0 +1,59 @@
+/**
+ * doctor-api-misc.ts — Specialties, CID search, address lookup,
+ * and prescription/exam image retrieval.
+ */
+
+import { authFetch } from './doctor-api-auth';
+import type { Specialty } from './doctorApi';
+
+// ── Specialties ──
+
+export async function fetchSpecialties(): Promise<Specialty[]> {
+  // Uses plain fetch (no auth required for specialties list)
+  const env = (import.meta.env.VITE_API_URL ?? '').trim().replace(/\/$/, '');
+  const base = env || (typeof window !== 'undefined' ? window.location.origin : '');
+  const res = await fetch(`${base}/api/specialties`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+// ── CID ──
+
+export async function searchCid(query: string) {
+  const res = await authFetch(`/api/cid10?q=${encodeURIComponent(query)}`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+// ── Address (ViaCEP) ──
+
+export async function fetchAddressByCep(cep: string) {
+  const clean = cep.replace(/\D/g, '');
+  if (clean.length !== 8) return null;
+  const res = await fetch(`https://viacep.com.br/ws/${clean}/json/`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (data.erro) return null;
+  return {
+    street: data.logradouro,
+    neighborhood: data.bairro,
+    city: data.localidade,
+    state: data.uf,
+  };
+}
+
+// ── Prescription/Exam Images ──
+
+export async function getPrescriptionImage(id: string, index: number): Promise<string> {
+  const res = await authFetch(`/api/requests/${id}/prescription-image/${index}`);
+  if (!res.ok) throw new Error('Erro ao buscar imagem');
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}
+
+export async function getExamImage(id: string, index: number): Promise<string> {
+  const res = await authFetch(`/api/requests/${id}/exam-image/${index}`);
+  if (!res.ok) throw new Error('Erro ao buscar imagem');
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}
