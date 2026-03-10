@@ -1,0 +1,147 @@
+/**
+ * useVideoCallEvents — SignalR real-time event handling for video consultations.
+ *
+ * Extracted from VideoCallScreenInner to isolate the SignalR connection logic
+ * and real-time state updates (transcript, anamnesis, suggestions, evidence).
+ *
+ * Only connects for doctors — patients receive updates via request polling.
+ */
+
+import { useState, useRef, useCallback } from 'react';
+import { apiClient } from '../lib/api-client';
+
+export interface EvidenceItem {
+  title: string;
+  abstract: string;
+  source: string;
+  translatedAbstract?: string;
+  relevantExcerpts?: string[];
+  clinicalRelevance?: string;
+  provider?: string;
+}
+
+export interface VideoCallEventsReturn {
+  transcript: string;
+  setTranscript: React.Dispatch<React.SetStateAction<string>>;
+  anamnesis: Record<string, unknown> | null;
+  setAnamnesis: React.Dispatch<React.SetStateAction<Record<string, unknown> | null>>;
+  suggestions: string[];
+  setSuggestions: React.Dispatch<React.SetStateAction<string[]>>;
+  evidence: EvidenceItem[];
+  setEvidence: React.Dispatch<React.SetStateAction<EvidenceItem[]>>;
+  isAiActive: boolean;
+  transcriptionError: string | null;
+  connectSignalR: () => Promise<void>;
+  disconnectSignalR: () => Promise<void>;
+}
+
+export function useVideoCallEvents(
+  requestId: string,
+  isDoctor: boolean,
+): VideoCallEventsReturn {
+  const [transcript, setTranscript] = useState('');
+  const [anamnesis, setAnamnesis] = useState<Record<string, unknown> | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [evidence, setEvidence] = useState<EvidenceItem[]>([]);
+  const [isAiActive, setIsAiActive] = useState(false);
+  const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
+  const signalRRef = useRef<any>(null);
+
+  const connectSignalR = useCallback(async () => {
+    if (!requestId || !isDoctor) return;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic import for SignalR
+      const signalR = require('@microsoft/signalr');
+      let apiBase = apiClient.getBaseUrl();
+      apiBase = apiBase.replace(/\/api\/?$/, '');
+
+      let authToken = '';
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- conditional native module
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        authToken = (await AsyncStorage.getItem('@renoveja:auth_token')) ?? '';
+      } catch {}
+
+      if (!authToken) {
+        console.warn('[SignalR] No auth token found — cannot connect');
+        return;
+      }
+
+      const builder = new signalR.HubConnectionBuilder()
+        .withUrl(`${apiBase}/hubs/video`, {
+          accessTokenFactory: () => authToken,
+        })
+        .withAutomaticReconnect();
+      if (signalR.LogLevel != null) {
+        const logLevel = __DEV__ ? signalR.LogLevel.Information : signalR.LogLevel.Warning;
+        builder.configureLogging(logLevel);
+      }
+      const conn = builder.build();
+
+      conn.on('TranscriptUpdate', (data: any) => {
+        const text = data?.fullText ?? data?.FullText ?? '';
+        if (text) {
+          setTranscript(text);
+          setIsAiActive(true);
+          setTranscriptionError(null);
+        }
+      });
+
+      conn.on('AnamnesisUpdate', (data: any) => {
+        const json = data?.anamnesisJson ?? data?.AnamnesisJson ?? '';
+        try { if (json) setAnamnesis(JSON.parse(json)); } catch {}
+      });
+
+      conn.on('SuggestionUpdate', (data: any) => {
+        const items = data?.suggestions ?? data?.Suggestions ?? [];
+        if (Array.isArray(items)) setSuggestions(items);
+      });
+
+      conn.on('TranscriptionError', (data: any) => {
+        const msg = data?.message ?? data?.Message ?? 'Erro na transcrição';
+        setTranscriptionError(msg);
+      });
+
+      conn.on('EvidenceUpdate', (data: any) => {
+        const items = data?.items ?? data?.Items ?? [];
+        if (Array.isArray(items)) {
+          setEvidence(items.map((e: any) => ({
+            title: e?.title ?? e?.Title ?? '',
+            abstract: e?.abstract ?? e?.Abstract ?? '',
+            source: e?.source ?? e?.Source ?? '',
+            translatedAbstract: e?.translatedAbstract ?? e?.TranslatedAbstract,
+            relevantExcerpts: e?.relevantExcerpts ?? e?.RelevantExcerpts ?? undefined,
+            clinicalRelevance: e?.clinicalRelevance ?? e?.ClinicalRelevance ?? undefined,
+            provider: e?.provider ?? e?.Provider ?? 'PubMed',
+          })));
+        }
+      });
+
+      await conn.start();
+      await conn.invoke('JoinRoom', requestId);
+      signalRRef.current = conn;
+    } catch (e) {
+      console.warn('SignalR connection failed (non-critical):', e);
+    }
+  }, [requestId, isDoctor]);
+
+  const disconnectSignalR = useCallback(async () => {
+    try { await signalRRef.current?.stop(); } catch {}
+    signalRRef.current = null;
+  }, []);
+
+  return {
+    transcript,
+    setTranscript,
+    anamnesis,
+    setAnamnesis,
+    suggestions,
+    setSuggestions,
+    evidence,
+    setEvidence,
+    isAiActive,
+    transcriptionError,
+    connectSignalR,
+    disconnectSignalR,
+  };
+}
