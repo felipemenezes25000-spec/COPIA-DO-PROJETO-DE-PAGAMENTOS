@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
 interface ModalVisibilityContextValue {
   isModalOpen: boolean;
@@ -14,7 +14,10 @@ export function ModalVisibilityProvider({ children }: { children: React.ReactNod
     setIsModalOpen(open);
   }, []);
 
-  const value: ModalVisibilityContextValue = { isModalOpen, setModalOpen };
+  const value = useMemo(
+    () => ({ isModalOpen, setModalOpen }),
+    [isModalOpen, setModalOpen],
+  );
 
   return (
     <ModalVisibilityContext.Provider value={value}>

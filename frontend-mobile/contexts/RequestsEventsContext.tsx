@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { AppState } from 'react-native';
 import {
   startRequestsEventsConnection,
@@ -89,8 +89,13 @@ export function RequestsEventsProvider({ children }: { children: React.ReactNode
     });
   }, []);
 
+  const value = useMemo(
+    () => ({ isConnected, subscribe, pendingUpdate, setPendingUpdate }),
+    [isConnected, subscribe, pendingUpdate, setPendingUpdate],
+  );
+
   return (
-    <RequestsEventsContext.Provider value={{ isConnected, subscribe, pendingUpdate, setPendingUpdate }}>
+    <RequestsEventsContext.Provider value={value}>
       {children}
     </RequestsEventsContext.Provider>
   );
