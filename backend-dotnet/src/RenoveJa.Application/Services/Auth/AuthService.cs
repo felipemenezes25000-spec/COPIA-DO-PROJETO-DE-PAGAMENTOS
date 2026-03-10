@@ -263,24 +263,32 @@ public class AuthService(
         GoogleAuthRequestDto request,
         CancellationToken cancellationToken = default)
     {
-        var clientId = googleAuthConfig.Value?.ClientId;
+        var config = googleAuthConfig.Value;
+        var clientId = config?.ClientId;
         if (string.IsNullOrWhiteSpace(clientId))
             throw new InvalidOperationException("Google:ClientId não configurado em appsettings.");
+
+        // Aceitar tanto o Web Client ID quanto o Android Client ID como audience válido
+        var allowedAudiences = new List<string> { clientId };
+        if (!string.IsNullOrWhiteSpace(config?.AndroidClientId))
+            allowedAudiences.Add(config.AndroidClientId);
+
+        logger.LogInformation("Google token validation: allowed audiences = {Audiences}", string.Join(", ", allowedAudiences));
 
         GoogleJsonWebSignature.Payload payload;
         try
         {
-            var settings = new GoogleJsonWebSignature.ValidationSettings { Audience = new[] { clientId } };
+            var settings = new GoogleJsonWebSignature.ValidationSettings { Audience = allowedAudiences };
             payload = await GoogleJsonWebSignature.ValidateAsync(request.GoogleToken, settings);
         }
         catch (InvalidJwtException ex)
         {
-            logger.LogWarning("Google token validation failed (InvalidJwt): {Message}. ClientId used: {ClientId}", ex.Message, clientId);
+            logger.LogWarning("Google token validation failed (InvalidJwt): {Message}. Allowed audiences: {Audiences}", ex.Message, string.Join(", ", allowedAudiences));
             throw new UnauthorizedAccessException("Token do Google inválido ou expirado.");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Google token validation unexpected error. ClientId used: {ClientId}", clientId);
+            logger.LogError(ex, "Google token validation unexpected error. Allowed audiences: {Audiences}", string.Join(", ", allowedAudiences));
             throw new UnauthorizedAccessException("Falha ao validar token do Google: " + ex.Message);
         }
 
