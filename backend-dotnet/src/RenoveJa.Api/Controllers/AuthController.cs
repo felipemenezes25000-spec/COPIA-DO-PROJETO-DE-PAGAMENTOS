@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using RenoveJa.Application.DTOs.Auth;
 using RenoveJa.Application.Interfaces;
+using RenoveJa.Domain.Interfaces;
 using System.Security.Claims;
 
 namespace RenoveJa.Api.Controllers;
@@ -15,6 +16,7 @@ namespace RenoveJa.Api.Controllers;
 [Route("api/auth")]
 public class AuthController(
     IAuthService authService,
+    IPushTokenRepository pushTokenRepository,
     IValidator<RegisterRequestDto> registerValidator,
     IValidator<RegisterDoctorRequestDto> registerDoctorValidator,
     IValidator<CompleteProfileRequestDto> completeProfileValidator,
@@ -102,11 +104,19 @@ public class AuthController(
 
     /// <summary>
     /// Encerra a sessão do usuário (invalida o token).
+    /// Desativa push tokens do usuário ANTES de invalidar o auth token, para evitar
+    /// notificações chegando no dispositivo após logout (ex.: múltiplos usuários no mesmo aparelho).
     /// </summary>
     [Authorize]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout(CancellationToken cancellationToken)
     {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (Guid.TryParse(userIdClaim, out var userId))
+        {
+            await pushTokenRepository.SetAllActiveForUserAsync(userId, false, cancellationToken);
+        }
+
         var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
         await authService.LogoutAsync(token, cancellationToken);
         return Ok(new { message = "Logged out successfully" });

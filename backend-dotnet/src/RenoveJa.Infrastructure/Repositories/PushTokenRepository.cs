@@ -65,6 +65,7 @@ public class PushTokenRepository(SupabaseClient supabase) : IPushTokenRepository
             filter: filter,
             cancellationToken: cancellationToken);
 
+        PushToken result;
         if (existing != null)
         {
             var updated = await supabase.UpdateAsync<PushTokenModel>(
@@ -72,15 +73,35 @@ public class PushTokenRepository(SupabaseClient supabase) : IPushTokenRepository
                 filter,
                 new { active = true },
                 cancellationToken);
-            return MapToDomain(updated);
+            result = MapToDomain(updated);
+        }
+        else
+        {
+            var model = MapToModel(pushToken);
+            var created = await supabase.InsertAsync<PushTokenModel>(
+                TableName,
+                model,
+                cancellationToken);
+            result = MapToDomain(created);
         }
 
-        var model = MapToModel(pushToken);
-        var created = await supabase.InsertAsync<PushTokenModel>(
-            TableName,
-            model,
-            cancellationToken);
-        return MapToDomain(created);
+        // Desativar o MESMO token para OUTROS user_ids.
+        // Garante que o dispositivo físico só envie push para o usuário ativo.
+        try
+        {
+            var deactivateFilter = $"token=eq.{encodedToken}&user_id=neq.{pushToken.UserId}&active=eq.true";
+            await supabase.UpdateAsync<PushTokenModel>(
+                TableName,
+                deactivateFilter,
+                new { active = false },
+                cancellationToken);
+        }
+        catch
+        {
+            // Não falhar o registro por causa da limpeza
+        }
+
+        return result;
     }
 
     public async Task DeleteByTokenAsync(string token, Guid userId, CancellationToken cancellationToken = default)
