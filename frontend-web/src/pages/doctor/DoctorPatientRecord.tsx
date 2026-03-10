@@ -74,8 +74,8 @@ function ClinicalNotesForm({
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase">Tipo da nota</label>
-            <div className="flex flex-wrap gap-2 mt-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase">Tipo da nota</p>
+            <div className="flex flex-wrap gap-2 mt-2" role="group" aria-label="Tipo da nota">
               {DOCTOR_NOTE_TYPES.map(t => (
                 <Button
                   key={t.key}
@@ -90,8 +90,9 @@ function ClinicalNotesForm({
             </div>
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase">Conteúdo</label>
+            <label htmlFor="doctor-note-content" className="text-xs font-medium text-muted-foreground uppercase">Conteúdo</label>
             <Textarea
+              id="doctor-note-content"
               value={content}
               onChange={e => setContent(e.target.value)}
               placeholder="Ex: Opto por associar medicação X ao esquema atual..."
@@ -100,8 +101,8 @@ function ClinicalNotesForm({
           </div>
           {sortedRequests.length > 0 && (
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase">Vincular a atendimento (opcional)</label>
-              <div className="flex flex-wrap gap-2 mt-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase">Vincular a atendimento (opcional)</p>
+              <div className="flex flex-wrap gap-2 mt-2" role="group" aria-label="Vincular a atendimento">
                 <Button type="button" variant={!linkedRequestId ? 'default' : 'outline'} size="sm" onClick={() => setLinkedRequestId(undefined)}>Nenhum</Button>
                 {sortedRequests.map(r => (
                   <Button key={r.id} type="button" variant={linkedRequestId === r.id ? 'default' : 'outline'} size="sm" onClick={() => setLinkedRequestId(linkedRequestId === r.id ? undefined : r.id)}>
@@ -156,9 +157,23 @@ export default function DoctorPatientRecord() {
   const age = useMemo(() => {
     if (!patient?.birthDate) return null;
     // Idade em anos — Date.now estável por sessão
-    const nowMs = Date.now(); // eslint-disable-line react-hooks/purity
+    const nowMs = Date.now();
     return Math.floor((nowMs - new Date(patient.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
   }, [patient?.birthDate]);
+
+  const handleAddNote = useCallback(async (noteType: string, content: string, requestId?: string) => {
+    if (!patientId || !content.trim()) return;
+    try {
+      const note = await addDoctorNote(patientId, { noteType, content: content.trim(), requestId });
+      setSummaryData(prev => ({
+        ...prev,
+        doctorNotes: [note, ...(prev?.doctorNotes ?? [])],
+      }));
+      toast.success('Nota registrada');
+    } catch {
+      toast.error('Não foi possível registrar a nota');
+    }
+  }, [patientId]);
 
   if (loading) {
     return (
@@ -186,20 +201,6 @@ export default function DoctorPatientRecord() {
   const consultations = requests.filter(r => r.type === 'consultation');
   const doctorNotes = summaryData?.doctorNotes ?? [];
   const documentsCount = prescriptions.length + examsReqs.length;
-
-  const handleAddNote = useCallback(async (noteType: string, content: string, requestId?: string) => {
-    if (!patientId || !content.trim()) return;
-    try {
-      const note = await addDoctorNote(patientId, { noteType, content: content.trim(), requestId });
-      setSummaryData(prev => ({
-        ...prev,
-        doctorNotes: [note, ...(prev?.doctorNotes ?? [])],
-      }));
-      toast.success('Nota registrada');
-    } catch {
-      toast.error('Não foi possível registrar a nota');
-    }
-  }, [patientId]);
 
   const getNoteIcon = (key: string) => {
     const t = DOCTOR_NOTE_TYPES.find(x => x.key === key);
