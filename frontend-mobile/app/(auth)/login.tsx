@@ -288,7 +288,7 @@ export default function Login() {
           style={styles.socialButton}
         />
         <AppButton
-          title="Apple"
+          title="Apple (em breve)"
           onPress={() => {}}
           disabled
           variant="outline"

@@ -93,7 +93,7 @@ public class ClinicalTrialsEvidenceService : IEvidenceSearchService
                 items.Add(new EvidenceItemDto(title, desc, source, null, Provider: EvidenceProvider.ClinicalTrials, Url: url));
             }
         }
-        catch (Exception) { /* ignore */ }
+        catch (Exception) { /* ignore parse errors */ }
         return items;
     }
 }

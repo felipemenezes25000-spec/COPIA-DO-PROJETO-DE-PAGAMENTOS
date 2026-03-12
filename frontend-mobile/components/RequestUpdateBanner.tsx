@@ -14,6 +14,7 @@ import { useRequestsEvents } from '../contexts/RequestsEventsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppTheme } from '../lib/ui/useAppTheme';
 import { uiTokens } from '../lib/ui/tokens';
+import { shadows } from '../lib/designSystem';
 
 export function RequestUpdateBanner() {
   const _insets = useSafeAreaInsets(); // reservado para futura margem segura (prefix _ = unused)
@@ -85,7 +86,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    shadowColor: '#000',
+    shadowColor: shadows.card.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 12,

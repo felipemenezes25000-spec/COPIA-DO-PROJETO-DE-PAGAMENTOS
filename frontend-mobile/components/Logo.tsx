@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, ImageSourcePropType } from 'react-native';
 import { useAppTheme } from '../lib/ui/useAppTheme';
+import { shadows } from '../lib/designSystem';
 
 const TAGLINE = 'Renove sua receita e pedido de exames.\nRápido e sem burocracia.';
 
@@ -59,7 +60,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 12,
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: shadows.lg.shadowColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,

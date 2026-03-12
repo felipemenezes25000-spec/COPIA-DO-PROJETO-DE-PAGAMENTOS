@@ -91,7 +91,7 @@ public class EuropePmcEvidenceService : IEvidenceSearchService
                 items.Add(new EvidenceItemDto(title, abstractText, source, null, Provider: EvidenceProvider.EuropePmc, Url: url));
             }
         }
-        catch (Exception) { /* ignore */ }
+        catch (Exception) { /* ignore parse errors */ }
         return items;
     }
 }

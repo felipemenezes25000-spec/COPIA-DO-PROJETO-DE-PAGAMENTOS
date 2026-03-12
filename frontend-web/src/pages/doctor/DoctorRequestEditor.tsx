@@ -256,7 +256,7 @@ export default function DoctorRequestEditor() {
     } finally {
       setSaving(false);
     }
-  }, [id, request, medications, exams, notes, prescriptionKind, conductNotes]);
+  }, [id, request, medications, exams, notes, prescriptionKind, conductNotes, includeConductInPdf, refreshCompliance]);
 
   const handlePreviewPdf = useCallback(async () => {
     if (!id || !request) return;

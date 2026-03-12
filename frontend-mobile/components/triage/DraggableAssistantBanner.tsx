@@ -27,6 +27,7 @@ import Animated, {
 import { Gesture, GestureDetector, Pressable as GHPressable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
+import { shadows, borderRadius } from '../../lib/designSystem';
 import { useTriageAssistant } from '../../contexts/TriageAssistantProvider';
 import {
   getBannerFloatingPosition,
@@ -236,7 +237,7 @@ const styles = StyleSheet.create({
     left: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
+    shadowColor: shadows.card.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 12,
@@ -254,7 +255,7 @@ const styles = StyleSheet.create({
     left: 0,
     borderRadius: 18,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: shadows.card.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 12,
@@ -283,7 +284,7 @@ const styles = StyleSheet.create({
   expandedFabIcon: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: borderRadius.button,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { DesignColors } from '../../lib/designSystem';
+import { shadows, borderRadius } from '../../lib/designSystem';
 import { NotificationResponseDto } from '../../types/database';
 
 export interface NotificationVisual {
@@ -128,13 +129,13 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardOuterIos: {
-    shadowColor: '#000',
+    shadowColor: shadows.sm.shadowColor,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 6,
   },
   cardOuterElevatedIos: {
-    shadowColor: '#000',
+    shadowColor: shadows.sm.shadowColor,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
@@ -162,7 +163,7 @@ const styles = StyleSheet.create({
   iconWrap: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: borderRadius.button,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 14,

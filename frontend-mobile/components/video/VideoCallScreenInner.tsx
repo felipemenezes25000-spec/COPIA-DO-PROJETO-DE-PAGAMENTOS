@@ -36,6 +36,7 @@ import { DailyMediaView } from '@daily-co/react-native-daily-js';
 import ExpoPip from 'expo-pip';
 
 import { useAppTheme } from '../../lib/ui/useAppTheme';
+import { shadows } from '../../lib/designSystem';
 import DoctorAIPanel from './DoctorAIPanel';
 import { VideoCallControls, VideoCallTopBar, VideoCallWaiting, ClinicalNotesModal } from './parts';
 import {
@@ -738,7 +739,7 @@ function makeStyles(colors: VideoColors, modalColors?: VideoColors) {
   panelBtnOn: { backgroundColor: colors.text },
   panelDot: { position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success },
 
-  panel: { position: 'absolute', right: 0, zIndex: 22, backgroundColor: colors.surface, borderTopLeftRadius: 16, borderBottomLeftRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: -4, height: 0 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 },
+  panel: { position: 'absolute', right: 0, zIndex: 22, backgroundColor: colors.surface, borderTopLeftRadius: 16, borderBottomLeftRadius: 16, overflow: 'hidden', shadowColor: shadows.lg.shadowColor, shadowOffset: { width: -4, height: 0 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 },
   panelInner: { padding: 14, gap: 16 },
 
   sec: { gap: 8 },

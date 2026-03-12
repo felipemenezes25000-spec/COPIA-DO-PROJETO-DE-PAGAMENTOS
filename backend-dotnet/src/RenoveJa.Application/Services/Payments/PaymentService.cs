@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -31,6 +32,11 @@ public class PaymentService(
     IRequestEventsPublisher requestEventsPublisher,
     ILogger<PaymentService> logger) : IPaymentService
 {
+    private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> PixLocks = new();
+
+    private static SemaphoreSlim GetPixLock(Guid requestId) =>
+        PixLocks.GetOrAdd(requestId, _ => new SemaphoreSlim(1, 1));
+
     private Task PublishRequestPaidAsync(Domain.Entities.MedicalRequest request, CancellationToken cancellationToken)
     {
         var message = request.RequestType == RequestType.Consultation
@@ -94,6 +100,25 @@ public class PaymentService(
     }
 
     private async Task<PaymentResponseDto> CreatePixPaymentInternalAsync(
+        Guid requestId,
+        Guid userId,
+        decimal amount,
+        Guid medicalRequestId,
+        CancellationToken cancellationToken)
+    {
+        var sem = GetPixLock(requestId);
+        await sem.WaitAsync(cancellationToken);
+        try
+        {
+            return await CreatePixPaymentCoreAsync(requestId, userId, amount, medicalRequestId, cancellationToken);
+        }
+        finally
+        {
+            sem.Release();
+        }
+    }
+
+    private async Task<PaymentResponseDto> CreatePixPaymentCoreAsync(
         Guid requestId,
         Guid userId,
         decimal amount,

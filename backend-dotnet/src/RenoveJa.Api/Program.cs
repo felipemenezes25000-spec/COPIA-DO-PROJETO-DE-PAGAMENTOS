@@ -206,11 +206,6 @@ builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>()
 
 // Configuração centralizada (Supabase, Google, MercadoPago, OpenAI, Daily, etc.)
 builder.Services.AddRenoveJaConfiguration(builder.Configuration, _envVars);
-{
-    var googleClientId = builder.Configuration.GetSection("Google")["ClientId"];
-    if (string.IsNullOrWhiteSpace(googleClientId))
-        Console.WriteLine("⚠️  [WARN] Google:ClientId não configurado. Login com Google não funcionará. Defina a env var Google__ClientId.");
-}
 
 // In-memory cache
 builder.Services.AddMemoryCache();
@@ -427,6 +422,15 @@ builder.Services.AddRateLimiter(options =>
 });
 
 var app = builder.Build();
+
+{
+    var googleClientId = app.Configuration.GetSection("Google")["ClientId"];
+    if (string.IsNullOrWhiteSpace(googleClientId))
+    {
+        var logger = app.Services.GetRequiredService<ILogger<Program>>();
+        logger.LogWarning("Google:ClientId não configurado. Login com Google não funcionará. Defina a env var Google__ClientId.");
+    }
+}
 
 app.UseForwardedHeaders();
 

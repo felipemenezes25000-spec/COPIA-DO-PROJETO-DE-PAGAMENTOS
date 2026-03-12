@@ -29,8 +29,8 @@ export const VideoCallControls = React.memo(function VideoCallControls({
   colors, insetBottom, isMuted, isCameraOff, isDoctor, ending, hasPip,
   onToggleMute, onToggleCamera, onFlipCamera, onEnd, onEnterPip,
 }: VideoCallControlsProps) {
-  // Cor escura para contraste sobre overlay de vídeo (usa surface do tema para consistência com dark mode)
-  const btnBg = colors.surfaceSecondary;
+  // Cor fixa escura (neutral[800]) — overlay de vídeo é sempre escuro; surfaceSecondary em light seria cinza claro
+  const btnBg = '#1E293B';
 
   return (
     <View style={[S.ctrl, { paddingBottom: insetBottom + 12 }]}>

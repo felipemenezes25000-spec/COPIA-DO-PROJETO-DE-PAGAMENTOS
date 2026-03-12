@@ -14,6 +14,7 @@ import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../lib/designSystem';
+import { shadows, borderRadius } from '../../lib/designSystem';
 
 type CardMode = 'auto' | 'conduct';
 
@@ -124,11 +125,11 @@ function makeStyles(colors: DesignColors) {
   return StyleSheet.create({
   card: {
     flexDirection: 'row',
-    borderRadius: 14,
+    borderRadius: borderRadius.button,
     overflow: 'hidden',
     marginBottom: 12,
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
+      ios: { shadowColor: shadows.sm.shadowColor, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
       android: { elevation: 1 },
       web: { boxShadow: '0 1px 4px rgba(0,0,0,0.04)' } as object,
     }),
@@ -136,8 +137,8 @@ function makeStyles(colors: DesignColors) {
   accentBar: {
     width: 3.5,
     alignSelf: 'stretch',
-    borderTopLeftRadius: 14,
-    borderBottomLeftRadius: 14,
+    borderTopLeftRadius: borderRadius.button,
+    borderBottomLeftRadius: borderRadius.button,
   },
   body: {
     flex: 1,

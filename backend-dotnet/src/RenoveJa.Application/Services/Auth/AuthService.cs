@@ -606,9 +606,9 @@ public class AuthService(
             await consentRepository.CreateAsync(dataSharingConsent, cancellationToken);
             patient.LinkConsentRecord(dataSharingConsent.Id);
         }
-        catch
+        catch (Exception ex)
         {
-            // Best effort: consent recording failure should not block registration
+            logger.LogWarning(ex, "[AUTH] Falha ao registrar consents LGPD para userId={UserId}. Best effort.", userId);
         }
     }
 

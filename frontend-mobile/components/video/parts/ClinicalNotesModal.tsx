@@ -60,7 +60,7 @@ export const ClinicalNotesModal = React.memo(function ClinicalNotesModal({
               style={[S.btnPri, { backgroundColor: colors.primary }]}
               onPress={onConfirm}
             >
-              <Text style={S.btnPriT}>Encerrar Consulta</Text>
+              <Text style={[S.btnPriT, { color: colors.white }]}>Encerrar Consulta</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -80,5 +80,5 @@ const S = StyleSheet.create({
   btnSec: { flex: 1, height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   btnSecT: { fontWeight: '600', fontSize: 14 },
   btnPri: { flex: 2, height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  btnPriT: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
+  btnPriT: { fontWeight: '700', fontSize: 14 },
 });

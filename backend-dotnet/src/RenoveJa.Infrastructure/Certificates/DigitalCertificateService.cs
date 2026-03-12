@@ -579,7 +579,7 @@ public class DigitalCertificateService : IDigitalCertificateService
         foreach (var url in urls)
         {
             try { return new TSAClientBouncyCastle(url); }
-            catch { }
+            catch (Exception) { /* best effort: tenta próximo TSA */ }
         }
         return null;
     }

@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, borderRadius } from '../../lib/theme';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
+import { shadows } from '../../lib/designSystem';
 import type { DesignColors } from '../../lib/designSystem';
 import { isExpoGo } from '../../lib/expo-go';
 
@@ -196,7 +197,7 @@ function makeStyles(colors: DesignColors) {
     padding: spacing.xl,
     alignItems: 'center',
     gap: spacing.md,
-    shadowColor: '#000',
+    shadowColor: shadows.lg.shadowColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 16,

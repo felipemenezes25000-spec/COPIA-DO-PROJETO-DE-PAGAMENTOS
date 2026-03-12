@@ -24,7 +24,7 @@ type AlertCategory = 'allergy' | 'lacuna' | 'critical';
 
 function parseAlertText(text: string): { category: AlertCategory; cleanText: string; isPositive: boolean } {
   const clean = text
-    .replace(/^[🔴🟢ℹ️⚠️🚨]\s*/g, '')
+    .replace(/^(?:\u{1F534}|\u{1F7E2}|\u{2139}\u{FE0F}?|\u{26A0}\u{FE0F}?|\u{1F6A8})\s*/gu, '')
     .replace(/^\[ALERGIA\]\s*/i, '')
     .replace(/^\[LACUNA\]\s*/i, '')
     .trim();

@@ -196,7 +196,7 @@ function makeStyles(colors: ReturnType<typeof import('../lib/designSystem').crea
     borderRadius: 12,
   },
   enterNowBtnText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '700',
   },

@@ -58,9 +58,7 @@ public class RequestsController(
     [Consumes("application/json", "multipart/form-data")]
     public async Task<IActionResult> CreatePrescription(CancellationToken cancellationToken)
     {
-        try
-        {
-            var userId = GetUserId();
+        var userId = GetUserId();
             CreatePrescriptionRequestDto request;
 
             if (Request.HasFormContentType)
@@ -160,14 +158,9 @@ public class RequestsController(
             var result = await requestService.CreatePrescriptionAsync(request, userId, cancellationToken);
             logger.LogInformation("Requests CreatePrescription: userId={UserId}, requestId={RequestId}, type={Type}",
                 userId, result.Request.Id, request.PrescriptionType);
-            return result.Payment != null
-                ? Ok(new { request = result.Request, payment = result.Payment })
-                : Ok(new { request = result.Request });
-        }
-        catch (Exception)
-        {
-            throw;
-        }
+        return result.Payment != null
+            ? Ok(new { request = result.Request, payment = result.Payment })
+            : Ok(new { request = result.Request });
     }
 
     /// <summary>

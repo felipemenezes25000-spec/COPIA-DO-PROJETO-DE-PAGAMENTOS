@@ -44,7 +44,8 @@ import {
   Save, PhoneOff, Shield,
   MessageSquare,
 } from 'lucide-react';
-import { VideoTopBar, VideoFrame } from '@/components/doctor/video/VideoControls';
+import { VideoTopBar } from '@/components/doctor/video/VideoControls';
+import { VideoFrameDaily } from '@/components/doctor/video/VideoFrameDaily';
 import { TranscriptionPanel } from '@/components/doctor/video/TranscriptionPanel';
 import { ConsultationStats } from '@/components/doctor/video/ConsultationStats';
 import { DoctorAIPanel } from '@/components/doctor/video/DoctorAIPanel';
@@ -289,11 +290,13 @@ export default function DoctorVideoCall() {
 
       {/* ── Main Content: Video + AI Panel ── */}
       <div className="flex-1 flex overflow-hidden">
-        <VideoFrame
+        <VideoFrameDaily
           roomUrl={roomUrl}
+          requestId={requestId ?? null}
           isExpanded={isExpanded}
           onToggleExpand={() => setIsExpanded(!isExpanded)}
-          onIframeLoad={handleIframeLoad}
+          onCallJoined={handleIframeLoad}
+          consultationActive={consultationStarted}
         />
 
         {/* ── AI Clinical Panel ── */}

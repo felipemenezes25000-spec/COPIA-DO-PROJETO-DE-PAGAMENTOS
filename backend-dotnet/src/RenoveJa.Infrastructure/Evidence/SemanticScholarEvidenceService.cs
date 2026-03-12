@@ -90,7 +90,7 @@ public class SemanticScholarEvidenceService : IEvidenceSearchService
                 items.Add(new EvidenceItemDto(title, abstractText, source, null, Provider: EvidenceProvider.SemanticScholar, Url: url));
             }
         }
-        catch (Exception) { /* ignore */ }
+        catch (Exception) { /* ignore parse errors */ }
         return items;
     }
 }

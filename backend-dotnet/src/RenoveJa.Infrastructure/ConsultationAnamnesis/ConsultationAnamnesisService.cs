@@ -121,17 +121,65 @@ public class ConsultationAnamnesisService : IConsultationAnamnesisService
             return null;
         }
 
+        // ── Pré-processamento: consolida transcript ruidoso do Deepgram/Daily ──
+        var processedTranscript = PreprocessTranscript(transcriptSoFar);
+        _logger.LogInformation("[Anamnese IA v4] Transcript preprocessado: originalLen={OrigLen} processedLen={ProcLen}",
+            transcriptSoFar.Length, processedTranscript.Length);
+
         var systemPrompt = BuildSystemPromptV2();
 
-        var userContent = string.IsNullOrWhiteSpace(previousAnamnesisJson)
-            ? $"Transcript da consulta (incluindo identificação de locutor quando disponível):\n\n{transcriptSoFar}"
-            : $@"ANAMNESE ANTERIOR (use como ponto de partida, mas REAVALIE TUDO — CID, diagnósticos diferenciais, medicamentos, exames e interações — com base no transcript COMPLETO e ATUALIZADO abaixo. Se o paciente relatou novos sintomas, mudou a queixa ou deu mais detalhes, ATUALIZE o cid_sugerido, diagnostico_diferencial, medicamentos_sugeridos, exames_sugeridos e interacoes_cruzadas para refletir o quadro ATUAL, não o inicial):
+        // ── User message: com instrução de reconstrução + raciocínio clínico explícito ──
+        var transcriptBlock = $@"═══ TRANSCRIPT DA CONSULTA (pré-processado, linhas consolidadas por locutor) ═══
+
+{processedTranscript}
+
+═══ FIM DO TRANSCRIPT ═══";
+
+        var reasoningInstruction = @"
+═══ INSTRUÇÕES OBRIGATÓRIAS ANTES DE GERAR O JSON ═══
+
+ETAPA 1 — RECONSTRUÇÃO: O transcript vem de reconhecimento de fala (Deepgram/Daily) e contém ERROS FONÉTICOS. Reconstrua mentalmente o que o paciente QUIS dizer. Exemplos comuns:
+- ""saúde não teu pressão alta"" → ""não tenho pressão alta""
+- ""pescoço macho"" → ""pescoço, acho""
+- ""de bar"" → ""daqui debaixo""
+- ""mu"" → ""nuca"" (região cervical posterior)
+- ""talk aguda de querida"" → ""toxoplasmose aguda adquirida""
+- ""uma mono de"" → ""mononucleose""
+Leia com olhos clínicos: interprete o SENTIDO MÉDICO, não a literalidade.
+
+ETAPA 2 — EXTRAÇÃO DE DADOS CLÍNICOS: Antes de definir QUALQUER CID, liste mentalmente:
+• Quais SINTOMAS o paciente relatou? (duração, localização, intensidade, caráter)
+• Quais SINAIS foram mencionados? (febre, inchaço, etc.)
+• Qual a HISTÓRIA EPIDEMIOLÓGICA? (contato com animais, viagens, exposições)
+• O que o paciente NEGA? (nega hipertensão, nega medicamentos, nega alergias)
+• O que o MÉDICO comentou no final? (diagnósticos, CIDs mencionados verbalmente)
+
+ETAPA 3 — RACIOCÍNIO DIAGNÓSTICO: Com os dados extraídos, raciocine:
+• Qual SISTEMA/ÓRGÃO está envolvido? (apenas os que o paciente MENCIONOU)
+• Quais HIPÓTESES explicam TODOS os achados juntos?
+• Qual dado epidemiológico é CHAVE para o diagnóstico diferencial?
+• O CID deve cobrir o quadro COMPLETO, não apenas um sintoma isolado.
+
+SOMENTE DEPOIS das 3 etapas, gere o JSON com cid_sugerido coerente.";
+
+        string userContent;
+        if (string.IsNullOrWhiteSpace(previousAnamnesisJson))
+        {
+            userContent = $@"{reasoningInstruction}
+
+{transcriptBlock}";
+        }
+        else
+        {
+            userContent = $@"{reasoningInstruction}
+
+ANAMNESE ANTERIOR (use como REFERÊNCIA, mas RECALCULE TUDO — especialmente cid_sugerido e diagnostico_diferencial — do ZERO com base no transcript completo abaixo. O CID anterior pode estar ERRADO. Não o preserve por inércia.):
 {previousAnamnesisJson}
 
-REGRA: Recalcule TUDO com base no transcript atual. Leia o transcript completo e derive o CID e o diagnóstico diferencial do que o paciente REALMENTE disse. Não preserve valores anteriores por inércia.
+REGRA ABSOLUTA: Ignore o cid_sugerido anterior. Derive o CID EXCLUSIVAMENTE do transcript abaixo, seguindo as 3 etapas acima.
 
-TRANSCRIPT COMPLETO ATUALIZADO (analise do início ao fim, priorizando as falas mais recentes):
-{transcriptSoFar}";
+{transcriptBlock}";
+        }
 
         var requestBody = new
         {
@@ -141,7 +189,7 @@ TRANSCRIPT COMPLETO ATUALIZADO (analise do início ao fim, priorizando as falas 
                 new { role = "system", content = (object)systemPrompt },
                 new { role = "user", content = (object)userContent }
             },
-            max_tokens = 10000,
+            max_tokens = 16000,
             temperature = 0.10
         };
 
@@ -185,7 +233,7 @@ TRANSCRIPT COMPLETO ATUALIZADO (analise do início ao fim, priorizando as falas 
                 var fallbackModel = "gpt-4o";
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", openAiKey);
                 using var fallbackContent = new StringContent(
-                    JsonSerializer.Serialize(new { model = fallbackModel, messages = requestBody.messages, max_tokens = 10000, temperature = 0.10 }, JsonOptions),
+                    JsonSerializer.Serialize(new { model = fallbackModel, messages = requestBody.messages, max_tokens = 16000, temperature = 0.10 }, JsonOptions),
                     Encoding.UTF8, "application/json");
                 var fallbackResponse = await client.PostAsync($"{OpenAiBaseUrl}/chat/completions", fallbackContent, cancellationToken);
                 var fallbackJson = await fallbackResponse.Content.ReadAsStringAsync(cancellationToken);
@@ -258,6 +306,7 @@ TRANSCRIPT COMPLETO ATUALIZADO (analise do início ao fim, priorizando as falas 
                 CopyIfExists(root, enrichedObj, "cid_sugerido");
             }
             CopyIfExists(root, enrichedObj, "confianca_cid");
+            CopyIfExists(root, enrichedObj, "raciocinio_clinico");
             CopyIfExists(root, enrichedObj, "denominador_comum");
             CopyArrayIfExists(root, enrichedObj, "alertas_vermelhos");
             CopyArrayIfExists(root, enrichedObj, "diagnostico_diferencial");
@@ -333,38 +382,150 @@ TRANSCRIPT COMPLETO ATUALIZADO (analise do início ao fim, priorizando as falas 
     }
 
     /// <summary>
-    /// Prompt v3: modelo híbrido com dados ultra-completos.
-    /// Medicamentos 4-10, exames 4-12, perguntas 4-8, sugestões 3-7,
-    /// interações cruzadas obrigatórias, CID mais específico possível.
+    /// Pré-processa o transcript bruto do Deepgram/Daily para facilitar a compreensão pela IA.
+    /// 1. Consolida linhas consecutivas do mesmo locutor (evita fragmentação "[Paciente] Eu" "[Paciente] tenho")
+    /// 2. Remove hesitações puras (linhas com apenas "É", "Eh", "Hm", "Aí", "Né", "Pronto", "Talk")
+    /// 3. Remove linhas duplicadas adjacentes
+    /// </summary>
+    private static string PreprocessTranscript(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return raw;
+
+        var lines = raw.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        if (lines.Length == 0)
+            return raw;
+
+        // Hesitações puras (linhas que são só noise) — case-insensitive
+        var pureHesitations = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "é", "eh", "hm", "hmm", "aí", "né", "pronto", "talk", "o", "a", "e",
+            "então", "nesse", "pra", "que", "bom", "isso", "presidente", "gente",
+            "qual", "pai", "uma"
+        };
+
+        var consolidated = new List<(string Speaker, string Text)>();
+
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            if (string.IsNullOrEmpty(trimmed))
+                continue;
+
+            // Parse "[Médico] texto" or "[Paciente] texto"
+            string speaker;
+            string text;
+            if (trimmed.StartsWith("[") && trimmed.IndexOf(']') is var closeBracket and > 0)
+            {
+                speaker = trimmed[1..closeBracket].Trim();
+                text = trimmed[(closeBracket + 1)..].Trim();
+            }
+            else
+            {
+                speaker = "";
+                text = trimmed;
+            }
+
+            // Skip pure hesitation lines
+            var cleanedForCheck = text.TrimEnd('.', ',', '?', '!', ';', ':').Trim();
+            if (pureHesitations.Contains(cleanedForCheck))
+                continue;
+
+            // Skip very short noise lines (1-2 chars after cleanup)
+            if (cleanedForCheck.Length <= 2)
+                continue;
+
+            // Consolidate consecutive lines from same speaker
+            if (consolidated.Count > 0 && consolidated[^1].Speaker == speaker)
+            {
+                var prev = consolidated[^1];
+                // Don't duplicate if text is identical
+                if (!string.Equals(prev.Text.TrimEnd('.', ','), text.TrimEnd('.', ','), StringComparison.OrdinalIgnoreCase))
+                {
+                    consolidated[^1] = (speaker, prev.Text + " " + text);
+                }
+            }
+            else
+            {
+                consolidated.Add((speaker, text));
+            }
+        }
+
+        var sb = new StringBuilder(raw.Length);
+        foreach (var (speaker, text) in consolidated)
+        {
+            if (!string.IsNullOrEmpty(speaker))
+                sb.AppendLine($"[{speaker}] {text}");
+            else
+                sb.AppendLine(text);
+        }
+
+        return sb.ToString().TrimEnd();
+    }
+
+    /// <summary>
+    /// Prompt v4: prompt reestruturado para máxima acurácia com Gemini 2.5 Flash.
+    /// Mudanças vs v3:
+    /// - Regras de CID movidas para INÍCIO e FINAL (primacy/recency effect)
+    /// - Etapa de RACIOCÍNIO CLÍNICO EXPLÍCITO obrigatória antes do CID
+    /// - Instrução de reconstrução de transcript ruidoso
+    /// - Medicamentos 4-10, exames 4-12, perguntas 4-8, sugestões 3-7,
+    /// - interações cruzadas obrigatórias, CID mais específico possível.
     /// </summary>
     private static string BuildSystemPromptV2()
     {
         return """
+═══════════════════════════════════════════════════════════════
+REGRA #1 — CID (LEIA PRIMEIRO — MÁXIMA PRIORIDADE)
+═══════════════════════════════════════════════════════════════
+O CID DEVE derivar EXCLUSIVAMENTE dos sintomas, sinais e dados epidemiológicos que o paciente RELATOU no transcript.
+
+PROIBIDO:
+- Usar CID de órgão/sistema que o paciente NÃO mencionou (ex: H65.x otite sem queixa de ouvido)
+- Inventar sintomas que não estão no transcript
+- Preservar CID de chamada anterior por inércia
+
+OBRIGATÓRIO:
+- Use o código MAIS ESPECÍFICO possível (subcategoria, ex: B58.9, não B58)
+- O campo "raciocinio_clinico" DEVE ser preenchido ANTES de cid_sugerido — nele você lista os sintomas extraídos e justifica o CID
+- Se o paciente mencionou DADO EPIDEMIOLÓGICO (contato com gatos, viagens, alimentos), use-o ativamente no diagnóstico diferencial
+- Se o médico mencionou um CID ou diagnóstico no final da consulta, CONSIDERE-O fortemente
+
+═══════════════════════════════════════════════════════════════
+PAPEL E CONTEXTO
+═══════════════════════════════════════════════════════════════
 Você é um COPILOTO CLÍNICO DE ELITE na plataforma RenoveJá+ (telemedicina brasileira).
 Toda saída é APOIO À DECISÃO CLÍNICA — conduta final exclusiva do médico.
 CFM Resolução 2.299/2021 e normas éticas vigentes.
 
-O transcript contém linhas [Médico] e [Paciente].
+O transcript contém linhas [Médico] e [Paciente] vindas de reconhecimento de fala (Deepgram/Daily).
+O transcript CONTÉM ERROS FONÉTICOS — você DEVE reconstruir o sentido clínico antes de raciocinar.
 
-Responda em um ÚNICO JSON válido, sem markdown, com EXATAMENTE estes campos:
+═══════════════════════════════════════════════════════════════
+FORMATO DE SAÍDA — JSON ÚNICO, SEM MARKDOWN
+═══════════════════════════════════════════════════════════════
+Responda em um ÚNICO JSON válido com EXATAMENTE estes campos (nesta ordem):
 
 {
   "anamnesis": {
-    "queixa_principal": "Queixa e duração com localização, intensidade (EVA 0-10), caráter, irradiação. Seja PRECISO.",
+    "queixa_principal": "Queixa e duração com localização, intensidade (EVA 0-10), caráter, irradiação. Seja PRECISO. Reconstrua linguagem coloquial para termos clínicos.",
     "historia_doenca_atual": "Evolução usando OPQRST (Onset, Provocation, Quality, Region, Severity, Time). Fatores de melhora/piora, tratamentos tentados, cronologia.",
-    "sintomas": ["TODOS os sintomas em linguagem clínica, incluindo negativos relevantes ('nega febre', 'nega dispneia')"],
+    "sintomas": ["TODOS os sintomas em linguagem clínica, incluindo negativos relevantes ('nega febre', 'nega dispneia'). RECONSTRUA erros fonéticos."],
     "revisao_sistemas": "Revisão pertinente: cardiovascular, respiratório, GI, neurológico, musculoesquelético, psiquiátrico",
-    "medicamentos_em_uso": ["INFIRA o nome do medicamento mesmo quando o paciente usar linguagem coloquial. Exemplos: 'remédio pra pressão' → Losartana ou Anlodipino; 'vitamina' → Complexo B ou Polivitamínico; 'remédio do coração' → AAS ou estatinas; 'para dormir' → Melatonina ou Zolpidem; 'pra diabetes' → Metformina; 'anti-inflamatório' → Ibuprofeno ou Diclofenaco. Liste o nome técnico (DCB) com dose quando possível. ESSENCIAL para interações."],
+    "medicamentos_em_uso": ["INFIRA o nome técnico (DCB) mesmo de linguagem coloquial. 'remédio pra pressão' → Losartana/Anlodipino. Se nega uso: ['Nega uso de medicamentos contínuos']"],
     "alergias": "Alergias conhecidas. Se nenhuma: 'NKDA'",
-    "antecedentes_pessoais": "Comorbidades, cirurgias, internações, hábitos",
+    "antecedentes_pessoais": "Comorbidades, cirurgias, internações, hábitos. Se nega: 'Nega comorbidades prévias'",
     "antecedentes_familiares": "Histórico familiar: DM, HAS, CA, DAC, AVC",
-    "habitos_vida": "Tabagismo (maços/ano), etilismo, drogas, sedentarismo, dieta",
+    "habitos_vida": "Tabagismo (maços/ano), etilismo, drogas, sedentarismo, dieta. Incluir CONTATO COM ANIMAIS se mencionado.",
+    "dados_epidemiologicos": "CRÍTICO: Contato com animais (gatos, cães), limpeza de caixa de areia, consumo de carne crua/mal passada, viagens recentes, contato com doentes, exposição ocupacional. ESTE CAMPO É DECISIVO PARA O CID.",
     "outros": "Informação adicional relevante não coberta acima"
   },
 
-  "denominador_comum": "OBRIGATÓRIO. Categoria ampla que unifica todas as hipóteses. Ex: 'IVAS' (infecção vias aéreas superiores), 'Síndrome gripal', 'Dermatose inflamatória'. O médico vê primeiro o denominador, depois as probabilidades.",
+  "raciocinio_clinico": "OBRIGATÓRIO. Antes de definir o CID, escreva aqui seu raciocínio em 3-5 frases: (1) Quais são os achados-chave? (2) Qual sistema/órgão está envolvido? (3) Qual dado epidemiológico é relevante? (4) Por que este CID e não outro? Exemplo: 'Paciente com fadiga há 14 dias + febre baixa intermitente (37.5°C) + linfonodomegalia cervical posterior + contato com gatos (limpa caixa de areia). Tríade clássica de toxoplasmose adquirida em imunocompetente. CID B58.9 é mais específico que B27.9 (mono) pelo dado epidemiológico de contato com fezes de gato.'",
 
-  "cid_sugerido": "OBRIGATÓRIO. Formato: 'CÓDIGO - Descrição'. Use o código MAIS ESPECÍFICO (subcategoria). Ex: 'J03.0 - Amigdalite estreptocócica' (não J06.9). Se incerto, use .9. NUNCA invente códigos.",
+  "denominador_comum": "Categoria ampla que unifica as hipóteses. Ex: 'Síndrome linfoproliferativa infecciosa', 'Síndrome gripal'. O médico vê primeiro o denominador, depois as probabilidades.",
+
+  "cid_sugerido": "Formato: 'CÓDIGO - Descrição'. Use subcategoria MAIS ESPECÍFICA. DEVE ser coerente com raciocinio_clinico acima. NUNCA invente códigos.",
 
   "confianca_cid": "alta | media | baixa",
 
@@ -374,7 +535,7 @@ Responda em um ÚNICO JSON válido, sem markdown, com EXATAMENTE estes campos:
       "cid": "CID-10 — descrição",
       "probabilidade": "alta | media | baixa",
       "probabilidade_percentual": 0-100,
-      "argumentos_a_favor": "Dados que suportam",
+      "argumentos_a_favor": "Dados do transcript que suportam — cite EXATAMENTE o que o paciente disse",
       "argumentos_contra": "Dados ausentes ou contra",
       "exames_confirmatorios": "Exames que confirmariam/descartariam"
     }
@@ -382,27 +543,27 @@ Responda em um ÚNICO JSON válido, sem markdown, com EXATAMENTE estes campos:
 
   "classificacao_gravidade": "verde | amarelo | laranja | vermelho (Manchester)",
 
-  "alertas_vermelhos": ["APENAS com base CLARA no transcript. Formato: 'SINAL — SIGNIFICADO — AÇÃO'. Ex: 'Dor torácica + sudorese — SCA — SAMU'"],
+  "alertas_vermelhos": ["APENAS com base CLARA no transcript. Formato: 'SINAL — SIGNIFICADO — AÇÃO'"],
 
   "exame_fisico_dirigido": "O que examinar: sinais vitais, manobras, pontos de atenção.",
 
   "medicamentos_sugeridos": [
     {
-      "nome": "Genérico (DCB) + concentração. Ex: 'Amoxicilina 500mg'",
-      "classe_terapeutica": "Classificação farmacológica. Ex: 'Antibiótico β-lactâmico — Aminopenicilina'",
-      "dose": "Dose por tomada. Ex: '500mg' ou '2 comprimidos de 500mg'",
+      "nome": "Genérico (DCB) + concentração",
+      "classe_terapeutica": "Classificação farmacológica",
+      "dose": "Dose por tomada",
       "via": "VO | IM | IV | SC | Tópica | Inalatória | Sublingual | Nasal",
-      "posologia": "Frequência em linguagem clara. Ex: '1 comprimido de 8 em 8 horas' ou '2 comprimidos de 12 em 12 horas'",
+      "posologia": "Frequência clara: '1 comprimido de 8 em 8 horas'",
       "duracao": "Ex: '7 dias', 'uso contínuo'",
-      "indicacao": "Indicado para [doença/CID]. Serve para [objetivo terapêutico]. Ex: 'Indicado para sinusite bacteriana. Trata a infecção e reduz secreção.'",
-      "melhora_esperada": "OBRIGATÓRIO quando confianca_cid=alta. Ex: 'Melhora dos sintomas em 2-3 dias; resolução em 7-10 dias'",
+      "indicacao": "Indicado para [doença/CID]. Serve para [objetivo terapêutico].",
+      "melhora_esperada": "OBRIGATÓRIO quando confianca_cid=alta. Ex: 'Melhora em 2-3 dias'",
       "contraindicacoes": "Todas relevantes",
-      "interacoes": "Interações com TODOS medicamentos que o paciente JÁ USA + interações graves conhecidas. Se paciente usa Losartana → avaliar hipotensão com IECA. Sempre cruzar.",
-      "mecanismo_acao": "Como o medicamento atua. Ex: 'Inibe COX-1 e COX-2, reduzindo prostaglandinas → efeito analgésico/anti-inflamatório/antipirético'",
+      "interacoes": "Interações com medicamentos que o paciente JÁ USA + interações graves conhecidas",
+      "mecanismo_acao": "Como o medicamento atua",
       "ajuste_renal": "Ajuste se ClCr < 30, < 60. Vazio se não necessário",
       "ajuste_hepatico": "Ajuste se insuficiência hepática. Vazio se não necessário",
       "alerta_faixa_etaria": "Ajuste para idosos/crianças/gestantes/lactantes",
-      "alternativa": "Alternativa completa. Ex: 'Azitromicina 500mg 1x/dia 3 dias se alergia a penicilinas'"
+      "alternativa": "Alternativa completa com dose"
     }
   ],
 
@@ -411,20 +572,20 @@ Responda em um ÚNICO JSON válido, sem markdown, com EXATAMENTE estes campos:
       "medicamento_a": "Nome do medicamento A (pode ser em uso OU sugerido)",
       "medicamento_b": "Nome do medicamento B (pode ser em uso OU sugerido)",
       "tipo": "grave | moderada | leve",
-      "descricao": "Descrição da interação e consequência clínica. Ex: 'Metformina + Contraste iodado → risco de acidose lática. Suspender metformina 48h antes e após'",
-      "conduta": "O que fazer. Ex: 'Monitorar PA de perto', 'Espaçar doses em 2h', 'Contraindicação absoluta'"
+      "descricao": "Descrição da interação e consequência clínica",
+      "conduta": "O que fazer"
     }
   ],
 
   "exames_sugeridos": [
     {
       "nome": "Nome técnico completo",
-      "codigo_tuss": "Código TUSS/CBHPM quando conhecido. Vazio se não souber",
+      "codigo_tuss": "Código TUSS/CBHPM quando conhecido",
       "descricao": "O que é o exame",
       "o_que_afere": "O que mede — específico para ESTE caso",
       "indicacao": "Justificativa para ESTE paciente AGORA",
-      "interpretacao_esperada": "O que se espera encontrar SE a hipótese principal estiver correta. Ex: 'Leucocitose >12.000 com desvio à esquerda sugere infecção bacteriana; PCR >10 corrobora'. FUNDAMENTAL para o médico.",
-      "preparo_paciente": "Preparo necessário. Vazio se não precisa",
+      "interpretacao_esperada": "O que se espera SE a hipótese principal estiver correta",
+      "preparo_paciente": "Preparo necessário",
       "prazo_resultado": "Tempo estimado",
       "urgencia": "rotina | urgente"
     }
@@ -436,10 +597,10 @@ Responda em um ÚNICO JSON válido, sem markdown, com EXATAMENTE estes campos:
 
   "perguntas_sugeridas": [
     {
-      "pergunta": "Pergunta DIRETA em 2ª pessoa, linguagem natural. A que MAIS MUDA A CONDUTA agora.",
-      "objetivo": "O que confirma/descarta. Ex: 'Diferencia pleurítica de muscular → muda RX'",
-      "hipoteses_afetadas": "Mapa decisório: 'Se SIM → J18.9, RX tórax. Se NÃO → M54.5, AINE'",
-      "impacto_na_conduta": "Detalhamento: o que muda na prescrição/encaminhamento se sim vs não",
+      "pergunta": "Pergunta DIRETA em 2ª pessoa. A que MAIS MUDA A CONDUTA agora.",
+      "objetivo": "O que confirma/descarta",
+      "hipoteses_afetadas": "Se SIM → CID X. Se NÃO → CID Y",
+      "impacto_na_conduta": "O que muda na prescrição se sim vs não",
       "prioridade": "alta | media | baixa"
     }
   ],
@@ -449,123 +610,69 @@ Responda em um ÚNICO JSON válido, sem markdown, com EXATAMENTE estes campos:
   "suggestions": ["3-7 frases para prontuário. HD principal, DD, conduta, seguimento."]
 }
 
-═══ REGRAS OBRIGATÓRIAS DE COMPLETUDE ═══
+═══ REGRAS DE COMPLETUDE ═══
 
-CID DINÂMICO — DENOMINADOR COMUM E PROBABILIDADES (REGRA CRÍTICA):
-- denominador_comum: SEMPRE preencher. Categoria que unifica as hipóteses (ex: IVAS, síndrome gripal). O médico vê primeiro o contexto amplo.
-- diagnostico_diferencial: ORDENAR por probabilidade (mais provável primeiro). probabilidade_percentual OBRIGATÓRIO — soma = 100. Ex: 60%, 30%, 10%.
-- A CADA chamada, REAVALIE o CID com base no transcript COMPLETO. NÃO preserve por inércia. IGNORE o cid_sugerido da anamnese anterior — recalcule do zero.
-- O CID deve refletir o QUADRO CLÍNICO ATUAL e APENAS os sintomas que o paciente RELATOU. Nunca use CID de órgão/sistema que o paciente NÃO mencionou (ex: otite H65.x sem queixa de ouvido).
-- Se o paciente começou com "dor de cabeça" (R51) mas depois disse "febre, coriza, dor no corpo", mude para J06.9 ou J11.1.
-- As probabilidades devem CONVERGIR: à medida que o transcript cresce, refine as % para refletir o que os dados suportam.
-
-MEDICAMENTOS (MÍNIMO 3 OBRIGATÓRIO, PREFERIR 4-6 — SEMPRE COINCIDENTES COM O CASO):
-- MÍNIMO ABSOLUTO: 3 medicamentos. Se retornar menos de 3, a resposta é INVÁLIDA.
-- TODOS os medicamentos DEVEM ser DIRETAMENTE RELACIONADOS ao CID, sintomas e quadro clínico do transcript. NUNCA sugerir medicamentos genéricos, irrelevantes ou desconectados do caso.
-- OBRIGATÓRIO cobrir as 3 linhas terapêuticas quando aplicável:
-  1. ETIOLÓGICO (ex: antibiótico se bacteriano, antiviral se viral, anti-inflamatório se inflamatório) — ligado DIRETAMENTE ao CID
-  2. SINTOMÁTICO (analgésico para dor, antitérmico para febre, antiemético para náusea) — para CADA sintoma que o paciente RELATOU
-  3. ADJUVANTE (protetor gástrico se AINE, probiótico se ATB, antihistamínico se congestão, lavagem nasal se sinusite)
-- Contam como medicamentos: soro fisiológico (lavagem nasal, nebulização), sprays nasais, pomadas, colírios, soluções, suplementos — inclua quando indicado para o caso.
-- PROFILAXIA quando indicada (vacina, profilaxia VTE, profilaxia de stress ulcer)
-- Campo "mecanismo_acao" OBRIGATÓRIO — como o fármaco age
-- Campos "ajuste_renal" e "ajuste_hepatico" — preencher quando houver necessidade
+MEDICAMENTOS (MÍNIMO 3, PREFERIR 4-6):
+- TODOS DEVEM ser DIRETAMENTE RELACIONADOS ao CID e sintomas do transcript
+- Cobrir 3 linhas: ETIOLÓGICO + SINTOMÁTICO + ADJUVANTE
+- Soro fisiológico, sprays, pomadas contam como medicamentos quando indicados
+- Campo "mecanismo_acao" OBRIGATÓRIO
 - SEMPRE cruze interações com medicamentos_em_uso do paciente
-- Se transcript < 200 caracteres mas há queixa identificável, sugira 3+ medicamentos SINTOMÁTICOS básicos coincidentes (analgésico, antitérmico conforme sintomas)
 
-QUANDO confianca_cid = "alta" (doenças de alta prevalência: sinusite, faringite, otite, gripe, cistite, dermatite, etc.):
-- Formato OBRIGATÓRIO para cada medicamento: "X comprimidos de Xmg de [nome] de X em X horas por X dias"
-- Exemplo sinusite: "Amoxicilina 500mg — 1 comprimido de 8 em 8 horas por 7-10 dias. Indicado para sinusite bacteriana. Melhora em 2-3 dias; resolução em 7-10 dias."
-- Exemplo sintomático: "Paracetamol 750mg — 1 comprimido de 6 em 6 horas se dor/febre. Analgésico e antitérmico. Alívio em 30-60 min."
-- Campo "melhora_esperada" OBRIGATÓRIO: "Melhora em X dias" ou "Alívio em X horas" — orienta o paciente sobre expectativa
-- Campo "indicacao" deve incluir: doença/CID + objetivo ("serve para curar infecção", "reduz dor e febre")
+INTERAÇÕES CRUZADAS (NUNCA vazio se há medicamentos):
+- Avaliar TODOS os pares possíveis: em_uso × sugerido, sugerido × sugerido, em_uso × em_uso
+- Classificar cada interação como grave/moderada/leve
+- Se genuinamente não há interação: [{...tipo:"leve", descricao:"Sem interação clinicamente significativa..."}]
 
-INTERAÇÕES CRUZADAS (OBRIGATÓRIO — NUNCA retornar array vazio se há medicamentos):
-- Se o paciente usa ≥1 medicamento OU se há ≥2 medicamentos sugeridos: interacoes_cruzadas NÃO PODE ser [].
-- Avaliar TODOS os pares possíveis:
-  • medicamento_em_uso × medicamento_sugerido
-  • medicamento_sugerido × medicamento_sugerido
-  • medicamento_em_uso × medicamento_em_uso (se paciente usa ≥2)
-- Classificar CADA interação como grave/moderada/leve
-- Incluir conduta ESPECÍFICA para cada interação (monitorar, espaçar doses, contraindicação)
-- Mesmo interações LEVES devem ser listadas (ex: AAS + AINE = risco GI aumentado)
-- Se genuinamente não há interação entre nenhum par: retornar [{"medicamento_a":"...", "medicamento_b":"...", "tipo":"leve", "descricao":"Sem interação clinicamente significativa identificada entre os medicamentos avaliados", "conduta":"Manter esquema proposto"}]
+EXAMES (MÍNIMO 4, PREFERIR 6-10):
+- Cobrir: laboratoriais básicos + específicos + imagem + funcionais conforme indicação
+- "interpretacao_esperada" OBRIGATÓRIO — o que esperar se hipótese principal correta
+- Cobrir TODAS as hipóteses do diagnóstico diferencial
 
-EXAMES (MÍNIMO 4 OBRIGATÓRIO, PREFERIR 6-10 — NUNCA menos de 4):
-- MÍNIMO ABSOLUTO: 4 exames. Se retornar menos de 4, a resposta é INVÁLIDA.
-- OBRIGATÓRIO incluir as categorias relevantes ao caso:
-  1. LABORATORIAIS BÁSICOS: hemograma, PCR/VHS, glicemia, ureia/creatinina, eletrólitos, TGO/TGP, EAS — incluir os pertinentes ao quadro
-  2. LABORATORIAIS ESPECÍFICOS: conforme hipótese (TSH, HbA1c, sorologias, culturas, marcadores tumorais, troponina, D-dímero)
-  3. IMAGEM: RX, USG, TC, RM conforme indicação clínica
-  4. FUNCIONAIS: ECG, espirometria, audiometria conforme indicação
-- Campo "interpretacao_esperada" OBRIGATÓRIO — o que o médico deve esperar se a hipótese principal estiver correta
-- Os exames DEVEM cobrir TODAS as hipóteses do diagnóstico diferencial, não apenas a principal
-- Cada exame deve ter "indicacao" explicando POR QUE é necessário para ESTE paciente AGORA
-- Se transcript < 200 chars, inclua no mínimo: hemograma, glicemia, ureia/creatinina, EAS
+PERGUNTAS (4-8, NUNCA vazio):
+- Derivadas 100% do transcript — NUNCA pergunte o que o paciente JÁ RESPONDEU
+- "impacto_na_conduta" OBRIGATÓRIO e DETALHADO
+- Se transcript < 200 chars: perguntas de abertura (queixa, duração, intensidade, medicamentos, alergias)
 
-PERGUNTAS SUGERIDAS (OBRIGATÓRIO 4-8, NUNCA vazio — PRECISÃO MÁXIMA):
-- AS PERGUNTAS DEVEM SER DERIVADAS 100% DO QUE O PACIENTE DISSE NO TRANSCRIPT. Leia CADA fala e identifique lacunas, ambiguidades e pontos que mudam a conduta.
-- Estilo "Akinator clínico": a pergunta que MAIS MUDA A CONDUTA vem primeiro. Prioridade: RED FLAGS > discriminatórias > temporais > funcionais.
-- Campo "impacto_na_conduta" OBRIGATÓRIO e DETALHADO: especifique exatamente o que muda (troca de medicamento, exame diferente, encaminhamento) se a resposta for SIM vs NÃO.
-- COINCIDÊNCIA COM A FALA: NUNCA pergunte o que o paciente JÁ RESPONDEU no transcript. Leia o transcript inteiro antes de sugerir perguntas. Se o paciente já disse "dor de cabeça há 3 dias" → NÃO pergunte "há quanto tempo"; pergunte localização, caráter, irradiação, fotofobia, vômitos.
-- PERGUNTAS DEVEM SER ESPECÍFICAS para o quadro: se paciente tem dor torácica, pergunte sobre irradiação para MSE, relação com esforço, sudorese. Não faça perguntas genéricas.
-- Se transcript < 200 chars, gere perguntas de ABERTURA:
-  1. "Qual é a sua queixa principal? O que está sentindo?"
-  2. "Há quanto tempo está com isso?"
-  3. "De 0 a 10, qual a intensidade?"
-  4. "Está tomando algum remédio atualmente?"
-  5. "Tem alergia a algum medicamento?"
-  6. "Já teve alguma cirurgia ou internação?"
+DIAGNÓSTICO DIFERENCIAL:
+- ORDENAR por probabilidade (mais provável primeiro)
+- probabilidade_percentual OBRIGATÓRIO — soma = 100%
+- 2-4 hipóteses com argumentos_a_favor citando EXATAMENTE o que o paciente disse
+- Dados epidemiológicos (contato com animais, viagens) DEVEM pesar ativamente nas probabilidades
 
-SUGESTÕES (OBRIGATÓRIO 3-7, NUNCA vazio):
-- Mesmo com poucos dados, gere sugestões parciais: "HD provável: ... (dados limitados, aguardando mais informações)"
-- Inclua: hipótese principal + diferenciais + conduta inicial + seguimento
-- Se transcript < 200 chars: "Avaliação inicial — aguardando mais dados da anamnese para refinar HD e conduta"
-
-CID (OBRIGATÓRIO — SEMPRE ATUALIZAR):
-- cid_sugerido e diagnostico_diferencial[].cid: SEMPRE preencher. Nunca deixar vazio.
-- A CADA chamada, reavalie o CID com base no transcript COMPLETO. NÃO repita o CID anterior automaticamente.
-- Use o código MAIS ESPECÍFICO possível com subcategoria (ex: J03.0, não J06.9)
-- SEMPRE inclua 2-4 CIDs nos diferenciais
-- Se dados insuficientes: use R69 (Mal-estar e fadiga) ou R51 (Cefaleia) conforme o que o paciente mencionou como queixa
-- Confira que o código existe na CID-10 OMS
-- Se o paciente mudou/ampliou os sintomas desde a última análise, o CID DEVE refletir isso
-
-═══ REGRAS DE CID POR SINTOMAS (EVITAR ERROS COMUNS) ═══
-- Use códigos CID APENAS para órgãos/sistemas que o paciente EXPRESSAMENTE mencionou. Ex: otite (H65.x) só se houver queixa de ouvido; não invente sintomas ausentes no transcript.
+QUANDO confianca_cid = "alta":
+- Posologia OBRIGATÓRIA: "X comprimidos de Xmg de [nome] de X em X horas por X dias"
+- "melhora_esperada" OBRIGATÓRIO: "Melhora em X dias" ou "Alívio em X horas"
 
 ═══ REGRAS GERAIS ═══
 1. NUNCA invente informações ausentes no transcript
 2. Responda APENAS o JSON, sem texto antes ou depois
 3. Se algum campo não tiver dados, use "" ou []
-4. Classificação de gravidade: SEMPRE preencha
+4. Terminologia médica adequada e objetiva
 5. Alertas vermelhos: APENAS quando fundamentados
-6. Terminologia médica adequada e objetiva
-7. Medicamentos: MÍNIMO 3, preferir 4-6. Incluir soro fisiológico, sprays, pomadas quando indicado. Todos COINCIDENTES com o caso.
 
-═══ LEITURA PRECISA DO TRANSCRIPT (CRÍTICA) ═══
-Leia o transcript INTEIRO, do início ao fim. Extraia TODA informação relevante:
-- Sintomas: o que o paciente disse que sente (inclua linguagem coloquial: "dor no meu sabe" = dor no corpo, "bolinha" = linfonodo, "mais quente" = febre).
-- Localização: onde dói, onde inchou (ex: "região cervical posterior", "aqui debaixo da cabeça").
-- História epidemiológica: exposições, contatos, hábitos que o paciente mencionou (animais, viagens, alimentação, trabalho) — use para refinar o diagnóstico diferencial.
-- Duração, intensidade, fatores de melhora/piora quando relatados.
-O CID e o diagnóstico diferencial DEVEM derivar EXATAMENTE do que está no transcript. Não invente sintomas. Não use CID de órgão que o paciente não mencionou. Toda hipótese deve ter suporte em algo que o paciente ou o médico disse.
+═══ RECONSTRUÇÃO DE TRANSCRIPT RUIDOSO (CRÍTICA) ═══
+O transcript vem de reconhecimento de fala e CONTÉM ERROS. Reconstrua o sentido:
+- Linguagem coloquial → termos clínicos: "bolinha no pescoço" → linfonodomegalia cervical
+- Erros fonéticos → palavras corretas: "saúde não teu" → "não tenho", "macho" → "acho"
+- Referências anatômicas: "aqui debaixo da cabeça" → região cervical posterior/occipital
+- Dados numéricos deformados: reconstrua valores de temperatura, pressão, etc.
+- CIDs/diagnósticos mencionados pelo médico no final: "B setecentos cinco ponto nove" → B27.9, "cinquenta e oito ponto nós" → B58.9
+- "talk aguda de querida" → "toxoplasmose aguda adquirida"
+Extraia TODA informação: sintomas, localização, duração, exposições, negativas, dados do médico.
 
-═══ REGRA DE COERÊNCIA ═══
-TODOS os campos devem ser COERENTES entre si e DERIVADOS do transcript:
-- O CID deve corresponder aos sintomas e ao contexto descritos
-- Os medicamentos devem tratar o CID e os sintomas relatados
-- Os exames devem investigar as hipóteses do diagnóstico diferencial
-- As interações devem cruzar TODOS os medicamentos (em uso + sugeridos)
-- As perguntas devem preencher as lacunas identificadas no transcript
-
-═══ VALIDAÇÃO FINAL (faça mentalmente antes de retornar o JSON) ═══
-- [ ] medicamentos_sugeridos tem ≥3 itens? Se não, ADICIONE mais.
-- [ ] exames_sugeridos tem ≥4 itens? Se não, ADICIONE mais.
-- [ ] interacoes_cruzadas está preenchido se há medicamentos? Se não, ADICIONE.
-- [ ] O CID reflete o quadro ATUAL (últimas falas), não apenas as primeiras?
-- [ ] As perguntas NÃO repetem o que o paciente já disse?
-- [ ] Cada medicamento tem indicacao, posologia, duracao, mecanismo_acao preenchidos?
+═══════════════════════════════════════════════════════════════
+REGRA #1 REPETIDA — CID (LEIA DE NOVO ANTES DE RESPONDER)
+═══════════════════════════════════════════════════════════════
+Antes de escrever o JSON:
+1. O campo "raciocinio_clinico" está preenchido com os achados-chave?
+2. O cid_sugerido é coerente com os SINTOMAS RELATADOS (não inventados)?
+3. O CID cobre o QUADRO COMPLETO (não apenas um sintoma isolado)?
+4. Dados epidemiológicos (animais, viagens, exposições) foram considerados?
+5. O paciente mencionou queixa de ouvido? Se NÃO → H65.x é PROIBIDO.
+6. Medicamentos são coerentes com o CID?
+7. Exames investigam as hipóteses do diagnóstico diferencial?
+═══════════════════════════════════════════════════════════════
 """;
     }
 
