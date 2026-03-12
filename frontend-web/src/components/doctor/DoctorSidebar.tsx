@@ -1,12 +1,14 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/admin/NavLink';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useDoctorAuth } from '@/contexts/DoctorAuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { usePWA } from '@/hooks/usePWA';
+import { useWebPush } from '@/hooks/useWebPush';
 import {
   LayoutDashboard, FileText, Bell, User, Menu, X, LogOut,
-  Stethoscope, Video, Download, Share2, Settings,
+  Stethoscope, Video, Download, Share2, Settings, BellRing,
 } from 'lucide-react';
 
 const navItems = [
@@ -22,16 +24,27 @@ export function DoctorSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, signOut } = useDoctorAuth();
+  const { user, isAuthenticated, signOut } = useDoctorAuth();
+  const { unreadCount } = useNotifications();
   const { canInstall, isIOS, isInstalled, promptInstall } = usePWA();
+  const { supported: pushSupported, permission: pushPermission, requestPermission } = useWebPush(isAuthenticated);
   const [showIOSGuide, setShowIOSGuide] = useState(false);
-  const [installDismissed, setInstallDismissed] = useState(false);
+  const [installDismissed, setInstallDismissed] = useState(
+    () => sessionStorage.getItem('pwa-install-dismissed') === '1',
+  );
+  const [pushDismissed, setPushDismissed] = useState(
+    () => sessionStorage.getItem('push-permission-dismissed') === '1',
+  );
 
-  // Hide install banner if user dismissed it
-  useEffect(() => {
-    const dismissed = sessionStorage.getItem('pwa-install-dismissed');
-    if (dismissed) setInstallDismissed(true);
-  }, []);
+  const dismissPush = () => {
+    setPushDismissed(true);
+    sessionStorage.setItem('push-permission-dismissed', '1');
+  };
+
+  const handleEnablePush = async () => {
+    const granted = await requestPermission();
+    if (granted) setPushDismissed(true);
+  };
 
   const dismissInstall = () => {
     setInstallDismissed(true);
@@ -98,6 +111,7 @@ export function DoctorSidebar() {
               item.to === '/dashboard'
                 ? location.pathname === '/' || location.pathname === '/dashboard'
                 : location.pathname.startsWith(item.to);
+            const isAlerts = item.to === '/notificacoes';
             return (
               <NavLink
                 key={item.to}
@@ -112,6 +126,11 @@ export function DoctorSidebar() {
               >
                 <item.icon className={cn('h-[18px] w-[18px] shrink-0', isActive && 'text-primary')} aria-hidden />
                 <span className="truncate">{item.label}</span>
+                {isAlerts && unreadCount > 0 && (
+                  <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-destructive text-destructive-foreground animate-in zoom-in-50 duration-200">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </NavLink>
             );
           })}
@@ -162,6 +181,33 @@ export function DoctorSidebar() {
           </div>
         )}
 
+        {/* Push Notification Banner */}
+        {pushSupported && pushPermission === 'default' && !pushDismissed && (
+          <div className="mx-3 lg:mx-4 mb-3 p-3 rounded-xl bg-primary/5 border border-primary/10">
+            <p className="text-xs font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
+              <BellRing className="h-3.5 w-3.5 text-primary" />
+              Ativar alertas
+            </p>
+            <p className="text-[10px] text-muted-foreground mb-2.5 leading-relaxed">
+              Receba notificações de novos pedidos mesmo com a aba minimizada.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleEnablePush}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
+              >
+                <Bell className="h-3 w-3" /> Ativar
+              </button>
+              <button
+                onClick={dismissPush}
+                className="px-2 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted transition-colors"
+              >
+                Depois
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* User info + logout */}
         <div className="p-3 lg:p-4 border-t border-sidebar-border space-y-3">
           {user && (
@@ -208,19 +254,27 @@ export function DoctorSidebar() {
               item.to === '/dashboard'
                 ? location.pathname === '/' || location.pathname === '/dashboard'
                 : location.pathname.startsWith(item.to);
+            const isAlerts = item.to === '/notificacoes';
             return (
               <button
                 key={item.to}
                 onClick={() => navigate(item.to)}
                 className={cn(
-                  'flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl transition-all duration-150 min-w-[56px]',
+                  'relative flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl transition-all duration-150 min-w-[56px]',
                   isActive
                     ? 'text-primary'
                     : 'text-muted-foreground active:scale-95',
                 )}
                 aria-current={isActive ? 'page' : undefined}
               >
-                <item.icon className={cn('h-5 w-5', isActive && 'text-primary')} aria-hidden />
+                <div className="relative">
+                  <item.icon className={cn('h-5 w-5', isActive && 'text-primary')} aria-hidden />
+                  {isAlerts && unreadCount > 0 && (
+                    <span className="absolute -top-1.5 -right-2 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold bg-destructive text-destructive-foreground">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </div>
                 <span className={cn(
                   'text-[10px] font-medium leading-tight',
                   isActive ? 'text-primary' : 'text-muted-foreground',

@@ -18,6 +18,7 @@ const DoctorApp = lazy(() => import('@/DoctorApp'));
 
 function isDoctorPortal(): boolean {
   const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1') return true; // dev local
   return host === 'medico.renovejasaude.com.br' || host.startsWith('medico.');
 }
 

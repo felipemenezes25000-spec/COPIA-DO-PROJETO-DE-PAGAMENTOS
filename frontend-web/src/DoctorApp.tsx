@@ -13,6 +13,7 @@ import { lazy, Suspense, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { DoctorAuthProvider, useDoctorAuth } from '@/contexts/DoctorAuthContext';
+import { NotificationProvider } from '@/contexts/NotificationContext';
 import { CommandPalette } from '@/components/doctor/CommandPalette';
 import { ShortcutsDialog } from '@/components/doctor/ShortcutsDialog';
 import { OfflineBanner } from '@/components/doctor/OfflineBanner';
@@ -140,16 +141,18 @@ function DoctorShell() {
 export default function DoctorApp() {
   return (
     <DoctorAuthProvider>
-      <Toaster
-        position="top-center"
-        richColors
-        closeButton
-        toastOptions={{
-          className: 'shadow-lg',
-          duration: 4000,
-        }}
-      />
-      <DoctorShell />
+      <NotificationProvider>
+        <Toaster
+          position="top-center"
+          richColors
+          closeButton
+          toastOptions={{
+            className: 'shadow-lg',
+            duration: 4000,
+          }}
+        />
+        <DoctorShell />
+      </NotificationProvider>
     </DoctorAuthProvider>
   );
 }

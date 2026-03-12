@@ -8,28 +8,32 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
 import { useDoctorAuth } from '@/contexts/DoctorAuthContext';
+import { Textarea } from '@/components/ui/textarea';
 import {
   updateAvatar, updateDoctorProfile, changePassword,
-  getActiveCertificate, uploadCertificate,
+  getActiveCertificate, uploadCertificate, revokeCertificate,
+  type CertificateInfo,
 } from '@/services/doctorApi';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import {
   Loader2, Mail, Phone, Shield, Upload, Camera,
-  Lock, Save, Stethoscope, MapPin, AlertTriangle, FileUp,
+  Lock, Save, Stethoscope, MapPin, AlertTriangle, FileUp, Trash2, Calendar, User as UserIcon,
 } from 'lucide-react';
 
 export default function DoctorProfile() {
   const { user, doctorProfile, refreshUser } = useDoctorAuth();
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [hasCert, setHasCert] = useState<boolean | null>(null);
+  const [certInfo, setCertInfo] = useState<CertificateInfo | null>(null);
+  const [certLoaded, setCertLoaded] = useState(false);
 
   const [profPhone, setProfPhone] = useState(doctorProfile?.professionalPhone || '');
   const [profAddress, setProfAddress] = useState(doctorProfile?.professionalAddress || '');
 
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [certDialogOpen, setCertDialogOpen] = useState(false);
+  const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [newPwConfirm, setNewPwConfirm] = useState('');
@@ -39,10 +43,16 @@ export default function DoctorProfile() {
   const [certPassword, setCertPassword] = useState('');
   const [certLoading, setCertLoading] = useState(false);
 
+  const [revokeReason, setRevokeReason] = useState('');
+  const [revokeLoading, setRevokeLoading] = useState(false);
+
+  const hasCert = !!certInfo;
+
   useEffect(() => {
     getActiveCertificate()
-      .then(data => setHasCert(!!data))
-      .catch(() => setHasCert(false));
+      .then(data => setCertInfo(data))
+      .catch(() => setCertInfo(null))
+      .finally(() => setCertLoaded(true));
   }, []);
 
   useEffect(() => {
@@ -107,7 +117,8 @@ export default function DoctorProfile() {
     setCertLoading(true);
     try {
       await uploadCertificate(certFile, certPassword);
-      setHasCert(true);
+      const fresh = await getActiveCertificate();
+      setCertInfo(fresh);
       toast.success('Certificado enviado');
       setCertDialogOpen(false);
       setCertFile(null); setCertPassword('');
@@ -115,6 +126,22 @@ export default function DoctorProfile() {
       toast.error(err instanceof Error ? err.message : 'Erro ao enviar certificado');
     } finally {
       setCertLoading(false);
+    }
+  };
+
+  const handleRevokeCert = async () => {
+    if (!certInfo || !revokeReason.trim()) return;
+    setRevokeLoading(true);
+    try {
+      await revokeCertificate(certInfo.id, revokeReason.trim());
+      setCertInfo(null);
+      toast.success('Certificado revogado');
+      setRevokeDialogOpen(false);
+      setRevokeReason('');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao revogar certificado');
+    } finally {
+      setRevokeLoading(false);
     }
   };
 
@@ -203,27 +230,82 @@ export default function DoctorProfile() {
 
         {/* Certificate */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <Card className={`shadow-sm ${hasCert === false ? 'border-amber-200' : ''}`}>
-            <CardContent className="p-5 flex items-center gap-4">
-              <div className={`p-3 rounded-xl ${hasCert ? 'bg-emerald-100' : 'bg-amber-100'}`}>
-                {hasCert ? (
-                  <Shield className="h-5 w-5 text-emerald-600" />
-                ) : (
-                  <AlertTriangle className="h-5 w-5 text-amber-600" />
-                )}
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-sm">
-                  {hasCert ? 'Certificado digital ativo' : 'Certificado digital pendente'}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {hasCert ? 'Seu certificado ICP-Brasil está configurado' : 'Envie seu certificado A1 (.pfx) para assinar documentos'}
-                </p>
-              </div>
-              <Button variant={hasCert ? 'outline' : 'default'} size="sm" onClick={() => setCertDialogOpen(true)} className="gap-1.5">
-                <FileUp className="h-3.5 w-3.5" />
-                {hasCert ? 'Atualizar' : 'Enviar'}
-              </Button>
+          <Card className={`shadow-sm ${!hasCert && certLoaded ? 'border-amber-200' : ''}`}>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Shield className="h-4 w-4 text-primary" aria-hidden />
+                Certificado Digital
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {certInfo ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <UserIcon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Titular</p>
+                        <p className="text-sm font-medium truncate">{certInfo.subjectName}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <Shield className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Emissor</p>
+                        <p className="text-sm font-medium truncate">{certInfo.issuerName}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Validade</p>
+                        <p className="text-sm font-medium">
+                          {new Date(certInfo.notBefore).toLocaleDateString('pt-BR')} — {new Date(certInfo.notAfter).toLocaleDateString('pt-BR')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <div className={`h-4 w-4 mt-0.5 shrink-0 rounded-full ${
+                        certInfo.daysUntilExpiry > 60 ? 'bg-emerald-500' :
+                        certInfo.daysUntilExpiry > 30 ? 'bg-amber-500' : 'bg-red-500'
+                      }`} />
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Expira em</p>
+                        <p className={`text-sm font-semibold ${
+                          certInfo.daysUntilExpiry > 60 ? 'text-emerald-600' :
+                          certInfo.daysUntilExpiry > 30 ? 'text-amber-600' : 'text-red-600'
+                        }`}>
+                          {certInfo.daysUntilExpiry} dias
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button variant="outline" size="sm" onClick={() => setCertDialogOpen(true)} className="gap-1.5">
+                      <FileUp className="h-3.5 w-3.5" />
+                      Atualizar
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setRevokeDialogOpen(true)} className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/5">
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Revogar
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-amber-100">
+                    <AlertTriangle className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-sm">Certificado digital pendente</p>
+                    <p className="text-xs text-muted-foreground">Envie seu certificado A1 (.pfx) para assinar documentos</p>
+                  </div>
+                  <Button size="sm" onClick={() => setCertDialogOpen(true)} className="gap-1.5">
+                    <FileUp className="h-3.5 w-3.5" />
+                    Enviar
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -308,6 +390,37 @@ export default function DoctorProfile() {
             <Button onClick={handleUploadCert} disabled={certLoading || !certFile || !certPassword} className="gap-2">
               {certLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
               Enviar certificado
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Revoke certificate dialog */}
+      <Dialog open={revokeDialogOpen} onOpenChange={setRevokeDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Revogar Certificado
+            </DialogTitle>
+            <DialogDescription>
+              Esta ação é irreversível. O certificado será revogado e você precisará enviar um novo para assinar documentos.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Motivo da revogação</Label>
+            <Textarea
+              value={revokeReason}
+              onChange={e => setRevokeReason(e.target.value)}
+              placeholder="Ex: Certificado comprometido, troca de certificado..."
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setRevokeDialogOpen(false); setRevokeReason(''); }}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleRevokeCert} disabled={revokeLoading || !revokeReason.trim()} className="gap-2">
+              {revokeLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              Revogar certificado
             </Button>
           </DialogFooter>
         </DialogContent>

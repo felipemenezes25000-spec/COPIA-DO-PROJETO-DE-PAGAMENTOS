@@ -26,6 +26,7 @@ backend-dotnet/publish-test/
 .DS_Store
 .cursor/
 .cursor.backup-*/
+.claude/
 subagents/
 ola-jamal/
 *.log
@@ -51,3 +52,4 @@ frontend-mobile/*-firebase-adminsdk*.json
 /*.patch
 /*.zip
 /_patch22_temp/
+.vite/

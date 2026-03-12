@@ -1,8 +1,21 @@
 /**
- * doctor-api-doctors.ts — Notifications, certificates, and video rooms.
+ * doctor-api-doctors.ts — Notifications, certificates, push tokens, and video rooms.
  */
 
 import { authFetch } from './doctor-api-auth';
+
+// ── Types ──
+
+export interface CertificateInfo {
+  id: string;
+  subjectName: string;
+  issuerName: string;
+  notBefore: string;
+  notAfter: string;
+  isValid: boolean;
+  isExpired: boolean;
+  daysUntilExpiry: number;
+}
 
 // ── Notifications ──
 
@@ -28,9 +41,16 @@ export async function markAllNotificationsRead() {
   return res.json();
 }
 
+export async function getUnreadNotificationCount(): Promise<number> {
+  const res = await authFetch('/api/notifications/unread-count');
+  if (!res.ok) return 0;
+  const data = await res.json();
+  return typeof data === 'number' ? data : (data?.count ?? 0);
+}
+
 // ── Certificates ──
 
-export async function getActiveCertificate() {
+export async function getActiveCertificate(): Promise<CertificateInfo | null> {
   const res = await authFetch('/api/certificates/active');
   if (!res.ok) {
     if (res.status === 404) return null;
@@ -46,6 +66,33 @@ export async function uploadCertificate(file: File, password: string) {
   const res = await authFetch('/api/certificates/upload', { method: 'POST', body: formData });
   if (!res.ok) throw new Error('Erro ao enviar certificado');
   return res.json();
+}
+
+export async function revokeCertificate(id: string, reason: string) {
+  const res = await authFetch(`/api/certificates/${id}/revoke`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+  if (!res.ok) throw new Error('Erro ao revogar certificado');
+  return res.json();
+}
+
+// ── Push Tokens ──
+
+export async function registerPushToken(token: string) {
+  const res = await authFetch('/api/push-tokens', {
+    method: 'POST',
+    body: JSON.stringify({ token, deviceType: 'web' }),
+  });
+  if (!res.ok) throw new Error('Erro ao registrar push token');
+  return res.json();
+}
+
+export async function unregisterPushToken(token: string) {
+  const res = await authFetch(`/api/push-tokens?token=${encodeURIComponent(token)}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error('Erro ao remover push token');
 }
 
 // ── Video ──
