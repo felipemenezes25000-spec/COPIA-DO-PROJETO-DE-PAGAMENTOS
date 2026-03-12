@@ -23,7 +23,9 @@ public class OpenAiTriageEnrichmentService : ITriageEnrichmentService
     private readonly ILogger<OpenAiTriageEnrichmentService> _logger;
     private readonly IAiInteractionLogRepository _aiInteractionLogRepository;
 
-    private const string ApiBaseUrl = "https://api.openai.com/v1";
+    private const string OpenAiBaseUrl = "https://api.openai.com/v1";
+    private const string GeminiBaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai";
+    private const string DefaultGeminiModel = "gemini-2.5-flash";
     private const int MaxOutputChars = 140;
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
 
@@ -60,10 +62,10 @@ public class OpenAiTriageEnrichmentService : ITriageEnrichmentService
         if (ShouldSkipEnrichment(input.RuleKey))
             return null;
 
-        var apiKey = _config.Value?.ApiKey?.Trim();
+        var (apiKey, baseUrl, model) = ResolveProvider();
         if (string.IsNullOrEmpty(apiKey))
         {
-            _logger.LogDebug("Triage IA: OpenAI não configurada, pulando enriquecimento");
+            _logger.LogDebug("Triage IA: nenhuma API configurada (Gemini ou OpenAI), pulando enriquecimento");
             return null;
         }
 
@@ -77,7 +79,7 @@ public class OpenAiTriageEnrichmentService : ITriageEnrichmentService
 
             var requestBody = new
             {
-                model = _config.Value?.Model ?? "gpt-4o",
+                model,
                 temperature = 0.4,
                 max_tokens = 150,
                 response_format = new { type = "json_object" },
@@ -96,14 +98,14 @@ public class OpenAiTriageEnrichmentService : ITriageEnrichmentService
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
             using var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await client.PostAsync($"{ApiBaseUrl}/chat/completions", content, cts.Token);
+            var response = await client.PostAsync($"{baseUrl}/chat/completions", content, cts.Token);
 
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("Triage IA: falhou {StatusCode}", response.StatusCode);
                 await _aiInteractionLogRepository.LogAsync(AiInteractionLog.Create(
                     serviceName: nameof(OpenAiTriageEnrichmentService),
-                    modelName: _config.Value?.Model ?? "gpt-4o",
+                    modelName: model,
                     promptHash: promptHash,
                     success: false,
                     durationMs: (long)(DateTime.UtcNow - startedAt).TotalMilliseconds,
@@ -125,7 +127,7 @@ public class OpenAiTriageEnrichmentService : ITriageEnrichmentService
             var result = ParseAndValidate(message, input.RuleText);
             await _aiInteractionLogRepository.LogAsync(AiInteractionLog.Create(
                 serviceName: nameof(OpenAiTriageEnrichmentService),
-                modelName: _config.Value?.Model ?? "gpt-4o",
+                modelName: model,
                 promptHash: promptHash,
                 success: true,
                 responseSummary: message.Length > 500 ? message[..500] : message,
@@ -142,6 +144,25 @@ public class OpenAiTriageEnrichmentService : ITriageEnrichmentService
             _logger.LogWarning(ex, "Triage IA: erro ao enriquecer");
             return null;
         }
+    }
+
+    /// <summary>Prioriza Gemini quando configurado. Fallback para OpenAI.</summary>
+    private (string apiKey, string baseUrl, string model) ResolveProvider()
+    {
+        var geminiKey = _config.Value?.GeminiApiKey?.Trim();
+        if (!string.IsNullOrEmpty(geminiKey) && !geminiKey.Contains("YOUR_") && !geminiKey.Contains("_HERE"))
+        {
+            var url = !string.IsNullOrWhiteSpace(_config.Value?.GeminiApiBaseUrl)
+                ? _config.Value.GeminiApiBaseUrl.Trim()
+                : GeminiBaseUrl;
+            return (geminiKey, url, DefaultGeminiModel);
+        }
+        var openAiKey = _config.Value?.ApiKey?.Trim();
+        if (!string.IsNullOrEmpty(openAiKey))
+        {
+            return (openAiKey, OpenAiBaseUrl, _config.Value?.Model ?? "gpt-4o");
+        }
+        return (string.Empty, string.Empty, string.Empty);
     }
 
     private static bool ShouldSkipEnrichment(string? ruleKey)
