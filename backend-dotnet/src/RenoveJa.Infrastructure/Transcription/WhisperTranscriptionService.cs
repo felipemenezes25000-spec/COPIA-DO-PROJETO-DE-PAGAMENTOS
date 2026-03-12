@@ -9,6 +9,7 @@ namespace RenoveJa.Infrastructure.Transcription;
 
 /// <summary>
 /// Transcrição de áudio via OpenAI Whisper API.
+/// Usado como fallback quando o Deepgram do Daily.co falha.
 /// Endpoint: POST /v1/audio/transcriptions
 /// Usa a mesma chave OpenAI (OpenAI:ApiKey) que GPT-4o.
 /// </summary>
@@ -65,9 +66,6 @@ public class WhisperTranscriptionService : ITranscriptionService
         content.Add(new StringContent(DefaultModel), "model");
         content.Add(new StringContent("pt"), "language");
 
-        // Prompt de contexto: últimas ~180 palavras do transcript anterior.
-        // O Whisper usa isso para manter continuidade entre chunks, evitando
-        // palavras cortadas, repetições e erros de contexto nas fronteiras.
         if (!string.IsNullOrWhiteSpace(previousContext))
         {
             var contextTrimmed = TrimToLastWords(previousContext, 180);
@@ -126,10 +124,6 @@ public class WhisperTranscriptionService : ITranscriptionService
         }
     }
 
-    /// <summary>
-    /// Extrai as últimas N palavras de um texto (para prompt de contexto do Whisper).
-    /// O Whisper aceita até ~224 tokens como prompt; 180 palavras é um limite seguro.
-    /// </summary>
     private static string TrimToLastWords(string text, int maxWords)
     {
         var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);

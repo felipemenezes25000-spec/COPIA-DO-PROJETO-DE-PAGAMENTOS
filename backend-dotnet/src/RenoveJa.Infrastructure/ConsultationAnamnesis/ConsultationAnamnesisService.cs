@@ -159,7 +159,7 @@ TRANSCRIPT COMPLETO ATUALIZADO (analise do início ao fim, priorizando as falas 
 
         if (!response.IsSuccessStatusCode)
         {
-            _logger.LogWarning("[Anamnese IA v2] OpenAI error StatusCode={StatusCode} model={Model}", response.StatusCode, anamnesisModel);
+            _logger.LogWarning("[Anamnese IA v2] Gemini/IA error StatusCode={StatusCode} model={Model}", response.StatusCode, anamnesisModel);
             try
             {
                 await _aiInteractionLogRepository.LogAsync(AiInteractionLog.Create(
@@ -174,7 +174,34 @@ TRANSCRIPT COMPLETO ATUALIZADO (analise do início ao fim, priorizando as falas 
             {
                 _logger.LogWarning(logEx, "[Anamnese IA v2] Falha ao gravar log de erro.");
             }
-            return null;
+            // Fallback: se Gemini falhou e OpenAI está configurada, tenta com gpt-4o
+            var usedGemini = anamnesisModel.StartsWith("gemini", StringComparison.OrdinalIgnoreCase);
+            var openAiKey = _config.Value?.ApiKey?.Trim();
+            if (usedGemini && !string.IsNullOrEmpty(openAiKey) && !openAiKey.Contains("YOUR_") && !openAiKey.Contains("_HERE"))
+            {
+                _logger.LogInformation("[Anamnese IA v2] Fallback para OpenAI gpt-4o após falha Gemini.");
+                var fallbackModel = "gpt-4o";
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", openAiKey);
+                using var fallbackContent = new StringContent(
+                    JsonSerializer.Serialize(new { model = fallbackModel, messages = requestBody.messages, max_tokens = 6000, temperature = 0.10 }, JsonOptions),
+                    Encoding.UTF8, "application/json");
+                var fallbackResponse = await client.PostAsync($"{OpenAiBaseUrl}/chat/completions", fallbackContent, cancellationToken);
+                var fallbackJson = await fallbackResponse.Content.ReadAsStringAsync(cancellationToken);
+                if (fallbackResponse.IsSuccessStatusCode)
+                {
+                    responseJson = fallbackJson;
+                    anamnesisModel = fallbackModel;
+                }
+                else
+                {
+                    _logger.LogWarning("[Anamnese IA v2] Fallback OpenAI também falhou: {StatusCode}", fallbackResponse.StatusCode);
+                    return null;
+                }
+            }
+            else
+            {
+                return null;
+            }
         }
 
         string? content = null;

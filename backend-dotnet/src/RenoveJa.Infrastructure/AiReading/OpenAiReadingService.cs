@@ -38,7 +38,8 @@ public class OpenAiReadingService : IAiReadingService
         _logger = logger;
         _aiInteractionLogRepository = aiInteractionLogRepository;
     }
-    private const string ApiBaseUrl = "https://api.openai.com/v1";
+    private const string OpenAiBaseUrl = "https://api.openai.com/v1";
+    private const string GeminiBaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai";
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -53,12 +54,12 @@ public class OpenAiReadingService : IAiReadingService
             return new AiPrescriptionAnalysisResult(false, null, null, null,
                 "Nenhuma imagem de receita enviada.");
 
-        var apiKey = _config.Value?.ApiKey?.Trim();
+        var (apiKey, baseUrl, model) = ResolveProvider();
         if (string.IsNullOrEmpty(apiKey))
         {
-            _logger.LogWarning("IA receita: OpenAI:ApiKey não configurada. Defina em appsettings.json ou variável OpenAI__ApiKey.");
+            _logger.LogWarning("IA receita: Nenhuma API configurada (Gemini__ApiKey ou OpenAI__ApiKey).");
             return new AiPrescriptionAnalysisResult(true,
-                "[Análise por IA não configurada. Defina OpenAI:ApiKey em appsettings ou variável OpenAI__ApiKey.]",
+                "[Análise por IA não configurada. Defina Gemini__ApiKey ou OpenAI__ApiKey.]",
                 null, null, null);
         }
 
@@ -110,7 +111,7 @@ Responda APENAS com o JSON, sem markdown e sem texto antes ou depois.
             userContent.Add(imageItem);
         }
 
-        var result = await CallChatAsync(systemPrompt, userContent, apiKey, cancellationToken);
+        var result = await CallChatAsync(systemPrompt, userContent, apiKey, baseUrl, model, cancellationToken);
         return ParsePrescriptionResult(result);
     }
 
@@ -126,12 +127,12 @@ Responda APENAS com o JSON, sem markdown e sem texto antes ou depois.
             return new AiExamAnalysisResult(false, null, null, null,
                 "Envie o pedido de exame em texto ou uma imagem do pedido antigo.");
 
-        var apiKey = _config.Value?.ApiKey?.Trim();
+        var (apiKey, baseUrl, model) = ResolveProvider();
         if (string.IsNullOrEmpty(apiKey))
         {
-            _logger.LogWarning("IA exame: OpenAI:ApiKey não configurada. Defina em appsettings.json ou variável OpenAI__ApiKey.");
+            _logger.LogWarning("IA exame: Nenhuma API configurada (Gemini__ApiKey ou OpenAI__ApiKey).");
             return new AiExamAnalysisResult(true,
-                "[Análise por IA não configurada. Defina OpenAI:ApiKey.]",
+                "[Análise por IA não configurada. Defina Gemini__ApiKey ou OpenAI__ApiKey.]",
                 null, null, null);
         }
 
@@ -181,15 +182,29 @@ Responda APENAS com o JSON, sem markdown e sem texto antes ou depois.
         }
         userParts.Insert(0, new { type = "text", text = "Analise o pedido de exame (texto e/ou imagens) e retorne o JSON." });
 
-        var result = await CallChatAsync(systemPrompt, userParts, apiKey, cancellationToken);
+        var result = await CallChatAsync(systemPrompt, userParts, apiKey, baseUrl, model, cancellationToken);
         return ParseExamResult(result);
     }
 
-    private async Task<string> CallChatAsync(string systemPrompt, List<object> userContent, string apiKey, CancellationToken cancellationToken)
+    private (string? apiKey, string baseUrl, string model) ResolveProvider()
+    {
+        var geminiKey = _config.Value?.GeminiApiKey?.Trim();
+        if (!string.IsNullOrEmpty(geminiKey) && !geminiKey.Contains("YOUR_") && !geminiKey.Contains("_HERE"))
+        {
+            var url = !string.IsNullOrWhiteSpace(_config.Value?.GeminiApiBaseUrl)
+                ? _config.Value!.GeminiApiBaseUrl!.Trim()
+                : GeminiBaseUrl;
+            return (geminiKey, url, "gemini-2.5-flash");
+        }
+        var openAiKey = _config.Value?.ApiKey?.Trim() ?? "";
+        return (openAiKey, OpenAiBaseUrl, _config.Value?.Model ?? "gpt-4o");
+    }
+
+    private async Task<string> CallChatAsync(string systemPrompt, List<object> userContent, string apiKey, string baseUrl, string model, CancellationToken cancellationToken)
     {
         var requestBody = new
         {
-            model = _config.Value?.Model ?? "gpt-4o",
+            model,
             messages = new object[]
             {
                 new { role = "system", content = (object)systemPrompt },
@@ -209,23 +224,31 @@ Responda APENAS com o JSON, sem markdown e sem texto antes ou depois.
         try
         {
             using var requestContent = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await client.PostAsync($"{ApiBaseUrl}/chat/completions", requestContent, cancellationToken);
+            var response = await client.PostAsync($"{baseUrl}/chat/completions", requestContent, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
                 var err = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger.LogError("OpenAI API error: StatusCode={StatusCode}, Response={Response}", response.StatusCode, err);
+                _logger.LogWarning("IA API error: StatusCode={StatusCode}, Response={Response}", response.StatusCode, err?.Length > 200 ? err[..200] + "..." : err);
 
                 await _aiInteractionLogRepository.LogAsync(AiInteractionLog.Create(
                     serviceName: nameof(OpenAiReadingService),
-                    modelName: _config.Value?.Model ?? "gpt-4o",
+                    modelName: model,
                     promptHash: promptHash,
                     success: false,
                     responseSummary: null,
                     durationMs: (long)(DateTime.UtcNow - startedAt).TotalMilliseconds,
                     errorMessage: err?.Length > 500 ? err[..500] : err), cancellationToken);
 
-                throw new InvalidOperationException($"OpenAI API error: {response.StatusCode}. {err}");
+                // Fallback: Gemini falhou e OpenAI configurada → tenta gpt-4o
+                var usedGemini = model.StartsWith("gemini", StringComparison.OrdinalIgnoreCase);
+                var openAiKey = _config.Value?.ApiKey?.Trim();
+                if (usedGemini && !string.IsNullOrEmpty(openAiKey) && !openAiKey.Contains("YOUR_") && !openAiKey.Contains("_HERE"))
+                {
+                    _logger.LogInformation("IA receita: Fallback para OpenAI gpt-4o após falha Gemini.");
+                    return await CallChatAsync(systemPrompt, userContent, openAiKey, OpenAiBaseUrl, _config.Value?.Model ?? "gpt-4o", cancellationToken);
+                }
+                throw new InvalidOperationException($"IA API error: {response.StatusCode}. {err}");
             }
 
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -242,7 +265,7 @@ Responda APENAS com o JSON, sem markdown e sem texto antes ou depois.
 
             await _aiInteractionLogRepository.LogAsync(AiInteractionLog.Create(
                 serviceName: nameof(OpenAiReadingService),
-                modelName: _config.Value?.Model ?? "gpt-4o",
+                modelName: model,
                 promptHash: promptHash,
                 success: true,
                 responseSummary: content.Length > 500 ? content[..500] : content,
@@ -254,7 +277,7 @@ Responda APENAS com o JSON, sem markdown e sem texto antes ou depois.
         {
             await _aiInteractionLogRepository.LogAsync(AiInteractionLog.Create(
                 serviceName: nameof(OpenAiReadingService),
-                modelName: _config.Value?.Model ?? "gpt-4o",
+                modelName: model,
                 promptHash: promptHash,
                 success: false,
                 durationMs: (long)(DateTime.UtcNow - startedAt).TotalMilliseconds,

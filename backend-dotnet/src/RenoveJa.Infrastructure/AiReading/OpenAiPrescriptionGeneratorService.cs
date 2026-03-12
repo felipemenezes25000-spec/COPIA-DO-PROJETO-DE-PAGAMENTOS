@@ -18,7 +18,8 @@ public class OpenAiPrescriptionGeneratorService : IAiPrescriptionGeneratorServic
     private readonly IOptions<OpenAIConfig> _config;
     private readonly ILogger<OpenAiPrescriptionGeneratorService> _logger;
 
-    private const string ApiBaseUrl = "https://api.openai.com/v1";
+    private const string OpenAiBaseUrl = "https://api.openai.com/v1";
+    private const string GeminiBaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -40,13 +41,34 @@ public class OpenAiPrescriptionGeneratorService : IAiPrescriptionGeneratorServic
         AiPrescriptionGeneratorInput input,
         CancellationToken ct = default)
     {
-        var apiKey = _config.Value?.ApiKey?.Trim();
+        var (apiKey, baseUrl, model) = ResolveProvider();
         if (string.IsNullOrEmpty(apiKey))
         {
-            _logger.LogWarning("IAiPrescriptionGeneratorService: OpenAI:ApiKey não configurada. Itens de medicamento não serão gerados por IA.");
+            _logger.LogWarning("IAiPrescriptionGeneratorService: Nenhuma API configurada (Gemini__ApiKey ou OpenAI__ApiKey).");
             return null;
         }
 
+        var result = await CallProviderAsync(input, apiKey, baseUrl, model, ct);
+        if (result != null) return result;
+
+        // Fallback: Gemini falhou e OpenAI configurada → tenta gpt-4o
+        var usedGemini = model.StartsWith("gemini", StringComparison.OrdinalIgnoreCase);
+        var openAiKey = _config.Value?.ApiKey?.Trim();
+        if (usedGemini && !string.IsNullOrEmpty(openAiKey) && !openAiKey.Contains("YOUR_") && !openAiKey.Contains("_HERE"))
+        {
+            _logger.LogInformation("IA prescrição: Fallback para OpenAI gpt-4o após falha Gemini.");
+            return await CallProviderAsync(input, openAiKey, OpenAiBaseUrl, _config.Value?.Model ?? "gpt-4o", ct);
+        }
+        return null;
+    }
+
+    private async Task<List<PrescriptionMedicationItem>?> CallProviderAsync(
+        AiPrescriptionGeneratorInput input,
+        string apiKey,
+        string baseUrl,
+        string model,
+        CancellationToken ct)
+    {
         var systemPrompt = BuildSystemPrompt(input.Kind);
         var userPrompt = BuildUserPrompt(input);
 
@@ -57,7 +79,7 @@ public class OpenAiPrescriptionGeneratorService : IAiPrescriptionGeneratorServic
 
             var requestBody = new
             {
-                model = "gpt-4o",
+                model,
                 temperature = 0.2,
                 max_tokens = 1500,
                 response_format = new { type = "json_object" },
@@ -70,12 +92,12 @@ public class OpenAiPrescriptionGeneratorService : IAiPrescriptionGeneratorServic
 
             var json = JsonSerializer.Serialize(requestBody, JsonOptions);
             using var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await client.PostAsync($"{ApiBaseUrl}/chat/completions", content, ct);
+            var response = await client.PostAsync($"{baseUrl}/chat/completions", content, ct);
 
             if (!response.IsSuccessStatusCode)
             {
                 var err = await response.Content.ReadAsStringAsync(ct);
-                _logger.LogWarning("GPT-4o prescrição: status {Status} — {Error}", response.StatusCode, err);
+                _logger.LogWarning("IA prescrição: status {Status} — {Error}", response.StatusCode, err?.Length > 200 ? err[..200] + "..." : err);
                 return null;
             }
 
@@ -94,7 +116,7 @@ public class OpenAiPrescriptionGeneratorService : IAiPrescriptionGeneratorServic
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro ao chamar GPT-4o para geração de prescrição");
+            _logger.LogError(ex, "Erro ao chamar IA para geração de prescrição");
             return null;
         }
     }
@@ -187,6 +209,20 @@ FORMATO DE RESPOSTA (JSON obrigatório):
         sb.AppendLine("Gere os itens de prescrição para renovação desta receita.");
 
         return sb.ToString();
+    }
+
+    private (string? apiKey, string baseUrl, string model) ResolveProvider()
+    {
+        var geminiKey = _config.Value?.GeminiApiKey?.Trim();
+        if (!string.IsNullOrEmpty(geminiKey) && !geminiKey.Contains("YOUR_") && !geminiKey.Contains("_HERE"))
+        {
+            var url = !string.IsNullOrWhiteSpace(_config.Value?.GeminiApiBaseUrl)
+                ? _config.Value!.GeminiApiBaseUrl!.Trim()
+                : GeminiBaseUrl;
+            return (geminiKey, url, "gemini-2.5-flash");
+        }
+        var openAiKey = _config.Value?.ApiKey?.Trim() ?? "";
+        return (openAiKey, OpenAiBaseUrl, _config.Value?.Model ?? "gpt-4o");
     }
 
     private List<PrescriptionMedicationItem>? ParseMedicationItems(string json)

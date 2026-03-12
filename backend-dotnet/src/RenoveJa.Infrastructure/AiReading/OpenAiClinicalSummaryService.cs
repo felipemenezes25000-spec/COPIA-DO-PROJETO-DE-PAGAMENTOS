@@ -23,7 +23,8 @@ public class OpenAiClinicalSummaryService : IClinicalSummaryService
     private readonly ILogger<OpenAiClinicalSummaryService> _logger;
     private readonly IAiInteractionLogRepository _aiInteractionLogRepository;
 
-    private const string ApiBaseUrl = "https://api.openai.com/v1";
+    private const string OpenAiBaseUrl = "https://api.openai.com/v1";
+    private const string GeminiBaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai";
 
     public OpenAiClinicalSummaryService(
         IHttpClientFactory httpClientFactory,
@@ -41,10 +42,31 @@ public class OpenAiClinicalSummaryService : IClinicalSummaryService
         ClinicalSummaryInput input,
         CancellationToken cancellationToken = default)
     {
-        var apiKey = _config.Value?.ApiKey;
+        var (apiKey, baseUrl, model) = ResolveProvider();
+        var result = await CallStructuredAsync(input, apiKey, baseUrl, model, cancellationToken);
+        if (result != null) return result;
+
+        // Fallback: Gemini falhou e OpenAI configurada → tenta gpt-4o
+        var usedGemini = model.StartsWith("gemini", StringComparison.OrdinalIgnoreCase);
+        var openAiKey = _config.Value?.ApiKey?.Trim();
+        if (usedGemini && !string.IsNullOrEmpty(openAiKey) && !openAiKey.Contains("YOUR_") && !openAiKey.Contains("_HERE"))
+        {
+            _logger.LogInformation("IA resumo clínico: Fallback para OpenAI gpt-4o após falha Gemini.");
+            return await CallStructuredAsync(input, openAiKey!, OpenAiBaseUrl, _config.Value?.Model ?? "gpt-4o", cancellationToken);
+        }
+        return null;
+    }
+
+    private async Task<ClinicalSummaryStructured?> CallStructuredAsync(
+        ClinicalSummaryInput input,
+        string apiKey,
+        string baseUrl,
+        string model,
+        CancellationToken cancellationToken)
+    {
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            _logger.LogWarning("OpenAI API key not configured — skipping clinical summary");
+            _logger.LogWarning("Nenhuma API configurada (Gemini__ApiKey ou OpenAI__ApiKey) — skipping clinical summary");
             return null;
         }
 
@@ -103,7 +125,7 @@ public class OpenAiClinicalSummaryService : IClinicalSummaryService
 
             var requestBody = new
             {
-                model = _config.Value?.Model ?? "gpt-4o",
+                model,
                 temperature = 0.2,
                 max_tokens = 1600,
                 response_format = new { type = "json_object" },
@@ -122,18 +144,26 @@ public class OpenAiClinicalSummaryService : IClinicalSummaryService
             client.Timeout = TimeSpan.FromSeconds(50);
 
             using var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await client.PostAsync($"{ApiBaseUrl}/chat/completions", content, cancellationToken);
+            var response = await client.PostAsync($"{baseUrl}/chat/completions", content, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("OpenAI clinical summary structured failed: {StatusCode}", response.StatusCode);
+                _logger.LogWarning("IA clinical summary structured failed: {StatusCode}", response.StatusCode);
                 await _aiInteractionLogRepository.LogAsync(AiInteractionLog.Create(
                     serviceName: nameof(OpenAiClinicalSummaryService),
-                    modelName: _config.Value?.Model ?? "gpt-4o",
+                    modelName: model,
                     promptHash: promptHash,
                     success: false,
                     durationMs: (long)(DateTime.UtcNow - startedAt).TotalMilliseconds,
                     errorMessage: $"HTTP {(int)response.StatusCode}"), cancellationToken);
+                // Fallback: Gemini falhou e OpenAI configurada → tenta gpt-4o
+                var usedGemini = model.StartsWith("gemini", StringComparison.OrdinalIgnoreCase);
+                var openAiKey = _config.Value?.ApiKey?.Trim();
+                if (usedGemini && !string.IsNullOrEmpty(openAiKey) && !openAiKey.Contains("YOUR_") && !openAiKey.Contains("_HERE"))
+                {
+                    _logger.LogInformation("IA resumo clínico: Fallback para OpenAI gpt-4o após falha Gemini.");
+                    return await CallStructuredAsync(input, openAiKey!, OpenAiBaseUrl, _config.Value?.Model ?? "gpt-4o", cancellationToken);
+                }
                 return null;
             }
 
@@ -149,7 +179,7 @@ public class OpenAiClinicalSummaryService : IClinicalSummaryService
 
             await _aiInteractionLogRepository.LogAsync(AiInteractionLog.Create(
                 serviceName: nameof(OpenAiClinicalSummaryService),
-                modelName: _config.Value?.Model ?? "gpt-4o",
+                modelName: model,
                 promptHash: promptHash,
                 success: true,
                 responseSummary: message.Length > 500 ? message[..500] : message,
@@ -306,10 +336,10 @@ public class OpenAiClinicalSummaryService : IClinicalSummaryService
         ClinicalSummaryInput input,
         CancellationToken cancellationToken = default)
     {
-        var apiKey = _config.Value?.ApiKey;
+        var (apiKey, baseUrl, model) = ResolveProvider();
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            _logger.LogWarning("OpenAI API key not configured — skipping clinical summary");
+            _logger.LogWarning("Nenhuma API configurada (Gemini__ApiKey ou OpenAI__ApiKey) — skipping clinical summary");
             return null;
         }
 
@@ -342,7 +372,7 @@ public class OpenAiClinicalSummaryService : IClinicalSummaryService
 
             var requestBody = new
             {
-                model = _config.Value?.Model ?? "gpt-4o",
+                model,
                 temperature = 0.3,
                 max_tokens = 1200,
                 messages = new[]
@@ -358,11 +388,11 @@ public class OpenAiClinicalSummaryService : IClinicalSummaryService
             client.Timeout = TimeSpan.FromSeconds(45);
 
             using var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await client.PostAsync($"{ApiBaseUrl}/chat/completions", content, cancellationToken);
+            var response = await client.PostAsync($"{baseUrl}/chat/completions", content, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("OpenAI clinical summary failed: {StatusCode}", response.StatusCode);
+                _logger.LogWarning("IA clinical summary failed: {StatusCode}", response.StatusCode);
                 return null;
             }
 
@@ -381,6 +411,20 @@ public class OpenAiClinicalSummaryService : IClinicalSummaryService
             _logger.LogError(ex, "Error generating clinical summary");
             return null;
         }
+    }
+
+    private (string? apiKey, string baseUrl, string model) ResolveProvider()
+    {
+        var geminiKey = _config.Value?.GeminiApiKey?.Trim();
+        if (!string.IsNullOrEmpty(geminiKey) && !geminiKey.Contains("YOUR_") && !geminiKey.Contains("_HERE"))
+        {
+            var url = !string.IsNullOrWhiteSpace(_config.Value?.GeminiApiBaseUrl)
+                ? _config.Value!.GeminiApiBaseUrl!.Trim()
+                : GeminiBaseUrl;
+            return (geminiKey, url, "gemini-2.5-flash");
+        }
+        var openAiKey = _config.Value?.ApiKey?.Trim() ?? "";
+        return (openAiKey, OpenAiBaseUrl, _config.Value?.Model ?? "gpt-4o");
     }
 
     private static string BuildUserContent(ClinicalSummaryInput input)

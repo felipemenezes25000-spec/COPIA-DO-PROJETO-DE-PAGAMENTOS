@@ -3,14 +3,14 @@ namespace RenoveJa.Application.Configuration;
 /// <summary>
 /// Configuração para integração com OpenAI e Gemini — leitura de receitas, anamnese e evidências.
 /// Padrão: Gemini__ApiKey configurada → anamnese e evidências usam gemini-2.5-flash. Pronto.
-/// OpenAI__ApiKey: receitas, exames, sugestão conduta, transcribe-test (Whisper).
+/// OpenAI__ApiKey: fallback quando Gemini__ApiKey ausente. Transcrição: Daily.co (não Whisper).
 /// </summary>
 public class OpenAIConfig
 {
     public const string SectionName = "OpenAI";
 
     public string ApiKey { get; set; } = string.Empty;
-    /// <summary>Modelo padrão (fallback para Whisper, leitura receitas, etc.). OpenAI-only.</summary>
+    /// <summary>Modelo padrão (fallback quando Gemini__ApiKey ausente). OpenAI-only.</summary>
     public string Model { get; set; } = "gpt-4o";
     /// <summary>Modelo para anamnese. Padrão: gemini-2.5-flash (Gemini). Fallback OpenAI se Gemini__ApiKey ausente.</summary>
     public string ModelAnamnesis { get; set; } = "gemini-2.5-flash";

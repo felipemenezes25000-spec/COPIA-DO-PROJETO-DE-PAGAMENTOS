@@ -37,7 +37,6 @@ import {
   countPendentes,
   getPendingForPanel,
 } from '../../lib/domain/getRequestUiState';
-import { fetchDoctorStats } from '../../lib/api-doctors';
 import { haptics } from '../../lib/haptics';
 import { showToast } from '../../components/ui/Toast';
 import { motionTokens } from '../../lib/ui/motion';
@@ -169,7 +168,6 @@ export default function DoctorDashboard() {
 
   const [refreshing, setRefreshing] = useState(false);
   const [hasCertificate, setHasCertificate] = useState<boolean | null>(null);
-  const [totalEarnings, setTotalEarnings] = useState<number | null>(null);
 
   const { subscribe, isConnected } = useRequestsEvents();
   const invalidateDoctorRequests = useInvalidateDoctorRequests();
@@ -193,31 +191,18 @@ export default function DoctorDashboard() {
     return subscribe(() => invalidateDoctorRequests());
   }, [subscribe, invalidateDoctorRequests]);
 
-  const loadStats = useCallback(async () => {
-    try {
-      const s = await fetchDoctorStats();
-      setTotalEarnings(s.totalEarnings);
-    } catch {
-      setTotalEarnings(0);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadStats();
-  }, [loadStats]);
-
   const onRefresh = useCallback(async () => {
     haptics.light();
     setRefreshing(true);
     try {
-      await Promise.all([refetch(), loadStats()]);
+      await refetch();
       showToast({ message: 'Painel atualizado', type: 'success' });
     } catch {
       showToast({ message: 'Erro ao atualizar', type: 'error' });
     } finally {
       setRefreshing(false);
     }
-  }, [refetch, loadStats]);
+  }, [refetch]);
 
   // ─── Derived Data ──────────────────────────────────────────
   const pendingList = useMemo(() => getPendingForPanel(queue, 15), [queue]);
@@ -384,17 +369,6 @@ export default function DoctorDashboard() {
             delay={240}
           />
           </View>
-        <View style={[styles.earningsRow, { backgroundColor: colors.surfaceSecondary }]}>
-          <View style={[styles.earningsIconWrap, { backgroundColor: colors.successLight }]}>
-            <Ionicons name="cash" size={18} color={colors.success} />
-          </View>
-          <Text style={[styles.earningsLabel, { color: colors.textMuted }]}>Ganhos totais</Text>
-          <Text style={[styles.earningsValue, { color: colors.success }]}>
-            {totalEarnings != null
-              ? `R$ ${totalEarnings.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-              : '—'}
-          </Text>
-        </View>
         </View>
       </View>
 
@@ -444,8 +418,7 @@ export default function DoctorDashboard() {
     </>
   ), [
     headerGradient, insets, colors, greetingName, displayFirst, dateStr,
-    isConnected, stats, hasCertificate, shadows, borderRadius, router,
-    user?.avatarUrl,
+    isConnected, stats, hasCertificate, shadows, borderRadius, router, user?.avatarUrl,
   ]);
 
   // ─── Empty State ───────────────────────────────────────────
@@ -600,33 +573,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
-  },
-  earningsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    marginHorizontal: 14,
-    marginBottom: 14,
-    borderRadius: 12,
-    gap: 10,
-  },
-  earningsIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  earningsLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    flex: 1,
-  },
-  earningsValue: {
-    fontSize: 16,
-    fontWeight: '800',
-    fontFamily: 'PlusJakartaSans_700Bold',
   },
   metricCard: {
     flex: 1,

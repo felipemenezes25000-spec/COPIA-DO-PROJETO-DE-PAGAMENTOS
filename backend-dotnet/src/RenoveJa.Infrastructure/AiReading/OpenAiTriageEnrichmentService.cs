@@ -72,6 +72,27 @@ public class OpenAiTriageEnrichmentService : ITriageEnrichmentService
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(Timeout);
 
+        var result = await CallProviderAsync(input, apiKey, baseUrl, model, cts.Token);
+        if (result != null) return result;
+
+        // Fallback: Gemini falhou e OpenAI configurada → tenta gpt-4o
+        var usedGemini = model.StartsWith("gemini", StringComparison.OrdinalIgnoreCase);
+        var openAiKey = _config.Value?.ApiKey?.Trim();
+        if (usedGemini && !string.IsNullOrEmpty(openAiKey) && !openAiKey.Contains("YOUR_") && !openAiKey.Contains("_HERE"))
+        {
+            _logger.LogInformation("Triage IA: Fallback para OpenAI gpt-4o após falha Gemini.");
+            return await CallProviderAsync(input, openAiKey!, OpenAiBaseUrl, _config.Value?.Model ?? "gpt-4o", cts.Token);
+        }
+        return null;
+    }
+
+    private async Task<TriageEnrichmentResult?> CallProviderAsync(
+        TriageEnrichmentInput input,
+        string apiKey,
+        string baseUrl,
+        string model,
+        CancellationToken cancellationToken)
+    {
         try
         {
             var systemPrompt = BuildSystemPrompt();
@@ -98,7 +119,7 @@ public class OpenAiTriageEnrichmentService : ITriageEnrichmentService
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
             using var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await client.PostAsync($"{baseUrl}/chat/completions", content, cts.Token);
+            var response = await client.PostAsync($"{baseUrl}/chat/completions", content, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -109,11 +130,11 @@ public class OpenAiTriageEnrichmentService : ITriageEnrichmentService
                     promptHash: promptHash,
                     success: false,
                     durationMs: (long)(DateTime.UtcNow - startedAt).TotalMilliseconds,
-                    errorMessage: $"HTTP {(int)response.StatusCode}"), cts.Token);
+                    errorMessage: $"HTTP {(int)response.StatusCode}"), cancellationToken);
                 return null;
             }
 
-            var responseJson = await response.Content.ReadAsStringAsync(cts.Token);
+            var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
             using var doc = JsonDocument.Parse(responseJson);
             var message = doc.RootElement
                 .GetProperty("choices")[0]
@@ -131,7 +152,7 @@ public class OpenAiTriageEnrichmentService : ITriageEnrichmentService
                 promptHash: promptHash,
                 success: true,
                 responseSummary: message.Length > 500 ? message[..500] : message,
-                durationMs: (long)(DateTime.UtcNow - startedAt).TotalMilliseconds), cts.Token);
+                durationMs: (long)(DateTime.UtcNow - startedAt).TotalMilliseconds), cancellationToken);
             return result;
         }
         catch (OperationCanceledException)

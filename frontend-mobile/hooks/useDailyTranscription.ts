@@ -29,6 +29,8 @@ interface UseDailyTranscriptionOptions {
   onSendError?: (message: string) => void;
   /** Callback quando envio ao backend tem sucesso (limpa erro anterior) */
   onSendSuccess?: () => void;
+  /** Callback quando Deepgram falha — ativa fallback Whisper (gravação local → POST transcribe) */
+  onTranscriptionFailed?: () => void;
 }
 
 export function useDailyTranscription({
@@ -40,6 +42,7 @@ export function useDailyTranscription({
   consultationActive,
   onSendError,
   onSendSuccess,
+  onTranscriptionFailed,
 }: UseDailyTranscriptionOptions): { isTranscribing: boolean; error: string | null; stop: () => Promise<void> } {
   const startedRef = useRef(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -48,10 +51,12 @@ export function useDailyTranscription({
   const localSessionIdRef = useRef(localSessionId);
   const onSendErrorRef = useRef(onSendError);
   const onSendSuccessRef = useRef(onSendSuccess);
+  const onTranscriptionFailedRef = useRef(onTranscriptionFailed);
   consultationActiveRef.current = consultationActive;
   localSessionIdRef.current = localSessionId;
   onSendErrorRef.current = onSendError;
   onSendSuccessRef.current = onSendSuccess;
+  onTranscriptionFailedRef.current = onTranscriptionFailed;
 
   const sendToBackend = useCallback(
     async (text: string, speaker: 'medico' | 'paciente', startTimeSeconds?: number) => {
@@ -130,7 +135,8 @@ export function useDailyTranscription({
         setIsTranscribing(true);
         if (__DEV__) console.warn('[DailyTranscription] Transcrição iniciada');
       } catch (e) {
-        if (__DEV__) console.warn('[DailyTranscription] Falha ao iniciar:', e);
+        if (__DEV__) console.warn('[DailyTranscription] Falha ao iniciar Deepgram:', e);
+        onTranscriptionFailedRef.current?.();
       }
     };
 
@@ -138,6 +144,12 @@ export function useDailyTranscription({
     const handleStopped = () => {
       setIsTranscribing(false);
       startedRef.current = false;
+    };
+    const handleError = () => {
+      if (__DEV__) console.warn('[DailyTranscription] transcription-error — Deepgram falhou, ativando fallback Whisper');
+      setIsTranscribing(false);
+      startedRef.current = false;
+      onTranscriptionFailedRef.current?.();
     };
 
     if (isDoctor && callJoined) {
@@ -148,14 +160,17 @@ export function useDailyTranscription({
     const evMsg = 'transcription-message' as string;
     const evStarted = 'transcription-started' as string;
     const evStopped = 'transcription-stopped' as string;
+    const evError = 'transcription-error' as string;
     call.on?.(evMsg, handleMessage);
     call.on?.(evStarted, handleStarted);
     call.on?.(evStopped, handleStopped);
+    call.on?.(evError, handleError);
 
     return () => {
       call.off?.(evMsg, handleMessage);
       call.off?.(evStarted, handleStarted);
       call.off?.(evStopped, handleStopped);
+      call.off?.(evError, handleError);
     };
   }, [
     callRef,

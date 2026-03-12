@@ -50,6 +50,7 @@ import { createDailyRoom, fetchJoinToken } from '../../lib/api-daily';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDailyCall } from '../../hooks/useDailyCall';
 import { useDailyTranscription } from '../../hooks/useDailyTranscription';
+import { useAudioRecorder } from '../../hooks/useAudioRecorder';
 import { useRequestUpdated } from '../../hooks/useRequestUpdated';
 import { useVideoCallEvents } from '../../hooks/useVideoCallEvents';
 import { useConsultationTimer } from '../../hooks/useConsultationTimer';
@@ -124,8 +125,9 @@ export default function VideoCallScreenInner() {
   const [bankBalance, setBankBalance] = useState<{ minutes: number; seconds: number } | null>(null);
   const [, setConsultationType] = useState<string>('medico_clinico');
 
-  // Transcrição nativa Daily.co (Deepgram) — substitui useAudioRecorder/Whisper
+  // Transcrição: Daily.co (Deepgram) primário; Whisper fallback quando Deepgram falha
   const canStartRecording = consultationStartedAt || requestStatus === 'in_consultation' || requestStatus === 'paid';
+  const [useFallbackTranscription, setUseFallbackTranscription] = useState(false);
 
   // Anamnesis & Transcript (doctor) — SignalR real-time via extracted hook
   const {
@@ -180,7 +182,10 @@ export default function VideoCallScreenInner() {
     consultationActive: !!canStartRecording,
     onSendError: (msg) => { if (__DEV__) console.warn('[DailyTranscription] Send error:', msg); },
     onSendSuccess: () => {},
+    onTranscriptionFailed: () => setUseFallbackTranscription(true),
   });
+
+  const audioRecorder = useAudioRecorder(rid, isDoctor ? 'local' : 'remote');
 
   // ── Panel animation ──
 
@@ -362,6 +367,16 @@ export default function VideoCallScreenInner() {
     return () => clearInterval(poll);
   }, [isDoctor, rid, consultationStartedAt]);
 
+  // Fallback Whisper: quando Deepgram falha, inicia gravação local → POST transcribe
+  const audioRecorderRef = useRef(audioRecorder);
+  audioRecorderRef.current = audioRecorder;
+  useEffect(() => {
+    if (!useFallbackTranscription || !canStartRecording || !rid) return;
+    const { start, stop } = audioRecorderRef.current;
+    start().catch((e) => { if (__DEV__) console.warn('[VideoCall] Fallback Whisper start failed:', e); });
+    return () => { stop().catch(() => {}); };
+  }, [useFallbackTranscription, canStartRecording, rid]);
+
   // Countdown / auto-finish handled by useConsultationTimer hook
 
   // Dica UX: esconder após 8s (usuário pode usar o celular durante a chamada)
@@ -395,8 +410,11 @@ export default function VideoCallScreenInner() {
       ExpoPip.setPictureInPictureParams({ autoEnterEnabled: false });
     }
     dailyTranscription.stop().catch((e) => { if (__DEV__) console.warn('[VideoCall] dailyTranscription stop failed:', e); });
+    if (useFallbackTranscription) {
+      audioRecorder.stop().catch((e) => { if (__DEV__) console.warn('[VideoCall] audioRecorder stop failed:', e); });
+    }
     disconnectSignalR();
-  }, [disconnectSignalR, dailyTranscription]);
+  }, [disconnectSignalR, dailyTranscription, useFallbackTranscription, audioRecorder]);
 
   // End call
   const doEnd = useCallback(async (autoFinish = false) => {
@@ -575,11 +593,16 @@ export default function VideoCallScreenInner() {
         </View>
       )}
 
-      {/* Doctor: aviso quando transcrição falha (SignalR ou erro de envio Whisper) */}
-      {!isInPipMode && isDoctor && (transcriptionError || dailyTranscription.error) && (
-        <View style={[S.recIndicator, { top: insets.top + 60 + 140, backgroundColor: colors.warning + '40' }]}>
-          <Ionicons name="warning" size={14} color={colors.warning} />
-          <Text style={[S.recText, { color: colors.warning }]}>{transcriptionError || dailyTranscription.error}</Text>
+      {/* Doctor: aviso quando transcrição falha OU indicador de fallback Whisper */}
+      {!isInPipMode && isDoctor && (transcriptionError || dailyTranscription.error || useFallbackTranscription) && (
+        <View style={[S.recIndicator, {
+          top: insets.top + 60 + 140,
+          backgroundColor: useFallbackTranscription ? colors.success + '30' : colors.warning + '40',
+        }]}>
+          <Ionicons name={useFallbackTranscription ? 'mic' : 'warning'} size={14} color={useFallbackTranscription ? colors.success : colors.warning} />
+          <Text style={[S.recText, { color: useFallbackTranscription ? colors.success : colors.warning }]}>
+            {useFallbackTranscription ? 'Transcrição via Whisper (fallback)' : (transcriptionError || dailyTranscription.error)}
+          </Text>
         </View>
       )}
 
@@ -591,13 +614,13 @@ export default function VideoCallScreenInner() {
         </View>
       )}
 
-      {/* Patient: indicador de transcrição Daily.co — oculto em PiP */}
+      {/* Patient: indicador de transcrição Daily.co ou Whisper fallback — oculto em PiP */}
       {!isInPipMode && !isDoctor && callState === 'joined' && (
-        <View style={[dailyTranscription.isTranscribing ? S.recIndicatorActive : S.recIndicatorMuted, { top: insets.top + 60 + (bankBalance && bankBalance.minutes > 0 ? 44 : 0) }]}>
-          {dailyTranscription.isTranscribing ? (
+        <View style={[(dailyTranscription.isTranscribing || useFallbackTranscription) ? S.recIndicatorActive : S.recIndicatorMuted, { top: insets.top + 60 + (bankBalance && bankBalance.minutes > 0 ? 44 : 0) }]}>
+          {(dailyTranscription.isTranscribing || useFallbackTranscription) ? (
             <>
               <View style={S.recDot} />
-              <Text style={S.recText}>Transcrição ativa</Text>
+              <Text style={S.recText}>{useFallbackTranscription ? 'Transcrição via Whisper (fallback)' : 'Transcrição ativa'}</Text>
             </>
           ) : canStartRecording ? (
             <Text style={[S.recText, { opacity: 0.7 }]}>Aguardando médico iniciar transcrição...</Text>

@@ -72,7 +72,7 @@ public class ConsultationSessionStore : IConsultationSessionStore
         }
         lock (state.Lock)
         {
-            // Deduplicar overlap: Whisper pode repetir as últimas palavras do chunk anterior
+            // Deduplicar overlap: transcrição pode repetir as últimas palavras do chunk anterior
             var existingText = state.TranscriptBuilder.ToString();
             var deduped = DeduplicateOverlap(existingText, trimmed);
             state.TranscriptBuilder.Append(' ').Append(deduped);
@@ -139,7 +139,7 @@ public class ConsultationSessionStore : IConsultationSessionStore
 
     /// <summary>
     /// Remove overlap entre o final do texto existente e o início do novo texto.
-    /// Whisper frequentemente repete as últimas 2-8 palavras do chunk anterior no início do próximo.
+    /// Transcrição (Daily.co) frequentemente repete as últimas 2-8 palavras do chunk anterior no início do próximo.
     /// Compara sufixo do existente com prefixo do novo, case-insensitive com tolerância.
     /// </summary>
     private static string DeduplicateOverlap(string existing, string newText)

@@ -146,10 +146,10 @@ public class HealthController : ControllerBase
             ? new { status = paymentOk ? "ok" : "degraded", message = paymentOk ? "Configured" : "MercadoPago AccessToken not configured" }
             : (object)new { status = paymentOk ? "ok" : "degraded" };
 
-        // AI service (OpenAI config present)
-        aiOk = !string.IsNullOrWhiteSpace(_openAiConfig.ApiKey);
+        // AI service (Gemini ou OpenAI configurado)
+        aiOk = !string.IsNullOrWhiteSpace(_openAiConfig.GeminiApiKey) || !string.IsNullOrWhiteSpace(_openAiConfig.ApiKey);
         checks["ai"] = detailed
-            ? new { status = aiOk ? "ok" : "degraded", message = aiOk ? "Configured" : "OpenAI ApiKey not configured" }
+            ? new { status = aiOk ? "ok" : "degraded", message = aiOk ? "Configured" : "Gemini__ApiKey ou OpenAI__ApiKey not configured" }
             : (object)new { status = aiOk ? "ok" : "degraded" };
 
         string overall;

@@ -18,7 +18,8 @@ public class OpenAiConductSuggestionService : IAiConductSuggestionService
     private readonly IOptions<OpenAIConfig> _config;
     private readonly ILogger<OpenAiConductSuggestionService> _logger;
 
-    private const string ApiBaseUrl = "https://api.openai.com/v1";
+    private const string OpenAiBaseUrl = "https://api.openai.com/v1";
+    private const string GeminiBaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -40,13 +41,34 @@ public class OpenAiConductSuggestionService : IAiConductSuggestionService
         AiConductSuggestionInput input,
         CancellationToken cancellationToken = default)
     {
-        var apiKey = _config.Value?.ApiKey;
+        var (apiKey, baseUrl, model) = ResolveProvider();
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            _logger.LogWarning("OpenAI API key not configured — skipping conduct suggestion");
+            _logger.LogWarning("Nenhuma API configurada (Gemini__ApiKey ou OpenAI__ApiKey) — skipping conduct suggestion");
             return null;
         }
 
+        var result = await CallProviderAsync(input, apiKey, baseUrl, model, cancellationToken);
+        if (result != null) return result;
+
+        // Fallback: Gemini falhou e OpenAI configurada → tenta gpt-4o
+        var usedGemini = model.StartsWith("gemini", StringComparison.OrdinalIgnoreCase);
+        var openAiKey = _config.Value?.ApiKey?.Trim();
+        if (usedGemini && !string.IsNullOrEmpty(openAiKey) && !openAiKey.Contains("YOUR_") && !openAiKey.Contains("_HERE"))
+        {
+            _logger.LogInformation("IA conduta: Fallback para OpenAI gpt-4o após falha Gemini.");
+            return await CallProviderAsync(input, openAiKey, OpenAiBaseUrl, _config.Value?.Model ?? "gpt-4o", cancellationToken);
+        }
+        return null;
+    }
+
+    private async Task<AiConductSuggestionResult?> CallProviderAsync(
+        AiConductSuggestionInput input,
+        string apiKey,
+        string baseUrl,
+        string model,
+        CancellationToken cancellationToken)
+    {
         try
         {
             var systemPrompt = BuildSystemPromptV2();
@@ -54,7 +76,7 @@ public class OpenAiConductSuggestionService : IAiConductSuggestionService
 
             var requestBody = new
             {
-                model = _config.Value?.Model ?? "gpt-4o",
+                model,
                 temperature = 0.25,
                 max_tokens = 1200,
                 response_format = new { type = "json_object" },
@@ -71,11 +93,11 @@ public class OpenAiConductSuggestionService : IAiConductSuggestionService
             client.Timeout = TimeSpan.FromSeconds(30);
 
             using var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await client.PostAsync($"{ApiBaseUrl}/chat/completions", content, cancellationToken);
+            var response = await client.PostAsync($"{baseUrl}/chat/completions", content, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("OpenAI conduct suggestion failed: {StatusCode}", response.StatusCode);
+                _logger.LogWarning("IA conduct suggestion failed: {StatusCode}", response.StatusCode);
                 return null;
             }
 
@@ -143,6 +165,20 @@ public class OpenAiConductSuggestionService : IAiConductSuggestionService
               "cid_sugerido": "Código CID-10 mais provável — Descrição. Ex: 'J06.9 - Infecção aguda das vias aéreas superiores não especificada'. APENAS códigos válidos CID-10."
             }
             """;
+    }
+
+    private (string? apiKey, string baseUrl, string model) ResolveProvider()
+    {
+        var geminiKey = _config.Value?.GeminiApiKey?.Trim();
+        if (!string.IsNullOrEmpty(geminiKey) && !geminiKey.Contains("YOUR_") && !geminiKey.Contains("_HERE"))
+        {
+            var url = !string.IsNullOrWhiteSpace(_config.Value?.GeminiApiBaseUrl)
+                ? _config.Value!.GeminiApiBaseUrl!.Trim()
+                : GeminiBaseUrl;
+            return (geminiKey, url, "gemini-2.5-flash");
+        }
+        var openAiKey = _config.Value?.ApiKey?.Trim() ?? "";
+        return (openAiKey, OpenAiBaseUrl, _config.Value?.Model ?? "gpt-4o");
     }
 
     private static string BuildUserPromptV2(AiConductSuggestionInput input)
