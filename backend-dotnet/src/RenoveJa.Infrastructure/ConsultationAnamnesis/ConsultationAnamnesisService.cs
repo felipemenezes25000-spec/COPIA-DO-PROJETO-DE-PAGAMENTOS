@@ -128,6 +128,8 @@ public class ConsultationAnamnesisService : IConsultationAnamnesisService
             : $@"ANAMNESE ANTERIOR (use como ponto de partida, mas REAVALIE TUDO — CID, diagnósticos diferenciais, medicamentos, exames e interações — com base no transcript COMPLETO e ATUALIZADO abaixo. Se o paciente relatou novos sintomas, mudou a queixa ou deu mais detalhes, ATUALIZE o cid_sugerido, diagnostico_diferencial, medicamentos_sugeridos, exames_sugeridos e interacoes_cruzadas para refletir o quadro ATUAL, não o inicial):
 {previousAnamnesisJson}
 
+REGRA: Recalcule TUDO com base no transcript atual. Leia o transcript completo e derive o CID e o diagnóstico diferencial do que o paciente REALMENTE disse. Não preserve valores anteriores por inércia.
+
 TRANSCRIPT COMPLETO ATUALIZADO (analise do início ao fim, priorizando as falas mais recentes):
 {transcriptSoFar}";
 
@@ -452,8 +454,8 @@ Responda em um ÚNICO JSON válido, sem markdown, com EXATAMENTE estes campos:
 CID DINÂMICO — DENOMINADOR COMUM E PROBABILIDADES (REGRA CRÍTICA):
 - denominador_comum: SEMPRE preencher. Categoria que unifica as hipóteses (ex: IVAS, síndrome gripal). O médico vê primeiro o contexto amplo.
 - diagnostico_diferencial: ORDENAR por probabilidade (mais provável primeiro). probabilidade_percentual OBRIGATÓRIO — soma = 100. Ex: 60%, 30%, 10%.
-- A CADA chamada, REAVALIE o CID com base no transcript COMPLETO. NÃO preserve por inércia.
-- O CID deve refletir o QUADRO CLÍNICO ATUAL. Se os sintomas mudaram, ATUALIZE cid_sugerido e diagnostico_diferencial.
+- A CADA chamada, REAVALIE o CID com base no transcript COMPLETO. NÃO preserve por inércia. IGNORE o cid_sugerido da anamnese anterior — recalcule do zero.
+- O CID deve refletir o QUADRO CLÍNICO ATUAL e APENAS os sintomas que o paciente RELATOU. Nunca use CID de órgão/sistema que o paciente NÃO mencionou (ex: otite H65.x sem queixa de ouvido).
 - Se o paciente começou com "dor de cabeça" (R51) mas depois disse "febre, coriza, dor no corpo", mude para J06.9 ou J11.1.
 - As probabilidades devem CONVERGIR: à medida que o transcript cresce, refine as % para refletir o que os dados suportam.
 
@@ -529,6 +531,9 @@ CID (OBRIGATÓRIO — SEMPRE ATUALIZAR):
 - Confira que o código existe na CID-10 OMS
 - Se o paciente mudou/ampliou os sintomas desde a última análise, o CID DEVE refletir isso
 
+═══ REGRAS DE CID POR SINTOMAS (EVITAR ERROS COMUNS) ═══
+- Use códigos CID APENAS para órgãos/sistemas que o paciente EXPRESSAMENTE mencionou. Ex: otite (H65.x) só se houver queixa de ouvido; não invente sintomas ausentes no transcript.
+
 ═══ REGRAS GERAIS ═══
 1. NUNCA invente informações ausentes no transcript
 2. Responda APENAS o JSON, sem texto antes ou depois
@@ -538,14 +543,21 @@ CID (OBRIGATÓRIO — SEMPRE ATUALIZAR):
 6. Terminologia médica adequada e objetiva
 7. Medicamentos: MÍNIMO 3, preferir 4-6. Incluir soro fisiológico, sprays, pomadas quando indicado. Todos COINCIDENTES com o caso.
 
-═══ REGRA DE COERÊNCIA E PRECISÃO (CRÍTICA) ═══
+═══ LEITURA PRECISA DO TRANSCRIPT (CRÍTICA) ═══
+Leia o transcript INTEIRO, do início ao fim. Extraia TODA informação relevante:
+- Sintomas: o que o paciente disse que sente (inclua linguagem coloquial: "dor no meu sabe" = dor no corpo, "bolinha" = linfonodo, "mais quente" = febre).
+- Localização: onde dói, onde inchou (ex: "região cervical posterior", "aqui debaixo da cabeça").
+- História epidemiológica: exposições, contatos, hábitos que o paciente mencionou (animais, viagens, alimentação, trabalho) — use para refinar o diagnóstico diferencial.
+- Duração, intensidade, fatores de melhora/piora quando relatados.
+O CID e o diagnóstico diferencial DEVEM derivar EXATAMENTE do que está no transcript. Não invente sintomas. Não use CID de órgão que o paciente não mencionou. Toda hipótese deve ter suporte em algo que o paciente ou o médico disse.
+
+═══ REGRA DE COERÊNCIA ═══
 TODOS os campos devem ser COERENTES entre si e DERIVADOS do transcript:
-- O CID deve corresponder aos sintomas descritos pelo paciente
+- O CID deve corresponder aos sintomas e ao contexto descritos
 - Os medicamentos devem tratar o CID e os sintomas relatados
 - Os exames devem investigar as hipóteses do diagnóstico diferencial
 - As interações devem cruzar TODOS os medicamentos (em uso + sugeridos)
 - As perguntas devem preencher as lacunas identificadas no transcript
-- Se o médico está fazendo perguntas ([Médico]) e o paciente respondendo ([Paciente]), USE as respostas do paciente para refinar TUDO acima
 
 ═══ VALIDAÇÃO FINAL (faça mentalmente antes de retornar o JSON) ═══
 - [ ] medicamentos_sugeridos tem ≥3 itens? Se não, ADICIONE mais.
