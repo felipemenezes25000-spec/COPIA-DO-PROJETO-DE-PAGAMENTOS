@@ -12,9 +12,9 @@ public class OpenAIConfig
     public string ApiKey { get; set; } = string.Empty;
     /// <summary>Modelo padrão (fallback quando Gemini__ApiKey ausente). OpenAI-only.</summary>
     public string Model { get; set; } = "gpt-4o";
-    /// <summary>Modelo para anamnese. Padrão: gemini-2.5-flash (Gemini). Fallback OpenAI se Gemini__ApiKey ausente.</summary>
+    /// <summary>Modelo para anamnese. Padrão: gemini-2.0-flash (Gemini). Fallback OpenAI se Gemini__ApiKey ausente.</summary>
     public string ModelAnamnesis { get; set; } = "gemini-2.5-flash";
-    /// <summary>Modelo para evidências. Padrão: gemini-2.5-flash (Gemini). Fallback OpenAI se Gemini__ApiKey ausente.</summary>
+    /// <summary>Modelo para evidências. Padrão: gemini-2.0-flash (Gemini). Fallback OpenAI se Gemini__ApiKey ausente.</summary>
     public string ModelEvidence { get; set; } = "gemini-2.5-flash";
 
     /// <summary>Chave da API Gemini (env: Gemini__ApiKey). Usada para anamnese e evidências quando configurada.</summary>

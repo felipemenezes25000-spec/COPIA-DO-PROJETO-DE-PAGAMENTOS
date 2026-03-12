@@ -1,5 +1,8 @@
 namespace RenoveJa.Application.DTOs.Consultation;
 
+/// <summary>Payload para teste de anamnese (endpoint anamnesis-test, apenas Development).</summary>
+public record AnamnesisTestRequestDto(string Transcript, string? PreviousAnamnesisJson = null);
+
 /// <summary>Payload para envio de texto já transcrito (Daily.co nativo).</summary>
 /// <param name="StartTimeSeconds">Segundos desde o início da transcrição (Deepgram/Daily), opcional.</param>
 public record TranscribeTextRequestDto(Guid RequestId, string Text, string? Speaker, double? StartTimeSeconds = null);

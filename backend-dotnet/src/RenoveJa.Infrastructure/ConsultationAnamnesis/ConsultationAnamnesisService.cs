@@ -139,7 +139,7 @@ TRANSCRIPT COMPLETO ATUALIZADO (analise do início ao fim, priorizando as falas 
                 new { role = "system", content = (object)systemPrompt },
                 new { role = "user", content = (object)userContent }
             },
-            max_tokens = 6000,
+            max_tokens = 10000,
             temperature = 0.10
         };
 
@@ -183,7 +183,7 @@ TRANSCRIPT COMPLETO ATUALIZADO (analise do início ao fim, priorizando as falas 
                 var fallbackModel = "gpt-4o";
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", openAiKey);
                 using var fallbackContent = new StringContent(
-                    JsonSerializer.Serialize(new { model = fallbackModel, messages = requestBody.messages, max_tokens = 6000, temperature = 0.10 }, JsonOptions),
+                    JsonSerializer.Serialize(new { model = fallbackModel, messages = requestBody.messages, max_tokens = 10000, temperature = 0.10 }, JsonOptions),
                     Encoding.UTF8, "application/json");
                 var fallbackResponse = await client.PostAsync($"{OpenAiBaseUrl}/chat/completions", fallbackContent, cancellationToken);
                 var fallbackJson = await fallbackResponse.Content.ReadAsStringAsync(cancellationToken);
@@ -324,7 +324,8 @@ TRANSCRIPT COMPLETO ATUALIZADO (analise do início ao fim, priorizando as falas 
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "[Anamnese IA v2] Falha ao parsear JSON de resposta.");
+            var preview = cleaned.Length > 400 ? cleaned[..400] + "..." : cleaned;
+            _logger.LogWarning(ex, "[Anamnese IA v2] Falha ao parsear JSON de resposta. Preview={Preview}", preview);
             return null;
         }
     }
@@ -923,12 +924,43 @@ TODOS os campos devem ser COERENTES entre si e DERIVADOS do transcript:
     private static string CleanJsonResponse(string raw)
     {
         var s = raw.Trim();
+        // Remove markdown code blocks (Gemini às vezes envolve em ```json)
         if (s.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
-            s = s["```json".Length..];
+            s = s["```json".Length..].TrimStart();
         else if (s.StartsWith("```"))
-            s = s["```".Length..];
+            s = s["```".Length..].TrimStart();
         if (s.EndsWith("```"))
-            s = s[..^3];
+            s = s[..^3].TrimEnd();
+        s = s.Trim();
+        // Se há texto antes do JSON (ex: "Aqui está: {...}"), extrai o objeto. Conta chaves ignorando as dentro de strings JSON.
+        var start = s.IndexOf('{');
+        if (start > 0)
+        {
+            var depth = 0;
+            var inString = false;
+            var escape = false;
+            var end = -1;
+            for (var i = start; i < s.Length; i++)
+            {
+                var c = s[i];
+                if (escape) { escape = false; continue; }
+                if (c == '\\' && inString) { escape = true; continue; }
+                if (inString)
+                {
+                    if (c == '"') inString = false;
+                    continue;
+                }
+                if (c == '"') { inString = true; continue; }
+                if (c == '{') depth++;
+                else if (c == '}')
+                {
+                    depth--;
+                    if (depth == 0) { end = i; break; }
+                }
+            }
+            if (end > start)
+                s = s[start..(end + 1)];
+        }
         return s.Trim();
     }
 

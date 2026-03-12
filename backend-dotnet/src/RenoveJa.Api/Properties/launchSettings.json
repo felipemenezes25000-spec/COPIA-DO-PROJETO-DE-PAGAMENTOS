@@ -1,0 +1,15 @@
+{
+  "profiles": {
+    "RenoveJa.Api": {
+      "commandName": "Project",
+      "dotnetRunMessages": true
+    },
+    "TestAnamnesis": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

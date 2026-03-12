@@ -307,6 +307,69 @@ public class ConsultationController(
     }
 
     /// <summary>
+    /// Endpoint de teste de anamnese (apenas Development).
+    /// Aceita transcript e retorna anamnese gerada pela IA (Gemini/OpenAI).
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("anamnesis-test")]
+    public async Task<IActionResult> AnamnesisTest(
+        [FromBody] AnamnesisTestRequestDto? dto,
+        CancellationToken cancellationToken)
+    {
+        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        if (!string.Equals(env, "Development", StringComparison.OrdinalIgnoreCase))
+        {
+            logger.LogWarning("[AnamnesisTest] Endpoint não disponível fora de Development.");
+            return NotFound();
+        }
+
+        if (dto == null || string.IsNullOrWhiteSpace(dto.Transcript))
+        {
+            return BadRequest(new { error = "Transcript obrigatório. Ex: {\"transcript\": \"[Paciente] Dor de cabeça há 3 dias.\"}" });
+        }
+
+        var transcript = dto.Transcript.Trim();
+        if (transcript.Length < 100)
+        {
+            return BadRequest(new { error = "Transcript muito curto (mínimo 100 caracteres para teste significativo)" });
+        }
+
+        logger.LogInformation("[AnamnesisTest] INICIO transcriptLen={Len}", transcript.Length);
+
+        try
+        {
+            var result = await anamnesisService.UpdateAnamnesisAndSuggestionsAsync(
+                transcript, dto.PreviousAnamnesisJson, cancellationToken);
+
+            if (result == null)
+            {
+                logger.LogWarning("[AnamnesisTest] Serviço retornou null (verifique Gemini__ApiKey ou OpenAI__ApiKey)");
+                return Ok(new
+                {
+                    success = false,
+                    message = "Anamnese não gerada. Verifique logs e chaves de API (Gemini__ApiKey ou OpenAI__ApiKey)."
+                });
+            }
+
+            logger.LogInformation("[AnamnesisTest] SUCESSO anamnesisLen={Len} suggestions={Count}",
+                result.AnamnesisJson.Length, result.Suggestions.Count);
+
+            return Ok(new
+            {
+                success = true,
+                anamnesisJson = result.AnamnesisJson,
+                suggestions = result.Suggestions,
+                evidenceCount = result.Evidence.Count
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "[AnamnesisTest] Exceção ao gerar anamnese");
+            return StatusCode(500, new { success = false, error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Endpoint de teste de transcrição (apenas Development).
     /// Aceita um arquivo de áudio. Transcrição em consulta é feita pelo Daily.co (Deepgram).
     /// Este endpoint retorna vazio — use apenas para testes de compatibilidade.

@@ -88,6 +88,10 @@ void ApplyEnvFile(string envPath)
         if (value.Length >= 2 && ((value.StartsWith('"') && value.EndsWith('"')) || (value.StartsWith('\'') && value.EndsWith('\''))))
             value = value[1..^1];
         _envVars[key] = value;
+        // ASPNETCORE_ENVIRONMENT: não sobrescrever se já definido (ex: launch profile TestAnamnesis)
+        if (string.Equals(key, "ASPNETCORE_ENVIRONMENT", StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(key)))
+            continue;
         Environment.SetEnvironmentVariable(key, value, EnvironmentVariableTarget.Process);
     }
 }
