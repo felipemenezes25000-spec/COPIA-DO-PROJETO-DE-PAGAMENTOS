@@ -1,27 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { resetPassword } from '@/api/auth';
-
-const GLOBAL_STYLE = `
-  :root {
-    --bg: #f8fafc; --card-bg: #fff; --text: #1e293b; --text-secondary: #64748b;
-    --border: #e2e8f0; --primary: #2563eb; --success: #16a34a; --error: #dc2626;
-    --input-border: #ccc; --shadow: 0 2px 12px rgba(0,0,0,0.08);
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0f172a; --card-bg: #1e293b; --text: #f1f5f9; --text-secondary: #94a3b8;
-      --border: #334155; --primary: #60a5fa; --success: #4ade80; --error: #f87171;
-      --input-border: #475569; --shadow: 0 2px 12px rgba(0,0,0,0.3);
-    }
-  }
-  body { background: var(--bg); color: var(--text); margin: 0; font-family: system-ui, -apple-system, sans-serif; }
-  @media (max-width: 480px) {
-    .recuperar-card { padding: 20px !important; margin: 12px !important; }
-    .recuperar-title { font-size: 18px !important; }
-    .recuperar-input { font-size: 16px !important; padding: 12px !important; }
-  }
-`;
+import '@/styles/recuperar-verify.css';
 
 type State = 'idle' | 'loading' | 'success' | 'error';
 
@@ -69,7 +49,6 @@ export default function RecuperarSenha() {
   if (!isValidToken) {
     return (
       <div style={styles.container}>
-        <style dangerouslySetInnerHTML={{ __html: GLOBAL_STYLE }} />
         <div style={styles.card} className="recuperar-card">
           <h1 style={styles.title}>Redefinir senha</h1>
           <p style={styles.error}>
@@ -86,7 +65,6 @@ export default function RecuperarSenha() {
 
   return (
     <div style={styles.container}>
-      <style dangerouslySetInnerHTML={{ __html: GLOBAL_STYLE }} />
       <div style={styles.card} className="recuperar-card">
         <h1 style={styles.title} className="recuperar-title">
           Nova senha

@@ -82,7 +82,7 @@ export async function startRequestsEventsConnection(): Promise<boolean> {
     return true;
   } catch (e) {
     if (__DEV__) {
-      console.warn('[RequestsEvents] Connection failed. Updates em tempo real desativados. Polling será usado como fallback.', e);
+      console.warn('[RequestsEvents] Connection failed. Updates em tempo real desativados. Use pull-to-refresh nas telas de pedidos para atualizar.', e);
     }
     return false;
   }

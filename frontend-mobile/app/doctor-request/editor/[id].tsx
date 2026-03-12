@@ -46,6 +46,9 @@ import { ConductSection } from '../../../components/triage';
 import { SignFormCard } from '../../../components/doctor-request/editor/SignFormCard';
 import { ComplianceCard } from '../../../components/doctor-request/editor/ComplianceCard';
 
+const PDFJS_VERSION = '3.11.174';
+const PDFJS_CDN_BASE = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}`;
+
 const RISK_LABELS_PT: Record<string, string> = {
   low: 'Risco baixo',
   medium: 'Risco médio',
@@ -75,7 +78,9 @@ function parseAiMedications(aiExtractedJson: string | null): string[] {
     if (Array.isArray(arr)) {
       return arr.map((m: any) => String(m || '').trim()).filter(Boolean);
     }
-  } catch { }
+  } catch (e) {
+    if (__DEV__) console.warn('[parseAiMedications] JSON parse failed:', e);
+  }
   return [];
 }
 
@@ -148,7 +153,7 @@ canvas{display:block;width:100%!important;height:auto!important;margin-bottom:2p
 </head><body>
 <div id="status">Carregando PDF.js...</div>
 <div id="pages"></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"><\/script>
+<script src="${PDFJS_CDN_BASE}/pdf.min.js"><\/script>
 <script>
 var statusEl = document.getElementById('status');
 var pagesEl = document.getElementById('pages');
@@ -197,7 +202,7 @@ function tryRender() {
 
 // Verifica se PDF.js carregou
 if (typeof pdfjsLib !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '${PDFJS_CDN_BASE}/pdf.worker.min.js';
   pdfReady = true;
   statusEl.textContent = 'Aguardando dados do PDF...';
   tryRender();
@@ -206,7 +211,7 @@ if (typeof pdfjsLib !== 'undefined') {
   var checkInterval = setInterval(function() {
     if (typeof pdfjsLib !== 'undefined') {
       clearInterval(checkInterval);
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '${PDFJS_CDN_BASE}/pdf.worker.min.js';
       pdfReady = true;
       tryRender();
     }

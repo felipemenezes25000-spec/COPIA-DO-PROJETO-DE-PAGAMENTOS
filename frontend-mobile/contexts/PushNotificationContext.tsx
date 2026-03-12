@@ -86,9 +86,14 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
       const requestId = data?.requestId as string | undefined;
       const targetRole = data?.targetRole as string | undefined;
 
-      // 1. Deep link completo → preferido (já contém a rota correta)
+      // 1. Deep link completo → preferido (já contém a rota correta). Valida contra whitelist.
       if (typeof deepLink === 'string' && deepLink.startsWith('renoveja://')) {
-        Linking.openURL(deepLink).catch(() => {});
+        const path = deepLink.replace('renoveja://', '/') || '/';
+        const allowed = ['/request-detail/', '/doctor-request/', '/payment/', '/consultation-summary/'];
+        const isAllowed = allowed.some((p) => path.startsWith(p) || path === p.slice(0, -1));
+        if (isAllowed && !path.includes('..')) {
+          Linking.openURL(deepLink).catch((e) => { if (__DEV__) console.warn('[Push] openURL failed:', e); });
+        }
         return;
       }
 

@@ -148,14 +148,14 @@ export function useAudioChunking(requestId: string): AudioChunkingReturn {
       try {
         const { recording } = await Audio.Recording.createAsync(RECORDING_OPTIONS);
         recordingRef.current = recording;
-      } catch (e: any) {
-        console.warn('[AudioChunking] Start new chunk error:', e?.message);
+      } catch (e: unknown) {
+        if (__DEV__) console.warn('[AudioChunking] Start new chunk error:', e instanceof Error ? e.message : e);
       }
     }
 
     // 3. Send previous chunk in background (don't block next recording)
     if (prevUri) {
-      sendChunk(prevUri, stream).catch(() => {});
+      sendChunk(prevUri, stream).catch((e) => { if (__DEV__) console.warn('[AudioChunking] sendChunk failed:', e); });
     }
   }, [sendChunk]);
 

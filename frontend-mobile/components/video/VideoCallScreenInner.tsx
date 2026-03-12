@@ -155,7 +155,7 @@ export default function VideoCallScreenInner() {
     onRemoteJoined: () => {
       if (!connReportedRef.current && rid) {
         connReportedRef.current = true;
-        reportCallConnected(rid).catch(() => {});
+        reportCallConnected(rid).catch((e) => { if (__DEV__) console.warn('[VideoCall] reportCallConnected failed:', e); });
       }
     },
     onCallEnded: (reason) => {
@@ -177,9 +177,9 @@ export default function VideoCallScreenInner() {
   // Whisper: inicia gravação automaticamente quando consulta iniciada e na sala
   useEffect(() => {
     if (!canStartRecording || callState !== 'joined' || !rid) return;
-    audioRecorderRef.current.start().catch(() => {});
+    audioRecorderRef.current.start().catch((e) => { if (__DEV__) console.warn('[VideoCall] audioRecorder start failed:', e); });
     return () => {
-      audioRecorderRef.current.stop().catch(() => {});
+      audioRecorderRef.current.stop().catch((e) => { if (__DEV__) console.warn('[VideoCall] audioRecorder stop failed:', e); });
     };
   }, [canStartRecording, callState, rid]);
 
@@ -206,7 +206,7 @@ export default function VideoCallScreenInner() {
     (async () => {
       try {
         // 1. Ensure Daily room exists (idempotent — backend creates on Daily.co)
-        await createDailyRoom(rid).catch(() => {});
+        await createDailyRoom(rid).catch((e) => { if (__DEV__) console.warn('[VideoCall] createDailyRoom failed:', e); });
         if (cancelled) return;
 
         // 2. Get join token
@@ -266,11 +266,11 @@ export default function VideoCallScreenInner() {
         setConsultationStartedAt(new Date().toISOString());
       }
       // Also report doctor as connected to help trigger server-side timer
-      reportCallConnected(rid).catch(() => {});
+      reportCallConnected(rid).catch((e) => { if (__DEV__) console.warn('[VideoCall] reportCallConnected failed:', e); });
       connectSignalR();
       // Transcrição via Whisper — useAudioRecorder inicia automaticamente; ambos veem ao vivo via SignalR.
-    } catch (e: any) {
-      console.warn('Failed to start consultation:', e?.message);
+    } catch (e: unknown) {
+      if (__DEV__) console.warn('Failed to start consultation:', e instanceof Error ? e.message : e);
       // Still set local timer so UI isn't stuck
       if (!consultationStartedAt) {
         setConsultationStartedAt(new Date().toISOString());
@@ -284,7 +284,7 @@ export default function VideoCallScreenInner() {
     if (callState !== 'joined' || !isDoctor || !rid) return;
     if (!remoteParticipant) return;
     if (timerStartedRef.current) return;
-    handleStartTimer().catch(() => {});
+    handleStartTimer().catch((e) => { if (__DEV__) console.warn('[VideoCall] handleStartTimer failed:', e); });
   }, [callState, isDoctor, rid, remoteParticipant, handleStartTimer]);
 
   // Patient: load time bank balance
@@ -296,7 +296,7 @@ export default function VideoCallScreenInner() {
         return getTimeBankBalance(r.consultationType || 'medico_clinico');
       })
       .then(res => setBankBalance({ minutes: res.balanceMinutes, seconds: res.balanceSeconds }))
-      .catch(() => {});
+      .catch((e) => { if (__DEV__) console.warn('[VideoCall] fetchRequestById/getTimeBankBalance failed:', e); });
   }, [isDoctor, rid]);
 
   // Report call connected: ambos reportam ao entrar na sala (não esperam ver o outro — evita timer zerado).
@@ -305,8 +305,9 @@ export default function VideoCallScreenInner() {
     if (callState !== 'joined' || !rid || connReportedRef.current) return;
     connReportedRef.current = true;
     if (__DEV__) console.warn('[VideoCall] reportCallConnected —', isDoctor ? 'médico' : 'paciente');
-    reportCallConnected(rid).catch(() => {
+    reportCallConnected(rid).catch((e) => {
       connReportedRef.current = false; // retry em próxima render
+      if (__DEV__) console.warn('[VideoCall] reportCallConnected failed:', e);
     });
   }, [callState, rid, isDoctor]);
 
@@ -322,7 +323,7 @@ export default function VideoCallScreenInner() {
             console.warn('[VideoCall] Patient fetch: consultationStartedAt ainda null, poll continuará');
           }
         })
-        .catch(() => {});
+        .catch((e) => { if (__DEV__) console.warn('[VideoCall] fetchRequestById failed:', e); });
     };
     fetchStatus();
     const t = setTimeout(fetchStatus, 500);
@@ -340,7 +341,7 @@ export default function VideoCallScreenInner() {
         }
         if (r.status) setRequestStatus(r.status);
       })
-      .catch(() => {});
+      .catch((e) => { if (__DEV__) console.warn('[VideoCall] refetchRequestForPatient failed:', e); });
   }, [isDoctor, rid]);
   useRequestUpdated(isDoctor ? undefined : rid, refetchRequestForPatient);
 
@@ -355,7 +356,7 @@ export default function VideoCallScreenInner() {
           if (r.consultationStartedAt) setConsultationStartedAt(r.consultationStartedAt);
           if (r.status) setRequestStatus(r.status);
         })
-        .catch(() => {});
+        .catch((e) => { if (__DEV__) console.warn('[VideoCall] fetchSync failed:', e); });
     };
     fetchSync();
     const poll = setInterval(fetchSync, 500);
@@ -394,7 +395,7 @@ export default function VideoCallScreenInner() {
     if (Platform.OS === 'android' && ExpoPip.setPictureInPictureParams) {
       ExpoPip.setPictureInPictureParams({ autoEnterEnabled: false });
     }
-    audioRecorderRef.current.stop().catch(() => {});
+    audioRecorderRef.current.stop().catch((e) => { if (__DEV__) console.warn('[VideoCall] audioRecorder stop failed:', e); });
     disconnectSignalR();
   }, [disconnectSignalR]);
 

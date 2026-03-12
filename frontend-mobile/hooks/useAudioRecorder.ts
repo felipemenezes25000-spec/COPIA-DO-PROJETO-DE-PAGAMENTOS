@@ -95,9 +95,10 @@ export function useAudioRecorder(requestId: string, stream: 'local' | 'remote' =
       try {
         const { recording } = await Audio.Recording.createAsync(RECORDING_OPTIONS);
         recordingRef.current = recording;
-      } catch (e: any) {
-        console.warn('[AudioRecorder] First recording failed:', e?.message);
-        setError('Erro ao iniciar gravação: ' + (e?.message || 'desconhecido'));
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : 'desconhecido';
+        if (__DEV__) console.warn('[AudioRecorder] First recording failed:', msg);
+        setError('Erro ao iniciar gravação: ' + msg);
         activeRef.current = false;
         setIsRecording(false);
         return false;
@@ -117,9 +118,9 @@ export function useAudioRecorder(requestId: string, stream: 'local' | 'remote' =
 
       console.warn('[AudioRecorder] Started recording, chunk interval:', CHUNK_DURATION_MS);
       return true;
-    } catch (e: any) {
-      const msg = e?.message || 'Erro ao iniciar gravação';
-      console.warn('[AudioRecorder] Start error:', msg);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Erro ao iniciar gravação';
+      if (__DEV__) console.warn('[AudioRecorder] Start error:', msg);
       setError(msg);
       activeRef.current = false;
       setIsRecording(false);
@@ -158,8 +159,8 @@ export function useAudioRecorder(requestId: string, stream: 'local' | 'remote' =
         if (uri) {
           await sendChunk(uri, stream);
         }
-      } catch (e: any) {
-        console.warn('[AudioRecorder] Final chunk error:', e?.message);
+      } catch (e: unknown) {
+        if (__DEV__) console.warn('[AudioRecorder] Final chunk error:', e instanceof Error ? e.message : e);
       }
     }
 
@@ -190,7 +191,7 @@ export function useAudioRecorder(requestId: string, stream: 'local' | 'remote' =
       }
       const rec = recordingRef.current;
       if (rec) {
-        rec.stopAndUnloadAsync().catch(() => {});
+        rec.stopAndUnloadAsync().catch((e) => { if (__DEV__) console.warn('[AudioRecorder] stopAndUnload error:', e); });
         recordingRef.current = null;
       }
     };

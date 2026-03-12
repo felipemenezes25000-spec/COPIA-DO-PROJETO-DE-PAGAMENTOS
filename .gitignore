@@ -45,3 +45,9 @@ frontend-mobile/GoogleService-Info.plist
 # Firebase Admin SDK — contém chave privada; NUNCA commitar
 frontend-mobile/*-firebase-adminsdk*.json
 .vercel
+
+# Artefatos de desenvolvimento (não versionar)
+/tsc_errors.txt
+/*.patch
+/*.zip
+/_patch22_temp/

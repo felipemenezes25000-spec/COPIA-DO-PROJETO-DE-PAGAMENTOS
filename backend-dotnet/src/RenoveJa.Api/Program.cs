@@ -454,7 +454,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("VerifyCors", policy =>
     {
         policy.AllowAnyOrigin()
-              .AllowAnyMethod()
+              .WithMethods("GET", "POST", "OPTIONS")
               .AllowAnyHeader();
     });
 });

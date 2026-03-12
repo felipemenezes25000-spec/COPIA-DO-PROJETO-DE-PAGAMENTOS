@@ -1,35 +1,12 @@
 import { useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { verifyReceita, type VerifySuccess } from '@/api/verify';
+import '@/styles/recuperar-verify.css';
 
 type VerifyState = 'idle' | 'loading' | 'success' | 'error';
 
 const GUARDRAIL_ALERT =
   'Importante: Decisão e responsabilidade é do profissional. Conteúdo exibido para verificação.';
-
-/** CSS global para dark mode e responsividade (não é possível com inline styles). */
-const GLOBAL_STYLE = `
-  :root {
-    --bg: #f8fafc; --card-bg: #fff; --text: #1e293b; --text-secondary: #64748b;
-    --border: #e2e8f0; --primary: #2563eb; --success: #16a34a; --error: #dc2626;
-    --warning-bg: #fef3c7; --warning-text: #92400e; --input-border: #ccc;
-    --shadow: 0 2px 12px rgba(0,0,0,0.08);
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0f172a; --card-bg: #1e293b; --text: #f1f5f9; --text-secondary: #94a3b8;
-      --border: #334155; --primary: #60a5fa; --success: #4ade80; --error: #f87171;
-      --warning-bg: #422006; --warning-text: #fbbf24; --input-border: #475569;
-      --shadow: 0 2px 12px rgba(0,0,0,0.3);
-    }
-  }
-  body { background: var(--bg); color: var(--text); margin: 0; font-family: system-ui, -apple-system, sans-serif; }
-  @media (max-width: 480px) {
-    .verify-card { padding: 20px !important; margin: 12px !important; }
-    .verify-title { font-size: 18px !important; }
-    .verify-input { font-size: 16px !important; padding: 12px !important; }
-  }
-`;
 
 /** Formata ISO string da API para exibição em pt-BR (apenas dados retornados pela API). */
 function formatIsoDate(iso: string | null | undefined): string {
@@ -109,7 +86,6 @@ export default function Verify() {
 
   return (
     <div style={styles.container}>
-      <style dangerouslySetInnerHTML={{ __html: GLOBAL_STYLE }} />
       <div style={styles.card} className="verify-card">
         <h1 style={styles.title}>Verificação de Receita</h1>
         <p style={styles.subtitle}>

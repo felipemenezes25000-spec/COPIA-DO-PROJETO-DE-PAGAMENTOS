@@ -141,14 +141,18 @@ export function useDailyTranscription({
       startTranscription();
     }
 
-    call.on?.('transcription-message' as any, handleMessage);
-    call.on?.('transcription-started' as any, handleStarted);
-    call.on?.('transcription-stopped' as any, handleStopped);
+    // Daily.co transcription events — tipos do pacote podem estar desatualizados
+    const evMsg = 'transcription-message' as string;
+    const evStarted = 'transcription-started' as string;
+    const evStopped = 'transcription-stopped' as string;
+    call.on?.(evMsg, handleMessage);
+    call.on?.(evStarted, handleStarted);
+    call.on?.(evStopped, handleStopped);
 
     return () => {
-      call.off?.('transcription-message' as any, handleMessage);
-      call.off?.('transcription-started' as any, handleStarted);
-      call.off?.('transcription-stopped' as any, handleStopped);
+      call.off?.(evMsg, handleMessage);
+      call.off?.(evStarted, handleStarted);
+      call.off?.(evStopped, handleStopped);
     };
   }, [
     callRef,
