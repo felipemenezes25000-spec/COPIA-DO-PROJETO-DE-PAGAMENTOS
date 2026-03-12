@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DoctorLayout } from '@/components/doctor/DoctorLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
-  getNotifications, markNotificationRead, markAllNotificationsRead,
+  getNotifications, markNotificationRead,
   type NotificationItem,
 } from '@/services/doctorApi';
+import { useNotifications } from '@/contexts/NotificationContext';
+import { useRequestEvents } from '@/hooks/useSignalR';
 import { parseApiList } from '@/lib/doctor-helpers';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -57,17 +59,27 @@ function groupByDate(items: NotificationItem[]) {
 
 export default function DoctorNotifications() {
   const navigate = useNavigate();
+  const { unreadCount, decrementUnreadCount, markAllReadOptimistic } = useNotifications();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchNotifications = useCallback(() => {
     getNotifications({ page: 1, pageSize: 50 })
       .then(data => setNotifications(parseApiList<NotificationItem>(data)))
       .catch(() => setNotifications([]))
       .finally(() => setLoading(false));
   }, []);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  // Refresh list on SignalR events
+  useRequestEvents(
+    useCallback(() => {
+      fetchNotifications();
+    }, [fetchNotifications]),
+  );
 
   const handleMarkRead = async (item: NotificationItem) => {
     if (item.read) {
@@ -77,6 +89,7 @@ export default function DoctorNotifications() {
     try {
       await markNotificationRead(item.id);
       setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, read: true } : n));
+      decrementUnreadCount();
       handleNavigate(item);
     } catch { /* silent */ }
   };
@@ -88,7 +101,7 @@ export default function DoctorNotifications() {
 
   const handleMarkAllRead = async () => {
     try {
-      await markAllNotificationsRead();
+      await markAllReadOptimistic();
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       toast.success('Todas marcadas como lidas');
     } catch {
