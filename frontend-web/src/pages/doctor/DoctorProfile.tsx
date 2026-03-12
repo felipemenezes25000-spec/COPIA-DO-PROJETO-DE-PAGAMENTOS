@@ -23,6 +23,11 @@ import {
 
 export default function DoctorProfile() {
   const { user, doctorProfile, refreshUser } = useDoctorAuth();
+
+  useEffect(() => {
+    document.title = 'Perfil — RenoveJá+';
+    return () => { document.title = 'RenoveJá+'; };
+  }, []);
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [certInfo, setCertInfo] = useState<CertificateInfo | null>(null);

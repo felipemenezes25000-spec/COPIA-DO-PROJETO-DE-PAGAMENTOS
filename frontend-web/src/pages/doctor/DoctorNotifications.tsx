@@ -60,6 +60,11 @@ function groupByDate(items: NotificationItem[]) {
 export default function DoctorNotifications() {
   const navigate = useNavigate();
   const { unreadCount, decrementUnreadCount, markAllReadOptimistic } = useNotifications();
+
+  useEffect(() => {
+    document.title = unreadCount > 0 ? `Alertas (${unreadCount}) — RenoveJá+` : 'Alertas — RenoveJá+';
+    return () => { document.title = 'RenoveJá+'; };
+  }, [unreadCount]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
 

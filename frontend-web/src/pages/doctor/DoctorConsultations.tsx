@@ -22,6 +22,11 @@ type TabValue = 'active' | 'history';
 
 export default function DoctorConsultations() {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    document.title = 'Consultas — RenoveJá+';
+    return () => { document.title = 'RenoveJá+'; };
+  }, []);
   const [requests, setRequests] = useState<MedicalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabValue>('active');

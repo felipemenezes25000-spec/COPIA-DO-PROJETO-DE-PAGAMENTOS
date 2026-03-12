@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import {
   getToken,
   getStoredUser,
@@ -23,46 +23,107 @@ interface DoctorAuthState {
 const DoctorAuthContext = createContext<DoctorAuthState | null>(null);
 
 export function DoctorAuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<DoctorUser | null>(getStoredUser);
+  // ── Inicialização síncrona a partir do localStorage ──
+  // Isso garante que no PRIMEIRO RENDER já temos user e token,
+  // sem depender de nenhum useEffect assíncrono.
+  const [user, setUser] = useState<DoctorUser | null>(() => getStoredUser());
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfile | null>(null);
-  const [loading, setLoading] = useState(!!getToken());
+
+  // MUDANÇA CRÍTICA: loading começa como TRUE apenas se tem token mas NÃO tem user cached.
+  // Se já tem ambos (token + user no localStorage), loading começa FALSE — sem flash.
+  const [loading, setLoading] = useState(() => {
+    const hasToken = !!getToken();
+    const hasUser = !!getStoredUser();
+    // Se tem token E user cached → já podemos renderizar (loading = false)
+    // Se tem token mas NÃO tem user → precisa esperar getMe() (loading = true)
+    // Se NÃO tem token → não autenticado (loading = false)
+    return hasToken && !hasUser;
+  });
+
+  // Guard contra múltiplos refreshes simultâneos e StrictMode double-mount
+  const refreshingRef = useRef(false);
+  const mountedRef = useRef(true);
 
   const refreshUser = useCallback(async () => {
+    if (refreshingRef.current) return;
+    if (!getToken()) return;
+
+    refreshingRef.current = true;
     try {
       const me = await getMe();
-      setUser(me);
+      if (mountedRef.current) {
+        setUser(me);
+      }
+
       try {
         const profile = await getDoctorProfile();
-        setDoctorProfile(profile);
+        if (mountedRef.current) setDoctorProfile(profile);
       } catch {
-        setDoctorProfile(null);
+        if (mountedRef.current) setDoctorProfile(null);
       }
     } catch {
-      setUser(null);
-      setDoctorProfile(null);
+      // MUDANÇA: Só zera user se o token foi removido (pelo authFetch no 401).
+      // Se o token ainda existe, foi erro de rede — manter user cached.
+      if (mountedRef.current) {
+        if (!getToken()) {
+          setUser(null);
+          setDoctorProfile(null);
+        }
+        // Se token ainda existe → manter user do localStorage (erro de rede/timeout)
+      }
+    } finally {
+      refreshingRef.current = false;
     }
   }, []);
 
   const setAuthFromLogin = useCallback((loggedUser: DoctorUser) => {
     setUser(loggedUser);
     setLoading(false);
+    // Buscar profile em background
+    getDoctorProfile()
+      .then((p) => setDoctorProfile(p))
+      .catch(() => setDoctorProfile(null));
   }, []);
 
+  // ── Effect de inicialização ──
   useEffect(() => {
-    if (!getToken()) {
+    mountedRef.current = true;
+
+    const token = getToken();
+    if (!token) {
       setLoading(false);
       return;
     }
-    const stored = getStoredUser();
-    if (stored && !user) {
-      setUser(stored);
-    }
-    refreshUser().finally(() => setLoading(false));
+
+    // Refresh em background — NÃO bloqueia a renderização se já temos user cached
+    refreshUser().finally(() => {
+      if (mountedRef.current) {
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      mountedRef.current = false;
+    };
   }, [refreshUser]);
+
+  // ── Listener para auth expirado (disparado pelo authFetch no 401) ──
+  useEffect(() => {
+    const handleExpired = () => {
+      setUser(null);
+      setDoctorProfile(null);
+      setLoading(false);
+    };
+    window.addEventListener('auth:expired', handleExpired);
+    return () => window.removeEventListener('auth:expired', handleExpired);
+  }, []);
 
   const signOut = useCallback(() => {
     logoutDoctor();
   }, []);
+
+  // ── isAuthenticated: usa user E token (ambos devem existir) ──
+  const isAuthenticated = !!user && !!getToken();
 
   return (
     <DoctorAuthContext.Provider
@@ -70,7 +131,7 @@ export function DoctorAuthProvider({ children }: { children: ReactNode }) {
         user,
         doctorProfile,
         loading,
-        isAuthenticated: !!user && !!getToken(),
+        isAuthenticated,
         profileComplete: user?.profileComplete !== false,
         refreshUser,
         setAuthFromLogin,

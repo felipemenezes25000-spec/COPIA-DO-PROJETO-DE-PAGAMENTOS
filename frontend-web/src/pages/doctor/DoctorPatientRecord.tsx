@@ -11,14 +11,35 @@ import {
   type PatientProfile, type MedicalRequest, type DoctorNoteDto,
   DOCTOR_NOTE_TYPES,
 } from '@/services/doctorApi';
-import { parseApiList, getTypeIcon, getTypeLabel } from '@/lib/doctor-helpers';
+import { getTypeIcon, getTypeLabel, getStatusInfo } from '@/lib/doctor-helpers';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import {
   Loader2, ArrowLeft, User, Calendar, Phone, Mail, Heart,
   AlertTriangle, FileText, FlaskConical, Stethoscope, Clock,
-  ChevronRight, Activity, Shield, FileStack, StickyNote, PlusCircle, Eye,
+  ChevronRight, Activity, Shield, ShieldCheck, FileStack, StickyNote, PlusCircle, Eye, Info,
 } from 'lucide-react';
+
+type AlertCategory = 'allergy' | 'lacuna' | 'critical';
+
+function parseAlertText(text: string): { category: AlertCategory; cleanText: string; isPositive: boolean } {
+  const clean = text
+    .replace(/^[🔴🟢ℹ️⚠️🚨]\s*/g, '')
+    .replace(/^\[ALERGIA\]\s*/i, '')
+    .replace(/^\[LACUNA\]\s*/i, '')
+    .trim();
+
+  const isAllergy = text.includes('[ALERGIA]');
+  const isLacuna = text.includes('[LACUNA]');
+  const isPositiveAllergy =
+    isAllergy && /nkda|nenhuma|sem alergia|não informada|desconhecida|sem alergias conhecidas|no known/i.test(clean);
+
+  return {
+    category: isAllergy ? 'allergy' : isLacuna ? 'lacuna' : 'critical',
+    cleanText: clean,
+    isPositive: isPositiveAllergy,
+  };
+}
 
 function ClinicalNotesForm({
   requests,
@@ -86,11 +107,14 @@ function ClinicalNotesForm({
               <p className="text-xs font-medium text-muted-foreground uppercase">Vincular a atendimento (opcional)</p>
               <div className="flex flex-wrap gap-2 mt-2" role="group" aria-label="Vincular a atendimento">
                 <Button type="button" variant={!linkedRequestId ? 'default' : 'outline'} size="sm" onClick={() => setLinkedRequestId(undefined)}>Nenhum</Button>
-                {sortedRequests.map(r => (
-                  <Button key={r.id} type="button" variant={linkedRequestId === r.id ? 'default' : 'outline'} size="sm" onClick={() => setLinkedRequestId(linkedRequestId === r.id ? undefined : r.id)}>
-                    {getTypeLabel(r.type)} · {new Date(r.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                  </Button>
-                ))}
+                {sortedRequests.map(r => {
+                  const reqType = r.type || (r as { requestType?: string }).requestType || '';
+                  return (
+                    <Button key={r.id} type="button" variant={linkedRequestId === r.id ? 'default' : 'outline'} size="sm" onClick={() => setLinkedRequestId(linkedRequestId === r.id ? undefined : r.id)}>
+                      {getTypeLabel(reqType)} · {new Date(r.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                    </Button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -107,6 +131,11 @@ function ClinicalNotesForm({
 export default function DoctorPatientRecord() {
   const params = useParams<{ patientId: string }>();
   const patientId = typeof params.patientId === 'string' ? params.patientId : Array.isArray(params.patientId) ? params.patientId[0] : undefined;
+
+  useEffect(() => {
+    document.title = 'Prontuário — RenoveJá+';
+    return () => { document.title = 'RenoveJá+'; };
+  }, []);
   const navigate = useNavigate();
   const [patient, setPatient] = useState<PatientProfile | null>(null);
   const [requests, setRequests] = useState<MedicalRequest[]>([]);
@@ -126,7 +155,7 @@ export default function DoctorPatientRecord() {
         getPatientClinicalSummary(patientId).catch(() => null),
       ]);
       setPatient(p);
-      setRequests(parseApiList<MedicalRequest>(r));
+      setRequests(Array.isArray(r) ? r : []);
       setSummaryData(s ? { structured: s.structured ?? null, doctorNotes: s.doctorNotes ?? [] } : null);
     } catch {
       toast.error('Erro ao carregar prontuário');
@@ -305,13 +334,73 @@ export default function DoctorPatientRecord() {
                         <ul className="text-sm list-disc list-inside space-y-0.5">{summaryData.structured.problemList.map((p, i) => <li key={i}>{p}</li>)}</ul>
                       </div>
                     )}
-                    {summaryData.structured.alerts && summaryData.structured.alerts.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {summaryData.structured.alerts.map((a, i) => (
-                          <Badge key={i} variant="destructive" className="text-xs">{a}</Badge>
-                        ))}
-                      </div>
-                    )}
+                    {summaryData.structured.alerts && summaryData.structured.alerts.length > 0 && (() => {
+                      const alerts = summaryData.structured!.alerts!;
+                      const parsed = alerts.map(a => parseAlertText(a));
+                      const allergyAlerts = parsed.filter(p => p.category === 'allergy');
+                      const lacunas = parsed.filter(p => p.category === 'lacuna');
+                      const criticalAlerts = parsed.filter(p => p.category === 'critical');
+
+                      return (
+                        <div className="space-y-4">
+                          {/* Alergias — card sutil com ícone, sem badge */}
+                          {allergyAlerts.length > 0 && (
+                            <div className="space-y-2">
+                              {allergyAlerts.map((a, i) => (
+                                <div
+                                  key={`allergy-${i}`}
+                                  className={`flex items-center gap-3 rounded-lg border p-3 text-sm ${
+                                    a.isPositive
+                                      ? 'bg-emerald-50 border-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-200'
+                                      : 'bg-red-50 border-red-100 text-red-800 dark:bg-red-950/30 dark:border-red-800 dark:text-red-200'
+                                  }`}
+                                >
+                                  {a.isPositive ? (
+                                    <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-500" aria-hidden />
+                                  ) : (
+                                    <AlertTriangle className="h-5 w-5 shrink-0 text-red-600 dark:text-red-500" aria-hidden />
+                                  )}
+                                  <span>{a.isPositive ? `✓ ${a.cleanText}` : a.cleanText}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Outros alertas críticos */}
+                          {criticalAlerts.length > 0 && (
+                            <div className="space-y-2">
+                              {criticalAlerts.map((a, i) => (
+                                <div
+                                  key={`alert-${i}`}
+                                  className="flex items-center gap-3 rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/30 dark:border-red-800 dark:text-red-200"
+                                >
+                                  <AlertTriangle className="h-5 w-5 shrink-0 text-red-600 dark:text-red-500" aria-hidden />
+                                  <span>{a.cleanText}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Lacunas — lista discreta com bullets, sem badges */}
+                          {lacunas.length > 0 && (
+                            <div className="rounded-lg bg-muted/30 p-3">
+                              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                                <Info className="h-3.5 w-3.5" aria-hidden />
+                                Informações pendentes
+                              </p>
+                              <ul className="space-y-1 text-sm text-muted-foreground">
+                                {lacunas.map((a, i) => (
+                                  <li key={`lacuna-${i}`} className="flex gap-2">
+                                    <span className="text-muted-foreground/60">·</span>
+                                    <span>{a.cleanText}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </CardContent>
                 </Card>
               ) : null}
@@ -353,7 +442,9 @@ export default function DoctorPatientRecord() {
                         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                         .slice(0, 10)
                         .map(req => {
-                          const Icon = getTypeIcon(req.type);
+                          const reqType = req.type || (req as { requestType?: string }).requestType || '';
+                          const Icon = getTypeIcon(reqType);
+                          const statusInfo = getStatusInfo(req.status);
                           return (
                             <button
                               key={req.id}
@@ -362,13 +453,15 @@ export default function DoctorPatientRecord() {
                             >
                               <div className="p-2 rounded-lg bg-muted"><Icon className="h-4 w-4 text-muted-foreground" /></div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium">{getTypeLabel(req.type)}</p>
+                                <p className="text-sm font-medium">{getTypeLabel(reqType)}</p>
                                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                                   <Clock className="h-3 w-3" />
                                   {new Date(req.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                                 </p>
                               </div>
-                              <Badge variant="secondary" className="text-[10px]">{req.status}</Badge>
+                              <Badge variant={statusInfo.variant} className={`text-[10px] ${statusInfo.color} ${statusInfo.bgColor} border`}>
+                                {statusInfo.label}
+                              </Badge>
                               <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100" />
                             </button>
                           );
@@ -386,19 +479,24 @@ export default function DoctorPatientRecord() {
               {consultations.length === 0 ? (
                 <Card className="shadow-sm"><CardContent className="py-12 text-center"><p className="text-sm text-muted-foreground">Nenhuma consulta</p></CardContent></Card>
               ) : (
-                [...consultations].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(req => (
-                  <Card key={req.id} className="shadow-sm hover:shadow-md cursor-pointer transition-all group" onClick={() => navigate(`/pedidos/${req.id}`)}>
-                    <CardContent className="p-4 flex items-center gap-4">
-                      <div className="p-3 rounded-xl bg-muted"><Stethoscope className="h-5 w-5 text-muted-foreground" /></div>
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">Consulta</p>
-                        <p className="text-xs text-muted-foreground">{new Date(req.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                      </div>
-                      <Badge variant="secondary" className="text-[10px]">{req.status}</Badge>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100" />
-                    </CardContent>
-                  </Card>
-                ))
+                [...consultations].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(req => {
+                  const statusInfo = getStatusInfo(req.status);
+                  return (
+                    <Card key={req.id} className="shadow-sm hover:shadow-md cursor-pointer transition-all group" onClick={() => navigate(`/pedidos/${req.id}`)}>
+                      <CardContent className="p-4 flex items-center gap-4">
+                        <div className="p-3 rounded-xl bg-muted"><Stethoscope className="h-5 w-5 text-muted-foreground" /></div>
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">Consulta</p>
+                          <p className="text-xs text-muted-foreground">{new Date(req.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                        </div>
+                        <Badge variant={statusInfo.variant} className={`text-[10px] ${statusInfo.color} ${statusInfo.bgColor} border`}>
+                          {statusInfo.label}
+                        </Badge>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100" />
+                      </CardContent>
+                    </Card>
+                  );
+                })
               )}
             </div>
           </TabsContent>
@@ -412,20 +510,24 @@ export default function DoctorPatientRecord() {
                 [...prescriptions, ...examsReqs]
                   .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                   .map(req => {
-                    const Icon = getTypeIcon(req.type);
-                    const items = req.type === 'prescription' ? (req.medications?.map(m => m.name) ?? []) : (req.exams?.map(e => e.name) ?? []);
+                    const reqType = req.type || (req as { requestType?: string }).requestType || '';
+                    const Icon = getTypeIcon(reqType);
+                    const items = reqType === 'prescription' ? (req.medications?.map(m => m.name) ?? []) : (req.exams?.map(e => e.name) ?? []);
+                    const statusInfo = getStatusInfo(req.status);
                     return (
                       <Card key={req.id} className="shadow-sm hover:shadow-md cursor-pointer transition-all group" onClick={() => navigate(`/pedidos/${req.id}`)}>
                         <CardContent className="p-4 flex items-center gap-4">
                           <div className="p-3 rounded-xl bg-muted"><Icon className="h-5 w-5 text-muted-foreground" /></div>
                           <div className="flex-1">
-                            <p className="font-medium text-sm">{getTypeLabel(req.type)}</p>
+                            <p className="font-medium text-sm">{getTypeLabel(reqType)}</p>
                             <p className="text-xs text-muted-foreground">
                               {new Date(req.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
                               {items.length > 0 ? ` · ${items.length} item(ns)` : ''}
                             </p>
                           </div>
-                          <Badge variant="secondary" className="text-[10px]">{req.status}</Badge>
+                          <Badge variant={statusInfo.variant} className={`text-[10px] ${statusInfo.color} ${statusInfo.bgColor} border`}>
+                            {statusInfo.label}
+                          </Badge>
                           {req.signedDocumentUrl && <Shield className="h-3.5 w-3.5 text-emerald-600" />}
                           <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100" />
                         </CardContent>

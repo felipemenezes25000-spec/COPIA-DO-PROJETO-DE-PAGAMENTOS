@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useDoctorAuth } from '@/contexts/DoctorAuthContext';
-import { getRequests, getDoctorStats, type MedicalRequest, type DoctorStats } from '@/services/doctorApi';
+import { getRequests, getDoctorStats, getActiveCertificate, type MedicalRequest, type DoctorStats } from '@/services/doctorApi';
 import { useRequestEvents } from '@/hooks/useSignalR';
 import {
   getGreeting, getTypeIcon, getTypeLabel, getStatusInfo, getRiskBadge,
@@ -15,25 +15,34 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Loader2, Clock, FileText, ArrowRight,
   CheckCircle2, AlertTriangle, DollarSign, Sparkles, Wifi, WifiOff, Brain, Video, Shield,
+  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function DoctorDashboard() {
   const { user } = useDoctorAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    document.title = 'Painel — RenoveJá+';
+    return () => { document.title = 'RenoveJá+'; };
+  }, []);
   const [requests, setRequests] = useState<MedicalRequest[]>([]);
   const [stats, setStats] = useState<DoctorStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasCertificate, setHasCertificate] = useState<boolean | null>(null);
 
   const loadData = useCallback(async () => {
     try {
-      const [reqData, statsData] = await Promise.all([
+      const [reqData, statsData, certData] = await Promise.all([
         getRequests({ page: 1, pageSize: 50 }),
         getDoctorStats().catch(() => null),
+        getActiveCertificate().catch(() => null),
       ]);
       const list = parseApiList<MedicalRequest>(reqData);
       setRequests(list);
       if (statsData) setStats(statsData);
+      setHasCertificate(certData != null);
     } catch {
       setRequests([]);
     } finally {
@@ -73,6 +82,10 @@ export default function DoctorDashboard() {
 
   const firstName = user?.name?.split(' ')[0] || 'Doutor(a)';
 
+  function getMinutesSince(dateStr: string): number {
+    return Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
+  }
+
   const statsCards = [
     {
       label: 'Pendentes',
@@ -98,13 +111,14 @@ export default function DoctorDashboard() {
     },
     {
       label: 'Ganhos totais',
-      value: stats?.totalEarnings
+      value: stats?.totalEarnings != null && stats.totalEarnings > 0
         ? `R$ ${stats.totalEarnings.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
         : 'R$ 0,00',
       icon: DollarSign,
       color: 'text-primary',
       bg: 'bg-primary/10',
       isText: true,
+      subtext: stats?.totalEarnings != null && stats.totalEarnings > 0 ? 'este mês' : undefined,
     },
   ];
 
@@ -128,6 +142,19 @@ export default function DoctorDashboard() {
             </h1>
             <p className="text-muted-foreground mt-1 flex items-center gap-2">
               {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0"
+                onClick={() => {
+                  loadData()
+                    .then(() => toast.success('Dados atualizados'))
+                    .catch(() => toast.error('Erro ao atualizar'));
+                }}
+                aria-label="Atualizar dados"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </Button>
               <span className="text-border">•</span>
               <span className={`flex items-center gap-1 text-xs ${realtimeConnected ? 'text-emerald-500' : 'text-muted-foreground'}`}>
                 {realtimeConnected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
@@ -143,6 +170,28 @@ export default function DoctorDashboard() {
             )}
           </div>
         </div>
+
+        {/* Certificate Alert */}
+        {!loading && hasCertificate === false && (
+          <Card className="border-amber-300 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800">
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-amber-100 dark:bg-amber-900/50">
+                <Shield className="h-5 w-5 text-amber-600 dark:text-amber-400" aria-hidden />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-sm text-amber-800 dark:text-amber-200">
+                  Certificado Digital pendente
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  Configure para assinar receitas digitalmente
+                </p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => navigate('/perfil')} className="gap-1 border-amber-400 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/50">
+                Configurar
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
@@ -170,6 +219,9 @@ export default function DoctorDashboard() {
                           <p className="text-3xl font-bold mt-1 tracking-tight">
                             {stat.isText ? stat.value : stat.value}
                           </p>
+                          {'subtext' in stat && stat.subtext && (
+                            <p className="text-xs text-muted-foreground mt-0.5">{stat.subtext}</p>
+                          )}
                         </div>
                         <div className={`p-3 rounded-xl ${stat.bg}`}>
                           <stat.icon className={`h-5 w-5 ${stat.color}`} aria-hidden />
@@ -215,7 +267,16 @@ export default function DoctorDashboard() {
                       </div>
                       <div className="flex-1">
                         <p className="font-semibold text-sm">{consultasAtivas.length} consulta(s) aguardando atendimento</p>
-                        <p className="text-xs text-muted-foreground">Clique para iniciar videochamada com IA integrada</p>
+                        <p className="text-xs text-muted-foreground">
+                          {(() => {
+                            const withAccepted = consultasAtivas.find(r => r.consultationAcceptedAt);
+                            if (withAccepted?.consultationAcceptedAt) {
+                              const min = getMinutesSince(withAccepted.consultationAcceptedAt);
+                              return min < 60 ? `Aceita há ${min}min` : `Aceita há ${Math.floor(min / 60)}h`;
+                            }
+                            return 'Clique para iniciar videochamada com IA integrada';
+                          })()}
+                        </p>
                       </div>
                       <Button size="sm" onClick={() => navigate('/consultas')} className="gap-1">
                         Atender <ArrowRight className="h-3.5 w-3.5" />

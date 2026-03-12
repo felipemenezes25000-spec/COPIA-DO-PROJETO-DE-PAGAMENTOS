@@ -14,12 +14,17 @@ import {
   getPatientProfile, type MedicalRequest, type PatientProfile,
 } from '@/services/doctorApi';
 import { getTypeLabel, getTypeIcon, getStatusInfo, normalizeStatus } from '@/lib/doctor-helpers';
+import { AiCopilotCard, hasUsefulAiContent } from '@/components/doctor/AiCopilotCard';
+import { ImageGallery } from '@/components/doctor/ImageGallery';
+import { StatusTracker } from '@/components/doctor/StatusTracker';
+import { ConsultationPostSection } from '@/components/doctor/ConsultationPostSection';
+import { PatientSidePanel } from '@/components/doctor/PatientSidePanel';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import {
   Loader2, ArrowLeft, User, Calendar, CheckCircle2, XCircle, Pen, Video,
   Phone, Mail, AlertTriangle, Clock, Pill, ClipboardList, Brain, Shield, ChevronRight,
-  Stethoscope, Mic, Copy, BookOpen,
+  Stethoscope, Mic, Copy, BookOpen, FlaskConical,
 } from 'lucide-react';
 import { AiCopilotSection } from '@/components/doctor/request/AiCopilotSection';
 import { PrescriptionImageGallery } from '@/components/doctor/request/PrescriptionImageGallery';
@@ -47,6 +52,11 @@ function normalizeSymptoms(symptoms: unknown): string[] {
 
 export default function DoctorRequestDetail() {
   const { id } = useParams<{ id: string }>();
+
+  useEffect(() => {
+    document.title = id ? `Pedido #${id.slice(0, 8)} — RenoveJá+` : 'Pedido — RenoveJá+';
+    return () => { document.title = 'RenoveJá+'; };
+  }, [id]);
   const navigate = useNavigate();
   const [request, setRequest] = useState<MedicalRequest | null>(null);
   const [patient, setPatient] = useState<PatientProfile | null>(null);
@@ -55,6 +65,7 @@ export default function DoctorRequestDetail() {
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [carePlanId, setCarePlanId] = useState<string | null>(null);
+  const [sidePanelCollapsed, setSidePanelCollapsed] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -158,7 +169,10 @@ export default function DoctorRequestDetail() {
 
   return (
     <DoctorLayout>
-      <div className="space-y-6 max-w-4xl">
+      <div className="flex min-h-screen">
+        {/* Left: conteúdo do pedido (60% no desktop) */}
+        <div className="flex-1 min-w-0 lg:flex-[0_0_60%] overflow-y-auto">
+          <div className="space-y-6 max-w-4xl pr-4">
         {/* Back + header */}
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate('/pedidos')} aria-label="Voltar">
@@ -182,6 +196,11 @@ export default function DoctorRequestDetail() {
           </div>
         </div>
 
+        {/* Status Tracker */}
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+          <StatusTracker status={request.status} type={request.type || (request as { requestType?: string }).requestType} />
+        </motion.div>
+
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Main content */}
           <div className="lg:col-span-2 space-y-5">
@@ -196,8 +215,12 @@ export default function DoctorRequestDetail() {
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                      <User className="h-6 w-6 text-primary" />
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden shrink-0">
+                      {patient?.avatarUrl ? (
+                        <img src={patient.avatarUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="h-6 w-6 text-primary" />
+                      )}
                     </div>
                     <div>
                       <p className="font-semibold">{request.patientName}</p>
@@ -230,7 +253,19 @@ export default function DoctorRequestDetail() {
                       {patient.birthDate && (
                         <div className="flex items-center gap-2 text-sm">
                           <Calendar className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-                          <span>{new Date(patient.birthDate).toLocaleDateString('pt-BR')}</span>
+                          <span>
+                            {new Date(patient.birthDate).toLocaleDateString('pt-BR')}
+                            {(() => {
+                              const birth = new Date(patient.birthDate!);
+                              const today = new Date();
+                              const age = today.getFullYear() - birth.getFullYear();
+                              const m = today.getMonth() - birth.getMonth();
+                              if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+                                return ` (${age - 1} anos)`;
+                              }
+                              return ` (${age} anos)`;
+                            })()}
+                          </span>
                         </div>
                       )}
                       {patient.gender && (
@@ -331,9 +366,34 @@ export default function DoctorRequestDetail() {
               </motion.div>
             )}
 
-            {/* Medications */}
-            {Array.isArray(request.medications) && request.medications.length > 0 && (
+            {/* AI Copilot Card */}
+            {hasUsefulAiContent(request.aiSummaryForDoctor, request.aiRiskLevel, request.aiUrgency) && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                <AiCopilotCard
+                  aiSummaryForDoctor={request.aiSummaryForDoctor}
+                  aiRiskLevel={request.aiRiskLevel}
+                  aiUrgency={request.aiUrgency}
+                />
+              </motion.div>
+            )}
+
+            {/* Prescription Images */}
+            {Array.isArray(request.prescriptionImages) && request.prescriptionImages.length > 0 && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.17 }}>
+                <ImageGallery images={request.prescriptionImages} label="Imagens da Receita" />
+              </motion.div>
+            )}
+
+            {/* Exam Images */}
+            {Array.isArray(request.examImages) && request.examImages.length > 0 && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
+                <ImageGallery images={request.examImages} label="Imagens do Exame" />
+              </motion.div>
+            )}
+
+            {/* Medications / Exams / Symptoms */}
+            {Array.isArray(request.medications) && request.medications.length > 0 && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
                 <Card className="shadow-sm">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -457,16 +517,52 @@ export default function DoctorRequestDetail() {
             {request.aiConductSuggestion && request.type !== 'consultation' && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
                 <Card className="shadow-sm border-primary/20 bg-primary/[0.02]">
-                  <CardHeader className="pb-3">
+                  <CardHeader className="pb-2">
                     <CardTitle className="text-base flex items-center gap-2">
                       <Brain className="h-4 w-4 text-primary" aria-hidden />
                       Sugestão da IA
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <p className="text-sm whitespace-pre-wrap">{request.aiConductSuggestion}</p>
+                    <p className="text-sm whitespace-pre-wrap text-muted-foreground">{request.aiConductSuggestion}</p>
                   </CardContent>
                 </Card>
+              </motion.div>
+            )}
+
+            {/* Exams */}
+            {Array.isArray(request.exams) && request.exams.length > 0 && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.21 }}>
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <FlaskConical className="h-4 w-4 text-primary" aria-hidden />
+                      Exames Solicitados
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="space-y-2">
+                      {request.exams.map((exam, i) => {
+                        const item = typeof exam === 'object' && exam && 'name' in exam
+                          ? exam as { name?: string; notes?: string }
+                          : { name: String(exam), notes: undefined };
+                        return (
+                          <div key={i} className="p-3 rounded-lg bg-muted/50 border border-border/50">
+                            <p className="font-medium text-sm">{item.name || '—'}</p>
+                            {item.notes && <p className="text-xs text-muted-foreground mt-1">{item.notes}</p>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+
+            {/* Consultation Post-Section (apenas consultas finalizadas) */}
+            {request.type === 'consultation' && statusNorm === 'consultation_finished' && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}>
+                <ConsultationPostSection request={request} requestId={id!} />
               </motion.div>
             )}
 
@@ -565,6 +661,16 @@ export default function DoctorRequestDetail() {
             </motion.div>
           </div>
         </div>
+          </div>
+        </div>
+
+        {/* Right: prontuário do paciente (40% no desktop, oculto no mobile) */}
+        <PatientSidePanel
+          patientId={request.patientId}
+          currentRequestId={id ?? undefined}
+          collapsed={sidePanelCollapsed}
+          onCollapsedChange={setSidePanelCollapsed}
+        />
       </div>
 
       {/* Reject dialog */}

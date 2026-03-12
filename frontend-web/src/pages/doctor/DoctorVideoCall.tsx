@@ -53,6 +53,11 @@ export default function DoctorVideoCall() {
   const { requestId } = useParams<{ requestId: string }>();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    document.title = 'Consulta em andamento — RenoveJá+';
+    return () => { document.title = 'RenoveJá+'; };
+  }, []);
+
   const [request, setRequest] = useState<MedicalRequest | null>(null);
   const [patient, setPatient] = useState<PatientProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -305,7 +310,7 @@ export default function DoctorVideoCall() {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-            <TabsList className="bg-gray-800/50 border-b border-gray-800 rounded-none px-2 shrink-0">
+            <TabsList className="bg-gray-800/50 border-b border-gray-800 rounded-none px-2 shrink-0 flex-wrap">
               <TabsTrigger value="transcript" className="text-xs gap-1.5 data-[state=active]:bg-gray-700">
                 <Mic className="h-3 w-3" /> Transcrição
                 {transcript.length > 0 && (

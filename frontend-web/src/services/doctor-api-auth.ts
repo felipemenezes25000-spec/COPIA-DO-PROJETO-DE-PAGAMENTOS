@@ -42,6 +42,9 @@ function clearAuth() {
   localStorage.removeItem(USER_KEY);
 }
 
+/** Flag para evitar múltiplos redirects simultâneos */
+let isRedirecting = false;
+
 /** Base HTTP client with JWT auth. Used by all doctor-api-* modules. */
 export async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const base = getApiBase();
@@ -53,11 +56,27 @@ export async function authFetch(url: string, options: RequestInit = {}): Promise
   if (!headers['Content-Type'] && !(options.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
   }
+  headers['ngrok-skip-browser-warning'] = 'true';
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`${base}${url}`, { ...options, headers });
+
+  let res: Response;
+  try {
+    res = await fetch(`${base}${url}`, { ...options, headers });
+  } catch {
+    // Erro de rede/DNS/CORS/timeout — NÃO limpar auth
+    throw new Error('Erro de conexão com o servidor.');
+  }
+
   if (res.status === 401) {
     clearAuth();
-    window.location.href = '/login';
+    // Disparar evento para o React lidar — sem hard reload
+    if (!isRedirecting) {
+      isRedirecting = true;
+      window.dispatchEvent(new CustomEvent('auth:expired'));
+      setTimeout(() => {
+        isRedirecting = false;
+      }, 2000);
+    }
     throw new Error('Sessão expirada');
   }
   return res;
@@ -70,7 +89,7 @@ export async function loginDoctor(email: string, password: string) {
   if (!base) throw new Error('URL da API não configurada.');
   const res = await fetch(`${base}/api/auth/login`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
     body: JSON.stringify({ email, password }),
   });
   if (!res.ok) {
@@ -105,7 +124,7 @@ export async function registerDoctorFull(payload: {
   if (!base) throw new Error('URL da API não configurada.');
   const res = await fetch(`${base}/api/auth/register-doctor`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
@@ -117,7 +136,14 @@ export async function registerDoctorFull(payload: {
 
 export function logoutDoctor() {
   clearAuth();
-  window.location.href = '/login';
+  // Disparar evento para React redirecionar via Router, sem hard reload
+  window.dispatchEvent(new CustomEvent('auth:expired'));
+  // Fallback: se o React não redirecionar em 500ms, forçar navegação
+  setTimeout(() => {
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
+  }, 500);
 }
 
 export async function getMe(): Promise<DoctorUser> {
@@ -167,7 +193,7 @@ export async function forgotPassword(email: string) {
   const base = getApiBase();
   const res = await fetch(`${base}/api/auth/forgot-password`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
     body: JSON.stringify({ email }),
   });
   if (!res.ok) throw new Error('Erro ao enviar email');

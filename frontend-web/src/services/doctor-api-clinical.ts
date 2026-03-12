@@ -3,7 +3,7 @@
  */
 
 import { authFetch } from './doctor-api-auth';
-import type { PatientProfile, PatientClinicalSummaryResponse, DoctorNote, DoctorNoteDto } from './doctorApi';
+import type { PatientProfile, PatientClinicalSummaryResponse, DoctorNote, DoctorNoteDto, MedicalRequest } from './doctorApi';
 
 // ── Patients ──
 
@@ -13,10 +13,17 @@ export async function getPatientProfile(patientId: string): Promise<PatientProfi
   return res.json();
 }
 
-export async function getPatientRequests(patientId: string) {
+export async function getPatientRequests(patientId: string): Promise<MedicalRequest[]> {
   const res = await authFetch(`/api/requests/by-patient/${patientId}`);
   if (!res.ok) throw new Error('Erro ao buscar histórico');
-  return res.json();
+  const data = await res.json();
+  const list = Array.isArray(data) ? data : data?.items ?? data?.data ?? [];
+  // Normalizar: backend usa requestType, frontend usa type
+  return list.map((r: Record<string, unknown>) => ({
+    ...r,
+    type: (r.type as string) || (r.requestType as string) || '',
+    patientName: (r.patientName as string) ?? '',
+  })) as MedicalRequest[];
 }
 
 export async function getPatientClinicalSummary(patientId: string): Promise<PatientClinicalSummaryResponse> {

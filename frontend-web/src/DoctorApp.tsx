@@ -9,17 +9,18 @@
  * - Page transitions (framer-motion)
  * - Shortcuts help dialog (Cmd+/)
  */
-import { lazy, Suspense, useState } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { lazy, Suspense, useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { DoctorAuthProvider, useDoctorAuth } from '@/contexts/DoctorAuthContext';
-import { NotificationProvider } from '@/contexts/NotificationContext';
+import { NotificationProvider, useNotifications } from '@/contexts/NotificationContext';
 import { CommandPalette } from '@/components/doctor/CommandPalette';
 import { ShortcutsDialog } from '@/components/doctor/ShortcutsDialog';
 import { OfflineBanner } from '@/components/doctor/OfflineBanner';
 import { SkeletonPage } from '@/components/ui/skeleton';
 import { useTheme } from '@/hooks/useTheme';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { useFaviconBadge } from '@/hooks/useFaviconBadge';
 import { AnimatePresence, motion } from 'framer-motion';
 
 const DoctorLogin = lazy(() => import('@/pages/doctor/DoctorLogin'));
@@ -29,6 +30,7 @@ const DoctorRequests = lazy(() => import('@/pages/doctor/DoctorRequests'));
 const DoctorRequestDetail = lazy(() => import('@/pages/doctor/DoctorRequestDetail'));
 const DoctorRequestEditor = lazy(() => import('@/pages/doctor/DoctorRequestEditor'));
 const DoctorConsultations = lazy(() => import('@/pages/doctor/DoctorConsultations'));
+const DoctorPatients = lazy(() => import('@/pages/doctor/DoctorPatients'));
 const DoctorPatientRecord = lazy(() => import('@/pages/doctor/DoctorPatientRecord'));
 const DoctorNotifications = lazy(() => import('@/pages/doctor/DoctorNotifications'));
 const DoctorProfile = lazy(() => import('@/pages/doctor/DoctorProfile'));
@@ -89,11 +91,23 @@ function DoctorShell() {
   const { isDark, toggleDarkMode } = useTheme();
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { unreadCount } = useNotifications();
+  useFaviconBadge(unreadCount);
 
   useKeyboardShortcuts({
     onToggleDarkMode: toggleDarkMode,
     onShowShortcuts: () => setShortcutsOpen(true),
   });
+
+  // Redirect via React Router quando auth expirar
+  useEffect(() => {
+    const handleExpired = () => {
+      navigate('/login', { replace: true });
+    };
+    window.addEventListener('auth:expired', handleExpired);
+    return () => window.removeEventListener('auth:expired', handleExpired);
+  }, [navigate]);
 
   return (
     <>
@@ -118,6 +132,7 @@ function DoctorShell() {
             <Route path="/pedidos/:id" element={<DoctorProtectedRoute><DoctorRequestDetail /></DoctorProtectedRoute>} />
             <Route path="/pedidos/:id/editor" element={<DoctorProtectedRoute><DoctorRequestEditor /></DoctorProtectedRoute>} />
             <Route path="/consultas" element={<DoctorProtectedRoute><DoctorConsultations /></DoctorProtectedRoute>} />
+            <Route path="/pacientes" element={<DoctorProtectedRoute><DoctorPatients /></DoctorProtectedRoute>} />
             <Route path="/paciente/:patientId" element={<DoctorProtectedRoute><DoctorPatientRecord /></DoctorProtectedRoute>} />
             <Route path="/notificacoes" element={<DoctorProtectedRoute><DoctorNotifications /></DoctorProtectedRoute>} />
             <Route path="/perfil" element={<DoctorProtectedRoute><DoctorProfile /></DoctorProtectedRoute>} />

@@ -32,6 +32,7 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
   const token = getToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "ngrok-skip-browser-warning": "true",
     ...(options.headers as Record<string, string> || {}),
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -50,7 +51,7 @@ export async function login(email: string, password: string) {
   if (!base) throw new Error("URL da API não configurada. Defina VITE_API_URL.");
   const res = await fetch(`${base}/api/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
     body: JSON.stringify({ email, password }),
   });
   if (!res.ok) throw new Error("Credenciais inválidas");

@@ -52,6 +52,10 @@ const STATUS_FILTERS: { value: FilterStatus; label: string }[] = [
 ];
 
 export default function DoctorRequests() {
+  useEffect(() => {
+    document.title = 'Pedidos — RenoveJá+';
+    return () => { document.title = 'RenoveJá+'; };
+  }, []);
   const navigate = useNavigate();
   const [requests, setRequests] = useState<MedicalRequest[]>([]);
   const [loading, setLoading] = useState(true);
