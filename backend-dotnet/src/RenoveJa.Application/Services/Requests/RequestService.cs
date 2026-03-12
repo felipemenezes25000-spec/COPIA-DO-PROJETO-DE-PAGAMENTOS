@@ -508,12 +508,7 @@ public class RequestService(
             logger?.LogWarning(ex, "Falha ao salvar AutoObservation para consulta {RequestId}. Pedido criado sem ela.", medicalRequest.Id);
         }
 
-        // Debitar minutos gratuitos do banco de horas
-        if (freeMinutes > 0)
-        {
-            await consultationTimeBankRepository.DebitAsync(
-                userId, consultationType, freeMinutes * 60, medicalRequest.Id, cancellationToken);
-        }
+        // Banco de horas: débito só ao finalizar a consulta (não na criação). Se cancelar, nada foi debitado.
 
         // Persistir o preço efetivo para ser usado na aceitação pelo médico
         if (totalPrice >= 0)
@@ -1116,33 +1111,42 @@ public class RequestService(
             await videoRoomRepository.UpdateAsync(videoRoom, cancellationToken);
         }
 
-        // Creditar minutos não utilizados ao banco de horas
+        // Debitar do banco de horas apenas os minutos efetivamente utilizados (não na criação)
         if (request.ContractedMinutes.HasValue && !string.IsNullOrWhiteSpace(request.ConsultationType))
         {
             try
             {
-                var contractedSeconds = request.ContractedMinutes.Value * 60;
                 var usedSeconds = videoRoom?.DurationSeconds ?? 0;
-                var unusedSeconds = contractedSeconds - usedSeconds;
-
-                if (unusedSeconds > 0)
+                if (usedSeconds > 0)
                 {
-                    await consultationTimeBankRepository.CreditAsync(
-                        request.PatientId,
-                        request.ConsultationType,
-                        unusedSeconds,
-                        request.Id,
-                        "refund_unused",
-                        cancellationToken);
+                    var contractedSeconds = request.ContractedMinutes.Value * 60;
+                    var pricePerMinute = request.PricePerMinute ?? 6.99m;
+                    var amount = request.Price?.Amount ?? 0;
 
-                    logger.LogInformation(
-                        "[FinishConsultation] Creditado {Seconds}s ao banco de horas de {PatientId} ({Type})",
-                        unusedSeconds, request.PatientId, request.ConsultationType);
+                    // Minutos gratuitos (do banco) = contratados - pagos
+                    var freeSeconds = amount <= 0
+                        ? contractedSeconds
+                        : (int)Math.Max(0, contractedSeconds - (int)Math.Ceiling((double)(amount / pricePerMinute)) * 60);
+
+                    var toDebit = Math.Min(usedSeconds, freeSeconds);
+                    if (toDebit > 0)
+                    {
+                        await consultationTimeBankRepository.DebitAsync(
+                            request.PatientId,
+                            request.ConsultationType,
+                            toDebit,
+                            request.Id,
+                            cancellationToken);
+
+                        logger.LogInformation(
+                            "[FinishConsultation] Debitado {Seconds}s do banco de horas de {PatientId} ({Type}) — usado na consulta",
+                            toDebit, request.PatientId, request.ConsultationType);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Falha ao creditar banco de horas para request {RequestId}", id);
+                logger.LogWarning(ex, "Falha ao debitar banco de horas para request {RequestId}", id);
             }
         }
 
@@ -2172,6 +2176,8 @@ public class RequestService(
 
         if (!CancellableStatuses.Contains(request.Status))
             throw new InvalidOperationException("Request can only be cancelled before payment is confirmed");
+
+        // Banco de horas: débito só ao finalizar. Cancelamento não debitou nada.
 
         request.Cancel();
         request = await requestRepository.UpdateAsync(request, cancellationToken);
