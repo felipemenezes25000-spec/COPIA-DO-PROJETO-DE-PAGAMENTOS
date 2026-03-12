@@ -83,7 +83,7 @@ public class RequestService(
     }
 
     /// <summary>Extrai código CID-10 da anamnese JSON (cid_sugerido, cid, cidPrincipal). Retorna até 10 caracteres.</summary>
-    private static string? ExtractIcd10FromAnamnesis(string? anamnesisJson)
+    private static string? ExtractIcd10FromAnamnesis(string? anamnesisJson, ILogger? logger = null)
     {
         if (string.IsNullOrWhiteSpace(anamnesisJson)) return null;
         try
@@ -102,7 +102,10 @@ public class RequestService(
                 }
             }
         }
-        catch { /* ignore */ }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "ExtractIcd10FromAnamnesis: JSON inválido ou sem cid/cid_sugerido/cidPrincipal");
+        }
         return null;
     }
 
@@ -1239,7 +1242,7 @@ public class RequestService(
         {
             var anamnesisJson = sessionData?.AnamnesisJson;
             var plan = dto?.ClinicalNotes ?? request.Notes;
-            var icd10 = ExtractIcd10FromAnamnesis(anamnesisJson);
+            var icd10 = ExtractIcd10FromAnamnesis(anamnesisJson, logger);
             await consultationEncounterService.FinalizeEncounterForConsultationAsync(
                 id,
                 anamnesisJson,
@@ -1333,7 +1336,7 @@ public class RequestService(
                     {
                         var medications = request.Medications?.Where(m => !string.IsNullOrWhiteSpace(m)).ToList() ?? new List<string>();
                         if (medications.Count == 0 && !string.IsNullOrWhiteSpace(request.AiExtractedJson))
-                            medications = ParseMedicationsFromAiJson(request.AiExtractedJson);
+                            medications = ParseMedicationsFromAiJson(request.AiExtractedJson, logger);
                         if (medications.Count == 0)
                         {
                             throw new InvalidOperationException(
@@ -1969,7 +1972,7 @@ public class RequestService(
         {
             var medications = request.Medications?.Where(m => !string.IsNullOrWhiteSpace(m)).ToList() ?? new List<string>();
             if (medications.Count == 0 && !string.IsNullOrWhiteSpace(request.AiExtractedJson))
-                medications = ParseMedicationsFromAiJson(request.AiExtractedJson);
+                medications = ParseMedicationsFromAiJson(request.AiExtractedJson, logger);
 
             var kind = request.PrescriptionKind ?? PrescriptionKind.Simple;
             var result = PrescriptionComplianceValidator.Validate(
@@ -2012,7 +2015,7 @@ public class RequestService(
 
         var medications = request.Medications?.Where(m => !string.IsNullOrWhiteSpace(m)).ToList() ?? new List<string>();
         if (medications.Count == 0 && !string.IsNullOrWhiteSpace(request.AiExtractedJson))
-            medications = ParseMedicationsFromAiJson(request.AiExtractedJson);
+            medications = ParseMedicationsFromAiJson(request.AiExtractedJson, logger);
         // Não retornar null quando não há medicamentos: o PrescriptionPdfService gera um PDF com placeholder
         // para o médico sempre ver o preview da receita na tela de edição.
 
@@ -2505,7 +2508,7 @@ public class RequestService(
     }
 
     /// <summary>Extrai medicamentos do JSON extraído pela IA (extracted.medications).</summary>
-    private static List<string> ParseMedicationsFromAiJson(string aiExtractedJson)
+    private static List<string> ParseMedicationsFromAiJson(string aiExtractedJson, ILogger? logger = null)
     {
         var result = new List<string>();
         try
@@ -2522,7 +2525,10 @@ public class RequestService(
                 }
             }
         }
-        catch { /* ignore */ }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "ParseMedicationsFromAiJson: JSON inválido ou sem medications array");
+        }
         return result;
     }
 

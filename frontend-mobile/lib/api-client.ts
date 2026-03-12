@@ -2,8 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { trackApiLatency } from './analytics';
 import { logApiError } from './logger';
-
-const TOKEN_KEY = '@renoveja:auth_token';
+import { AUTH_TOKEN_KEY } from './constants/storage-keys';
 
 /** Debounce 401 logs: múltiplas chamadas simultâneas geram um único log. */
 let last401LogAt = 0;
@@ -95,7 +94,7 @@ class ApiClient {
     if (this.tokenCache !== undefined) {
       return this.tokenCache ? { Authorization: `Bearer ${this.tokenCache}` } : {};
     }
-    const token = await AsyncStorage.getItem(TOKEN_KEY);
+    const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
     this.tokenCache = token;
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
@@ -419,7 +418,7 @@ class ApiClient {
   /** Token para construir URL da chamada de vídeo (ex.: call-page?access_token=...) */
   async getAuthToken(): Promise<string | null> {
     if (this.tokenCache !== undefined) return this.tokenCache;
-    const token = await AsyncStorage.getItem(TOKEN_KEY);
+    const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
     this.tokenCache = token;
     return token;
   }

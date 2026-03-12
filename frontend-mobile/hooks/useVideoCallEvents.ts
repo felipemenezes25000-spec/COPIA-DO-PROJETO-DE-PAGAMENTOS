@@ -9,6 +9,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { apiClient } from '../lib/api-client';
+import { AUTH_TOKEN_KEY } from '../lib/constants/storage-keys';
 
 export interface EvidenceItem {
   title: string;
@@ -59,7 +60,7 @@ export function useVideoCallEvents(
       try {
         // eslint-disable-next-line @typescript-eslint/no-require-imports -- conditional native module
         const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-        authToken = (await AsyncStorage.getItem('@renoveja:auth_token')) ?? '';
+        authToken = (await AsyncStorage.getItem(AUTH_TOKEN_KEY)) ?? '';
       } catch {}
 
       if (!authToken) {

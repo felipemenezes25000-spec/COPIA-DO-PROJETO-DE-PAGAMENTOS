@@ -10,8 +10,20 @@ function getApiBase(): string {
   return "";
 }
 
+const ADMIN_TOKEN_KEY = "admin_auth_token";
+const ADMIN_LOGIN_AT_KEY = "admin_login_at";
+/** Tokens do backend expiram em 30 dias; consideramos expirado após 25 dias no client para evitar UX quebrada. */
+const TOKEN_VALID_DAYS = 25;
+
 function getToken(): string | null {
-  return localStorage.getItem("admin_auth_token");
+  return localStorage.getItem(ADMIN_TOKEN_KEY);
+}
+
+function getLoginTimestamp(): number | null {
+  const raw = localStorage.getItem(ADMIN_LOGIN_AT_KEY);
+  if (!raw) return null;
+  const ts = parseInt(raw, 10);
+  return Number.isNaN(ts) ? null : ts;
 }
 
 async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
@@ -25,7 +37,8 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
   if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(`${base}${url}`, { ...options, headers });
   if (res.status === 401) {
-    localStorage.removeItem("admin_auth_token");
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+    localStorage.removeItem(ADMIN_LOGIN_AT_KEY);
     window.location.href = "/admin/login";
     throw new Error("Não autorizado");
   }
@@ -42,17 +55,29 @@ export async function login(email: string, password: string) {
   });
   if (!res.ok) throw new Error("Credenciais inválidas");
   const data = await res.json();
-  localStorage.setItem("admin_auth_token", data.token);
+  localStorage.setItem(ADMIN_TOKEN_KEY, data.token);
+  localStorage.setItem(ADMIN_LOGIN_AT_KEY, String(Date.now()));
   return data;
 }
 
 export function logout() {
-  localStorage.removeItem("admin_auth_token");
+  localStorage.removeItem(ADMIN_TOKEN_KEY);
+  localStorage.removeItem(ADMIN_LOGIN_AT_KEY);
   window.location.href = "/admin/login";
 }
 
 export function isAuthenticated(): boolean {
-  return !!getToken();
+  const token = getToken();
+  if (!token) return false;
+  const loginAt = getLoginTimestamp();
+  if (loginAt == null) return true; // token antigo sem timestamp — deixa a primeira chamada API retornar 401
+  const ageDays = (Date.now() - loginAt) / (1000 * 60 * 60 * 24);
+  if (ageDays > TOKEN_VALID_DAYS) {
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+    localStorage.removeItem(ADMIN_LOGIN_AT_KEY);
+    return false;
+  }
+  return true;
 }
 
 export async function getDoctors(status?: string) {

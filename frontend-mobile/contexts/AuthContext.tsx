@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient } from '../lib/api-client';
+import { AUTH_TOKEN_KEY } from '../lib/constants/storage-keys';
 import { unregisterPushToken } from '../lib/api';
 import { getLastRegisteredPushToken, setLastRegisteredPushToken } from '../lib/pushTokenRegistry';
 import { UserDto, UserRole, AuthResponseDto, DoctorProfileDto } from '../types/database';
@@ -91,7 +92,6 @@ interface CompleteProfileData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const TOKEN_KEY = '@renoveja:auth_token';
 const USER_KEY = '@renoveja:user';
 const DOCTOR_PROFILE_KEY = '@renoveja:doctor_profile';
 export const FORBIDDEN_MESSAGE_KEY = '@renoveja:forbidden_message';
@@ -127,7 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Fallback: se AsyncStorage travar, libera a tela em no máximo 1,5s
     const guard = setTimeout(() => setLoading(false), 1500);
     try {
-      const storedToken = await AsyncStorage.getItem(TOKEN_KEY);
+      const storedToken = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
       const storedUser = await AsyncStorage.getItem(USER_KEY);
       const storedDoctorProfile = await AsyncStorage.getItem(DOCTOR_PROFILE_KEY);
 
@@ -198,7 +198,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const clearAuth = useCallback(async () => {
     try {
       apiClient.clearTokenCache();
-      await AsyncStorage.removeItem(TOKEN_KEY);
+      await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
       await AsyncStorage.removeItem(USER_KEY);
       await AsyncStorage.removeItem(DOCTOR_PROFILE_KEY);
     } catch (e) {
@@ -236,7 +236,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await apiClient.post<AuthResponseDto>('/api/auth/login', { email, password });
       if (!response?.user) throw new Error('Resposta inválida do servidor. Tente novamente.');
       if (response.token == null || response.token === '') throw new Error('Servidor não retornou token de acesso. Tente novamente.');
-      await setItemSafe(TOKEN_KEY, response.token);
+      await setItemSafe(AUTH_TOKEN_KEY, response.token);
       apiClient.setTokenCache(response.token);
       await setItemSafe(USER_KEY, JSON.stringify(response.user));
       if (response.doctorProfile) {
@@ -261,7 +261,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         neighborhood: data.neighborhood, complement: data.complement, city: data.city, state: data.state, postalCode: data.postalCode,
       });
       if (!response?.user) throw new Error('Resposta inválida do servidor.');
-      await setItemSafe(TOKEN_KEY, response.token ?? undefined);
+      await setItemSafe(AUTH_TOKEN_KEY, response.token ?? undefined);
       apiClient.setTokenCache(response.token ?? null);
       await setItemSafe(USER_KEY, JSON.stringify(response.user));
       setUser(response.user);
@@ -294,7 +294,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!response?.user) throw new Error('Resposta inválida do servidor.');
       const requiresApproval = !response.token || response.token.trim() === '';
       if (!requiresApproval) {
-        await setItemSafe(TOKEN_KEY, response.token ?? undefined);
+        await setItemSafe(AUTH_TOKEN_KEY, response.token ?? undefined);
         apiClient.setTokenCache(response.token ?? null);
         await setItemSafe(USER_KEY, JSON.stringify(response.user));
         if (response.doctorProfile) {
@@ -317,7 +317,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await apiClient.post<AuthResponseDto>('/api/auth/google', { googleToken, role });
       if (!response?.user) throw new Error('Resposta inválida do servidor.');
-      await setItemSafe(TOKEN_KEY, response.token ?? undefined);
+      await setItemSafe(AUTH_TOKEN_KEY, response.token ?? undefined);
       apiClient.setTokenCache(response.token ?? null);
       await setItemSafe(USER_KEY, JSON.stringify(response.user));
       if (response.doctorProfile) {

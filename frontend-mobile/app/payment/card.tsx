@@ -13,8 +13,7 @@ import { spacing } from '../../lib/theme';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../lib/designSystem';
 import { PaymentHeader } from '../../components/payment/PaymentHeader';
-
-const TOKEN_KEY = '@renoveja:auth_token';
+import { AUTH_TOKEN_KEY } from '../../lib/constants/storage-keys';
 
 function hexToRgba(hex: string, alpha: number): string {
   const m = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
@@ -183,7 +182,7 @@ export default function CardPaymentScreen() {
       try {
         const [keyRes, token] = await Promise.all([
           getMercadoPagoPublicKey(),
-          AsyncStorage.getItem(TOKEN_KEY),
+          AsyncStorage.getItem(AUTH_TOKEN_KEY),
         ]);
         const publicKey = keyRes?.publicKey;
         if (!publicKey) {

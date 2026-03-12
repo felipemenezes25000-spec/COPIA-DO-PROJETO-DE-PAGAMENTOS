@@ -32,7 +32,9 @@ export default function SettingsScreen() {
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   useEffect(() => {
-    getMutedKeys().then(keys => setMutedCount(keys.length));
+    getMutedKeys()
+      .then(keys => setMutedCount(keys.length))
+      .catch(() => showToast({ message: 'Não foi possível carregar triagem silenciada', type: 'error' }));
   }, []);
 
   useEffect(() => {
@@ -41,13 +43,13 @@ export default function SettingsScreen() {
         if (tokens.length === 0) setPushEnabled(true);
         else setPushEnabled(tokens.some((t: { active: boolean }) => t.active));
       })
-      .catch(() => {});
+      .catch(() => showToast({ message: 'Não foi possível carregar status de push', type: 'error' }));
   }, []);
 
   useEffect(() => {
     getPushPreferences()
       .then(data => setCategoryPrefs(data))
-      .catch(() => {});
+      .catch(() => showToast({ message: 'Não foi possível carregar preferências de notificação', type: 'error' }));
   }, []);
 
   const handleResetMuted = async () => {

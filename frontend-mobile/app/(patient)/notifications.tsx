@@ -154,12 +154,12 @@ export default function PatientNotifications() {
       if (withFeedback) {
         showToast({ message: 'Notificações atualizadas', type: 'success' });
       }
-    } catch (e) {
-      console.error('Error loading notifications:', e);
+    } catch {
       setError(true);
-      if (withFeedback) {
-        showToast({ message: 'Não foi possível atualizar as notificações', type: 'error' });
-      }
+      showToast({
+        message: withFeedback ? 'Não foi possível atualizar as notificações' : 'Não foi possível carregar as notificações. Tente novamente.',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -190,9 +190,9 @@ export default function PatientNotifications() {
       await markAllReadOptimistic();
       haptics.success();
       showToast({ message: 'Todas marcadas como lidas', type: 'success' });
-    } catch (error) {
-      console.error('Error marking all as read:', error);
+    } catch {
       haptics.error();
+      showToast({ message: 'Não foi possível marcar todas como lidas', type: 'error' });
     }
   };
 
@@ -214,9 +214,9 @@ export default function PatientNotifications() {
       } else if (requestId) {
         router.push(`/request-detail/${requestId}`);
       }
-    } catch (error) {
-      console.error('Error marking as read:', error);
+    } catch {
       refreshUnreadCount();
+      showToast({ message: 'Não foi possível marcar como lida', type: 'error' });
     }
   };
 
