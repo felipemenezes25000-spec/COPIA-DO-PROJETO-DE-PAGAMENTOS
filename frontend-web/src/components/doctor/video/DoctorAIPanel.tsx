@@ -39,6 +39,7 @@ export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPane
   const cidSugerido = (anamnesis?.cid_sugerido as string) ?? '';
   const cidDescricao = (anamnesis?.cid_descricao as string) ?? '';
   const confiancaCid = (anamnesis?.confianca_cid as string) ?? '';
+  const denominadorComum = (anamnesis?.denominador_comum as string)?.trim() || undefined;
   const gravidade = (anamnesis?.classificacao_gravidade as string) ?? '';
   const diagDiferencial: DiagDiferencial[] = useMemo(() => {
     try {
@@ -244,6 +245,7 @@ export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPane
 
             <AIIndicators
               gravidade={gravidade}
+              denominadorComum={denominadorComum}
               cidSugerido={cidSugerido}
               cidDescricao={cidDescricao}
               confiancaCid={confiancaCid}

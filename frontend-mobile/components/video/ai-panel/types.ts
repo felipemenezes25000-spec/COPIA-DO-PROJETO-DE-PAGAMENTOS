@@ -25,6 +25,7 @@ export type ExameSugerido = string | {
 
 export type DiagDiferencial = {
   hipotese: string; cid: string; probabilidade: string;
+  probabilidade_percentual?: number;
   argumentos_a_favor?: string; argumentos_contra?: string;
   exames_confirmatorios?: string;
 };

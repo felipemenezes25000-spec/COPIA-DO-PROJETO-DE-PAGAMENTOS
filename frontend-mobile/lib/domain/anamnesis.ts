@@ -42,6 +42,7 @@ export interface DiagnosticoDiferencial {
   hipotese?: string;
   cid?: string;
   probabilidade?: string;
+  probabilidade_percentual?: number;
 }
 
 export interface AnamnesisData {
@@ -57,6 +58,7 @@ export interface AnamnesisData {
   habitos_vida?: string;
   outros?: string;
 
+  denominador_comum?: string;
   cid_sugerido?: string;
   cid_descricao?: string;
   confianca_cid?: 'alta' | 'media' | 'baixa';

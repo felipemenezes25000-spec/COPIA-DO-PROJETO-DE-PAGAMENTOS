@@ -229,6 +229,7 @@ TRANSCRIPT COMPLETO ATUALIZADO (analise do início ao fim, priorizando as falas 
                 CopyIfExists(root, enrichedObj, "cid_sugerido");
             }
             CopyIfExists(root, enrichedObj, "confianca_cid");
+            CopyIfExists(root, enrichedObj, "denominador_comum");
             CopyArrayIfExists(root, enrichedObj, "alertas_vermelhos");
             CopyArrayIfExists(root, enrichedObj, "diagnostico_diferencial");
             CopyIfExists(root, enrichedObj, "classificacao_gravidade");
@@ -331,6 +332,8 @@ Responda em um ÚNICO JSON válido, sem markdown, com EXATAMENTE estes campos:
     "outros": "Informação adicional relevante não coberta acima"
   },
 
+  "denominador_comum": "OBRIGATÓRIO. Categoria ampla que unifica todas as hipóteses. Ex: 'IVAS' (infecção vias aéreas superiores), 'Síndrome gripal', 'Dermatose inflamatória'. O médico vê primeiro o denominador, depois as probabilidades.",
+
   "cid_sugerido": "OBRIGATÓRIO. Formato: 'CÓDIGO - Descrição'. Use o código MAIS ESPECÍFICO (subcategoria). Ex: 'J03.0 - Amigdalite estreptocócica' (não J06.9). Se incerto, use .9. NUNCA invente códigos.",
 
   "confianca_cid": "alta | media | baixa",
@@ -340,6 +343,7 @@ Responda em um ÚNICO JSON válido, sem markdown, com EXATAMENTE estes campos:
       "hipotese": "Nome da hipótese",
       "cid": "CID-10 — descrição",
       "probabilidade": "alta | media | baixa",
+      "probabilidade_percentual": 0-100,
       "argumentos_a_favor": "Dados que suportam",
       "argumentos_contra": "Dados ausentes ou contra",
       "exames_confirmatorios": "Exames que confirmariam/descartariam"
@@ -417,13 +421,13 @@ Responda em um ÚNICO JSON válido, sem markdown, com EXATAMENTE estes campos:
 
 ═══ REGRAS OBRIGATÓRIAS DE COMPLETUDE ═══
 
-CID DINÂMICO (REGRA CRÍTICA — LEIA COM ATENÇÃO):
-- A CADA chamada, REAVALIE o CID com base no transcript COMPLETO, do início ao fim.
-- NÃO preserve o CID anterior por inércia. Se os sintomas mudaram, complementaram ou ficaram mais claros, ATUALIZE o cid_sugerido IMEDIATAMENTE.
-- O CID deve refletir o QUADRO CLÍNICO ATUAL no momento da análise, NÃO o quadro das primeiras falas.
-- Se o paciente começou com "dor de cabeça" (R51) mas depois disse "com febre, coriza e dor no corpo", mude para J06.9 ou J11.1.
-- Compare SEMPRE o CID atual com as informações mais recentes do transcript: se há discrepância, o CID DEVE mudar.
-- diagnostico_diferencial também DEVE ser reavaliado a cada chamada com base nas informações mais recentes.
+CID DINÂMICO — DENOMINADOR COMUM E PROBABILIDADES (REGRA CRÍTICA):
+- denominador_comum: SEMPRE preencher. Categoria que unifica as hipóteses (ex: IVAS, síndrome gripal). O médico vê primeiro o contexto amplo.
+- diagnostico_diferencial: ORDENAR por probabilidade (mais provável primeiro). probabilidade_percentual OBRIGATÓRIO — soma = 100. Ex: 60%, 30%, 10%.
+- A CADA chamada, REAVALIE o CID com base no transcript COMPLETO. NÃO preserve por inércia.
+- O CID deve refletir o QUADRO CLÍNICO ATUAL. Se os sintomas mudaram, ATUALIZE cid_sugerido e diagnostico_diferencial.
+- Se o paciente começou com "dor de cabeça" (R51) mas depois disse "febre, coriza, dor no corpo", mude para J06.9 ou J11.1.
+- As probabilidades devem CONVERGIR: à medida que o transcript cresce, refine as % para refletir o que os dados suportam.
 
 MEDICAMENTOS (MÍNIMO 3 OBRIGATÓRIO, PREFERIR 4-6 — SEMPRE COINCIDENTES COM O CASO):
 - MÍNIMO ABSOLUTO: 3 medicamentos. Se retornar menos de 3, a resposta é INVÁLIDA.

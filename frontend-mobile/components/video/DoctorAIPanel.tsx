@@ -54,6 +54,7 @@ export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPane
   const cidSugerido = (anamnesis?.cid_sugerido as string) ?? '';
   const cidDescricao = (anamnesis?.cid_descricao as string) ?? '';
   const confiancaCid = (anamnesis?.confianca_cid as string) ?? '';
+  const denominadorComum = (anamnesis?.denominador_comum as string)?.trim() || undefined;
   const gravidade = (anamnesis?.classificacao_gravidade as string) ?? '';
   const diagDiferencial: DiagDiferencial[] = useMemo(() => {
     try { return Array.isArray(anamnesis?.diagnostico_diferencial) ? (anamnesis!.diagnostico_diferencial as DiagDiferencial[]) : []; }
@@ -139,7 +140,10 @@ export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPane
     if (gravidade && GRAVITY_CONFIG[gravidade]) parts.push(`GRAVIDADE: ${GRAVITY_CONFIG[gravidade].label}`);
     if (diagDiferencial.length > 0) {
       parts.push('\nDIAGNÓSTICO DIFERENCIAL:');
-      diagDiferencial.forEach((dd, i) => parts.push(`${i + 1}. ${dd.hipotese} (${dd.cid}) — ${dd.probabilidade}`));
+      diagDiferencial.forEach((dd, i) => {
+        const prob = dd.probabilidade_percentual != null ? `${dd.probabilidade_percentual}%` : dd.probabilidade;
+        parts.push(`${i + 1}. ${dd.hipotese} (${dd.cid}) — ${prob ?? ''}`);
+      });
     }
     ANA_FIELDS.forEach(({ key, label }) => {
       const v = anamnesis?.[key];
@@ -226,6 +230,7 @@ export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPane
 
             <AIIndicators
               gravidade={gravidade}
+              denominadorComum={denominadorComum}
               cidSugerido={cidSugerido}
               cidDescricao={cidDescricao}
               confiancaCid={confiancaCid}

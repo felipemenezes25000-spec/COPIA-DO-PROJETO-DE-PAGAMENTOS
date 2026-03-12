@@ -24,6 +24,7 @@ const GRAVITY_ICONS: Record<string, typeof ShieldCheck> = {
 
 interface AIIndicatorsProps {
   gravidade: string;
+  denominadorComum?: string;
   cidSugerido: string;
   cidDescricao: string;
   confiancaCid: string;
@@ -34,6 +35,7 @@ interface AIIndicatorsProps {
 
 export function AIIndicators({
   gravidade,
+  denominadorComum,
   cidSugerido,
   cidDescricao,
   confiancaCid,
@@ -69,6 +71,16 @@ export function AIIndicators({
               </>
             );
           })()}
+        </div>
+      )}
+
+      {/* Denominador comum (categoria ampla) */}
+      {denominadorComum && (
+        <div className="rounded-xl border border-primary/30 bg-primary/10 p-3 space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Denominador comum</span>
+          </div>
+          <p className="text-sm font-bold text-gray-200">{denominadorComum}</p>
         </div>
       )}
 
@@ -144,11 +156,15 @@ export function AIIndicators({
                   : dd.probabilidade === 'media'
                     ? 'bg-amber-500'
                     : 'bg-gray-500';
+              const probLabel = dd.probabilidade_percentual != null ? `${dd.probabilidade_percentual}%` : dd.probabilidade;
               return (
                 <div key={i} className="p-3 rounded-lg bg-gray-800/50 border border-gray-700/50 space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${probColor}`} aria-hidden />
-                    <span className="text-sm font-bold text-gray-200">{dd.hipotese}</span>
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${probColor}`} aria-hidden />
+                    <span className="text-sm font-bold text-gray-200 flex-1">{dd.hipotese}</span>
+                    {probLabel && (
+                      <span className="text-xs font-semibold text-primary px-2 py-0.5 rounded-md bg-primary/20">{probLabel}</span>
+                    )}
                   </div>
                   {dd.cid && <p className="text-xs text-primary font-semibold ml-4">{dd.cid}</p>}
                   {dd.argumentos_a_favor && (

@@ -11,6 +11,7 @@ import { makeStyles } from './types';
 
 interface AIIndicatorsProps {
   gravidade: string;
+  denominadorComum?: string;
   cidSugerido: string;
   cidDescricao: string;
   confiancaCid: string;
@@ -24,6 +25,7 @@ interface AIIndicatorsProps {
 
 export function AIIndicators({
   gravidade,
+  denominadorComum,
   cidSugerido,
   cidDescricao,
   confiancaCid,
@@ -47,6 +49,17 @@ export function AIIndicators({
           </Text>
         </View>
       )}
+
+      {/* Denominador comum (categoria ampla) */}
+      {denominadorComum ? (
+        <View style={[S.cidCard, { backgroundColor: colors.primarySoft + '60', borderColor: colors.primary + '30' }]}>
+          <View style={S.cidHeader}>
+            <Ionicons name="layers-outline" size={14} color={colors.primary} />
+            <Text style={[S.cidLabel, { fontSize: 10 }]}>DENOMINADOR COMUM</Text>
+          </View>
+          <Text style={[S.cidValue, { fontSize: 13 }]}>{denominadorComum}</Text>
+        </View>
+      ) : null}
 
       {/* CID card */}
       <View style={S.cidCard}>
@@ -105,11 +118,19 @@ export function AIIndicators({
           {diagDiferencial.map((dd, i) => {
             const probColor = dd.probabilidade === 'alta' ? colors.success
               : dd.probabilidade === 'media' ? colors.warning : colors.textMuted;
+            const probLabel = dd.probabilidade_percentual != null
+              ? `${dd.probabilidade_percentual}%`
+              : dd.probabilidade;
             return (
               <View key={i} style={S.ddItem}>
                 <View style={S.ddHeader}>
                   <View style={[S.ddProbDot, { backgroundColor: probColor }]} />
                   <Text style={S.ddHipotese}>{dd.hipotese}</Text>
+                  {probLabel ? (
+                    <View style={S.badge}>
+                      <Text style={S.badgeTxt}>{probLabel}</Text>
+                    </View>
+                  ) : null}
                 </View>
                 {dd.cid ? <Text style={S.ddCid}>{dd.cid}</Text> : null}
                 {dd.argumentos_a_favor ? (
