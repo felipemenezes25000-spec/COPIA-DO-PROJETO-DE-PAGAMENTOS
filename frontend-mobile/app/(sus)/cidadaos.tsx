@@ -1,10 +1,19 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable, TextInput, Alert, Modal, ScrollView, KeyboardAvoidingView, Platform as RNPlatform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useListBottomPadding } from '../../lib/ui/responsive';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../lib/designSystem';
-import { validateCns, validateCpf } from '../../lib/validation/sus-validators';
+import { layout as dsLayout } from '../../lib/designSystem';
+import { FadeIn } from '../../components/ui/FadeIn';
+import { AppCard } from '../../components/ui/AppCard';
+import { AppButton } from '../../components/ui/AppButton';
+import { AppInput } from '../../components/ui/AppInput';
+import { SectionHeader } from '../../components/ui/SectionHeader';
+import { ScreenHeader } from '../../components/ui/ScreenHeader';
+import { haptics } from '../../lib/haptics';
+import { validateCns, validateCpf, formatCns, formatCpf } from '../../lib/validation/sus-validators';
 import type { CidadaoDto } from '../../types/sus';
 
 const SUS_GREEN = '#16A34A';

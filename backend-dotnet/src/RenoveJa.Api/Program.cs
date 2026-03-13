@@ -249,6 +249,7 @@ builder.Services.AddHttpClient<IDailyVideoService, DailyVideoService>(client =>
     client.Timeout = TimeSpan.FromSeconds(15);
 });
 builder.Services.AddHttpClient("LediPec");
+builder.Services.AddHttpClient("Rnds");
 
 // HttpContextAccessor for CurrentUserService
 builder.Services.AddHttpContextAccessor();

@@ -25,6 +25,7 @@ using RenoveJa.Infrastructure.Repositories;
 using RenoveJa.Infrastructure.Storage;
 using RenoveJa.Infrastructure.Video;
 using RenoveJa.Infrastructure.Ledi;
+using RenoveJa.Infrastructure.Rnds;
 using RenoveJa.Api.Services;
 
 namespace RenoveJa.Api.Extensions;
@@ -97,6 +98,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDoctorService, DoctorService>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<ILediExportService, LediExportService>();
+        services.AddScoped<IRndsService, RndsService>();
         services.AddScoped<IAuditEventService, AuditEventService>();
         services.AddScoped<IClinicalRecordService, ClinicalRecordService>();
         services.AddScoped<IConsultationEncounterService, ConsultationEncounterService>();
@@ -179,6 +181,7 @@ public static class ServiceCollectionExtensions
         services.Configure<CertificateEncryptionConfig>(config.GetSection(CertificateEncryptionConfig.SectionName));
         services.Configure<VerificationConfig>(config.GetSection(VerificationConfig.SectionName));
         services.Configure<LediConfig>(config.GetSection("Ledi"));
+        services.Configure<RndsConfig>(config.GetSection("Rnds"));
 
         services.Configure<ApiConfig>(options =>
         {
