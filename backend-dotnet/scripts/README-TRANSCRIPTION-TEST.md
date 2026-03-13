@@ -1,36 +1,28 @@
 # Teste de Transcrição (Whisper/OpenAI)
 
-## Scripts disponíveis
+## Script disponível
 
 | Script | Uso |
 |--------|-----|
 | `run-transcription-test.ps1` | Teste completo: gera áudio, inicia backend, chama `/transcribe-test`. |
-| `test-transcription.ps1` | Envia arquivo para backend (requer backend rodando). |
 
-## Teste via Backend
-
-### Pré-requisitos
+## Pré-requisitos
 
 - **OpenAI:ApiKey** configurada em `appsettings.Development.json` ou `.env` (mesma chave que GPT-4o)
 - **ASPNETCORE_ENVIRONMENT=Development** no `.env` (o endpoint de teste só existe em Development)
 
 ## Formas de executar
 
-### Opção A: Duplo clique nos .bat (mais fácil)
-
-| Arquivo | Uso |
-|---------|-----|
-| `run-transcription-test.bat` | Backend já rodando — só executa o teste |
-| `run-transcription-test-full.bat` | Inicia o backend e executa o teste |
-
-### Opção B: PowerShell
+### PowerShell
 
 ```powershell
 cd backend-dotnet\scripts
+.\run-transcription-test.ps1
 .\run-transcription-test.ps1 -SkipBackendStart
+.\run-transcription-test.ps1 -AudioFile "C:\meu-audio.wav"
 ```
 
-### Opção C: Teste manual
+### Teste manual
 
 1. **Inicie o backend:**
    ```powershell

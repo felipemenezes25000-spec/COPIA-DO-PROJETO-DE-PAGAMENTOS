@@ -235,6 +235,6 @@ Ambos:    Entram na videochamada
 
 ---
 
-## 12. Nota sobre openclaw-chat-contexto.md
+## 12. Nota sobre chat/OpenClaw
 
-O arquivo [openclaw-chat-contexto.md](./openclaw-chat-contexto.md) não faz parte do core do RenoveJá+. É contexto de um sistema **OpenClaw** (chat/WhatsApp) que foi removido. Não está integrado ao projeto principal.
+O projeto RenoveJá+ não inclui fluxo de chat. Sistemas externos (OpenClaw/WhatsApp) foram descontinuados e não fazem parte do core.

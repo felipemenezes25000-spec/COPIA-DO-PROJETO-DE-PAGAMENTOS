@@ -85,6 +85,14 @@
 | [VALIDACAO_TRIAGEM_CONDUTA.md](technical/VALIDACAO_TRIAGEM_CONDUTA.md) | Validação triagem/conduta |
 | [WHATSAPP_ENVIO_DOCUMENTO.md](technical/WHATSAPP_ENVIO_DOCUMENTO.md) | Envio de documento via WhatsApp |
 | [GANHOS_E_OPCIONAIS.md](technical/GANHOS_E_OPCIONAIS.md) | Ganhos e opcionais |
+| [LOGS_CONVENCAO.md](technical/LOGS_CONVENCAO.md) | Convenção de logs |
+| [CURSOR_DOCS_SEED.md](technical/CURSOR_DOCS_SEED.md) | Links para Cursor Docs |
+
+### [superpowers/](superpowers/) — Planos e specs (agentes)
+
+| Documento | Descrição |
+|-----------|-----------|
+| [2026-03-13-request-service-refactoring.md](superpowers/plans/2026-03-13-request-service-refactoring.md) | Plano de refatoração do RequestService |
 
 ### [deploy/](deploy/) — Deploy
 
