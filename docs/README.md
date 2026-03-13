@@ -79,6 +79,7 @@
 
 | Documento | Descrição |
 |-----------|-----------|
+| [ANALISE_COMPLETA_RENOVEJA.md](technical/ANALISE_COMPLETA_RENOVEJA.md) | Análise completa do repositório (arquitetura, riscos, pontos fortes) |
 | [ENV_SEPARACAO.md](technical/ENV_SEPARACAO.md) | Separação de variáveis de ambiente |
 | [triage-ai-guardrails.md](technical/triage-ai-guardrails.md) | Guardrails da triagem IA |
 | [VALIDACAO_TRIAGEM_CONDUTA.md](technical/VALIDACAO_TRIAGEM_CONDUTA.md) | Validação triagem/conduta |
