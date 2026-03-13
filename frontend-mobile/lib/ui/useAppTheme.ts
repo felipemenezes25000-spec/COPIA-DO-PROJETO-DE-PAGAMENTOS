@@ -16,8 +16,10 @@ interface UseAppThemeOptions {
 function resolveRole(pathname: string, userRole?: string | null, forcedRole?: AppThemeRole): AppThemeRole {
   if (forcedRole) return forcedRole;
   if (userRole === 'doctor') return 'doctor';
+  if (userRole === 'sus') return 'patient';
   if (userRole === 'patient') return 'patient';
   if (pathname.startsWith('/(doctor)') || pathname.startsWith('/doctor-')) return 'doctor';
+  if (pathname.startsWith('/(sus)')) return 'patient';
   return 'patient';
 }
 
