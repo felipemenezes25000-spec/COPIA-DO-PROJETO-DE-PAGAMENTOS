@@ -84,3 +84,43 @@ export async function reanalyzeAsDoctor(id: string) {
   if (!res.ok) throw new Error('Erro ao reanalisar como médico');
   return res.json();
 }
+
+// ── Cancel / Deliver / Download / Queue (P0-P1 features) ──
+
+export async function cancelRequest(id: string) {
+  const res = await authFetch(`/api/requests/${id}/cancel`, { method: 'POST' });
+  if (!res.ok) throw new Error('Erro ao cancelar pedido');
+  return res.json();
+}
+
+export async function markRequestDelivered(id: string) {
+  const res = await authFetch(`/api/requests/${id}/deliver`, { method: 'POST' });
+  if (!res.ok) throw new Error('Erro ao marcar como entregue');
+  return res.json();
+}
+
+export async function generatePdf(id: string): Promise<{ success: boolean; pdfUrl: string; message: string }> {
+  const res = await authFetch(`/api/requests/${id}/generate-pdf`, { method: 'POST' });
+  if (!res.ok) throw new Error('Erro ao gerar PDF');
+  return res.json();
+}
+
+export async function getDocumentDownloadUrl(id: string): Promise<string> {
+  const res = await authFetch(`/api/requests/${id}/document-download-url`);
+  if (!res.ok) throw new Error('Erro ao obter URL de download');
+  const data = await res.json();
+  return typeof data === 'string' ? data : (data?.url ?? data?.downloadUrl ?? '');
+}
+
+export async function getDoctorQueue(specialty?: string) {
+  const query = specialty ? `?specialty=${encodeURIComponent(specialty)}` : '';
+  const res = await authFetch(`/api/doctors/queue${query}`);
+  if (!res.ok) throw new Error('Erro ao buscar fila');
+  return res.json();
+}
+
+export async function assignToQueue(id: string) {
+  const res = await authFetch(`/api/requests/${id}/assign-to-queue`, { method: 'POST' });
+  if (!res.ok) throw new Error('Erro ao atribuir à fila');
+  return res.json();
+}

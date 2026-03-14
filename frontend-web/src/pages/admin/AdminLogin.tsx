@@ -1,18 +1,25 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { login } from "@/services/adminApi";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldX } from "lucide-react";
 
 const AdminLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("error") === "forbidden") {
+      toast.error("Acesso negado. Apenas administradores podem acessar este painel.");
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,8 +28,16 @@ const AdminLogin = () => {
       await login(email, password);
       toast.success("Login realizado com sucesso!");
       navigate("/admin");
-    } catch {
-      toast.error("Credenciais inválidas. Tente novamente.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (message === "ACCESS_DENIED") {
+        toast.error("Acesso negado. Apenas administradores podem acessar este painel.", {
+          icon: <ShieldX className="h-5 w-5 text-destructive" />,
+          duration: 5000,
+        });
+      } else {
+        toast.error("Credenciais inválidas. Tente novamente.");
+      }
     } finally {
       setLoading(false);
     }
@@ -43,7 +58,7 @@ const AdminLogin = () => {
             </div>
           </div>
           <CardTitle className="text-lg">Painel Administrativo</CardTitle>
-          <p className="text-sm text-muted-foreground">Faça login para continuar</p>
+          <p className="text-sm text-muted-foreground">Acesso restrito a administradores</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -52,7 +67,7 @@ const AdminLogin = () => {
               <Input
                 id="email"
                 type="email"
-                placeholder="seu@email.com"
+                placeholder="admin@renovejasaude.com.br"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required

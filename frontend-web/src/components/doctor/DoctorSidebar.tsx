@@ -8,16 +8,18 @@ import { usePWA } from '@/hooks/usePWA';
 import { useWebPush } from '@/hooks/useWebPush';
 import {
   LayoutDashboard, FileText, Bell, User, Menu, X, LogOut,
-  Stethoscope, Video, Download, Share2, Settings, BellRing, Users,
+  Stethoscope, Video, Download, Share2, Settings, BellRing, Users, Shield, Inbox,
 } from 'lucide-react';
 
 const navItems = [
   { to: '/dashboard', label: 'Painel', icon: LayoutDashboard },
   { to: '/pedidos', label: 'Pedidos', icon: FileText },
+  { to: '/fila', label: 'Fila', icon: Inbox },
   { to: '/consultas', label: 'Consultas', icon: Video },
   { to: '/pacientes', label: 'Pacientes', icon: Users },
   { to: '/notificacoes', label: 'Alertas', icon: Bell },
   { to: '/perfil', label: 'Perfil', icon: User },
+  { to: '/certificado', label: 'Certificado', icon: Shield },
   { to: '/configuracoes', label: 'Configurações', icon: Settings },
 ];
 

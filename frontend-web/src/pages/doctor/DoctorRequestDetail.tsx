@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   getRequestById, approveRequest, rejectRequest, acceptConsultation,
+  cancelRequest, markRequestDelivered, generatePdf, getDocumentDownloadUrl,
   getPatientProfile, type MedicalRequest, type PatientProfile,
 } from '@/services/doctorApi';
 import { getTypeLabel, getTypeIcon, getStatusInfo, normalizeStatus } from '@/lib/doctor-helpers';
@@ -24,12 +25,13 @@ import { motion } from 'framer-motion';
 import {
   Loader2, ArrowLeft, User, Calendar, CheckCircle2, XCircle, Pen, Video,
   Phone, Mail, AlertTriangle, Clock, Pill, ClipboardList, Brain, Shield, ChevronRight,
-  Stethoscope, Mic, Copy, BookOpen, FlaskConical,
+  Stethoscope, Mic, Copy, BookOpen, FlaskConical, Download, Ban, PackageCheck, FileOutput,
 } from 'lucide-react';
 import { AiCopilotSection } from '@/components/doctor/request/AiCopilotSection';
 import { PrescriptionImageGallery } from '@/components/doctor/request/PrescriptionImageGallery';
 import { ConductForm } from '@/components/doctor/request/ConductForm';
 import { AnamnesisCard } from '@/components/doctor/request/AnamnesisCard';
+import { AssistantBanner } from '@/components/doctor/AssistantBanner';
 import { getCarePlanByConsultation } from '@/services/doctor-api-care-plans';
 
 function parseEvidence(json: string | null | undefined): Array<{ title?: string; source?: string; provider?: string; clinicalRelevance?: string; url?: string }> {
@@ -133,6 +135,66 @@ export default function DoctorRequestDetail() {
     }
   };
 
+  const handleCancel = async () => {
+    if (!id) return;
+    setActionLoading('cancel');
+    try {
+      await cancelRequest(id);
+      toast.success('Pedido cancelado');
+      const updated = await getRequestById(id);
+      setRequest(updated);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao cancelar');
+    } finally {
+      setActionLoading('');
+    }
+  };
+
+  const handleMarkDelivered = async () => {
+    if (!id) return;
+    setActionLoading('deliver');
+    try {
+      await markRequestDelivered(id);
+      toast.success('Pedido marcado como entregue');
+      const updated = await getRequestById(id);
+      setRequest(updated);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao marcar entrega');
+    } finally {
+      setActionLoading('');
+    }
+  };
+
+  const handleGeneratePdf = async () => {
+    if (!id) return;
+    setActionLoading('genpdf');
+    try {
+      const result = await generatePdf(id);
+      toast.success(result.message || 'PDF gerado com sucesso');
+      const updated = await getRequestById(id);
+      setRequest(updated);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao gerar PDF');
+    } finally {
+      setActionLoading('');
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!id) return;
+    setActionLoading('download');
+    try {
+      const url = request?.signedDocumentUrl || await getDocumentDownloadUrl(id);
+      if (!url) { toast.error('URL de download não disponível'); return; }
+      window.open(url, '_blank');
+      toast.success('Download iniciado');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao baixar documento');
+    } finally {
+      setActionLoading('');
+    }
+  };
+
   if (loading) {
     return (
       <DoctorLayout>
@@ -166,6 +228,10 @@ export default function DoctorRequestDetail() {
   const canEdit = ['paid'].includes(statusNorm);
   const canVideo = request.type === 'consultation' && ['consultation_accepted', 'consultation_ready', 'in_consultation'].includes(statusNorm);
   const canAcceptConsult = request.type === 'consultation' && statusNorm === 'paid';
+  const canCancel = ['submitted', 'pending', 'in_review'].includes(statusNorm);
+  const canDeliver = statusNorm === 'signed';
+  const canGenPdf = statusNorm === 'paid' && request.type !== 'consultation';
+  const canDownload = !!request.signedDocumentUrl || statusNorm === 'signed' || statusNorm === 'delivered';
 
   return (
     <DoctorLayout>
@@ -200,6 +266,14 @@ export default function DoctorRequestDetail() {
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
           <StatusTracker status={request.status} type={request.type || (request as { requestType?: string }).requestType} />
         </motion.div>
+
+        {/* Dra. Renova — sugestões contextuais */}
+        <AssistantBanner
+          requestId={request.id}
+          requestStatus={request.status}
+          requestType={request.type}
+          onNavigate={(route) => navigate(route)}
+        />
 
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Main content */}
@@ -650,7 +724,55 @@ export default function DoctorRequestDetail() {
                     </Button>
                   )}
 
-                  {!canApprove && !canReject && !canEdit && !canVideo && !canAcceptConsult && (
+                  {canGenPdf && (
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2"
+                      onClick={handleGeneratePdf}
+                      disabled={!!actionLoading}
+                    >
+                      {actionLoading === 'genpdf' ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileOutput className="h-4 w-4" />}
+                      Gerar PDF
+                    </Button>
+                  )}
+
+                  {canDownload && (
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+                      onClick={handleDownloadPdf}
+                      disabled={!!actionLoading}
+                    >
+                      {actionLoading === 'download' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                      Baixar documento
+                    </Button>
+                  )}
+
+                  {canDeliver && (
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+                      onClick={handleMarkDelivered}
+                      disabled={!!actionLoading}
+                    >
+                      {actionLoading === 'deliver' ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
+                      Marcar entregue
+                    </Button>
+                  )}
+
+                  {canCancel && (
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2 border-destructive/30 text-destructive hover:bg-destructive/5"
+                      onClick={handleCancel}
+                      disabled={!!actionLoading}
+                    >
+                      {actionLoading === 'cancel' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+                      Cancelar pedido
+                    </Button>
+                  )}
+
+                  {!canApprove && !canReject && !canEdit && !canVideo && !canAcceptConsult && !canCancel && !canDeliver && !canGenPdf && !canDownload && (
                     <div className="text-center py-4">
                       <Clock className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                       <p className="text-sm text-muted-foreground">Sem ações disponíveis</p>

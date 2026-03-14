@@ -44,6 +44,8 @@ const DoctorAbout = lazy(() => import('@/pages/doctor/DoctorAbout'));
 const DoctorHelp = lazy(() => import('@/pages/doctor/DoctorHelp'));
 const DoctorTerms = lazy(() => import('@/pages/doctor/DoctorTerms'));
 const DoctorPrivacy = lazy(() => import('@/pages/doctor/DoctorPrivacy'));
+const DoctorCertificate = lazy(() => import('@/pages/doctor/DoctorCertificate'));
+const DoctorQueue = lazy(() => import('@/pages/doctor/DoctorQueue'));
 
 function FullPageLoader() {
   return <SkeletonPage />;
@@ -141,6 +143,8 @@ function DoctorShell() {
             <Route path="/resumo-consulta/:requestId" element={<DoctorProtectedRoute><DoctorConsultationSummary /></DoctorProtectedRoute>} />
             <Route path="/care-plans/:id" element={<DoctorProtectedRoute><DoctorCarePlan /></DoctorProtectedRoute>} />
             <Route path="/configuracoes" element={<DoctorProtectedRoute><DoctorSettings /></DoctorProtectedRoute>} />
+            <Route path="/certificado" element={<DoctorProtectedRoute><DoctorCertificate /></DoctorProtectedRoute>} />
+            <Route path="/fila" element={<DoctorProtectedRoute><DoctorQueue /></DoctorProtectedRoute>} />
             <Route path="/sobre" element={<DoctorProtectedRoute><DoctorAbout /></DoctorProtectedRoute>} />
             <Route path="/ajuda" element={<DoctorProtectedRoute><DoctorHelp /></DoctorProtectedRoute>} />
             <Route path="/termos" element={<DoctorProtectedRoute><DoctorTerms /></DoctorProtectedRoute>} />

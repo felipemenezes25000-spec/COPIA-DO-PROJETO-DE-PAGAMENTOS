@@ -120,3 +120,37 @@ export async function getVideoRoom(requestId: string) {
   if (!res.ok) return null;
   return res.json();
 }
+
+
+// ── Push Preferences ──
+
+export interface PushPreferencesDto {
+  requestsEnabled: boolean;
+  paymentsEnabled: boolean;
+  consultationsEnabled: boolean;
+  remindersEnabled: boolean;
+  timezone: string;
+}
+
+export async function getPushPreferences(): Promise<PushPreferencesDto> {
+  const res = await authFetch('/api/push-tokens/preferences');
+  if (!res.ok) {
+    return {
+      requestsEnabled: true,
+      paymentsEnabled: true,
+      consultationsEnabled: true,
+      remindersEnabled: true,
+      timezone: 'America/Sao_Paulo',
+    };
+  }
+  return res.json();
+}
+
+export async function updatePushPreferences(prefs: Partial<PushPreferencesDto>): Promise<PushPreferencesDto> {
+  const res = await authFetch('/api/push-tokens/preferences', {
+    method: 'PUT',
+    body: JSON.stringify(prefs),
+  });
+  if (!res.ok) throw new Error('Erro ao atualizar preferências');
+  return res.json();
+}

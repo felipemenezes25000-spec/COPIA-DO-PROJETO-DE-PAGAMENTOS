@@ -41,3 +41,16 @@ export async function getMutedKeys(): Promise<string[]> {
 export async function unmuteAll(): Promise<void> {
   save({ mutedKeys: [], version: 2 });
 }
+
+export async function muteKey(key: string): Promise<void> {
+  const state = load();
+  if (!state.mutedKeys.includes(key)) {
+    state.mutedKeys.push(key);
+    save(state);
+  }
+}
+
+export async function isMuted(key: string): Promise<boolean> {
+  const state = load();
+  return state.mutedKeys.includes(key);
+}

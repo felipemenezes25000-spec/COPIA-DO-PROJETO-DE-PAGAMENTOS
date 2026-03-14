@@ -12,6 +12,7 @@ function getApiBase(): string {
 
 const ADMIN_TOKEN_KEY = "admin_auth_token";
 const ADMIN_LOGIN_AT_KEY = "admin_login_at";
+const ADMIN_ROLE_KEY = "admin_user_role";
 /** Tokens do backend expiram em 30 dias; consideramos expirado após 25 dias no client para evitar UX quebrada. */
 const TOKEN_VALID_DAYS = 25;
 
@@ -38,12 +39,22 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
   if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(`${base}${url}`, { ...options, headers });
   if (res.status === 401) {
-    localStorage.removeItem(ADMIN_TOKEN_KEY);
-    localStorage.removeItem(ADMIN_LOGIN_AT_KEY);
+    clearAdminSession();
     window.location.href = "/admin/login";
     throw new Error("Não autorizado");
   }
+  if (res.status === 403) {
+    clearAdminSession();
+    window.location.href = "/admin/login?error=forbidden";
+    throw new Error("Acesso negado — apenas administradores");
+  }
   return res;
+}
+
+function clearAdminSession() {
+  localStorage.removeItem(ADMIN_TOKEN_KEY);
+  localStorage.removeItem(ADMIN_LOGIN_AT_KEY);
+  localStorage.removeItem(ADMIN_ROLE_KEY);
 }
 
 export async function login(email: string, password: string) {
@@ -56,26 +67,40 @@ export async function login(email: string, password: string) {
   });
   if (!res.ok) throw new Error("Credenciais inválidas");
   const data = await res.json();
+
+  // Verificar se o usuário é admin
+  const role = data.user?.role;
+  if (role !== "admin") {
+    throw new Error("ACCESS_DENIED");
+  }
+
   localStorage.setItem(ADMIN_TOKEN_KEY, data.token);
   localStorage.setItem(ADMIN_LOGIN_AT_KEY, String(Date.now()));
+  localStorage.setItem(ADMIN_ROLE_KEY, role);
   return data;
 }
 
 export function logout() {
-  localStorage.removeItem(ADMIN_TOKEN_KEY);
-  localStorage.removeItem(ADMIN_LOGIN_AT_KEY);
+  clearAdminSession();
   window.location.href = "/admin/login";
 }
 
 export function isAuthenticated(): boolean {
   const token = getToken();
   if (!token) return false;
+
+  // Verificar se a role salva é admin
+  const role = localStorage.getItem(ADMIN_ROLE_KEY);
+  if (role && role !== "admin") {
+    clearAdminSession();
+    return false;
+  }
+
   const loginAt = getLoginTimestamp();
-  if (loginAt == null) return true; // token antigo sem timestamp — deixa a primeira chamada API retornar 401
+  if (loginAt == null) return true;
   const ageDays = (Date.now() - loginAt) / (1000 * 60 * 60 * 24);
   if (ageDays > TOKEN_VALID_DAYS) {
-    localStorage.removeItem(ADMIN_TOKEN_KEY);
-    localStorage.removeItem(ADMIN_LOGIN_AT_KEY);
+    clearAdminSession();
     return false;
   }
   return true;
