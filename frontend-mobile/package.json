@@ -21,6 +21,7 @@
     "postinstall": "npx patch-package",
     "eas:credentials": "cross-env EAS_NO_VCS=1 eas credentials -p android",
     "eas:build:android": "cross-env EAS_NO_VCS=1 eas build --profile development --platform android",
+    "eas:build:android:preview": "cross-env EAS_NO_VCS=1 eas build --platform android --profile preview",
     "prepare:icons": "node scripts/prepare-icons.js"
   },
   "dependencies": {
