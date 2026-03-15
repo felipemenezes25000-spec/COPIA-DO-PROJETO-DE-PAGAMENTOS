@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Security.Claims;
-using Microsoft.Extensions.DependencyInjection;
-using RenoveJa.Application.Interfaces;
+using RenoveJa.Api.Services;
 
 namespace RenoveJa.Api.Middleware;
 
@@ -9,12 +8,13 @@ namespace RenoveJa.Api.Middleware;
 /// Middleware de auditoria LGPD.
 /// Intercepta todas as requests e registra endpoint, método, userId, IP, user-agent, status code e duração.
 /// Para endpoints sensíveis (dados de saúde), adiciona detalhes extras.
-/// Execução assíncrona (fire-and-forget) para não bloquear a resposta.
+/// Publica no AuditChannel para processamento assíncrono pelo AuditBackgroundService.
 /// NÃO registra body de request (pode conter dados sensíveis).
 /// </summary>
 public class AuditMiddleware(
     RequestDelegate next,
-    ILogger<AuditMiddleware> logger)
+    ILogger<AuditMiddleware> logger,
+    AuditChannel auditChannel)
 {
     /// <summary>
     /// Endpoints sensíveis que acessam dados de saúde.
@@ -27,7 +27,7 @@ public class AuditMiddleware(
         "/api/payments"
     ];
 
-    public async Task InvokeAsync(HttpContext context, IAuditService auditService)
+    public async Task InvokeAsync(HttpContext context)
     {
         var stopwatch = Stopwatch.StartNew();
 
@@ -53,28 +53,6 @@ public class AuditMiddleware(
                 userId = parsedUserId;
         }
 
-        // Criar novo scope para o fire-and-forget (o scope da request será disposed)
-        var serviceScopeFactory = context.RequestServices.GetRequiredService<IServiceScopeFactory>();
-
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                using var scope = serviceScopeFactory.CreateScope();
-                var scopedAuditService = scope.ServiceProvider.GetRequiredService<IAuditService>();
-                await LogRequestCapturedAsync(scopedAuditService, path, method, statusCode, ipAddress, userAgent, correlationId, userId, durationMs);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Falha no fire-and-forget do audit log");
-            }
-        });
-    }
-
-    private static async Task LogRequestCapturedAsync(
-        IAuditService auditService, string path, string method, int statusCode,
-        string? ipAddress, string? userAgent, string? correlationId, Guid? userId, long durationMs)
-    {
         var action = method switch
         {
             "GET" => "Read",
@@ -84,18 +62,22 @@ public class AuditMiddleware(
             _ => method
         };
 
-        // Determinar tipo de entidade e detalhes extras para endpoints sensíveis
         var (entityType, entityId, metadata) = ClassifyEndpoint(path, method, statusCode, durationMs);
 
-        await auditService.LogAsync(
-            userId: userId,
-            action: action,
-            entityType: entityType,
-            entityId: entityId,
-            ipAddress: ipAddress,
-            userAgent: userAgent,
-            correlationId: correlationId,
-            metadata: metadata);
+        var entry = new AuditEntry(
+            UserId: userId,
+            Action: action,
+            EntityType: entityType,
+            EntityId: entityId,
+            IpAddress: ipAddress,
+            UserAgent: userAgent,
+            CorrelationId: correlationId,
+            Metadata: metadata);
+
+        if (!auditChannel.Writer.TryWrite(entry))
+        {
+            logger.LogWarning("Audit channel is full; entry dropped for {Method} {Path}", method, path);
+        }
     }
 
     /// <summary>

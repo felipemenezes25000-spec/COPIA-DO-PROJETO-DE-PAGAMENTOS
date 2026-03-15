@@ -168,6 +168,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<RenoveJa.Infrastructure.Notifications.ExpoPushReceiptChecker>();
         services.AddHostedService(sp => sp.GetRequiredService<RenoveJa.Infrastructure.Notifications.ExpoPushReceiptChecker>());
 
+        // Audit: bounded channel + background consumer (replaces fire-and-forget Task.Run)
+        services.AddSingleton<AuditChannel>();
+        services.AddHostedService<AuditBackgroundService>();
+
         return services;
     }
 
