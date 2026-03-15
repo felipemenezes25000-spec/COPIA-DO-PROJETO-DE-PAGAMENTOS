@@ -269,11 +269,11 @@ public class RequestRepository(SupabaseClient supabase) : IRequestRepository
         public string Status { get; set; } = string.Empty;
         public string? PrescriptionType { get; set; }
         public string? PrescriptionKind { get; set; }
-        public List<string> Medications { get; set; } = new();
-        public List<string> PrescriptionImages { get; set; } = new();
+        public string? Medications { get; set; }
+        public string? PrescriptionImages { get; set; }
         public string? ExamType { get; set; }
-        public List<string> Exams { get; set; } = new();
-        public List<string> ExamImages { get; set; } = new();
+        public string? Exams { get; set; }
+        public string? ExamImages { get; set; }
         public string? Symptoms { get; set; }
         public decimal? Price { get; set; }
         public string? Notes { get; set; }
