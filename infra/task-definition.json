@@ -14,11 +14,11 @@
       {"name": "ASPNETCORE_ENVIRONMENT", "value": "Production"},
       {"name": "ASPNETCORE_URLS", "value": "http://+:8080"},
       {"name": "AllowedHosts", "value": "*"},
-      {"name": "ConnectionStrings__DefaultConnection", "value": "Host=renoveja-postgres.c54og6486w6w.sa-east-1.rds.amazonaws.com;Port=5432;Database=renoveja;Username=postgres;Password=RnvJa2026#Pr0d!Sx9kL2m;SSL Mode=Prefer"},
-      {"name": "Redis__ConnectionString", "value": "renoveja-redis.psfcse.0001.sae1.cache.amazonaws.com:6379"},
       {"name": "AWS_REGION", "value": "sa-east-1"}
     ],
     "secrets": [
+      {"name": "ConnectionStrings__DefaultConnection", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/ConnectionStrings__DefaultConnection"},
+      {"name": "Redis__ConnectionString", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/Redis__ConnectionString"},
       {"name": "DAILY_API_KEY", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/DAILY_API_KEY"},
       {"name": "DAILY_DOMAIN", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/DAILY_DOMAIN"},
       {"name": "DAILY_ROOM_PREFIX", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/DAILY_ROOM_PREFIX"},
@@ -42,7 +42,7 @@
       "interval": 30,
       "timeout": 10,
       "retries": 5,
-      "startPeriod": 60
+      "startPeriod": 90
     },
     "logConfiguration": {
       "logDriver": "awslogs",
