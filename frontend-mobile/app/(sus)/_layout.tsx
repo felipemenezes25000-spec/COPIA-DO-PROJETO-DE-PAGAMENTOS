@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Platform, View } from 'react-native';
+import { Platform } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
@@ -27,7 +27,6 @@ export default function SusLayout() {
 
   // SUS module color — verde SUS
   const SUS_PRIMARY = '#16A34A';
-  const SUS_PRIMARY_LIGHT = '#22C55E';
 
   useEffect(() => {
     if (!loading && !user) {

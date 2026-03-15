@@ -1,274 +1,195 @@
-using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using Dapper;
 using Microsoft.Extensions.Options;
+using Npgsql;
+using RenoveJa.Infrastructure.Data.Npgsql;
 
 namespace RenoveJa.Infrastructure.Data.Supabase;
 
 /// <summary>
-/// Cliente HTTP para a API REST do Supabase (PostgREST).
+/// Cliente de acesso a dados PostgreSQL via Npgsql/Dapper.
+/// Substituiu o Supabase REST API — mesma interface pública, zero mudanças nos repositórios.
 /// </summary>
 public class SupabaseClient
 {
-    private readonly HttpClient _httpClient;
-    private readonly SupabaseConfig _config;
+    private readonly string _connectionString;
     private readonly JsonSerializerOptions _jsonOptions;
 
-    /// <summary>
-    /// Construtor que recebe o HttpClient e a configuração do Supabase e configura os headers.
-    /// </summary>
-    public SupabaseClient(HttpClient httpClient, IOptions<SupabaseConfig> config)
+    public SupabaseClient(IOptions<SupabaseConfig> config)
     {
-        _httpClient = httpClient;
-        _config = config.Value;
+        _connectionString = config.Value.DatabaseUrl ?? "";
+        if (string.IsNullOrWhiteSpace(_connectionString))
+            _connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") ?? "";
+        if (string.IsNullOrWhiteSpace(_connectionString))
+            throw new InvalidOperationException("Database connection string not configured.");
+
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-            WriteIndented = false
+            WriteIndented = false,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         };
-        EnsureServiceRoleKey();
-        ConfigureHttpClient();
+        DefaultTypeMap.MatchNamesWithUnderscores = true;
     }
 
-    /// <summary>
-    /// Exige a chave service_role (secret) para evitar 401 em INSERT/UPDATE.
-    /// Aceita chaves no formato novo (sb_secret_...) ou formato antigo (JWT que começa com eyJ...).
-    /// </summary>
-    private void EnsureServiceRoleKey()
-    {
-        var key = _config.ServiceKey?.Trim() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(key))
-            throw new InvalidOperationException(
-                "Supabase:ServiceKey está vazia. Defina a chave secret em appsettings (Project Settings → API → Secret keys no Supabase).");
+    public SupabaseClient(HttpClient httpClient, IOptions<SupabaseConfig> config) : this(config) { }
 
-        // Chaves públicas não devem ser usadas no backend
-        if (key.StartsWith("sb_publishable_", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException(
-                "Supabase:ServiceKey não pode ser a chave 'publishable' (pública). " +
-                "Use a chave 'secret' em Project Settings → API → Secret keys no Supabase.");
+    private NpgsqlConnection CreateConnection() => new(_connectionString);
 
-        // Chaves anon (legacy) também não devem ser usadas no backend
-        if (key.StartsWith("sb_anon_", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException(
-                "Supabase:ServiceKey não pode ser a chave 'anon' (legacy). " +
-                "Use a chave 'secret' em Project Settings → API → Secret keys no Supabase.");
-
-        // Validação positiva: secret (sb_secret_...), JWT (eyJ...) ou qualquer token longo com ponto (JWT)
-        var isValidSecret = key.StartsWith("sb_secret_", StringComparison.OrdinalIgnoreCase) ||
-                           key.StartsWith("eyJ", StringComparison.OrdinalIgnoreCase) ||
-                           (key.Length > 80 && key.Contains('.'));
-
-        if (!isValidSecret)
-            throw new InvalidOperationException(
-                "Supabase:ServiceKey deve ser uma chave 'secret' (formato sb_secret_...) ou 'service_role' (JWT). " +
-                "Verifique em Project Settings → API → Secret keys no Supabase. " +
-                "Use a chave service_role do projeto configurado em Supabase:Url. Veja docs/SUPABASE_PROJETO_MCP.md.");
-    }
-
-    private void ConfigureHttpClient()
-    {
-        _httpClient.BaseAddress = new Uri($"{_config.Url}/rest/v1/");
-        _httpClient.DefaultRequestHeaders.Add("apikey", _config.ServiceKey);
-        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_config.ServiceKey}");
-        _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
-    }
-
-    /// <summary>
-    /// Obtém todos os registros de uma tabela com select, filtro, ordenação e limite opcionais.
-    /// </summary>
     public async Task<List<T>> GetAllAsync<T>(
-        string table,
-        string? select = "*",
-        string? filter = null,
-        string? orderBy = null,
-        int? limit = null,
-        int? offset = null,
+        string table, string? select = "*", string? filter = null,
+        string? orderBy = null, int? limit = null, int? offset = null,
         CancellationToken cancellationToken = default)
     {
-        var query = BuildQuery(select, filter, orderBy, limit, offset);
-        var url = $"{table}{query}";
-
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.Accept.ParseAdd("application/json");
-
-        var response = await _httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
-
-        var content = await response.Content.ReadAsStringAsync(cancellationToken);
-        return JsonSerializer.Deserialize<List<T>>(content, _jsonOptions) ?? new List<T>();
+        var (whereClause, parameters) = PostgRestFilterParser.Parse(filter);
+        var orderSql = PostgRestFilterParser.ParseOrderBy(orderBy);
+        var columns = ParseSelect(select);
+        var sql = $"SELECT {columns} FROM public.{SanitizeTable(table)}{whereClause}{orderSql}";
+        if (limit.HasValue && limit.Value > 0) sql += $" LIMIT {limit.Value}";
+        if (offset.HasValue && offset.Value > 0) sql += $" OFFSET {offset.Value}";
+        await using var conn = CreateConnection();
+        await conn.OpenAsync(cancellationToken);
+        return (await conn.QueryAsync<T>(new CommandDefinition(sql, new DynamicParameters(parameters), cancellationToken: cancellationToken))).AsList();
     }
 
-    /// <summary>
-    /// Conta o número de registros que atendem ao filtro (usa HEAD + Prefer: count=exact).
-    /// </summary>
-    public async Task<int> CountAsync(
-        string table,
-        string? filter = null,
-        CancellationToken cancellationToken = default)
+    public async Task<int> CountAsync(string table, string? filter = null, CancellationToken cancellationToken = default)
     {
-        var query = BuildQuery("*", filter);
-        var url = $"{table}{query}";
-
-        using var request = new HttpRequestMessage(HttpMethod.Head, url);
-        request.Headers.Add("Prefer", "count=exact");
-
-        var response = await _httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
-
-        if (response.Content.Headers.TryGetValues("Content-Range", out var values))
-        {
-            // Format: "0-N/total" or "*/total"
-            var range = values.FirstOrDefault() ?? "";
-            var slashIndex = range.LastIndexOf('/');
-            if (slashIndex >= 0 && int.TryParse(range[(slashIndex + 1)..], out var total))
-                return total;
-        }
-
-        return 0;
+        var (whereClause, parameters) = PostgRestFilterParser.Parse(filter);
+        var sql = $"SELECT COUNT(*) FROM public.{SanitizeTable(table)}{whereClause}";
+        await using var conn = CreateConnection();
+        await conn.OpenAsync(cancellationToken);
+        return await conn.ExecuteScalarAsync<int>(new CommandDefinition(sql, new DynamicParameters(parameters), cancellationToken: cancellationToken));
     }
 
-    /// <summary>
-    /// Obtém um único registro (ou null) de uma tabela com select e filtro opcionais.
-    /// </summary>
-    public async Task<T?> GetSingleAsync<T>(
-        string table,
-        string? select = "*",
-        string? filter = null,
-        CancellationToken cancellationToken = default)
+    public async Task<T?> GetSingleAsync<T>(string table, string? select = "*", string? filter = null, CancellationToken cancellationToken = default)
     {
-        var query = BuildQuery(select, filter);
-        var url = $"{table}{query}";
-
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.Accept.ParseAdd("application/json");
-
-        var response = await _httpClient.SendAsync(request, cancellationToken);
-        if (!response.IsSuccessStatusCode)
-        {
-            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new HttpRequestException(
-                $"Supabase GET {table} failed: {response.StatusCode}. Url: {url}. Response: {(errorBody ?? "").Substring(0, Math.Min(2000, (errorBody ?? "").Length))}");
-        }
-
-        var content = await response.Content.ReadAsStringAsync(cancellationToken);
-        var list = JsonSerializer.Deserialize<List<T>>(content, _jsonOptions);
-        return list is { Count: > 0 } ? list[0] : default;
+        var (whereClause, parameters) = PostgRestFilterParser.Parse(filter);
+        var sql = $"SELECT {ParseSelect(select)} FROM public.{SanitizeTable(table)}{whereClause} LIMIT 1";
+        await using var conn = CreateConnection();
+        await conn.OpenAsync(cancellationToken);
+        return await conn.QueryFirstOrDefaultAsync<T>(new CommandDefinition(sql, new DynamicParameters(parameters), cancellationToken: cancellationToken));
     }
 
-    public async Task<T> InsertAsync<T>(
-        string table,
-        object data,
-        CancellationToken cancellationToken = default)
+    public async Task<T> InsertAsync<T>(string table, object data, CancellationToken cancellationToken = default)
+    {
+        var tableName = SanitizeTable(table);
+        var (columns, paramNames, paramDict) = BuildInsertParams(data);
+        var sql = $"INSERT INTO public.{tableName} ({columns}) VALUES ({paramNames}) RETURNING *";
+        await using var conn = CreateConnection();
+        await conn.OpenAsync(cancellationToken);
+        var result = await conn.QueryFirstOrDefaultAsync<T>(new CommandDefinition(sql, new DynamicParameters(paramDict), cancellationToken: cancellationToken));
+        return result ?? throw new InvalidOperationException($"Insert failed: no data returned. Table: {tableName}");
+    }
+
+    public async Task<T> UpdateAsync<T>(string table, string filter, object data, CancellationToken cancellationToken = default)
+    {
+        var tableName = SanitizeTable(table);
+        var (setClauses, setParams) = BuildUpdateParams(data);
+        var (whereClause, whereParams) = PostgRestFilterParser.Parse(filter, setParams.Count);
+        foreach (var kv in whereParams) setParams[kv.Key] = kv.Value;
+        var sql = $"UPDATE public.{tableName} SET {setClauses}{whereClause} RETURNING *";
+        await using var conn = CreateConnection();
+        await conn.OpenAsync(cancellationToken);
+        return (await conn.QueryFirstOrDefaultAsync<T>(new CommandDefinition(sql, new DynamicParameters(setParams), cancellationToken: cancellationToken)))!;
+    }
+
+    public async Task UpsertAsync(string table, object data, CancellationToken cancellationToken = default)
+    {
+        var tableName = SanitizeTable(table);
+        var (columns, paramNames, paramDict) = BuildInsertParams(data);
+        var updateClauses = string.Join(", ", columns.Split(", ").Where(c => c != "id").Select(c => $"{c} = EXCLUDED.{c}"));
+        var sql = string.IsNullOrEmpty(updateClauses)
+            ? $"INSERT INTO public.{tableName} ({columns}) VALUES ({paramNames}) ON CONFLICT (id) DO NOTHING"
+            : $"INSERT INTO public.{tableName} ({columns}) VALUES ({paramNames}) ON CONFLICT (id) DO UPDATE SET {updateClauses}";
+        await using var conn = CreateConnection();
+        await conn.OpenAsync(cancellationToken);
+        await conn.ExecuteAsync(new CommandDefinition(sql, new DynamicParameters(paramDict), cancellationToken: cancellationToken));
+    }
+
+    public async Task DeleteAsync(string table, string filter, CancellationToken cancellationToken = default)
+    {
+        var (whereClause, parameters) = PostgRestFilterParser.Parse(filter);
+        var sql = $"DELETE FROM public.{SanitizeTable(table)}{whereClause}";
+        await using var conn = CreateConnection();
+        await conn.OpenAsync(cancellationToken);
+        await conn.ExecuteAsync(new CommandDefinition(sql, new DynamicParameters(parameters), cancellationToken: cancellationToken));
+    }
+
+    // ===== Helpers =====
+
+    private static string SanitizeTable(string table) => new(table.Where(c => char.IsLetterOrDigit(c) || c == '_').ToArray());
+    private static string ParseSelect(string? select) => string.IsNullOrWhiteSpace(select) || select == "*" ? "*" : select.Contains('(') ? "*" : select;
+
+    private (string columns, string paramNames, Dictionary<string, object?> parameters) BuildInsertParams(object data)
     {
         var json = JsonSerializer.Serialize(data, _jsonOptions);
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, table);
-        request.Content = new StringContent(json, Encoding.UTF8, "application/json");
-        request.Headers.Add("Prefer", "return=representation");
-
-        var response = await _httpClient.SendAsync(request, cancellationToken);
-        
-        if (!response.IsSuccessStatusCode)
+        var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json, _jsonOptions) ?? new();
+        var cols = new List<string>();
+        var pnames = new List<string>();
+        var parameters = new Dictionary<string, object?>();
+        var i = 0;
+        foreach (var kv in dict)
         {
-            var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new HttpRequestException(
-                $"Insert failed: {response.StatusCode}. Table: {table}. Error: {errorContent}. Payload: {json.Substring(0, Math.Min(500, json.Length))}");
+            cols.Add(kv.Key);
+            pnames.Add($"@ins{i}");
+            parameters[$"ins{i}"] = ConvertValue(kv.Value);
+            i++;
         }
-
-        var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
-        var result = JsonSerializer.Deserialize<List<T>>(responseContent, _jsonOptions);
-        
-        if (result is null || result.Count == 0)
-            throw new InvalidOperationException($"Insert failed: no data returned. Table: {table}. Payload: {json.Substring(0, Math.Min(500, json.Length))}");
-        return result[0];
+        return (string.Join(", ", cols), string.Join(", ", pnames), parameters);
     }
 
-    /// <summary>
-    /// Atualiza registros que atendem ao filtro e retorna o primeiro atualizado.
-    /// </summary>
-    public async Task<T> UpdateAsync<T>(
-        string table,
-        string filter,
-        object data,
-        CancellationToken cancellationToken = default)
+    private (string setClauses, Dictionary<string, object?> parameters) BuildUpdateParams(object data)
     {
         var json = JsonSerializer.Serialize(data, _jsonOptions);
-        var url = $"{table}?{filter}";
-
-        using var request = new HttpRequestMessage(HttpMethod.Patch, url);
-        request.Content = new StringContent(json, Encoding.UTF8, "application/json");
-        request.Headers.Add("Prefer", "return=representation");
-
-        var response = await _httpClient.SendAsync(request, cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json, _jsonOptions) ?? new();
+        var clauses = new List<string>();
+        var parameters = new Dictionary<string, object?>();
+        var i = 0;
+        foreach (var kv in dict)
         {
-            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new InvalidOperationException(
-                $"Supabase PATCH {table} failed: {response.StatusCode}. Response: {errorBody}");
+            if (kv.Key.Equals("id", StringComparison.OrdinalIgnoreCase)) continue;
+            clauses.Add($"{kv.Key} = @set{i}");
+            parameters[$"set{i}"] = ConvertValue(kv.Value);
+            i++;
         }
-
-        var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
-        var result = JsonSerializer.Deserialize<List<T>>(responseContent, _jsonOptions);
-        if (result is null || result.Count == 0)
-            return default!;
-        return result[0];
+        return (string.Join(", ", clauses), parameters);
     }
 
     /// <summary>
-    /// Insere ou atualiza (upsert) um registro usando a chave primária como resolução de conflito.
+    /// Converts a JsonElement to a CLR type compatible with Npgsql.
+    /// Key fix: GUIDs are converted to System.Guid so Npgsql sends them as uuid, not text.
     /// </summary>
-    public async Task UpsertAsync(
-        string table,
-        object data,
-        CancellationToken cancellationToken = default)
+    private static object? ConvertValue(JsonElement element)
     {
-        var json = JsonSerializer.Serialize(data, _jsonOptions);
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, table);
-        request.Content = new StringContent(json, Encoding.UTF8, "application/json");
-        request.Headers.Add("Prefer", "resolution=merge-duplicates,return=minimal");
-
-        var response = await _httpClient.SendAsync(request, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
+        switch (element.ValueKind)
         {
-            var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new HttpRequestException(
-                $"Upsert failed: {response.StatusCode}. Table: {table}. Error: {errorContent}");
+            case JsonValueKind.Null:
+                return null;
+            case JsonValueKind.True:
+                return true;
+            case JsonValueKind.False:
+                return false;
+            case JsonValueKind.Number:
+                if (element.TryGetInt32(out var i32)) return i32;
+                if (element.TryGetInt64(out var i64)) return i64;
+                if (element.TryGetDecimal(out var dec)) return dec;
+                return element.GetDouble();
+            case JsonValueKind.String:
+                var str = element.GetString();
+                if (str == null) return null;
+                // UUID detection — critical for PostgreSQL uuid columns
+                if (Guid.TryParse(str, out var guid)) return guid;
+                // DateTime detection
+                if (DateTime.TryParse(str, System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.RoundtripKind, out var dt)) return dt;
+                return str;
+            case JsonValueKind.Array:
+            case JsonValueKind.Object:
+                // Store as JSONB string — Npgsql handles this for jsonb columns
+                return element.GetRawText();
+            default:
+                return element.GetRawText();
         }
-    }
-
-    /// <summary>
-    /// Remove registros que atendem ao filtro.
-    /// </summary>
-    public async Task DeleteAsync(
-        string table,
-        string filter,
-        CancellationToken cancellationToken = default)
-    {
-        var url = $"{table}?{filter}";
-        var response = await _httpClient.DeleteAsync(url, cancellationToken);
-        response.EnsureSuccessStatusCode();
-    }
-
-    private static string BuildQuery(string? select, string? filter, string? orderBy = null, int? limit = null, int? offset = null)
-    {
-        var parts = new List<string>();
-
-        if (!string.IsNullOrWhiteSpace(select))
-            parts.Add($"select={select}");
-
-        if (!string.IsNullOrWhiteSpace(filter))
-            parts.Add(filter);
-
-        if (!string.IsNullOrWhiteSpace(orderBy))
-            parts.Add($"order={orderBy}");
-
-        if (limit.HasValue && limit.Value > 0)
-            parts.Add($"limit={limit.Value}");
-
-        if (offset.HasValue && offset.Value > 0)
-            parts.Add($"offset={offset.Value}");
-
-        return parts.Count > 0 ? "?" + string.Join("&", parts) : string.Empty;
     }
 }

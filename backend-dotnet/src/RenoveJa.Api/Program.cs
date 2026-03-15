@@ -242,7 +242,8 @@ builder.Services.AddRenoveJaConfiguration(builder.Configuration, _envVars);
 // In-memory cache
 builder.Services.AddMemoryCache();
 
-builder.Services.AddHttpClient<SupabaseClient>();
+// SupabaseClient usa Npgsql direto (sem HTTP)
+builder.Services.AddScoped<SupabaseClient>();
 builder.Services.AddHttpClient(SupabaseStorageService.HttpClientName);
 builder.Services.AddHttpClient<IDailyVideoService, DailyVideoService>(client =>
 {

@@ -53,3 +53,10 @@ frontend-mobile/*-firebase-adminsdk*.json
 /*.zip
 /_patch22_temp/
 .vite/
+
+# Terraform
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.backup
+infra/*.tfvars
+infra/.terraform.lock.hcl

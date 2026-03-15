@@ -2,6 +2,7 @@
  * Sentry: erros + logs estruturados.
  * DSN via EXPO_PUBLIC_SENTRY_DSN. Se vazio, Sentry fica desativado.
  */
+// eslint-disable-next-line import/no-unresolved -- types in types/sentry-react-native.d.ts
 import * as Sentry from '@sentry/react-native';
 
 const dsn = (process.env.EXPO_PUBLIC_SENTRY_DSN ?? '').trim();

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Amazon.S3;
 using RenoveJa.Application.Configuration;
 using RenoveJa.Application.Interfaces;
 using RenoveJa.Application.Services.Assistant;
@@ -111,7 +112,33 @@ public static class ServiceCollectionExtensions
     /// <summary>Registra os serviços de infraestrutura.</summary>
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
     {
-        services.AddScoped<IStorageService, SupabaseStorageService>();
+        // Storage: S3 na AWS, Supabase como fallback local
+        var useS3 = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_REGION"))
+                 || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_DEFAULT_REGION"))
+                 || Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production";
+
+        if (useS3)
+        {
+            services.AddDefaultAWSOptions(new Amazon.Extensions.NETCore.Setup.AWSOptions
+            {
+                Region = Amazon.RegionEndpoint.SAEast1
+            });
+            services.AddAWSService<IAmazonS3>();
+            services.Configure<S3StorageConfig>(options =>
+            {
+                options.Region = "sa-east-1";
+                options.PrescriptionsBucket = "renoveja-prescriptions";
+                options.CertificatesBucket = "renoveja-certificates";
+                options.AvatarsBucket = "renoveja-avatars";
+                options.TranscriptsBucket = "renoveja-transcripts";
+            });
+            services.AddScoped<IStorageService, S3StorageService>();
+        }
+        else
+        {
+            services.AddScoped<IStorageService, SupabaseStorageService>();
+        }
+
         services.AddScoped<IMercadoPagoService, MercadoPagoService>();
         services.AddScoped<IDigitalCertificateService, DigitalCertificateService>();
         services.AddScoped<IPrescriptionPdfService, PrescriptionPdfService>();
@@ -169,10 +196,8 @@ public static class ServiceCollectionExtensions
         {
             options.GeminiApiKey = EnvOrConfig(envVars, config, "Gemini__ApiKey", "Gemini:ApiKey");
             options.GeminiApiBaseUrl = EnvOrConfig(envVars, config, "Gemini__ApiBaseUrl", "Gemini:ApiBaseUrl");
-            // FORCE_OPENAI_PROVIDER=1: desabilita Gemini (usa apenas GPT)
             if (string.Equals(Environment.GetEnvironmentVariable("FORCE_OPENAI_PROVIDER"), "1", StringComparison.OrdinalIgnoreCase))
                 options.GeminiApiKey = "";
-            // FORCE_GEMINI_ONLY=1: desabilita GPT (usa apenas Gemini como principal)
             if (string.Equals(Environment.GetEnvironmentVariable("FORCE_GEMINI_ONLY"), "1", StringComparison.OrdinalIgnoreCase))
                 options.ApiKey = "";
         });

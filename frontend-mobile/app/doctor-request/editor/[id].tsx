@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -23,7 +23,7 @@ import { useAppTheme } from '../../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../../lib/designSystem';
 import { parseAiSuggestedExams } from '../../../lib/api';
 import { useRequestEditor } from '../../../hooks/useRequestEditor';
-import { RequestResponseDto, PrescriptionKind } from '../../../types/database';
+import { PrescriptionKind } from '../../../types/database';
 import { DoctorHeader } from '../../../components/ui/DoctorHeader';
 import { DoctorCard } from '../../../components/ui/DoctorCard';
 import { AppButton } from '../../../components/ui/AppButton';
@@ -191,14 +191,11 @@ export default function PrescriptionEditorScreen() {
     loading,
     loadError,
     medications,
-    setMedications,
     exams,
     setExams,
     prescriptionKind,
     setPrescriptionKind,
-    rejectedSuggestions,
     editingSuggestionIndex,
-    setEditingSuggestionIndex,
     editingSuggestionValue,
     setEditingSuggestionValue,
     cidQuery,
@@ -220,7 +217,6 @@ export default function PrescriptionEditorScreen() {
     pdfUri,
     pdfLoading,
     complianceValidation,
-    loadRequest,
     loadPdfPreview,
     handleSave,
     handleSign,
@@ -236,9 +232,7 @@ export default function PrescriptionEditorScreen() {
     addCustom,
     removeMedication,
     updateMedication,
-    setLoadError,
     retryLoad,
-    pdfBlobUrlRef,
   } = editor;
 
   /** Ao abrir o formulário de assinatura, rola até o final para que o TextInput da senha fique visível. */

@@ -13,7 +13,7 @@ export default function ExportacaoScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [exporting, setExporting] = useState(false);
-  const [lastResult, setLastResult] = useState<{ exportados: number; erros: number } | null>(null);
+  const [, setLastResult] = useState<{ exportados: number; erros: number } | null>(null);
 
   const handleExportar = async () => {
     setExporting(true);

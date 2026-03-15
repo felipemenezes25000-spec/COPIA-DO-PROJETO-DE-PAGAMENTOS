@@ -1,0 +1,75 @@
+# ============================================================
+# S3 Buckets
+# ============================================================
+
+locals {
+  private_buckets = {
+    prescriptions = aws_s3_bucket.prescriptions.id
+    certificates  = aws_s3_bucket.certificates.id
+    avatars       = aws_s3_bucket.avatars.id
+    transcripts   = aws_s3_bucket.transcripts.id
+  }
+}
+
+resource "aws_s3_bucket" "prescriptions" {
+  bucket = "${var.project}-prescriptions"
+}
+
+resource "aws_s3_bucket" "certificates" {
+  bucket = "${var.project}-certificates"
+}
+
+resource "aws_s3_bucket" "avatars" {
+  bucket = "${var.project}-avatars"
+}
+
+resource "aws_s3_bucket" "transcripts" {
+  bucket = "${var.project}-transcripts"
+}
+
+resource "aws_s3_bucket" "frontend" {
+  bucket = "${var.project}-frontend-web"
+}
+
+# Block public access em buckets privados
+resource "aws_s3_bucket_public_access_block" "private" {
+  for_each = local.private_buckets
+
+  bucket                  = each.value
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# Versionamento em prescriptions e certificates
+resource "aws_s3_bucket_versioning" "prescriptions" {
+  bucket = aws_s3_bucket.prescriptions.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_versioning" "certificates" {
+  bucket = aws_s3_bucket.certificates.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+# Lifecycle: prescriptions → Glacier após 365 dias
+resource "aws_s3_bucket_lifecycle_configuration" "prescriptions" {
+  bucket = aws_s3_bucket.prescriptions.id
+
+  rule {
+    id     = "archive-old-prescriptions"
+    status = "Enabled"
+
+    filter {}
+
+    transition {
+      days          = 365
+      storage_class = "GLACIER"
+    }
+  }
+}

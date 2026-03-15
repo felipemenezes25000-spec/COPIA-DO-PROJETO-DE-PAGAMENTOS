@@ -1,0 +1,56 @@
+{
+  "family": "renoveja-api",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::064212133215:role/renoveja-ecs-execution",
+  "taskRoleArn": "arn:aws:iam::064212133215:role/renoveja-ecs-task",
+  "containerDefinitions": [{
+    "name": "api",
+    "image": "064212133215.dkr.ecr.sa-east-1.amazonaws.com/renoveja-api:latest",
+    "portMappings": [{"containerPort": 8080, "protocol": "tcp"}],
+    "environment": [
+      {"name": "ASPNETCORE_ENVIRONMENT", "value": "Production"},
+      {"name": "ASPNETCORE_URLS", "value": "http://+:8080"},
+      {"name": "AllowedHosts", "value": "*"},
+      {"name": "ConnectionStrings__DefaultConnection", "value": "Host=renoveja-postgres.c54og6486w6w.sa-east-1.rds.amazonaws.com;Port=5432;Database=renoveja;Username=postgres;Password=RnvJa2026#Pr0d!Sx9kL2m;SSL Mode=Prefer"},
+      {"name": "Redis__ConnectionString", "value": "renoveja-redis.psfcse.0001.sae1.cache.amazonaws.com:6379"},
+      {"name": "AWS_REGION", "value": "sa-east-1"}
+    ],
+    "secrets": [
+      {"name": "DAILY_API_KEY", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/DAILY_API_KEY"},
+      {"name": "DAILY_DOMAIN", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/DAILY_DOMAIN"},
+      {"name": "DAILY_ROOM_PREFIX", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/DAILY_ROOM_PREFIX"},
+      {"name": "DAILY_ROOM_EXPIRY_MINUTES", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/DAILY_ROOM_EXPIRY_MINUTES"},
+      {"name": "Supabase__DatabaseUrl", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/Supabase__DatabaseUrl"},
+      {"name": "OpenAI__ApiKey", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/OpenAI__ApiKey"},
+      {"name": "CertificateEncryption__Key", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/CertificateEncryption__Key"},
+      {"name": "MercadoPago__AccessToken", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/MercadoPago__AccessToken"},
+      {"name": "MercadoPago__PublicKey", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/MercadoPago__PublicKey"},
+      {"name": "MercadoPago__ClientId", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/MercadoPago__ClientId"},
+      {"name": "MercadoPago__ClientSecret", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/MercadoPago__ClientSecret"},
+      {"name": "MercadoPago__WebhookSecret", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/MercadoPago__WebhookSecret"},
+      {"name": "MercadoPago__NotificationUrl", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/MercadoPago__NotificationUrl"},
+      {"name": "Api__BaseUrl", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/Api__BaseUrl"},
+      {"name": "Api__DocumentTokenSecret", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/Api__DocumentTokenSecret"},
+      {"name": "Verification__BaseUrl", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/Verification__BaseUrl"},
+      {"name": "Google__ClientId", "valueFrom": "arn:aws:ssm:sa-east-1:064212133215:parameter/renoveja/prod/Google__ClientId"}
+    ],
+    "healthCheck": {
+      "command": ["CMD-SHELL", "wget -q --spider http://localhost:8080/api/health || exit 1"],
+      "interval": 30,
+      "timeout": 10,
+      "retries": 5,
+      "startPeriod": 60
+    },
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "/ecs/renoveja-api",
+        "awslogs-region": "sa-east-1",
+        "awslogs-stream-prefix": "api"
+      }
+    }
+  }]
+}

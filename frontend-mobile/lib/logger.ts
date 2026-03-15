@@ -29,6 +29,20 @@ function shouldSendToSentry(level: LogLevel): boolean {
   return levelIdx >= minIdx;
 }
 
+function logToConsole(level: LogLevel, prefix: string, message: string, attrs: Record<string, string | number | boolean>): void {
+  const args = [prefix, message, ...(Object.keys(attrs).length ? [attrs] : [])];
+  if (level === 'error' || level === 'fatal') {
+    // eslint-disable-next-line no-console -- intentional in __DEV__
+    console.error(...args);
+  } else if (level === 'warn') {
+    // eslint-disable-next-line no-console -- intentional in __DEV__
+    console.warn(...args);
+  } else {
+    // eslint-disable-next-line no-console -- intentional in __DEV__
+    console.log(...args);
+  }
+}
+
 function log(
   level: LogLevel,
   category: LogCategory,
@@ -40,19 +54,17 @@ function log(
     Object.entries(payload).filter(([, v]) => v !== undefined)
   ) as Record<string, string | number | boolean>;
 
-  if (typeof Sentry !== 'undefined' && Sentry.logger && shouldSendToSentry(level)) {
-    const fn = Sentry.logger[level];
+  const sentry = Sentry as typeof Sentry | undefined;
+  if (sentry?.logger && shouldSendToSentry(level)) {
+    const fn = sentry.logger[level];
     if (typeof fn === 'function') {
-      fn.call(Sentry.logger, message, safeAttrs);
+      fn.call(sentry.logger, message, safeAttrs);
     }
   }
 
   if (__DEV__) {
     const prefix = `[${category}]`;
-    const args = [prefix, message, ...(Object.keys(safeAttrs).length ? [safeAttrs] : [])];
-    if (level === 'error' || level === 'fatal') console.error(...args);
-    else if (level === 'warn') console.warn(...args);
-    else console.log(...args);
+    logToConsole(level, prefix, message, safeAttrs);
   }
 }
 
@@ -73,8 +85,9 @@ export const logger = {
   exception: (category: LogCategory, err: unknown, msg?: string, attrs?: LogAttrs) => {
     const message = msg ?? (err instanceof Error ? err.message : String(err));
     log('error', category, message, attrs);
-    if (typeof Sentry !== 'undefined' && Sentry.captureException) {
-      Sentry.captureException(err, { extra: { ...attrs, 'log.category': category } });
+    const sentry = Sentry as typeof Sentry | undefined;
+    if (sentry?.captureException) {
+      sentry.captureException(err, { extra: { ...attrs, 'log.category': category } });
     }
   },
 };

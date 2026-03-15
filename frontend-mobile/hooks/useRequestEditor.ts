@@ -238,7 +238,7 @@ export function useRequestEditor({ requestId, router }: UseRequestEditorOptions)
     } finally {
       setPdfLoading(false);
     }
-  }, [requestId, request?.requestType]);
+  }, [requestId, request]);
 
   const handleSave = useCallback(async () => {
     if (isExam) {
