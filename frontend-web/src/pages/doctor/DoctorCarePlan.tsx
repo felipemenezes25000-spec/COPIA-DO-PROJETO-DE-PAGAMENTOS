@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import {
   Loader2, ArrowLeft, ClipboardList, CheckCircle2, Clock,
-  Play, FileText, Image, ExternalLink, AlertTriangle, XCircle,
+  Play, FileText, Image, ExternalLink, AlertTriangle,
 } from 'lucide-react';
 
 function formatStatus(s: string): string {
@@ -232,20 +232,17 @@ export default function DoctorCarePlan() {
                     {task.description && (
                       <p className="text-sm text-muted-foreground mb-2">{task.description}</p>
                     )}
-                    {/* Payload details */}
-                    {payload.instructions && (
+                    {typeof payload.instructions === 'string' && payload.instructions && (
                       <p className="text-xs text-muted-foreground italic mb-2">
-                        Instruções: {String(payload.instructions)}
+                        Instruções: {payload.instructions}
                       </p>
                     )}
-                    {payload.priority && (
+                    {typeof payload.priority === 'string' && payload.priority && (
                       <Badge variant="outline" className="text-[10px] mb-2">
-                        Prioridade: {String(payload.priority)}
+                        Prioridade: {payload.priority}
                       </Badge>
                     )}
-                    {/* Files */}
                     <TaskFileList files={task.files} />
-                    {/* Task actions */}
                     {(canStart || canComplete) && (
                       <div className="flex gap-2 mt-3">
                         {canStart && (
@@ -280,7 +277,6 @@ export default function DoctorCarePlan() {
           })}
         </div>
 
-        {/* Review & close button */}
         {carePlan.status === 'ready_for_review' && (
           <Button onClick={handleReviewAndClose} disabled={saving} className="w-full gap-2">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}

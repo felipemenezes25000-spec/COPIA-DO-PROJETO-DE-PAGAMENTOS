@@ -81,7 +81,7 @@ export default function DoctorRequestDetail() {
             setPatient(p);
           } catch { /* no patient data */ }
         }
-        if (data.type === 'consultation') {
+        if ((data.type || (data as unknown as Record<string, unknown>).requestType as string || '').toLowerCase() === 'consultation') {
           getCarePlanByConsultation(id).then((cp) => cp && setCarePlanId(cp.id)).catch(() => {});
         }
       })
@@ -219,18 +219,19 @@ export default function DoctorRequestDetail() {
   }
 
   const statusInfo = getStatusInfo(request.status);
-  const Icon = getTypeIcon(request.type);
+  const reqType = (request.type || (request as unknown as Record<string, unknown>).requestType as string || '').toLowerCase();
+  const Icon = getTypeIcon(reqType);
   const symptomsList = normalizeSymptoms(request.symptoms);
   const statusNorm = normalizeStatus(request.status);
 
   const canApprove = ['submitted', 'pending'].includes(statusNorm);
   const canReject = ['submitted', 'pending', 'in_review', 'approved_pending_payment', 'approved', 'paid'].includes(statusNorm);
   const canEdit = ['paid'].includes(statusNorm);
-  const canVideo = request.type === 'consultation' && ['consultation_accepted', 'consultation_ready', 'in_consultation'].includes(statusNorm);
-  const canAcceptConsult = request.type === 'consultation' && statusNorm === 'paid';
+  const canVideo = reqType === 'consultation' && ['consultation_accepted', 'consultation_ready', 'in_consultation'].includes(statusNorm);
+  const canAcceptConsult = reqType === 'consultation' && statusNorm === 'paid';
   const canCancel = ['submitted', 'pending', 'in_review'].includes(statusNorm);
   const canDeliver = statusNorm === 'signed';
-  const canGenPdf = statusNorm === 'paid' && request.type !== 'consultation';
+  const canGenPdf = statusNorm === 'paid' && reqType !== 'consultation';
   const canDownload = !!request.signedDocumentUrl || statusNorm === 'signed' || statusNorm === 'delivered';
 
   return (
@@ -250,7 +251,7 @@ export default function DoctorRequestDetail() {
                 <Icon className="h-5 w-5 text-muted-foreground" aria-hidden />
               </div>
               <div>
-                <h1 className="text-xl font-bold tracking-tight">{getTypeLabel(request.type)}</h1>
+                <h1 className="text-xl font-bold tracking-tight">{getTypeLabel(reqType)}</h1>
                 <p className="text-sm text-muted-foreground">
                   {new Date(request.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </p>
@@ -264,14 +265,14 @@ export default function DoctorRequestDetail() {
 
         {/* Status Tracker */}
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-          <StatusTracker status={request.status} type={request.type || (request as { requestType?: string }).requestType} />
+          <StatusTracker status={request.status} type={reqType || (request as { requestType?: string }).requestType} />
         </motion.div>
 
         {/* Dra. Renova — sugestões contextuais */}
         <AssistantBanner
           requestId={request.id}
           requestStatus={request.status}
-          requestType={request.type}
+          requestType={reqType}
           onNavigate={(route) => navigate(route)}
         />
 
@@ -363,11 +364,11 @@ export default function DoctorRequestDetail() {
             </motion.div>
 
             {/* Anamnese estruturada (consultas) */}
-            {request.type === 'consultation' && request.consultationAnamnesis && (
+            {reqType === 'consultation' && request.consultationAnamnesis && (
               <AnamnesisCard
                 consultationAnamnesis={request.consultationAnamnesis}
                 requestId={request.id}
-                requestType={request.type}
+                requestType={reqType}
                 status={request.status}
                 onNavigateToEditor={(prefillMeds) => {
                   try {
@@ -500,7 +501,7 @@ export default function DoctorRequestDetail() {
             )}
 
             {/* ConductForm — apenas para consultas */}
-            {request.type === 'consultation' && (
+            {reqType === 'consultation' && (
               <ConductForm
                 requestId={request.id}
                 initialNotes={request.doctorConductNotes ?? ''}
@@ -588,7 +589,7 @@ export default function DoctorRequestDetail() {
             })()}
 
             {/* AI Suggestion (legado — quando não é consulta) */}
-            {request.aiConductSuggestion && request.type !== 'consultation' && (
+            {request.aiConductSuggestion && reqType !== 'consultation' && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
                 <Card className="shadow-sm border-primary/20 bg-primary/[0.02]">
                   <CardHeader className="pb-2">
@@ -634,7 +635,7 @@ export default function DoctorRequestDetail() {
             )}
 
             {/* Consultation Post-Section (apenas consultas finalizadas) */}
-            {request.type === 'consultation' && statusNorm === 'consultation_finished' && (
+            {reqType === 'consultation' && statusNorm === 'consultation_finished' && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}>
                 <ConsultationPostSection request={request} requestId={id!} />
               </motion.div>

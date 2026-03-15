@@ -5,6 +5,32 @@
 import { authFetch } from './doctor-api-auth';
 import type { MedicalRequest, DoctorStats } from './doctorApi';
 
+// ── Normalize ──
+
+/**
+ * Normaliza campos do backend (.NET PascalCase → camelCase) que o frontend espera.
+ * O backend envia `requestType: "Consultation"`, o frontend usa `type: "consultation"`.
+ */
+function normalizeRequest(data: Record<string, unknown>): Record<string, unknown> {
+  if (!data.type && data.requestType) {
+    data.type = (data.requestType as string).toLowerCase();
+  } else if (data.type && typeof data.type === 'string') {
+    data.type = data.type.toLowerCase();
+  }
+  if (!data.patientName) {
+    data.patientName = data.patientName ?? data.PatientName ?? '';
+  }
+  return data;
+}
+
+function normalizeList(raw: unknown): unknown {
+  const arr = Array.isArray(raw) ? raw : (raw as Record<string, unknown>)?.items ?? (raw as Record<string, unknown>)?.data ?? raw;
+  if (Array.isArray(arr)) {
+    arr.forEach((item: Record<string, unknown>) => normalizeRequest(item));
+  }
+  return raw;
+}
+
 // ── Requests ──
 
 export async function getRequests(params?: { page?: number; pageSize?: number; status?: string; type?: string }) {
@@ -16,13 +42,16 @@ export async function getRequests(params?: { page?: number; pageSize?: number; s
   const qs = query.toString();
   const res = await authFetch(`/api/requests${qs ? `?${qs}` : ''}`);
   if (!res.ok) throw new Error('Erro ao buscar pedidos');
-  return res.json();
+  const data = await res.json();
+  return normalizeList(data);
 }
 
 export async function getRequestById(id: string): Promise<MedicalRequest> {
   const res = await authFetch(`/api/requests/${id}`);
   if (!res.ok) throw new Error('Erro ao buscar pedido');
-  return res.json();
+  const data = await res.json();
+  normalizeRequest(data);
+  return data as MedicalRequest;
 }
 
 // ── Stats ──
