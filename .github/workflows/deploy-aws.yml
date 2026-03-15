@@ -2,7 +2,7 @@ name: Deploy RenoveJá+ AWS
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/frontend-performance-responsive]
   workflow_dispatch:
 
 env:
