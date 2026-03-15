@@ -91,6 +91,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDocumentTokenService, RenoveJa.Application.Services.DocumentTokenService>();
         services.AddScoped<IRequestEventsPublisher, RequestEventsPublisher>();
         services.AddScoped<IRequestApprovalService, RequestApprovalService>();
+        services.AddScoped<IRequestQueryService, RequestQueryService>();
+        services.AddScoped<IConsultationLifecycleService, ConsultationLifecycleService>();
+        services.AddScoped<ISignatureService, SignatureService>();
         services.AddScoped<IRequestService, RequestService>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IPaymentWebhookHandler, PaymentWebhookHandler>();

@@ -1,0 +1,403 @@
+using System.Text;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using RenoveJa.Application.Configuration;
+using RenoveJa.Application.DTOs.Requests;
+using RenoveJa.Application.DTOs.Video;
+using RenoveJa.Application.Interfaces;
+using RenoveJa.Application.Services.Notifications;
+using RenoveJa.Domain.Entities;
+using RenoveJa.Domain.Enums;
+using RenoveJa.Domain.Interfaces;
+
+namespace RenoveJa.Application.Services.Requests;
+
+/// <summary>
+/// Ciclo de vida de consultas: aceitar, iniciar, reportar chamada conectada, finalizar e transcrição.
+/// </summary>
+public class ConsultationLifecycleService(
+    IRequestRepository requestRepository,
+    IUserRepository userRepository,
+    IProductPriceRepository productPriceRepository,
+    IVideoRoomRepository videoRoomRepository,
+    IConsultationAnamnesisRepository consultationAnamnesisRepository,
+    IConsultationSessionStore consultationSessionStore,
+    IConsultationTimeBankRepository consultationTimeBankRepository,
+    IConsultationEncounterService consultationEncounterService,
+    IStorageService storageService,
+    IPaymentRepository paymentRepository,
+    IAuditService auditService,
+    IRequestEventsPublisher requestEventsPublisher,
+    IPushNotificationDispatcher pushDispatcher,
+    IDocumentTokenService documentTokenService,
+    IOptions<ApiConfig> apiConfig,
+    ILogger<ConsultationLifecycleService> logger) : IConsultationLifecycleService
+{
+    private readonly string _apiBaseUrl = (apiConfig?.Value?.BaseUrl ?? "").Trim();
+
+    private Task PublishRequestUpdatedAsync(MedicalRequest request, string? message = null, CancellationToken cancellationToken = default)
+        => requestEventsPublisher.NotifyRequestUpdatedAsync(
+            request.Id, request.PatientId, request.DoctorId,
+            Helpers.EnumHelper.ToSnakeCase(request.Status), message, cancellationToken);
+
+    public async Task<(RequestResponseDto Request, VideoRoomResponseDto VideoRoom)> AcceptConsultationAsync(
+        Guid id, Guid doctorId, CancellationToken cancellationToken = default)
+    {
+        var request = await requestRepository.GetByIdAsync(id, cancellationToken);
+        if (request == null)
+            throw new KeyNotFoundException("Request not found");
+
+        if (request.RequestType != RequestType.Consultation)
+            throw new InvalidOperationException("Only consultation requests can create video rooms");
+
+        if (request.Status != RequestStatus.SearchingDoctor)
+            throw new InvalidOperationException($"Consulta só pode ser aceita quando está em 'searching_doctor'. Status atual: {request.Status}");
+
+        var doctor = await userRepository.GetByIdAsync(doctorId, cancellationToken);
+        if (doctor == null || !doctor.IsDoctor())
+            throw new InvalidOperationException("Doctor not found");
+
+        var consultationType = request.ConsultationType ?? "medico_clinico";
+        var contractedMinutes = request.ContractedMinutes ?? 15;
+        var pricePerMinute = request.PricePerMinute
+            ?? await productPriceRepository.GetPriceAsync("consultation", consultationType, cancellationToken)
+            ?? 6.99m;
+
+        var debitedSeconds = await consultationTimeBankRepository.GetDebitedSecondsForRequestAsync(id, cancellationToken);
+        var freeMinutes = debitedSeconds / 60;
+        var paidMinutes = Math.Max(0, contractedMinutes - freeMinutes);
+        var effectivePrice = paidMinutes * pricePerMinute;
+
+        if (request.Price != null && request.Price.Amount <= 0 && effectivePrice > 0)
+            effectivePrice = 0;
+
+        request.AssignDoctor(doctorId, doctor.Name);
+        request.Approve(effectivePrice);
+        request = await requestRepository.UpdateAsync(request, cancellationToken);
+
+        var roomName = $"consultation-{request.Id}";
+        var videoRoom = VideoRoom.Create(request.Id, roomName);
+        videoRoom = await videoRoomRepository.CreateAsync(videoRoom, cancellationToken);
+
+        var isFree = effectivePrice <= 0;
+        await PublishRequestUpdatedAsync(request, isFree ? "Médico aceitou — consulta confirmada" : "Médico aceitou — efetue o pagamento", cancellationToken);
+        if (isFree)
+            await pushDispatcher.SendAsync(PushNotificationRules.DoctorReady(request.PatientId, request.Id), cancellationToken);
+        else
+            await pushDispatcher.SendAsync(PushNotificationRules.ApprovedPendingPayment(request.PatientId, request.Id, RequestType.Consultation), cancellationToken);
+
+        return (RequestHelpers.MapRequestToDto(request, _apiBaseUrl, documentTokenService), RequestHelpers.MapVideoRoomToDto(videoRoom));
+    }
+
+    public async Task<RequestResponseDto> StartConsultationAsync(Guid id, Guid doctorId, CancellationToken cancellationToken = default)
+    {
+        var request = await requestRepository.GetByIdAsync(id, cancellationToken);
+        if (request == null)
+            throw new KeyNotFoundException("Request not found");
+
+        if (request.RequestType != RequestType.Consultation)
+            throw new InvalidOperationException("Only consultation requests can be started");
+
+        if (request.DoctorId.HasValue && request.DoctorId != doctorId)
+            throw new UnauthorizedAccessException("Only the assigned doctor can start this consultation");
+
+        if (!request.DoctorId.HasValue || request.DoctorId == Guid.Empty)
+        {
+            var doctor = await userRepository.GetByIdAsync(doctorId, cancellationToken);
+            if (doctor == null || !doctor.IsDoctor())
+                throw new UnauthorizedAccessException("User is not a doctor");
+            request.AssignDoctor(doctorId, doctor.Name);
+            request = await requestRepository.UpdateAsync(request, cancellationToken);
+        }
+
+        if (request.Status != RequestStatus.Paid)
+        {
+            var payment = await paymentRepository.GetByRequestIdAsync(id, cancellationToken);
+            if (payment != null && payment.IsApproved())
+            {
+#pragma warning disable CS0618 // Status legado: aceitar PendingPayment para dados antigos
+                if (request.Status == RequestStatus.ApprovedPendingPayment || request.Status == RequestStatus.PendingPayment)
+#pragma warning restore CS0618
+                {
+                    request.MarkAsPaid();
+                    request = await requestRepository.UpdateAsync(request, cancellationToken);
+                    logger.LogInformation("[START-CONSULTATION] Request {RequestId} estava com pagamento aprovado e status desatualizado; corrigido para paid.", id);
+                }
+                else
+                    throw new InvalidOperationException($"Consultation can only be started after payment is confirmed. Current status: {request.Status}.");
+            }
+            else
+                throw new InvalidOperationException($"Consultation can only be started after payment is confirmed. Current status: {request.Status}.");
+        }
+
+        request.StartConsultation();
+        request = await requestRepository.UpdateAsync(request, cancellationToken);
+
+        var videoRoom = await videoRoomRepository.GetByRequestIdAsync(id, cancellationToken);
+        if (videoRoom != null && videoRoom.Status == VideoRoomStatus.Waiting)
+        {
+            videoRoom.Start();
+            await videoRoomRepository.UpdateAsync(videoRoom, cancellationToken);
+        }
+
+        await PublishRequestUpdatedAsync(request, "Médico na sala", cancellationToken);
+        await pushDispatcher.SendAsync(PushNotificationRules.DoctorReady(request.PatientId, request.Id), cancellationToken);
+
+        return RequestHelpers.MapRequestToDto(request, _apiBaseUrl, documentTokenService);
+    }
+
+    public async Task<RequestResponseDto> ReportCallConnectedAsync(Guid id, Guid userId, CancellationToken cancellationToken = default)
+    {
+        var request = await requestRepository.GetByIdAsync(id, cancellationToken);
+        if (request == null)
+            throw new KeyNotFoundException("Request not found");
+
+        if (request.RequestType != RequestType.Consultation)
+            throw new InvalidOperationException("Only consultation requests support call connected");
+
+        if (request.PatientId != userId && request.DoctorId != userId)
+            throw new UnauthorizedAccessException("Only the doctor or patient of this consultation can report call connected");
+
+        var hadStarted = request.ConsultationStartedAt.HasValue;
+        var applied = request.ReportCallConnected(userId);
+        if (!applied)
+            return RequestHelpers.MapRequestToDto(request, _apiBaseUrl, documentTokenService);
+
+        request = await requestRepository.UpdateAsync(request, cancellationToken);
+
+        if (!hadStarted && request.ConsultationStartedAt.HasValue)
+        {
+            if (request.DoctorId.HasValue)
+            {
+                try
+                {
+                    await consultationEncounterService.StartEncounterForConsultationAsync(
+                        request.Id, request.PatientId, request.DoctorId.Value, request.Symptoms, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "[ReportCallConnected] Falha ao criar Encounter para request {RequestId}", request.Id);
+                }
+            }
+
+            await PublishRequestUpdatedAsync(request, "Chamada conectada", cancellationToken);
+        }
+
+        return RequestHelpers.MapRequestToDto(request, _apiBaseUrl, documentTokenService);
+    }
+
+    public async Task<RequestResponseDto> FinishConsultationAsync(Guid id, Guid doctorId, FinishConsultationDto? dto, CancellationToken cancellationToken = default)
+    {
+        var request = await requestRepository.GetByIdAsync(id, cancellationToken);
+        if (request == null)
+            throw new KeyNotFoundException("Request not found");
+
+        if (request.RequestType != RequestType.Consultation)
+            throw new InvalidOperationException("Only consultation requests can be finished");
+
+        if (request.DoctorId.HasValue && request.DoctorId != doctorId)
+            throw new UnauthorizedAccessException("Only the assigned doctor can finish this consultation");
+
+        var canFinish = request.Status == RequestStatus.InConsultation
+            || request.Status == RequestStatus.Paid;
+        if (!canFinish)
+            throw new InvalidOperationException("Consultation must be in progress to be finished");
+
+        request.FinishConsultation(dto?.ClinicalNotes);
+        request = await requestRepository.UpdateAsync(request, cancellationToken);
+
+        var videoRoom = await videoRoomRepository.GetByRequestIdAsync(id, cancellationToken);
+        if (videoRoom != null && videoRoom.Status == VideoRoomStatus.Active)
+        {
+            videoRoom.End();
+            await videoRoomRepository.UpdateAsync(videoRoom, cancellationToken);
+        }
+
+        // Debitar do banco de horas apenas os minutos efetivamente utilizados
+        if (request.ContractedMinutes.HasValue && !string.IsNullOrWhiteSpace(request.ConsultationType))
+        {
+            try
+            {
+                var usedSeconds = videoRoom?.DurationSeconds ?? 0;
+                if (usedSeconds > 0)
+                {
+                    var contractedSeconds = request.ContractedMinutes.Value * 60;
+                    var pricePerMinute = request.PricePerMinute ?? 6.99m;
+                    var amount = request.Price?.Amount ?? 0;
+
+                    var freeSeconds = amount <= 0
+                        ? contractedSeconds
+                        : (int)Math.Max(0, contractedSeconds - (int)Math.Ceiling((double)(amount / pricePerMinute)) * 60);
+
+                    var toDebit = Math.Min(usedSeconds, freeSeconds);
+                    if (toDebit > 0)
+                    {
+                        await consultationTimeBankRepository.DebitAsync(
+                            request.PatientId, request.ConsultationType, toDebit, request.Id, cancellationToken);
+
+                        logger.LogInformation(
+                            "[FinishConsultation] Debitado {Seconds}s do banco de horas de {PatientId} ({Type}) — usado na consulta",
+                            toDebit, request.PatientId, request.ConsultationType);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Falha ao debitar banco de horas para request {RequestId}", id);
+            }
+        }
+
+        // Persistir transcrição e anamnese da consulta no prontuário
+        var sessionData = consultationSessionStore.GetAndRemove(id);
+        if (sessionData != null)
+        {
+            string? transcriptFileUrl = null;
+            var contentToSave = RequestHelpers.BuildTranscriptTxtContent(sessionData, request.ConsultationStartedAt);
+            if (!string.IsNullOrWhiteSpace(contentToSave))
+            {
+                try
+                {
+                    var path = $"transcripts/{id}.txt";
+                    var bytes = Encoding.UTF8.GetBytes(contentToSave);
+                    var result = await storageService.UploadAsync(path, bytes, "text/plain", cancellationToken);
+                    if (result.Success && !string.IsNullOrEmpty(result.Url))
+                    {
+                        transcriptFileUrl = result.Url;
+                        logger.LogInformation("[FinishConsultation] Transcrição salva em Storage: RequestId={RequestId} Path={Path}", id, path);
+                    }
+                    else
+                    {
+                        logger.LogWarning("[FinishConsultation] Falha ao fazer upload da transcrição: RequestId={RequestId} Error={Error}", id, result.ErrorMessage);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "[FinishConsultation] Exceção ao fazer upload da transcrição para Storage: RequestId={RequestId}", id);
+                }
+            }
+            else
+            {
+                logger.LogInformation("[FinishConsultation] Transcrição vazia — não salvando .txt. RequestId={RequestId} hasTranscript={Has} hasSegments={Segments}",
+                    id, !string.IsNullOrWhiteSpace(sessionData.TranscriptText), sessionData.TranscriptSegments?.Count ?? 0);
+            }
+
+            try
+            {
+                var existing = await consultationAnamnesisRepository.GetByRequestIdAsync(id, cancellationToken);
+                if (existing != null)
+                {
+                    var oldValues = new Dictionary<string, object?>
+                    {
+                        ["transcript"] = existing.TranscriptText,
+                        ["transcript_file_url"] = existing.TranscriptFileUrl,
+                        ["anamnesis_json"] = existing.AnamnesisJson,
+                        ["ai_suggestions_json"] = existing.AiSuggestionsJson,
+                        ["evidence_json"] = existing.EvidenceJson
+                    };
+                    existing.Update(sessionData.TranscriptText, transcriptFileUrl, sessionData.AnamnesisJson, sessionData.AiSuggestionsJson, sessionData.EvidenceJson);
+                    await consultationAnamnesisRepository.UpdateAsync(existing, cancellationToken);
+                    var newValues = new Dictionary<string, object?>
+                    {
+                        ["transcript"] = existing.TranscriptText,
+                        ["transcript_file_url"] = existing.TranscriptFileUrl,
+                        ["anamnesis_json"] = existing.AnamnesisJson,
+                        ["ai_suggestions_json"] = existing.AiSuggestionsJson,
+                        ["evidence_json"] = existing.EvidenceJson
+                    };
+                    await auditService.LogModificationAsync(doctorId, "Update", "ConsultationAnamnesis", existing.Id, oldValues, newValues, cancellationToken: cancellationToken);
+                }
+                else
+                {
+                    var entity = ConsultationAnamnesis.Create(
+                        id, sessionData.PatientId, sessionData.TranscriptText, transcriptFileUrl,
+                        sessionData.AnamnesisJson, sessionData.AiSuggestionsJson, sessionData.EvidenceJson);
+                    await consultationAnamnesisRepository.CreateAsync(entity, cancellationToken);
+                    var newValues = new Dictionary<string, object?>
+                    {
+                        ["request_id"] = id,
+                        ["transcript"] = entity.TranscriptText,
+                        ["transcript_file_url"] = entity.TranscriptFileUrl,
+                        ["anamnesis_json"] = entity.AnamnesisJson,
+                        ["ai_suggestions_json"] = entity.AiSuggestionsJson,
+                        ["evidence_json"] = entity.EvidenceJson
+                    };
+                    await auditService.LogModificationAsync(doctorId, "Create", "ConsultationAnamnesis", entity.Id, oldValues: null, newValues: newValues, cancellationToken: cancellationToken);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to persist consultation anamnesis for request {RequestId}", id);
+            }
+        }
+        else
+        {
+            logger.LogInformation("[FinishConsultation] Sem dados de sessão para persistir: RequestId={RequestId} (transcrição pode não ter sido enviada via transcribe-text)", id);
+        }
+
+        // B1: Finalizar Encounter no prontuário com anamnese e plano
+        try
+        {
+            var anamnesisJson = sessionData?.AnamnesisJson;
+            var plan = dto?.ClinicalNotes ?? request.Notes;
+            var icd10 = RequestHelpers.ExtractIcd10FromAnamnesis(anamnesisJson, logger);
+            await consultationEncounterService.FinalizeEncounterForConsultationAsync(
+                id, anamnesisJson, plan, icd10, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "[FinishConsultation] Falha ao finalizar Encounter para request {RequestId}", id);
+        }
+
+        await PublishRequestUpdatedAsync(request, "Consulta finalizada", cancellationToken);
+        await pushDispatcher.SendAsync(PushNotificationRules.ConsultationFinished(request.PatientId, request.Id), cancellationToken);
+
+        return RequestHelpers.MapRequestToDto(request, _apiBaseUrl, documentTokenService);
+    }
+
+    public async Task<string?> GetTranscriptDownloadUrlAsync(Guid id, Guid userId, int expiresInSeconds = 3600, CancellationToken cancellationToken = default)
+    {
+        var request = await requestRepository.GetByIdAsync(id, cancellationToken);
+        if (request == null) return null;
+        if (request.RequestType != RequestType.Consultation) return null;
+
+        var isDoctor = request.DoctorId == userId;
+        var isPatient = request.PatientId == userId;
+        if (!isDoctor && !isPatient) return null;
+
+        var anamnesis = await consultationAnamnesisRepository.GetByRequestIdAsync(id, cancellationToken);
+        if (anamnesis?.TranscriptFileUrl == null) return null;
+
+        var path = storageService.ExtractPathFromStorageUrl(anamnesis.TranscriptFileUrl)
+            ?? $"transcripts/{id}.txt";
+        return await storageService.CreateSignedUrlAsync(path, expiresInSeconds, cancellationToken);
+    }
+
+    public async Task<RequestResponseDto> AutoFinishConsultationAsync(Guid id, Guid userId, CancellationToken cancellationToken = default)
+    {
+        var request = await requestRepository.GetByIdAsync(id, cancellationToken);
+        if (request == null)
+            throw new KeyNotFoundException("Request not found");
+
+        if (request.RequestType != RequestType.Consultation)
+            throw new InvalidOperationException("Only consultation requests can be auto-finished");
+
+        if (request.PatientId != userId && request.DoctorId != userId)
+            throw new UnauthorizedAccessException("Only the patient or assigned doctor can auto-finish this consultation");
+
+        var canFinish = request.Status == RequestStatus.InConsultation
+            || request.Status == RequestStatus.Paid;
+        if (!canFinish)
+            throw new InvalidOperationException($"Consultation is not in a state that can be finished (current: {request.Status})");
+
+        var finisherDoctorId = request.DoctorId ?? userId;
+        return await FinishConsultationAsync(id, finisherDoctorId, null, cancellationToken);
+    }
+
+    public async Task<(int BalanceSeconds, int BalanceMinutes, string ConsultationType)> GetTimeBankBalanceAsync(
+        Guid userId, string consultationType, CancellationToken cancellationToken = default)
+    {
+        var normalizedType = string.IsNullOrWhiteSpace(consultationType) ? "medico_clinico" : consultationType;
+        var balanceSeconds = await consultationTimeBankRepository.GetBalanceSecondsAsync(userId, normalizedType, cancellationToken);
+        return (balanceSeconds, balanceSeconds / 60, normalizedType);
+    }
+}
