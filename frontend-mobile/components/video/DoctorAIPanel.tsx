@@ -10,11 +10,14 @@
  */
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 import { ANA_FIELDS as SHARED_ANA_FIELDS } from '../../lib/domain/anamnesis';
+import { parseMed, parseExam } from './ai-panel/types';
+import { AIIndicators } from './ai-panel/AIIndicators';
+import { AIMetadataPanel } from './ai-panel/AIMetadataPanel';
 
 // ── Types ──
 
@@ -117,6 +120,7 @@ export function DoctorAIPanel({ anamnesis, suggestions, evidence }: DoctorAIPane
   const cidSugerido = (anamnesis?.cid_sugerido as string) ?? '';
   const cidDescricao = (anamnesis?.cid_descricao as string) ?? '';
   const confiancaCid = (anamnesis?.confianca_cid as string) ?? '';
+  const denominadorComum = (anamnesis?.denominador_comum as string) ?? '';
   const gravidade = (anamnesis?.classificacao_gravidade as string) ?? '';
   const diagDiferencial: DiagDiferencial[] = useMemo(() => {
     try { return Array.isArray(anamnesis?.diagnostico_diferencial) ? (anamnesis!.diagnostico_diferencial as DiagDiferencial[]) : []; }

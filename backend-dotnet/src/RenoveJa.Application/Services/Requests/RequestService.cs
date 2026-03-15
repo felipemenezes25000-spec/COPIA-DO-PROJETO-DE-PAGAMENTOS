@@ -2666,10 +2666,11 @@ public class RequestService(
     private async Task EnforcePrescriptionCooldownAsync(
         Guid patientUserId,
         PrescriptionKind? kind,
-        IReadOnlyList<string> medications,
+        IReadOnlyList<string>? medications,
         CancellationToken cancellationToken)
     {
-        var all = await requestRepository.GetByPatientIdAsync(patientUserId, cancellationToken);
+        var all = await requestRepository.GetByPatientIdAsync(patientUserId, cancellationToken)
+            ?? new List<MedicalRequest>();
 
         var activeStatuses = new[]
         {
@@ -2681,7 +2682,7 @@ public class RequestService(
         };
 
         // Normaliza medicamentos para comparação case-insensitive
-        var medsNormalized = medications
+        var medsNormalized = (medications ?? Array.Empty<string>())
             .Where(m => !string.IsNullOrWhiteSpace(m))
             .Select(m => m.Trim().ToLowerInvariant())
             .ToList();
@@ -2764,12 +2765,13 @@ public class RequestService(
     /// </summary>
     private async Task EnforceExamCooldownAsync(
         Guid patientUserId,
-        IReadOnlyList<string> exams,
+        IReadOnlyList<string>? exams,
         CancellationToken cancellationToken)
     {
         if (exams == null || exams.Count == 0) return;
 
-        var all = await requestRepository.GetByPatientIdAsync(patientUserId, cancellationToken);
+        var all = await requestRepository.GetByPatientIdAsync(patientUserId, cancellationToken)
+            ?? new List<MedicalRequest>();
 
         var examsNormalized = exams
             .Where(e => !string.IsNullOrWhiteSpace(e))
@@ -2825,7 +2827,8 @@ public class RequestService(
         if (kind != PrescriptionKind.ControlledSpecial || medications == null || medications.Count == 0)
             return null;
 
-        var all = await requestRepository.GetByPatientIdAsync(patientUserId, cancellationToken);
+        var all = await requestRepository.GetByPatientIdAsync(patientUserId, cancellationToken)
+            ?? new List<MedicalRequest>();
         var fromDate = DateTime.UtcNow.AddDays(-30);
         var medsNormalized = medications
             .Where(m => !string.IsNullOrWhiteSpace(m))

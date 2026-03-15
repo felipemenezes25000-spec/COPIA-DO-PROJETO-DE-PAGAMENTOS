@@ -1,4 +1,3 @@
-import { DoctorLayout } from '@/components/doctor/DoctorLayout';
 import AdminFinanceiro from '@/pages/admin/AdminFinanceiro';
 
 /**

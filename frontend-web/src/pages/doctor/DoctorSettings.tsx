@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { useTheme } from '@/hooks/useTheme';
 import {
   Moon, Sun, Monitor, HelpCircle, FileText, Shield, Info,
-  MessageCircle, Bell, BellOff, Loader2,
+  MessageCircle, Bell, Loader2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';

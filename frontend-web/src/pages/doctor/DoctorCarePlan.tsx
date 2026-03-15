@@ -203,7 +203,7 @@ export default function DoctorCarePlan() {
             const isSubmitted = task.state === 'submitted';
             const isDone = ['reviewed', 'closed', 'completed'].includes(task.state);
             let payload: Record<string, unknown> = {};
-            try { payload = task.payloadJson ? JSON.parse(task.payloadJson) : {}; } catch {}
+            try { payload = task.payloadJson ? JSON.parse(task.payloadJson) : {}; } catch { /* ignore parse error */ }
 
             return (
               <motion.div

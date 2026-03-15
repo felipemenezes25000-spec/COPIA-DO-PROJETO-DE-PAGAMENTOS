@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
@@ -64,8 +64,10 @@ function stp(mx: number): [number, number] {
 function Slider({ label, tag, value, onChange, min, max, step = 1 }: {
   label: string; tag?: string; value: number; onChange: (v: number) => void; min: number; max: number; step?: number;
 }) {
-  const sMax = useRef(max);
-  if (value > sMax.current) sMax.current = Math.ceil(value * 1.3);
+  const [effectiveMax, setEffectiveMax] = useState(max);
+  useEffect(() => {
+    if (value > effectiveMax) setEffectiveMax(Math.ceil(value * 1.3));
+  }, [value, effectiveMax]);
   return (
     <div className="bg-card border border-border rounded-lg p-3">
       <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 mb-2">
@@ -73,8 +75,8 @@ function Slider({ label, tag, value, onChange, min, max, step = 1 }: {
         {tag && <span className="text-[8px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded normal-case tracking-normal">{tag}</span>}
       </label>
       <div className="flex items-center gap-2">
-        <input type="range" className="flex-1 accent-primary h-1" min={min} max={sMax.current} step={step}
-          value={Math.min(value, sMax.current)} onChange={e => onChange(+e.target.value)} />
+        <input type="range" className="flex-1 accent-primary h-1" min={min} max={effectiveMax} step={step}
+          value={Math.min(value, effectiveMax)} onChange={e => onChange(+e.target.value)} />
         <input type="number" className="w-20 bg-secondary border border-border rounded px-2 py-1 text-right text-sm font-mono text-primary focus:outline-none focus:ring-1 focus:ring-primary"
           value={value} min={min} onChange={e => onChange(+e.target.value || 0)} />
       </div>
@@ -150,12 +152,27 @@ const AdminFinanceiro = () => {
     sLabels.push(p); sM.push(x.cM); sIA.push(x.cIA); sInf.push(x.cIF + x.cIV); sSt.push(x.cS);
   }
 
-  const chartOpts: any = {
-    responsive: true, maintainAspectRatio: false,
+  const chartOpts = {
+    responsive: true,
+    maintainAspectRatio: false,
     plugins: { legend: { display: false } },
     scales: {
-      x: { grid: { color: "rgba(255,255,255,.05)" }, ticks: { color: "#71717a", font: { size: 9 }, maxTicksLimit: 12, callback: function (this: any, v: any) { const l = this.getLabelForValue(v); return l >= 1e6 ? (l / 1e6) + "M" : l >= 1e3 ? (l / 1e3) + "K" : l; } } },
-      y: { grid: { color: "rgba(255,255,255,.05)" }, ticks: { color: "#71717a", font: { size: 9 }, callback: (v: any) => FK(v) } },
+      x: {
+        grid: { color: "rgba(255,255,255,.05)" },
+        ticks: {
+          color: "#71717a",
+          font: { size: 9 },
+          maxTicksLimit: 12,
+          callback: (v: number | string) => {
+            const n = typeof v === 'number' ? v : Number(v);
+            return n >= 1e6 ? (n / 1e6) + "M" : n >= 1e3 ? (n / 1e3) + "K" : String(n);
+          },
+        },
+      },
+      y: {
+        grid: { color: "rgba(255,255,255,.05)" },
+        ticks: { color: "#71717a", font: { size: 9 }, callback: (v: number | string) => FK(Number(v)) },
+      },
     },
   };
 
@@ -244,7 +261,7 @@ const AdminFinanceiro = () => {
                     { label: "Receita líquida", data: beRec, borderColor: "#4ade80", backgroundColor: "rgba(74,222,128,.04)", fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 },
                     { label: "Custo total", data: beCst, borderColor: "#f87171", backgroundColor: "rgba(248,113,113,.04)", fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 },
                   ],
-                }} options={{ ...chartOpts, plugins: { ...chartOpts.plugins, legend: { display: true, position: "bottom" as const, labels: { color: "#71717a", usePointStyle: true, padding: 10, font: { size: 9 } } } } }} />
+                }} options={{ ...chartOpts, plugins: { ...(chartOpts.plugins as object), legend: { display: true, position: "bottom" as const, labels: { color: "#71717a", usePointStyle: true, padding: 10, font: { size: 9 } } } } }} />
               </div>
             </CardContent>
           </Card>
@@ -273,8 +290,8 @@ const AdminFinanceiro = () => {
                   ],
                 }} options={{
                   ...chartOpts,
-                  plugins: { ...chartOpts.plugins, legend: { display: true, position: "bottom" as const, labels: { color: "#71717a", usePointStyle: true, padding: 10, font: { size: 9 } } } },
-                  scales: { ...chartOpts.scales, x: { ...chartOpts.scales.x, stacked: true }, y: { ...chartOpts.scales.y, stacked: true } },
+                  plugins: { ...(chartOpts.plugins as object), legend: { display: true, position: "bottom" as const, labels: { color: "#71717a", usePointStyle: true, padding: 10, font: { size: 9 } } } },
+                  scales: { ...(chartOpts.scales as object), x: { ...(chartOpts.scales as { x: object; y: object }).x, stacked: true }, y: { ...(chartOpts.scales as { x: object; y: object }).y, stacked: true } },
                 }} />
               </div>
             </CardContent>

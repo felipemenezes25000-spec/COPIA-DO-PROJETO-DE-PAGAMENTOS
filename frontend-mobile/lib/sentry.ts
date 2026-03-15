@@ -10,12 +10,12 @@ if (dsn) {
     dsn,
     enableLogs: true,
     tracesSampleRate: 0.1,
-    beforeSend(event) {
+    beforeSend(event: { message?: string | null } & Record<string, unknown>) {
       const message = event.message ?? '';
       if (message.includes('502') || message.includes('503')) return null;
       return event;
     },
-    beforeSendLog(log) {
+    beforeSendLog(log: { level: string } & Record<string, unknown>) {
       // Só envia warn+ ao Sentry: erros e avisos. Info/debug ficam no console.
       const levels = ['trace', 'debug', 'info'];
       if (levels.includes(log.level)) return null;
