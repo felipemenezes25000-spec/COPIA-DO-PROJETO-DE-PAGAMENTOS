@@ -1,4 +1,4 @@
-using RenoveJa.Domain.Entities;
+﻿using RenoveJa.Domain.Entities;
 using RenoveJa.Domain.Interfaces;
 using RenoveJa.Infrastructure.Data.Models;
 using RenoveJa.Infrastructure.Data.Supabase;
@@ -34,7 +34,7 @@ public class PushTokenRepository(SupabaseClient supabase) : IPushTokenRepository
     {
         // Use upsert to avoid duplicate key violation on idx_push_tokens_unique
         var model = MapToModel(pushToken);
-        var created = await supabase.UpsertAsync(TableName, model, cancellationToken);
+        await supabase.UpsertAsync(TableName, model, cancellationToken);
         return pushToken;
     }
 
@@ -62,7 +62,7 @@ public class PushTokenRepository(SupabaseClient supabase) : IPushTokenRepository
             }
             catch
             {
-                // Duplicate key — token already exists, just activate it
+                // Duplicate key â€” token already exists, just activate it
                 await supabase.UpdateAsync<PushTokenModel>(
                     TableName, filter, new { active = true }, cancellationToken);
                 result = pushToken;
