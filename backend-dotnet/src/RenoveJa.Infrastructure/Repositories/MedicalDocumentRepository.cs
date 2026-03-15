@@ -1,3 +1,4 @@
+﻿using System.Text.Json;
 using RenoveJa.Domain.Entities;
 using RenoveJa.Domain.Enums;
 using RenoveJa.Domain.Interfaces;
@@ -128,7 +129,7 @@ public class MedicalDocumentRepository(SupabaseClient supabase) : IMedicalDocume
                 model.PractitionerId,
                 model.EncounterId,
                 model.GeneralInstructions,
-                (model.Medications ?? []).Select(m => ParsePrescriptionItem(m, model.Id, model.CreatedAt)).ToList(),
+                (JsonToList(model.Medications)).Select(m => ParsePrescriptionItem(m, model.Id, model.CreatedAt)).ToList(),
                 model.PreviousDocumentId,
                 sig,
                 status,
@@ -140,7 +141,7 @@ public class MedicalDocumentRepository(SupabaseClient supabase) : IMedicalDocume
                 model.EncounterId,
                 model.ClinicalJustification,
                 model.Priority,
-                (model.Exams ?? []).Select(e => ExamItem.FromStorage(
+                (JsonToList(model.Exams)).Select(e => ExamItem.FromStorage(
                     Guid.NewGuid(),
                     model.Id,
                     "exam",
@@ -195,11 +196,11 @@ public class MedicalDocumentRepository(SupabaseClient supabase) : IMedicalDocume
         switch (document)
         {
             case Prescription rx:
-                model.Medications = rx.Items.Select(SerializePrescriptionItem).ToList();
+                model.Medications = ListToJson(rx.Items.Select(SerializePrescriptionItem).ToList());
                 model.GeneralInstructions = rx.GeneralInstructions;
                 break;
             case ExamOrder ex:
-                model.Exams = ex.Items.Select(i => i.Description).ToList();
+                model.Exams = ListToJson(ex.Items.Select(i => i.Description).ToList());
                 model.ClinicalJustification = ex.ClinicalJustification;
                 model.Priority = ex.Priority;
                 break;
@@ -255,4 +256,6 @@ public class MedicalDocumentRepository(SupabaseClient supabase) : IMedicalDocume
             _ => DocumentStatus.Draft
         };
     }
+    private static string? ListToJson(List<string>? list) => list == null || list.Count == 0 ? null : JsonSerializer.Serialize(list);
+    private static List<string> JsonToList(string? json) { if (string.IsNullOrWhiteSpace(json) || json == "null") return new(); try { return JsonSerializer.Deserialize<List<string>>(json) ?? new(); } catch { return new(); } }
 }

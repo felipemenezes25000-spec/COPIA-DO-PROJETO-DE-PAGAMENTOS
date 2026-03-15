@@ -1,3 +1,4 @@
+﻿using System.Text.Json;
 using RenoveJa.Domain.Entities;
 using RenoveJa.Domain.Interfaces;
 using RenoveJa.Infrastructure.Data.Models;
@@ -6,14 +7,14 @@ using RenoveJa.Infrastructure.Data.Supabase;
 namespace RenoveJa.Infrastructure.Repositories;
 
 /// <summary>
-/// Repositório de notificações via Supabase.
+/// RepositÃ³rio de notificaÃ§Ãµes via Supabase.
 /// </summary>
 public class NotificationRepository(SupabaseClient supabase) : INotificationRepository
 {
     private const string TableName = "notifications";
 
     /// <summary>
-    /// Obtém uma notificação pelo ID.
+    /// ObtÃ©m uma notificaÃ§Ã£o pelo ID.
     /// </summary>
     public async Task<Notification?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -84,7 +85,7 @@ public class NotificationRepository(SupabaseClient supabase) : INotificationRepo
             model.Message,
             model.NotificationType,
             model.Read,
-            model.Data,
+            JsonToDict(model.Data),
             model.CreatedAt);
     }
 
@@ -98,8 +99,10 @@ public class NotificationRepository(SupabaseClient supabase) : INotificationRepo
             Message = notification.Message,
             NotificationType = notification.NotificationType.ToString().ToLowerInvariant(),
             Read = notification.Read,
-            Data = notification.Data,
+            Data = DictToJson(notification.Data),
             CreatedAt = notification.CreatedAt
         };
     }
+    private static string? DictToJson(Dictionary<string, object?>? dict) => dict == null || dict.Count == 0 ? null : JsonSerializer.Serialize(dict);
+    private static Dictionary<string, object?>? JsonToDict(string? json) { if (string.IsNullOrWhiteSpace(json) || json == "null") return null; try { return JsonSerializer.Deserialize<Dictionary<string, object?>>(json); } catch { return null; } }
 }

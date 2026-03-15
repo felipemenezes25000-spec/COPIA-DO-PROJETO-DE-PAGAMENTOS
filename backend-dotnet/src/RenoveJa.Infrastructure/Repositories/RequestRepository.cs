@@ -1,3 +1,4 @@
+﻿using System.Text.Json;
 using RenoveJa.Domain.Entities;
 using RenoveJa.Domain.Enums;
 using RenoveJa.Domain.Interfaces;
@@ -8,14 +9,14 @@ using RenoveJa.Infrastructure.Utils;
 namespace RenoveJa.Infrastructure.Repositories;
 
 /// <summary>
-/// Repositório de solicitações médicas via Supabase.
+/// RepositÃ³rio de solicitaÃ§Ãµes mÃ©dicas via Supabase.
 /// </summary>
 public class RequestRepository(SupabaseClient supabase) : IRequestRepository
 {
     private const string TableName = "requests";
 
     /// <summary>
-    /// Obtém uma solicitação pelo ID.
+    /// ObtÃ©m uma solicitaÃ§Ã£o pelo ID.
     /// </summary>
     public async Task<MedicalRequest?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -94,25 +95,25 @@ public class RequestRepository(SupabaseClient supabase) : IRequestRepository
     }
 
     /// <summary>
-    /// Retorna solicitações disponíveis na fila para o médico.
+    /// Retorna solicitaÃ§Ãµes disponÃ­veis na fila para o mÃ©dico.
     ///
-    /// Regras de elegibilidade por tipo (state machine canônica):
-    ///   prescription / exam → status = submitted (sem médico atribuído)
-    ///   consultation        → status = searching_doctor (sem médico atribuído)
+    /// Regras de elegibilidade por tipo (state machine canÃ´nica):
+    ///   prescription / exam â†’ status = submitted (sem mÃ©dico atribuÃ­do)
+    ///   consultation        â†’ status = searching_doctor (sem mÃ©dico atribuÃ­do)
     ///
-    /// Status legados incluídos por retrocompatibilidade:
-    ///   pending, analyzing → equivalentes a submitted em dados históricos
+    /// Status legados incluÃ­dos por retrocompatibilidade:
+    ///   pending, analyzing â†’ equivalentes a submitted em dados histÃ³ricos
     ///
-    /// Excluídos intencionalmente:
-    ///   in_review  → médico já atribuído (doctor_id setado)
-    ///   paid       → aguardando assinatura, não pertence à fila pública
-    ///   approved   → legado, equivalente a approved_pending_payment
+    /// ExcluÃ­dos intencionalmente:
+    ///   in_review  â†’ mÃ©dico jÃ¡ atribuÃ­do (doctor_id setado)
+    ///   paid       â†’ aguardando assinatura, nÃ£o pertence Ã  fila pÃºblica
+    ///   approved   â†’ legado, equivalente a approved_pending_payment
     /// </summary>
     public async Task<List<MedicalRequest>> GetAvailableForQueueAsync(CancellationToken cancellationToken = default)
     {
-        // Status canônicos + legados sem médico atribuído.
+        // Status canÃ´nicos + legados sem mÃ©dico atribuÃ­do.
         // "submitted" = fila de prescription/exam; "searching_doctor" = fila de consultation.
-        // Legacy: "pending" e "analyzing" → mesma semântica de "submitted".
+        // Legacy: "pending" e "analyzing" â†’ mesma semÃ¢ntica de "submitted".
         const string eligibleStatuses = "submitted,searching_doctor,pending,analyzing";
         var filter = $"status=in.({eligibleStatuses})&or=(doctor_id.is.null,doctor_id.eq.00000000-0000-0000-0000-000000000000)";
 
@@ -128,15 +129,15 @@ public class RequestRepository(SupabaseClient supabase) : IRequestRepository
 
     public async Task<(int PendingCount, int InReviewCount, int CompletedCount, decimal TotalEarnings)> GetDoctorStatsAsync(Guid doctorId, CancellationToken cancellationToken = default)
     {
-        // pending: sem médico em submitted/paid (fila)
+        // pending: sem mÃ©dico em submitted/paid (fila)
         var pendingFilter = "status=in.(submitted,paid)&or=(doctor_id.is.null,doctor_id.eq.00000000-0000-0000-0000-000000000000)";
         var pendingCount = await supabase.CountAsync(TableName, pendingFilter, cancellationToken);
 
-        // inReview: com médico em in_review, approved, signed, consultation_ready, in_consultation
+        // inReview: com mÃ©dico em in_review, approved, signed, consultation_ready, in_consultation
         var inReviewFilter = $"doctor_id=eq.{doctorId}&status=in.(in_review,approved,signed,consultation_ready,in_consultation)";
         var inReviewCount = await supabase.CountAsync(TableName, inReviewFilter, cancellationToken);
 
-        // completed: com médico em completed, delivered, consultation_finished
+        // completed: com mÃ©dico em completed, delivered, consultation_finished
         var completedFilter = $"doctor_id=eq.{doctorId}&status=in.(completed,delivered,consultation_finished)";
         var completedCount = await supabase.CountAsync(TableName, completedFilter, cancellationToken);
 
@@ -221,11 +222,11 @@ public class RequestRepository(SupabaseClient supabase) : IRequestRepository
             Status = model.Status,
             PrescriptionType = model.PrescriptionType,
             PrescriptionKind = model.PrescriptionKind,
-            Medications = model.Medications,
-            PrescriptionImages = model.PrescriptionImages,
+            Medications = JsonToList(model.Medications),
+            PrescriptionImages = JsonToList(model.PrescriptionImages),
             ExamType = model.ExamType,
-            Exams = model.Exams,
-            ExamImages = model.ExamImages,
+            Exams = JsonToList(model.Exams),
+            ExamImages = JsonToList(model.ExamImages),
             Symptoms = model.Symptoms,
             // Envia null em vez de 0: constraint requests_price_positive rejeita 0 (consultas gratuitas via banco de horas)
             Price = model.Price == 0m ? null : model.Price,
@@ -321,11 +322,11 @@ public class RequestRepository(SupabaseClient supabase) : IRequestRepository
             model.RequestType,
             SnakeCaseHelper.ToPascalCase(model.Status ?? ""),
             model.PrescriptionType,
-            model.Medications,
-            model.PrescriptionImages,
+            JsonToList(model.Medications),
+            JsonToList(model.PrescriptionImages),
             model.ExamType,
-            model.Exams,
-            model.ExamImages,
+            JsonToList(model.Exams),
+            JsonToList(model.ExamImages),
             model.Symptoms,
             model.Price,
             model.Notes,
@@ -375,11 +376,11 @@ public class RequestRepository(SupabaseClient supabase) : IRequestRepository
             Status = SnakeCaseHelper.ToSnakeCase(request.Status.ToString()),
             PrescriptionType = request.PrescriptionType?.ToString().ToLowerInvariant(),
             PrescriptionKind = request.PrescriptionKind.HasValue ? SnakeCaseHelper.ToSnakeCase(request.PrescriptionKind.Value.ToString()) : null,
-            Medications = request.Medications,
-            PrescriptionImages = request.PrescriptionImages,
+            Medications = ListToJson(request.Medications),
+            PrescriptionImages = ListToJson(request.PrescriptionImages),
             ExamType = request.ExamType,
-            Exams = request.Exams,
-            ExamImages = request.ExamImages,
+            Exams = ListToJson(request.Exams),
+            ExamImages = ListToJson(request.ExamImages),
             Symptoms = request.Symptoms,
             Price = request.Price?.Amount,
             Notes = request.Notes,
@@ -411,4 +412,6 @@ public class RequestRepository(SupabaseClient supabase) : IRequestRepository
             UpdatedAt = request.UpdatedAt
         };
     }
+    private static string? ListToJson(List<string>? list) => list == null || list.Count == 0 ? null : JsonSerializer.Serialize(list);
+    private static List<string> JsonToList(string? json) { if (string.IsNullOrWhiteSpace(json) || json == "null") return new(); try { return JsonSerializer.Deserialize<List<string>>(json) ?? new(); } catch { return new(); } }
 }
