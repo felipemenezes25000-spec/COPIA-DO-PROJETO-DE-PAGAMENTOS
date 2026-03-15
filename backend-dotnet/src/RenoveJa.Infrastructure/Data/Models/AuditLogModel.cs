@@ -1,3 +1,4 @@
+using System.Text.Json;
 using RenoveJa.Domain.Entities;
 
 namespace RenoveJa.Infrastructure.Data.Models;
@@ -10,13 +11,29 @@ public class AuditLogModel
     public string Action { get; set; } = string.Empty;
     public string EntityType { get; set; } = string.Empty;
     public Guid? EntityId { get; set; }
-    public Dictionary<string, object?>? OldValues { get; set; }
-    public Dictionary<string, object?>? NewValues { get; set; }
+    public string? OldValues { get; set; }
+    public string? NewValues { get; set; }
     public string? IpAddress { get; set; }
     public string? UserAgent { get; set; }
     public string? CorrelationId { get; set; }
-    public Dictionary<string, object?>? Metadata { get; set; }
+    public string? Metadata { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    private static readonly JsonSerializerOptions JsonOpts = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = false
+    };
+
+    private static string? DictToJson(Dictionary<string, object?>? dict)
+        => dict == null || dict.Count == 0 ? null : JsonSerializer.Serialize(dict, JsonOpts);
+
+    private static Dictionary<string, object?>? JsonToDict(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json) || json == "{}" || json == "null") return null;
+        try { return JsonSerializer.Deserialize<Dictionary<string, object?>>(json, JsonOpts); }
+        catch { return null; }
+    }
 
     public static AuditLogModel FromDomain(AuditLog auditLog)
     {
@@ -27,12 +44,12 @@ public class AuditLogModel
             Action = auditLog.Action,
             EntityType = auditLog.EntityType,
             EntityId = auditLog.EntityId,
-            OldValues = auditLog.OldValues,
-            NewValues = auditLog.NewValues,
+            OldValues = DictToJson(auditLog.OldValues),
+            NewValues = DictToJson(auditLog.NewValues),
             IpAddress = auditLog.IpAddress,
             UserAgent = auditLog.UserAgent,
             CorrelationId = auditLog.CorrelationId,
-            Metadata = auditLog.Metadata,
+            Metadata = DictToJson(auditLog.Metadata),
             CreatedAt = auditLog.CreatedAt
         };
     }
@@ -45,12 +62,12 @@ public class AuditLogModel
             Action,
             EntityType,
             EntityId,
-            OldValues,
-            NewValues,
+            JsonToDict(OldValues),
+            JsonToDict(NewValues),
             IpAddress,
             UserAgent,
             CorrelationId,
-            Metadata,
+            JsonToDict(Metadata),
             CreatedAt);
     }
 }

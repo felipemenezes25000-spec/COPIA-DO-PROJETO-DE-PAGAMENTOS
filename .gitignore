@@ -23,6 +23,7 @@ backend-dotnet/publish-test/
 .env.*.local
 .env.production
 .env.*
+envs/
 
 # OS / IDE
 .DS_Store
