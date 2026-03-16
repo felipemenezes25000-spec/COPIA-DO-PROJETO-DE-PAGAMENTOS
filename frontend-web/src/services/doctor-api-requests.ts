@@ -149,7 +149,7 @@ export async function getDoctorQueue(specialty?: string) {
 }
 
 export async function assignToQueue(id: string) {
-  const res = await authFetch(`/api/requests/${id}/assign-to-queue`, { method: 'POST' });
+  const res = await authFetch(`/api/requests/${id}/assign-queue`, { method: 'POST' });
   if (!res.ok) throw new Error('Erro ao atribuir à fila');
   return res.json();
 }
