@@ -5,7 +5,7 @@ using RenoveJa.Infrastructure.Data.Postgres;
 
 namespace RenoveJa.Infrastructure.Repositories;
 
-public class AiInteractionLogRepository(PostgresClient supabase) : IAiInteractionLogRepository
+public class AiInteractionLogRepository(PostgresClient db) : IAiInteractionLogRepository
 {
     private const string TableName = "ai_interaction_logs";
 
@@ -28,7 +28,7 @@ public class AiInteractionLogRepository(PostgresClient supabase) : IAiInteractio
             CreatedAt = log.CreatedAt
         };
 
-        _ = await supabase.InsertAsync<AiInteractionLogModel>(TableName, model, cancellationToken);
+        _ = await db.InsertAsync<AiInteractionLogModel>(TableName, model, cancellationToken);
     }
 
     private sealed class AiInteractionLogModel

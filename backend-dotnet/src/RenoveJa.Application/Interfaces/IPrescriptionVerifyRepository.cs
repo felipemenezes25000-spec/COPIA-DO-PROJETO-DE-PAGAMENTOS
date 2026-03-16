@@ -1,4 +1,4 @@
-namespace RenoveJa.Application.Interfaces;
+﻿namespace RenoveJa.Application.Interfaces;
 
 /// <summary>
 /// Dados necessários para registrar uma receita no sistema de verificação pública (Verify v2).
@@ -16,7 +16,7 @@ public record PrescriptionVerifyRecord(
     string? PdfHash = null);
 
 /// <summary>
-/// Registra prescrições na tabela 'prescriptions' do Supabase para verificação pública via QR Code.
+/// Registra prescricoes na tabela 'prescriptions' do banco para verificacao publica via QR Code.
 /// </summary>
 public interface IPrescriptionVerifyRepository
 {

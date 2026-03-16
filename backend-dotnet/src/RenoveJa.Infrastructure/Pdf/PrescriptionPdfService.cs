@@ -134,7 +134,7 @@ public class PrescriptionPdfService : IPrescriptionPdfService
         var result = await GenerateAsync(data, cancellationToken);
         if (!result.Success || result.PdfBytes == null) return result;
 
-        var fileName = $"receitas/{data.RequestId}.pdf";
+        var fileName = $"pedidos/{data.RequestId:N}/receita/gerado/receita-{data.RequestId:N}.pdf";
         var uploadResult = await _storageService.UploadAsync(fileName, result.PdfBytes, "application/pdf", cancellationToken);
         if (!uploadResult.Success) return new PrescriptionPdfResult(false, null, null, "Erro ao fazer upload do PDF.");
         return new PrescriptionPdfResult(true, result.PdfBytes, uploadResult.Url, null);

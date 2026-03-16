@@ -124,6 +124,7 @@ export default function AgendaScreen() {
       <FlatList
         data={agenda}
         keyExtractor={item => item.id}
+        getItemLayout={(_: unknown, i: number) => ({ length: 80, offset: 80 * i, index: i })}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}

@@ -1,5 +1,5 @@
 /**
- * CommandPalette — Busca universal estilo Spotlight/Linear/Vercel
+ * CommandPalette — Busca universal estilo Spotlight/Linear
  *
  * Atalho: Cmd+K (Mac) / Ctrl+K (Windows)
  *
@@ -9,7 +9,7 @@
  * - Pacientes recentes (quando há dados)
  * - Atalhos de teclado disponíveis
  *
- * Inspirado no Vercel dashboard, Linear, e Raycast.
+ * Inspirado em Linear e Raycast.
  */
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';

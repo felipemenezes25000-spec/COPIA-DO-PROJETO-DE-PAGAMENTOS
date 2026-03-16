@@ -42,7 +42,7 @@ export async function startRequestsEventsConnection(): Promise<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic SignalR
     const signalR = require('@microsoft/signalr');
     const url = getHubUrl();
-    // Retry policy: 5s, 15s, 30s — evita spam de negotiate em cold start (Render)
+    // Retry policy: 5s, 15s, 30s — evita spam de negotiate em cold start (API)
     const retryDelays = [5000, 15000, 30000];
     const builder = new signalR.HubConnectionBuilder()
       .withUrl(url, {
@@ -70,7 +70,7 @@ export async function startRequestsEventsConnection(): Promise<boolean> {
       });
     });
 
-    // Timeout 15s — Render free tier pode demorar; evita travar o app
+    // Timeout 15s — API pode demorar em cold start; evita travar o app
     const HUB_START_TIMEOUT_MS = 15_000;
     await Promise.race([
       conn.start(),

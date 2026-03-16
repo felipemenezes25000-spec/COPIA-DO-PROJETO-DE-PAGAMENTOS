@@ -1,4 +1,4 @@
-# Fluxo de receita médica (renovação)
+﻿# Fluxo de receita médica (renovação)
 
 Ordem dos passos e endpoints.
 
@@ -13,8 +13,8 @@ Ordem dos passos e endpoints.
 - **Content-Type:** `multipart/form-data`
 - **Campos:** `prescriptionType` (obrigatório: **simples**, **controlado** ou **azul** — define o preço na aprovação), `images` (obrigatório: um ou mais arquivos JPEG, PNG, WebP ou HEIC; máx. 10 MB por arquivo). Medicamentos não são enviados no multipart.
 - **Quem:** paciente (Bearer token).
-- **Efeito:** As imagens são enviadas para o **Supabase Storage** (bucket `prescription-images`). As URLs públicas são salvas na solicitação no banco (`prescription_images`). Status **submitted**.
-- **Resposta:** `{ "request": { "id": "...", "status": "submitted", "prescriptionImages": ["https://...supabase.co/storage/..."], ... } }`
+- **Efeito:** As imagens são enviadas para o **AWS S3** (bucket `prescription-images`). As URLs públicas são salvas na solicitação no banco (`prescription_images`). Status **submitted**.
+- **Resposta:** `{ "request": { "id": "...", "status": "submitted", "prescriptionImages": ["https://..[URL proxy da API]"], ... } }`
 
 ### Envio só com dados (JSON)
 
@@ -85,10 +85,9 @@ Fluxo de **exame** é análogo (POST /api/requests/exam → approve → pagament
 
 ---
 
-## Supabase Storage (fotos de receita)
+## AWS S3 (fotos de receita)
 
 - **Bucket:** `prescription-images` (público para leitura).
-- **Criação do bucket:** a API usa o projeto Supabase definido em **appsettings** (`Supabase:Url`). O bucket deve existir **nesse projeto**. Execute no **SQL Editor** do Dashboard desse projeto o script **`docs/STORAGE_BUCKET.sql`** (ou crie manualmente em Storage um bucket `prescription-images`, público, limite 10 MB, tipos image/jpeg, image/png, image/webp, image/heic).
+- **Criação do bucket:** a API usa o bucket S3 configurado em `AWS_S3_PRESCRIPTIONS_BUCKET` (default: `renoveja-prescriptions`). O bucket deve existir **nesse projeto**. Execute no **SQL Editor** do Dashboard desse projeto o script **`docs/STORAGE_BUCKET.sql`** (ou crie manualmente em Storage um bucket `prescription-images`, público, limite 10 MB, tipos image/jpeg, image/png, image/webp, image/heic).
 - **Limite:** 10 MB por arquivo; tipos: JPEG, PNG, WebP, HEIC.
 - As imagens ficam em `{userId}/{uuid}.{ext}`; a URL pública é salva em `requests.prescription_images` (array de texto).
-- No plano gratuito do Supabase há cota de Storage; no plano pago inicial a cota é maior. Consulte [Supabase Pricing](https://supabase.com/pricing) para limites atuais.

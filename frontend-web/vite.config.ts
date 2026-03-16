@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
-/** Copia index.html para 404.html no build — Vercel serve 404.html em rotas inexistentes, permitindo SPA routing */
+/** Copia index.html para 404.html no build — CDN/servidor estático (ex.: CloudFront/S3) pode servir 404.html em rotas inexistentes, permitindo SPA routing */
 function copyIndexTo404() {
   return {
     name: 'copy-index-to-404',
@@ -27,6 +27,29 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core React runtime — compartilhado por todos os portais
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          // TanStack Query — separado para não bloquear landing page
+          'vendor-query': ['@tanstack/react-query'],
+          // UI libs usadas em todo o app
+          'vendor-ui': ['framer-motion', 'sonner', 'lucide-react'],
+          // Radix primitives (usadas só no portal médico e admin)
+          'vendor-radix': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-select',
+            '@radix-ui/react-tabs',
+            '@radix-ui/react-accordion',
+            '@radix-ui/react-label',
+            '@radix-ui/react-slot',
+          ],
+          // SignalR — carregado só quando portal médico precisa
+          'vendor-signalr': ['@microsoft/signalr'],
+        },
+      },
+    },
   },
   // PWA: Vite copies everything in /public to dist/ automatically
   publicDir: 'public',

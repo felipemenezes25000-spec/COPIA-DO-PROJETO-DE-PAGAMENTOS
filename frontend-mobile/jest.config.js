@@ -39,6 +39,11 @@ module.exports = {
       testEnvironment: 'jsdom',
       roots: ['<rootDir>/__tests__'],
       testMatch: ['**/*.test.ts', '**/*.test.tsx'],
+      testPathIgnorePatterns: [
+        'useDailyCall\\.test\\.ts$',
+        'useDailyTranscription\\.test\\.ts$',
+        'useVideoCallEvents\\.test\\.ts$',
+      ],
       moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
       transform: {
         '^.+\\.tsx?$': ['ts-jest', { tsconfig: { jsx: 'react-jsx' } }],
@@ -47,6 +52,26 @@ module.exports = {
         __DEV__: true,
       },
       setupFiles: ['<rootDir>/jest.setup.early.js'],
+    },
+    {
+      displayName: 'integration-hooks',
+      preset: 'jest-expo',
+      roots: ['<rootDir>/__tests__'],
+      testMatch: [
+        '**/useDailyCall.test.ts',
+        '**/useDailyTranscription.test.ts',
+        '**/useVideoCallEvents.test.ts',
+      ],
+      moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+      transformIgnorePatterns: [
+        'node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|nativewind|react-native-reanimated|@tanstack|@testing-library))',
+      ],
+      moduleNameMapper: {
+        '^react-native-reanimated$': '<rootDir>/__mocks__/react-native-reanimated.js',
+      },
+      globals: { __DEV__: true },
+      setupFiles: ['<rootDir>/jest.setup.early.js'],
+      setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
     },
   ],
   collectCoverageFrom: [
@@ -57,4 +82,12 @@ module.exports = {
     '!**/node_modules/**',
   ],
   coverageDirectory: 'coverage',
+  coverageThreshold: {
+    global: {
+      statements: 25,
+      branches: 15,
+      functions: 15,
+      lines: 26,
+    },
+  },
 };

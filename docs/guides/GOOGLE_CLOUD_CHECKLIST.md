@@ -5,7 +5,7 @@
 | Item | Status |
 |------|--------|
 | IDs no `.env` do frontend | ✅ Web, Android, iOS |
-| `Google__ClientId` no Render | ✅ Configurado |
+| `Google__ClientId` na API (AWS) | ✅ Configurado |
 | Credenciais OAuth no projeto 462336676738 | ✅ Provavelmente criadas |
 
 ---

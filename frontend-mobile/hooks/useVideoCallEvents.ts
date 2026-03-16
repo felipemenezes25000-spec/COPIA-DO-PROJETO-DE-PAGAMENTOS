@@ -9,7 +9,6 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { apiClient } from '../lib/api-client';
-import { AUTH_TOKEN_KEY } from '../lib/constants/storage-keys';
 
 export interface EvidenceItem {
   title: string;
@@ -56,21 +55,19 @@ export function useVideoCallEvents(
       let apiBase = apiClient.getBaseUrl();
       apiBase = apiBase.replace(/\/api\/?$/, '');
 
-      let authToken = '';
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports -- conditional native module
-        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-        authToken = (await AsyncStorage.getItem(AUTH_TOKEN_KEY)) ?? '';
-      } catch {}
-
-      if (!authToken) {
+      // Verifica se há token antes de conectar (falha rápida)
+      const initialToken = await apiClient.getAuthToken();
+      if (!initialToken) {
         console.warn('[SignalR] No auth token found — cannot connect');
         return;
       }
 
       const builder = new signalR.HubConnectionBuilder()
         .withUrl(`${apiBase}/hubs/video`, {
-          accessTokenFactory: () => authToken,
+          // FIX: lê o token a cada chamada via apiClient.getAuthToken() em vez de
+          // capturar uma closure estática. Garante que reconexões automáticas usem
+          // o token atual, não o que existia no momento do connect inicial.
+          accessTokenFactory: async () => (await apiClient.getAuthToken()) ?? '',
         })
         .withAutomaticReconnect();
       if (signalR.LogLevel != null) {

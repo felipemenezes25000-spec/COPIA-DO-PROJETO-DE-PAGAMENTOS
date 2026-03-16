@@ -1,4 +1,4 @@
-# Checklist: Pagamentos, Publicidade Médica e IA
+﻿# Checklist: Pagamentos, Publicidade Médica e IA
 
 **Referências:** Bacen (via PSP), Receita/ISS, CFM/CRM, boas práticas de IA em saúde.
 
@@ -29,7 +29,7 @@
 
 - `backend-dotnet/src/RenoveJa.Application/Services/Payments/PaymentService.cs`
 - `backend-dotnet/src/RenoveJa.Api/Controllers/PaymentsController.cs` — HMAC, webhook
-- `supabase/migrations/20260221000002_incremental_features.sql` — `webhook_events`
+- `backend-dotnet/src/RenoveJa.Infrastructure/Data/Postgres/MigrationRunner.cs20260221000002_incremental_features.sql` — `webhook_events`
 - `docs/MERCADOPAGO.md`
 
 ---

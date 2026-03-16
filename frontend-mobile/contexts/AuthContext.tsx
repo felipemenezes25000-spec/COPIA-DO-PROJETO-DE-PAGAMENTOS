@@ -147,43 +147,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // Valida token ANTES de setar user — evita cascade de 401 em unread-count, requests, hub, etc.
+        // PERF: mostra o app IMEDIATAMENTE com dados do cache (optimistic startup).
+        // A validação do token ocorre em background — elimina tela branca de 200-600ms.
+        clearTimeout(guard);
+        setUser(parsedUser);
+        if (parsedDoctorProfile) setDoctorProfile(parsedDoctorProfile);
+        setLoading(false);
+
+        // Valida token em background — não bloqueia a UI
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 6000);
-        try {
-          const currentUser = await apiClient.get<UserDto>('/api/auth/me', undefined, {
-            signal: controller.signal,
+        apiClient.get<UserDto>('/api/auth/me', undefined, { signal: controller.signal })
+          .then((currentUser) => {
+            clearTimeout(timeoutId);
+            // Atualiza silenciosamente com dados frescos do servidor
+            setUser(currentUser);
+            if (currentUser.role === 'doctor' && parsedDoctorProfile) {
+              setDoctorProfile(parsedDoctorProfile);
+            }
+          })
+          .catch((err: unknown) => {
+            clearTimeout(timeoutId);
+            const status = (err as { status?: number })?.status;
+            const isAborted = err instanceof Error && err.name === 'AbortError';
+            if (status === 401 || status === 403) {
+              // Token inválido ou expirado: desloga
+              clearAuth();
+            } else if (!isAborted) {
+              // Falha de rede ou 5xx — mantém sessão cacheada (já está exibindo)
+              if (__DEV__) console.warn('[AuthContext] Validação bg falhou (rede/servidor), mantendo sessão em cache:', err);
+            }
+            // AbortError (timeout 6s) → mantém sessão cacheada silenciosamente
           });
-          clearTimeout(guard);
-          setUser(currentUser);
-          if (currentUser.role === 'doctor' && parsedDoctorProfile) {
-            setDoctorProfile(parsedDoctorProfile);
-          }
-          setLoading(false);
-        } catch (err: unknown) {
-          const status = (err as { status?: number })?.status;
-          const isAborted = err instanceof Error && err.name === 'AbortError';
-          if (status === 401 || status === 403) {
-            // Token inválido ou expirado: desloga
-            clearTimeout(guard);
-            await clearAuth();
-          } else if (!isAborted) {
-            // Falha de rede, 5xx, timeout — mantém sessão com dados em cache (optimistic)
-            if (__DEV__) console.warn('[AuthContext] Validação falhou (rede/servidor), mantendo sessão em cache:', err);
-            clearTimeout(guard);
-            setUser(parsedUser);
-            if (parsedDoctorProfile) setDoctorProfile(parsedDoctorProfile);
-            setLoading(false);
-          } else {
-            // Timeout: mantém sessão em cache
-            clearTimeout(guard);
-            setUser(parsedUser);
-            if (parsedDoctorProfile) setDoctorProfile(parsedDoctorProfile);
-            setLoading(false);
-          }
-        } finally {
-          clearTimeout(timeoutId);
-        }
         return;
       }
     } catch (error) {

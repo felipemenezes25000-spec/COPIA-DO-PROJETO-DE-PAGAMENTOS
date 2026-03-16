@@ -8,7 +8,7 @@ namespace RenoveJa.Infrastructure.Repositories;
 /// <summary>
 /// Repositório de tokens de autenticação via PostgreSQL (Npgsql/Dapper).
 /// </summary>
-public class AuthTokenRepository(PostgresClient supabase) : IAuthTokenRepository
+public class AuthTokenRepository(PostgresClient db) : IAuthTokenRepository
 {
     private const string TableName = "auth_tokens";
 
@@ -16,7 +16,7 @@ public class AuthTokenRepository(PostgresClient supabase) : IAuthTokenRepository
     {
         // Com Npgsql/Dapper (SQL direto), NÃO precisamos de URL encoding.
         // O PostgRestFilterParser usa parâmetros SQL (@p0) que tratam caracteres especiais.
-        var model = await supabase.GetSingleAsync<AuthTokenModel>(
+        var model = await db.GetSingleAsync<AuthTokenModel>(
             TableName,
             filter: $"token=eq.{token}",
             cancellationToken: cancellationToken);
@@ -25,7 +25,7 @@ public class AuthTokenRepository(PostgresClient supabase) : IAuthTokenRepository
 
     public async Task<List<AuthToken>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<AuthTokenModel>(
+        var models = await db.GetAllAsync<AuthTokenModel>(
             TableName,
             filter: $"user_id=eq.{userId}",
             cancellationToken: cancellationToken);
@@ -35,7 +35,7 @@ public class AuthTokenRepository(PostgresClient supabase) : IAuthTokenRepository
     public async Task<AuthToken> CreateAsync(AuthToken authToken, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(authToken);
-        var created = await supabase.InsertAsync<AuthTokenModel>(
+        var created = await db.InsertAsync<AuthTokenModel>(
             TableName,
             model,
             cancellationToken);
@@ -44,23 +44,23 @@ public class AuthTokenRepository(PostgresClient supabase) : IAuthTokenRepository
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        await supabase.DeleteAsync(TableName, $"id=eq.{id}", cancellationToken);
+        await db.DeleteAsync(TableName, $"id=eq.{id}", cancellationToken);
     }
 
     public async Task DeleteByTokenAsync(string token, CancellationToken cancellationToken = default)
     {
-        await supabase.DeleteAsync(TableName, $"token=eq.{token}", cancellationToken);
+        await db.DeleteAsync(TableName, $"token=eq.{token}", cancellationToken);
     }
 
     public async Task DeleteByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        await supabase.DeleteAsync(TableName, $"user_id=eq.{userId}", cancellationToken);
+        await db.DeleteAsync(TableName, $"user_id=eq.{userId}", cancellationToken);
     }
 
     public async Task DeleteExpiredTokensAsync(CancellationToken cancellationToken = default)
     {
         var now = DateTime.UtcNow;
-        await supabase.DeleteAsync(TableName, $"expires_at=lt.{now:O}", cancellationToken);
+        await db.DeleteAsync(TableName, $"expires_at=lt.{now:O}", cancellationToken);
     }
 
     private static AuthToken MapToDomain(AuthTokenModel model)

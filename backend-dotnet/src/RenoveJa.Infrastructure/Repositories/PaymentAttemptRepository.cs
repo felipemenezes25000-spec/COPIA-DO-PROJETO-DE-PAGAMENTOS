@@ -5,13 +5,13 @@ using RenoveJa.Infrastructure.Data.Postgres;
 
 namespace RenoveJa.Infrastructure.Repositories;
 
-public class PaymentAttemptRepository(PostgresClient supabase) : IPaymentAttemptRepository
+public class PaymentAttemptRepository(PostgresClient db) : IPaymentAttemptRepository
 {
     private const string TableName = "payment_attempts";
 
     public async Task<PaymentAttempt?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<PaymentAttemptModel>(
+        var model = await db.GetSingleAsync<PaymentAttemptModel>(
             TableName,
             filter: $"id=eq.{id}",
             cancellationToken: cancellationToken);
@@ -21,7 +21,7 @@ public class PaymentAttemptRepository(PostgresClient supabase) : IPaymentAttempt
 
     public async Task<PaymentAttempt?> GetByCorrelationIdAsync(string correlationId, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<PaymentAttemptModel>(
+        var model = await db.GetSingleAsync<PaymentAttemptModel>(
             TableName,
             filter: $"correlation_id=eq.{correlationId}",
             cancellationToken: cancellationToken);
@@ -31,7 +31,7 @@ public class PaymentAttemptRepository(PostgresClient supabase) : IPaymentAttempt
 
     public async Task<List<PaymentAttempt>> GetByPaymentIdAsync(Guid paymentId, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<PaymentAttemptModel>(
+        var models = await db.GetAllAsync<PaymentAttemptModel>(
             TableName,
             filter: $"payment_id=eq.{paymentId}",
             orderBy: "created_at.desc",
@@ -42,7 +42,7 @@ public class PaymentAttemptRepository(PostgresClient supabase) : IPaymentAttempt
 
     public async Task<List<PaymentAttempt>> GetByRequestIdAsync(Guid requestId, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<PaymentAttemptModel>(
+        var models = await db.GetAllAsync<PaymentAttemptModel>(
             TableName,
             filter: $"request_id=eq.{requestId}",
             orderBy: "created_at.desc",
@@ -54,7 +54,7 @@ public class PaymentAttemptRepository(PostgresClient supabase) : IPaymentAttempt
     public async Task<PaymentAttempt> CreateAsync(PaymentAttempt attempt, CancellationToken cancellationToken = default)
     {
         var model = PaymentAttemptModel.FromDomain(attempt);
-        var created = await supabase.InsertAsync<PaymentAttemptModel>(
+        var created = await db.InsertAsync<PaymentAttemptModel>(
             TableName,
             model,
             cancellationToken);
@@ -65,7 +65,7 @@ public class PaymentAttemptRepository(PostgresClient supabase) : IPaymentAttempt
     public async Task<PaymentAttempt> UpdateAsync(PaymentAttempt attempt, CancellationToken cancellationToken = default)
     {
         var model = PaymentAttemptModel.FromDomain(attempt);
-        var updated = await supabase.UpdateAsync<PaymentAttemptModel>(
+        var updated = await db.UpdateAsync<PaymentAttemptModel>(
             TableName,
             $"id=eq.{attempt.Id}",
             model,

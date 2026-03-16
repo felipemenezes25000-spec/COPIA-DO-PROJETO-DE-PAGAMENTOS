@@ -1,4 +1,4 @@
-# Diagnóstico: API no Swagger vs Expo
+﻿# Diagnóstico: API no Swagger vs Expo
 
 ## 1. Qual API o Expo está acessando?
 
@@ -50,8 +50,7 @@ Endpoints que **não exigem** token:
 | GET | `/api/integrations/status` | IntegrationsController |
 | POST | `/api/payments/webhook` | PaymentsController (webhook) |
 
-Mesmo sem token, **toda** requisição passa pelo middleware de autenticação, que precisa instanciar `BearerAuthenticationHandler` → `IAuthService` → repositórios → `SupabaseClient`. Se a `Supabase:ServiceKey` for inválida, o `SupabaseClient` lança exceção na construção e a API retorna **400 Bad Request**.
-
+Mesmo sem token, **toda** requisição passa pelo middleware de autenticação, que precisa instanciar `BearerAuthenticationHandler` → `IAuthService` → repositórios → `
 ---
 
 ## 4. O que o log do terminal mostra
@@ -61,8 +60,7 @@ Exemplo típico de log:
 ```
 [API-IN] POST /api/auth/login | UserId=- | IP=127.0.0.1
 [API-OUT] POST /api/auth/login | Status=200 | 0ms
-[ERR] Supabase:ServiceKey deve ser uma chave 'secret' (formato sb_secret_...) ou 'service_role' (JWT)
-...
+[ERR] ...
 HTTP POST /api/auth/login responded 400
 ```
 
@@ -70,24 +68,20 @@ Interpretação:
 
 1. A requisição chega (IP 127.0.0.1 = Swagger / navegador na mesma máquina).
 2. O controller responde 200 em um fluxo.
-3. Em outro fluxo, ocorre exceção em `SupabaseClient.EnsureServiceRoleKey()` (chave inválida).
-4. O `ExceptionHandlingMiddleware` converte isso em resposta **400 Bad Request** (`InvalidOperationException`).
+3. Em outro fluxo, ocorre exceção em `4. O `ExceptionHandlingMiddleware` converte isso em resposta **400 Bad Request** (`InvalidOperationException`).
 
-O erro vem do construtor de `SupabaseClient`, chamado ao montar a cadeia de dependências usada pelo middleware de autenticação.
-
+O erro vem do construtor de `
 ---
 
 ## 5. Causa raiz
 
 | Problema | Causa |
 |----------|-------|
-| Swagger retorna 400 em endpoints sem autorização | `Supabase:ServiceKey` com formato inválido no ambiente onde o Swagger é usado |
-| Dados não são salvos | A exceção ocorre antes do controller ou durante o pipeline, impedindo o fluxo normal |
+| Swagger retorna 400 em endpoints sem autorização | `| Dados não são salvos | A exceção ocorre antes do controller ou durante o pipeline, impedindo o fluxo normal |
 
-Formato aceito pela `Supabase:ServiceKey`:
-
+Formato aceito pela `
 - Válido: `sb_secret_...` ou JWT começando com `eyJ`
-- Inválido: vazio, `SUA_SERVICE_KEY_SUPABASE`, `sb_publishable_...`, `sb_anon_...`
+- Inválido: vazio, placeholder, ou chave anon (pública)
 
 Se `appsettings.Development.json` não existir ou não estiver configurado, o backend usa `appsettings.json` com placeholders, o que causa o erro.
 
@@ -98,13 +92,10 @@ Se `appsettings.Development.json` não existir ou não estiver configurado, o ba
 Possíveis motivos:
 
 1. **Variáveis de ambiente**  
-   Se `Supabase__Url` e `Supabase__ServiceKey` estiverem definidas ao rodar `dotnet run`, elas sobrescrevem o `appsettings.json`. Isso pode fazer o Expo (na rede) funcionar e o Swagger (localhost) falhar se:
-   - Houver mais de uma instância do backend.
-   - O Swagger estiver apontando para outra URL/porta.
+   Se `   - O Swagger estiver apontando para outra URL/porta.
 
 2. **Ordem e escopo das requisições**  
-   O primeiro request que passa pelo middleware de auth dispara a criação de `SupabaseClient`. Se a chave for inválida, esse request falha com 400. Um request anterior (Expo) que já passou pode ter sido atendido por outra configuração ou instância.
-
+   O primeiro request que passa pelo middleware de auth dispara a criação de `
 3. **URL diferente para o Swagger**  
    Se o Swagger estiver em outro host/porta, pode estar falando com outra instância do backend, com configuração diferente.
 
@@ -130,12 +121,9 @@ No Swagger, se você usou **Authorize** e preencheu um token, o Swagger envia `A
 - Use **Logout** ou limpe o token.
 - Execute o login novamente.
 
-### 7.3 Conferir configuração do Supabase
-
+### 7.3 Verificar configuração do backend\n
 1. Existe `appsettings.Development.json` na pasta `RenoveJa.Api`?
-2. `Supabase:ServiceKey` está no formato `sb_secret_...` ou JWT `eyJ...`?
-3. Ao rodar o backend, há variáveis de ambiente definidas (ex.: `Supabase__ServiceKey`)?
-
+2. `3. Ao rodar o backend, há variáveis de ambiente definidas (ex.: `
 ### 7.4 Testar o login via curl
 
 Para isolar o Swagger:
@@ -147,7 +135,7 @@ curl -X POST "http://localhost:5000/api/auth/login" `
 ```
 
 - Se retornar 200: o problema está no uso do Swagger (headers, URL, etc.).
-- Se retornar 400 com mensagem de Supabase: o problema é a configuração do backend.
+- Se retornar 400 com mensagem de PostgreSQL/RDS: o problema é a configuração do backend.
 
 ---
 
@@ -157,7 +145,5 @@ curl -X POST "http://localhost:5000/api/auth/login" `
 |------|-------|
 | URL usada pelo Expo | `http://192.168.15.69:5000` (via `.env`) |
 | URL usada pelo Swagger | Mesmo host da página (ex.: `http://localhost:5000`) |
-| Causa provável do 400 no Swagger | `Supabase:ServiceKey` inválida ou ausente |
-| Impacto em endpoints sem autorização | Mesmo sem token, o pipeline de autenticação instancia serviços que usam `SupabaseClient`, gerando exceção |
-
-**Próximo passo**: garantir que `appsettings.Development.json` existe e contém `Supabase:Url` e `Supabase:ServiceKey` válidos (ou usar variáveis de ambiente equivalentes).
+| Causa provável do 400 no Swagger | `| Impacto em endpoints sem autorização | Mesmo sem token, o pipeline de autenticação instancia serviços que usam `
+**Próximo passo**: garantir que `appsettings.Development.json` existe e contém `PostgreSQL/RDS:Url` e `

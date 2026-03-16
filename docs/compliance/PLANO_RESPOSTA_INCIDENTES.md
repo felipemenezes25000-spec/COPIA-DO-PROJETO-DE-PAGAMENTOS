@@ -18,7 +18,7 @@
 
 - Monitorar logs de auditoria (`audit_logs`), tentativas de verificação (`prescription_verification_logs`), webhooks.
 - Alertas: falhas de autenticação em massa, acessos anômalos, erros de storage.
-- Fonte: Supabase logs, Render logs, alertas manuais.
+- Fonte: AWS CloudWatch (API, ECS), alertas manuais.
 
 ### 2.2 Contenção
 

@@ -1,11 +1,11 @@
-using Microsoft.OpenApi.Any;
+﻿using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace RenoveJa.Api.Swagger;
 
 /// <summary>
-/// Adiciona no Swagger a opção multipart/form-data para POST /api/requests/prescription,
+/// Adiciona no Swagger a opÃ§Ã£o multipart/form-data para POST /api/requests/prescription,
 /// com campo de upload de imagens, prescriptionType e medications.
 /// </summary>
 public class PrescriptionUploadOperationFilter : IOperationFilter
@@ -37,7 +37,7 @@ public class PrescriptionUploadOperationFilter : IOperationFilter
                 ["images"] = new OpenApiSchema
                 {
                     Type = "array",
-                    Description = "Uma ou mais fotos da receita (JPEG, PNG, WebP, HEIC; máx. 10 MB cada)",
+                    Description = "Uma ou mais fotos da receita (JPEG, PNG, WebP, HEIC; mÃ¡x. 10 MB cada)",
                     Items = new OpenApiSchema { Type = "string", Format = "binary" }
                 }
             }
@@ -45,14 +45,14 @@ public class PrescriptionUploadOperationFilter : IOperationFilter
 
         operation.RequestBody ??= new OpenApiRequestBody
         {
-            Description = "JSON: prescriptionType, opcional medications e prescriptionImages. Multipart: prescriptionType e images (fotos salvas no Supabase Storage)."
+            Description = "JSON: prescriptionType, opcional medications e prescriptionImages. Multipart: prescriptionType e images (fotos salvas no S3 Storage)."
         };
         operation.RequestBody.Content["multipart/form-data"] = new OpenApiMediaType
         {
             Schema = multipartSchema
         };
 
-        // Exemplo para application/json com tipo em português
+        // Exemplo para application/json com tipo em portuguÃªs
         if (operation.RequestBody.Content.TryGetValue("application/json", out var jsonContent))
             jsonContent.Example = new OpenApiObject
             {

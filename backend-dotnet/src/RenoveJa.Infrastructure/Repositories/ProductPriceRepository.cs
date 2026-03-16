@@ -7,7 +7,7 @@ namespace RenoveJa.Infrastructure.Repositories;
 /// <summary>
 /// Repositório para consulta de preços fixos na tabela product_prices.
 /// </summary>
-public class ProductPriceRepository(PostgresClient supabase) : IProductPriceRepository
+public class ProductPriceRepository(PostgresClient db) : IProductPriceRepository
 {
     private const string TableName = "product_prices";
 
@@ -16,7 +16,7 @@ public class ProductPriceRepository(PostgresClient supabase) : IProductPriceRepo
         var pt = productType?.Trim().ToLowerInvariant() ?? "prescription";
         var st = subtype?.Trim().ToLowerInvariant() ?? "default";
 
-        var results = await supabase.GetAllAsync<ProductPriceRow>(
+        var results = await db.GetAllAsync<ProductPriceRow>(
             TableName,
             select: "price_brl",
             filter: $"product_type=eq.{pt}&subtype=eq.{st}&is_active=eq.true",

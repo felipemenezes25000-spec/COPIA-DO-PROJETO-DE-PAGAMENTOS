@@ -51,7 +51,7 @@ public class RequestsController(
     /// Cria uma solicitação de receita (tipo + imagens; medicamentos opcional).
     /// prescriptionType obrigatório: simples ou controlado (receita azul ainda não liberada).
     /// JSON: body com prescriptionType, opcional medications e prescriptionImages.
-    /// Multipart: prescriptionType, images (arquivos). Fotos são salvas no Supabase Storage.
+    /// Multipart: prescriptionType, images (arquivos). Fotos sao salvas no S3 Storage.
     /// </summary>
     [HttpPost("prescription")]
     [RequestSizeLimit(10 * 1024 * 1024)] // 10 MB total (multipart)
@@ -205,7 +205,7 @@ public class RequestsController(
                     if (!AllowedImageContentTypes.Contains(contentType, StringComparer.OrdinalIgnoreCase))
                         return BadRequest(new { error = $"Tipo não permitido: {contentType}. Use: {string.Join(", ", AllowedImageContentTypes)}" });
                     await using var stream = file.OpenReadStream();
-                    var url = await storageService.UploadPrescriptionImageAsync(stream, file.FileName, contentType, userId, cancellationToken);
+                    var url = await storageService.UploadExamImageAsync(stream, file.FileName, contentType, userId, cancellationToken);
                     imageUrls.Add(url);
                 }
             }

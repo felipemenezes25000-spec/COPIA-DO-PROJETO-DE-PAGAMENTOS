@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -181,7 +182,83 @@ internal static class AnamnesisResponseParser
             }
         }
 
-        return suggestions;
+        var hasClinicalContext = HasClinicalContext(root);
+        return FilterSuggestionsForAssertiveness(suggestions, hasClinicalContext);
+    }
+
+    /// <summary>
+    /// Remove sugestões vagas ou sem sentido: só mantém frases que citam algo concreto
+    /// (medicamento com dose, exame nomeado, hipótese diagnóstica, orientação específica).
+    /// </summary>
+    internal static List<string> FilterSuggestionsForAssertiveness(List<string> suggestions, bool hasClinicalContext)
+    {
+        if (suggestions.Count == 0) return suggestions;
+
+        var filtered = new List<string>();
+        foreach (var s in suggestions)
+        {
+            if (string.IsNullOrWhiteSpace(s)) continue;
+            if (IsVagueOrMeaningless(s, hasClinicalContext)) continue;
+            filtered.Add(s);
+        }
+
+        if (filtered.Count == 0)
+        {
+            filtered.Add(hasClinicalContext
+                ? "Conduta e exames conforme hipóteses do painel — revisar medicamentos e orientações acima."
+                : "Avaliação inicial — aguardando mais dados da anamnese para refinar HD e conduta.");
+        }
+
+        return filtered;
+    }
+
+    private static bool IsVagueOrMeaningless(string suggestion, bool hasClinicalContext)
+    {
+        var t = suggestion.Trim();
+        if (t.Length < 15) return true;
+
+        var lower = t.ToLowerInvariant();
+        // Mensagem honesta quando ainda não há dados: manter
+        if (!hasClinicalContext && lower.Contains("dados iniciais") && lower.Contains("continuar anamnese")) return false;
+
+        // Frases 100% genéricas sem conteúdo clínico
+        var vagueOnly = new[]
+        {
+            "avaliar necessidade",
+            "refinar hipótese diagnóstica",
+            "refinar hipótese",
+            "solicitar exames complementares",
+            "solicitar exames laboratoriais",
+            "solicitar exames",
+            "avaliação inicial realizada",
+            "sugestões completas serão geradas",
+            "aguardando mais dados da anamnese para refinar"
+        };
+        var isOnlyVague = vagueOnly.Any(v => lower.Contains(v)) && !HasConcreteClinicalContent(t);
+        if (isOnlyVague) return true;
+
+        // Se já temos contexto clínico, não enviar "aguardando mais dados" sem nada concreto
+        if (hasClinicalContext && (lower.Contains("aguardando mais dados") || lower.Contains("aguardando mais dados da anamnese")) && !HasConcreteClinicalContent(t))
+            return true;
+
+        return false;
+    }
+
+    private static bool HasConcreteClinicalContent(string text)
+    {
+        // Dose em mg
+        if (Regex.IsMatch(text, @"\d+\s*mg|\d+\s*ml|\d+mg")) return true;
+        // Posologia
+        if (Regex.IsMatch(text, @"\d+/\d+\s*h|\d+\s*em\s*\d+\s*horas|de\s*\d+\s*em\s*\d+")) return true;
+        // CID
+        if (CidCodeRegex.IsMatch(text)) return true;
+        // Exames comuns
+        if (Regex.IsMatch(text, @"hemograma|PCR|proteína\s*c[- ]?reativa|creatinina|glicemia|sorologia|raio|ecg|ultrassom|tomografia|tsh|t4", RegexOptions.IgnoreCase)) return true;
+        // Medicamentos / via
+        if (Regex.IsMatch(text, @"(paracetamol|dipirona|ibuprofeno|amoxicilina|azitromicina|losartana|omeprazol|comprimido|cp\.?|VO|oral)", RegexOptions.IgnoreCase)) return true;
+        // Diagnóstico/hipótese (palavra com 4+ letras que parece termo clínico)
+        if (Regex.IsMatch(text, @"\b(toxoplasmose|mononucleose|gripal|infeccioso|bacteriano|viral|sinusite|otite|amigdalite|pneumonia|bronquite|rinite)\b", RegexOptions.IgnoreCase)) return true;
+        return false;
     }
 
     internal static string ParseMedicamentosSugeridosV2(JsonElement root, bool hasClinicalContext)

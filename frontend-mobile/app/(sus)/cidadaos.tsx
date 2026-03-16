@@ -146,6 +146,7 @@ export default function CidadaosScreen() {
       <FlatList
         data={filtered}
         keyExtractor={item => item.id}
+        getItemLayout={(_: unknown, i: number) => ({ length: 72, offset: 72 * i, index: i })}
         renderItem={renderCidadao}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}

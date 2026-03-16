@@ -25,6 +25,9 @@ public interface IDailyVideoService
 
     /// <summary>Lista gravações de uma sala (room_name = consult-{requestId:N}). Usado para auditoria.</summary>
     Task<IReadOnlyList<DailyRecordingInfo>> ListRecordingsByRoomAsync(string roomName, CancellationToken ct = default);
+
+    /// <summary>Obtém link de download temporário da gravação (GET /recordings/:id/access-link).</summary>
+    Task<(string? DownloadLink, long? Expires)> GetRecordingAccessLinkAsync(string recordingId, int validForSecs = 3600, CancellationToken ct = default);
 }
 
 /// <summary>Metadados de uma gravação Daily (para auditoria).</summary>
@@ -222,6 +225,23 @@ public class DailyVideoService : IDailyVideoService
         return result.Data
             .Select(r => new DailyRecordingInfo(r.Id, r.RoomName ?? roomName, r.Status ?? "unknown", r.Duration, r.StartTs))
             .ToList();
+    }
+
+    public async Task<(string? DownloadLink, long? Expires)> GetRecordingAccessLinkAsync(string recordingId, int validForSecs = 3600, CancellationToken ct = default)
+    {
+        var url = $"recordings/{recordingId}/access-link?valid_for_secs={validForSecs}";
+        var response = await _httpClient.GetAsync(url, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogWarning("Daily API error getting recording access link {RecordingId}: {Status} {Body}", recordingId, response.StatusCode, errorBody);
+            return (null, null);
+        }
+        using var doc = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+        var root = doc.RootElement;
+        var downloadLink = root.TryGetProperty("download_link", out var dl) ? dl.GetString() : null;
+        var expires = root.TryGetProperty("expires", out var ex) && ex.ValueKind == JsonValueKind.Number ? ex.GetInt64() : (long?)null;
+        return (downloadLink, expires);
     }
 
     private async Task<DailyRoomResult> GetRoomAsync(string roomName, CancellationToken ct)

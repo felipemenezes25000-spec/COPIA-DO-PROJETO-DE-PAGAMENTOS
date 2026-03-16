@@ -5,13 +5,13 @@ using RenoveJa.Infrastructure.Data.Postgres;
 
 namespace RenoveJa.Infrastructure.Repositories;
 
-public class WebhookEventRepository(PostgresClient supabase) : IWebhookEventRepository
+public class WebhookEventRepository(PostgresClient db) : IWebhookEventRepository
 {
     private const string TableName = "webhook_events";
 
     public async Task<WebhookEvent?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<WebhookEventModel>(
+        var model = await db.GetSingleAsync<WebhookEventModel>(
             TableName,
             filter: $"id=eq.{id}",
             cancellationToken: cancellationToken);
@@ -21,7 +21,7 @@ public class WebhookEventRepository(PostgresClient supabase) : IWebhookEventRepo
 
     public async Task<WebhookEvent?> GetByMercadoPagoRequestIdAsync(string mercadoPagoRequestId, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<WebhookEventModel>(
+        var model = await db.GetSingleAsync<WebhookEventModel>(
             TableName,
             filter: $"mercado_pago_request_id=eq.{mercadoPagoRequestId}",
             cancellationToken: cancellationToken);
@@ -31,7 +31,7 @@ public class WebhookEventRepository(PostgresClient supabase) : IWebhookEventRepo
 
     public async Task<List<WebhookEvent>> GetByPaymentIdAsync(string mercadoPagoPaymentId, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<WebhookEventModel>(
+        var models = await db.GetAllAsync<WebhookEventModel>(
             TableName,
             filter: $"mercado_pago_payment_id=eq.{mercadoPagoPaymentId}",
             orderBy: "created_at.desc",
@@ -42,7 +42,7 @@ public class WebhookEventRepository(PostgresClient supabase) : IWebhookEventRepo
 
     public async Task<List<WebhookEvent>> GetByCorrelationIdAsync(string correlationId, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<WebhookEventModel>(
+        var models = await db.GetAllAsync<WebhookEventModel>(
             TableName,
             filter: $"correlation_id=eq.{correlationId}",
             orderBy: "created_at.desc",
@@ -56,7 +56,7 @@ public class WebhookEventRepository(PostgresClient supabase) : IWebhookEventRepo
         try
         {
             var model = WebhookEventModel.FromDomain(webhookEvent);
-            var created = await supabase.InsertAsync<WebhookEventModel>(
+            var created = await db.InsertAsync<WebhookEventModel>(
                 TableName,
                 model,
                 cancellationToken);
@@ -77,7 +77,7 @@ public class WebhookEventRepository(PostgresClient supabase) : IWebhookEventRepo
     public async Task<WebhookEvent> UpdateAsync(WebhookEvent webhookEvent, CancellationToken cancellationToken = default)
     {
         var model = WebhookEventModel.FromDomain(webhookEvent);
-        var updated = await supabase.UpdateAsync<WebhookEventModel>(
+        var updated = await db.UpdateAsync<WebhookEventModel>(
             TableName,
             $"id=eq.{webhookEvent.Id}",
             model,

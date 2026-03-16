@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader, AppCard } from '../components/ui';
 import { fetchPushTokens, setPushPreference, sendTestPush } from '../lib/api';
@@ -11,13 +11,16 @@ import { getMutedKeys, unmuteAll } from '../lib/triage/triagePersistence';
 import { showToast } from '../components/ui/Toast';
 import { useColorSchemeContext } from '../contexts/ColorSchemeContext';
 import { haptics } from '../lib/haptics';
+import { isExpoGo } from '../lib/expo-go';
 
 /**
  * Tela de configurações acessada por "Configurações" na aba Perfil.
  * Contém opções de assistente, aparência, notificações e categorias de push.
  */
 export default function SettingsScreen() {
-  const [pushEnabled, setPushEnabled] = useState(true);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  // null = ainda carregando, false = sem token, true = token registrado
+  const [hasToken, setHasToken] = useState<boolean | null>(null);
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [mutedCount, setMutedCount] = useState(0);
   const [categoryPrefs, setCategoryPrefs] = useState<PushPreferencesDto>({
@@ -40,10 +43,15 @@ export default function SettingsScreen() {
   useEffect(() => {
     fetchPushTokens()
       .then(tokens => {
-        if (tokens.length === 0) setPushEnabled(true);
-        else setPushEnabled(tokens.some((t: { active: boolean }) => t.active));
+        const hasRegistered = tokens.length > 0;
+        setHasToken(hasRegistered);
+        // Só mostra toggle ativo se há token registrado E pelo menos um ativo
+        setPushEnabled(hasRegistered && tokens.some((t: { active: boolean }) => t.active));
       })
-      .catch(() => showToast({ message: 'Não foi possível carregar status de push', type: 'error' }));
+      .catch(() => {
+        setHasToken(false);
+        showToast({ message: 'Não foi possível carregar status de push', type: 'error' });
+      });
   }, []);
 
   useEffect(() => {
@@ -162,6 +170,32 @@ export default function SettingsScreen() {
 
         <AppCard style={styles.section}>
           <Text style={styles.sectionTitle}>Notificações</Text>
+
+          {/* Banner: app rodando no Expo Go — push não suportado */}
+          {isExpoGo && (
+            <View style={styles.infoBanner}>
+              <Ionicons name="information-circle-outline" size={16} color={colors.textMuted} />
+              <Text style={[styles.bannerText, { color: colors.textMuted }]}>
+                Push não disponível no Expo Go. Use uma build EAS.
+              </Text>
+            </View>
+          )}
+
+          {/* Banner: sem token registrado (build real, mas permissão negada ou falha no registro) */}
+          {!isExpoGo && hasToken === false && (
+            <TouchableOpacity
+              style={styles.warningBanner}
+              onPress={() => Linking.openSettings()}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="warning-outline" size={16} color="#F59E0B" />
+              <Text style={styles.warningBannerText}>
+                Push não registrado. Verifique as permissões do app.
+              </Text>
+              <Text style={[styles.linkText, { fontSize: 12 }]}>Abrir</Text>
+            </TouchableOpacity>
+          )}
+
           <SettingItem
             icon="notifications-outline"
             label="Notificações Push"
@@ -169,6 +203,7 @@ export default function SettingsScreen() {
               <Switch
                 value={pushEnabled}
                 onValueChange={handlePushToggle}
+                disabled={!hasToken}
                 trackColor={{ true: colors.success, false: colors.border }}
                 thumbColor={colors.white}
               />
@@ -179,8 +214,12 @@ export default function SettingsScreen() {
             icon="send-outline"
             label="Testar push"
             right={
-              <TouchableOpacity onPress={handleTestPush} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-                <Text style={styles.linkText}>Enviar</Text>
+              <TouchableOpacity
+                onPress={handleTestPush}
+                disabled={!hasToken}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Text style={[styles.linkText, !hasToken && styles.linkTextDisabled]}>Enviar</Text>
               </TouchableOpacity>
             }
           />
@@ -311,11 +350,47 @@ function makeStyles(colors: DesignColors) {
       fontWeight: '600',
       color: colors.primary,
     },
+    linkTextDisabled: {
+      opacity: 0.35,
+    },
     mutedText: {
       fontSize: 14,
       fontFamily: 'PlusJakartaSans_500Medium',
       fontWeight: '500',
       color: colors.textMuted,
+    },
+    infoBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: colors.surfaceSecondary ?? 'rgba(0,0,0,0.04)',
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      marginBottom: uiTokens.spacing.md,
+    },
+    warningBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: 'rgba(245,158,11,0.08)',
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      marginBottom: uiTokens.spacing.md,
+    },
+    warningBannerText: {
+      flex: 1,
+      fontSize: 12,
+      fontFamily: 'PlusJakartaSans_500Medium',
+      fontWeight: '500',
+      color: '#F59E0B',
+    },
+    bannerText: {
+      flex: 1,
+      fontSize: 12,
+      fontFamily: 'PlusJakartaSans_500Medium',
+      fontWeight: '500',
     },
     bottomSpacer: {
       height: uiTokens.sectionGap * 2,

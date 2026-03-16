@@ -1,9 +1,9 @@
-namespace RenoveJa.Application.Configuration;
+﻿namespace RenoveJa.Application.Configuration;
 
 /// <summary>
 /// Configuração base da API (URL pública para links de documentos).
 /// Quando ApiBaseUrl está definido, os links de PDF assinado usam o domínio próprio
-/// (ex: https://renovejasaude.com.br/api/requests/{id}/document) em vez da URL direta do Supabase.
+/// (ex: https://renovejasaude.com.br/api/requests/{id}/document) em vez da URL direta do storage.
 /// </summary>
 public class ApiConfig
 {

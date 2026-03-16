@@ -1,4 +1,4 @@
-# Rodar o Backend em Modo Debug
+﻿# Rodar o Backend em Modo Debug
 
 Este guia explica como executar o backend .NET em modo debug para investigar erros e entender melhor o fluxo da aplicação, incluindo a análise de receitas por IA.
 
@@ -139,7 +139,7 @@ Com as alterações recentes, os logs incluem:
 | "[Análise por IA indisponível no momento.]" | API key inválida ou expirada | Verifique `OpenAI:ApiKey` em appsettings.json ou variável `OpenAI__ApiKey` |
 | 401 Unauthorized | Chave incorreta ou revogada | Gere nova chave em platform.openai.com |
 | 429 Rate Limit | Muitas requisições | Aguarde ou aumente limite na OpenAI |
-| Imagens retornam vazias | Storage privado inacessível | O serviço tenta usar URL direta; verifique CORS e permissões no Supabase |
+| Imagens retornam vazias | Storage privado inacessível | O serviço tenta usar URL direta; verifique CORS e permissões no PostgreSQL/RDS |
 | Parse JSON falhou | Resposta da IA fora do formato esperado | Log mostra o JSON recebido; pode ser imagem ilegível ou modelo diferente |
 
 ---

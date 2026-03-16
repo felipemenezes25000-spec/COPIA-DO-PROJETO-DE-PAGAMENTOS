@@ -1,25 +1,33 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
 
     <!-- FIX #2: CSP header — mitiga XSS que poderia roubar JWT do localStorage.
          Bloqueia scripts inline (exceto vite HMR via nonce), restringe connect-src aos domínios da API. -->
-    <meta http-equiv="Content-Security-Policy"
+    <meta
+      http-equiv="Content-Security-Policy"
       content="default-src 'self';
                script-src 'self' 'unsafe-inline' 'unsafe-eval';
                style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
                font-src 'self' https://fonts.gstatic.com;
                img-src 'self' data: blob: https://*.supabase.co;
-               connect-src 'self' https://*.supabase.co https://*.onrender.com https://*.daily.co wss://*.daily.co https://api.openai.com https://*.sentry.io https://*.ngrok-free.app https://*.ngrok.io ws://localhost:* http://localhost:*;
+               connect-src 'self' https://*.renovejasaude.com.br https://*.supabase.co https://*.daily.co wss://*.daily.co https://api.openai.com https://*.sentry.io https://*.ngrok-free.app https://*.ngrok.io ws://localhost:* http://localhost:*;
                media-src 'self' blob: https://*.daily.co;
                frame-src 'self' https://*.daily.co;
                object-src 'none';
-               base-uri 'self';" />
+               base-uri 'self';"
+    />
 
     <title>RenoveJá+ — Portal do Médico</title>
-    <meta name="description" content="Portal do Médico — Telemedicina com IA clínica, prescrição digital e consultas por vídeo" />
+    <meta
+      name="description"
+      content="Portal do Médico — Telemedicina com IA clínica, prescrição digital e consultas por vídeo"
+    />
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
@@ -33,8 +41,18 @@
     <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
 
     <!-- Icons -->
-    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-96x96.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-72x72.png" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/icons/icon-96x96.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/icons/icon-72x72.png"
+    />
 
     <!-- Splash screen color on Android -->
     <meta name="msapplication-TileColor" content="#00a0dc" />

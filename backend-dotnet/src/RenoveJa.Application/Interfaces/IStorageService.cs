@@ -9,7 +9,7 @@ public record StorageUploadResult(
     string? ErrorMessage);
 
 /// <summary>
-/// Serviço de armazenamento de arquivos (Supabase Storage, S3, etc).
+/// Servico de armazenamento de arquivos (AWS S3).
 /// </summary>
 public interface IStorageService
 {
@@ -49,10 +49,21 @@ public interface IStorageService
     string GetPublicUrl(string path);
 
     /// <summary>
-    /// Faz upload de imagem de receita/prescrição via stream.
+    /// Faz upload de imagem de receita via stream. Path: pedidos/receita/anexos/{userId}/...
     /// Retorna a URL pública do arquivo.
     /// </summary>
     Task<string> UploadPrescriptionImageAsync(
+        Stream content,
+        string fileName,
+        string contentType,
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Faz upload de imagem de exame via stream. Path: pedidos/exame/anexos/{userId}/...
+    /// Retorna a URL pública do arquivo.
+    /// </summary>
+    Task<string> UploadExamImageAsync(
         Stream content,
         string fileName,
         string contentType,
@@ -71,7 +82,7 @@ public interface IStorageService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Baixa imagem a partir de URL pública do storage (ex.: Supabase).
+    /// Baixa imagem a partir de URL publica do storage (S3/CloudFront).
     /// Extrai o path da URL e usa o endpoint autenticado para download.
     /// Retorna null se a URL não for do nosso storage ou o download falhar.
     /// </summary>

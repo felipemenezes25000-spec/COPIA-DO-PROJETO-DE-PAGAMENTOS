@@ -1,4 +1,4 @@
-# Checklist LGPD (ANPD) — Dados de saúde sensíveis
+﻿# Checklist LGPD (ANPD) — Dados de saúde sensíveis
 
 **Órgão:** ANPD (Autoridade Nacional de Proteção de Dados)  
 **Contexto:** Dados de saúde são dados sensíveis (art. 5º, II, e art. 11 da LGPD).
@@ -69,8 +69,7 @@
 | **Deepgram** | Áudio/voz → transcrição (não há gravação; apenas texto) | Verificar DPA em deepgram.com | ⚠️ Verificar DPA, localização |
 | **Daily.co** | Vídeo/áudio em tempo real (videoconsulta) | [DPA Daily.co](https://www.daily.co/legal/data-processing-addendum/) | ✅ DPA assinado (Online Personal Data Processing Agreement, Oct 2023) |
 | **Mercado Pago** | Dados de pagamento (PIX, cartão) | [Termos e Condições para Desenvolvedores](https://www.mercadopago.com.br/developers/pt/docs/resources/legal/terms-and-conditions) — Cláusula 6 (LGPD, Operador, subprocessadores, incidentes) | ✅ Cláusulas LGPD incorporadas nos Termos; aceite ao usar a API |
-| **Supabase** | Dados de saúde, prontuário, storage, auth | [DPA Supabase](https://supabase.com/dpa) | ✅ DPA assinado (Supabase User DPA, Aug 2025) |
-
+| **AWS** | Dados de saúde, storage, banco | AWS DPA | ✅ DPA aceito nos ToS AWS |\n
 **Recomendação:** Garantir contratos com:
 - Cláusulas de proteção de dados (LGPD)
 - Suboperadores (lista e obrigações)
@@ -101,8 +100,8 @@
 | Medida | Status | Implementação |
 |--------|--------|---------------|
 | Criptografia em trânsito | ✅ | HTTPS (TLS) |
-| Criptografia em repouso | ✅ | Supabase (Storage, DB); certificados PFX criptografados |
-| Segregação de acesso | ✅ | RLS (Row Level Security) no Supabase; roles (patient, doctor, admin) |
+| Criptografia em repouso | ✅ | AWS RDS/S3 (Storage, DB); certificados PFX criptografados |
+| Segregação de acesso | ✅ | Roles (patient, doctor, admin) no PostgreSQL/RDS (patient, doctor, admin) |
 | Logging | ✅ | `audit_logs`, `prescription_verification_logs` |
 | Mínimo privilégio | ✅ | RLS; service_role apenas para operações internas |
 | Plano de resposta a incidentes | ⚠️ | Não documentado |
@@ -137,7 +136,7 @@
 | Inventário | ⚠️ | Criar inventário coleta → uso → compartilhamento → retenção |
 | DPO | ⚠️ | Nomear e incluir na política |
 | DPIA/RIPD | ⚠️ | Elaborar para dados sensíveis + IA |
-| Contratos operadores | ⚠️ | Validar DPA com OpenAI, Deepgram, Daily, Mercado Pago, Supabase |
+| Contratos operadores | ⚠️ | Validar DPA com OpenAI, Deepgram, Daily.co, Mercado Pago, AWS |
 | Políticas | ✅ Parcial | Cookies (web); retenção detalhada; resposta a incidente |
 | Segurança | ✅ | Plano de incidente e notificação |
 | IA e consentimento | ✅ Parcial | Clareza sobre operadores e fluxo |
@@ -152,4 +151,4 @@
 - `frontend-mobile/app/(auth)/register.tsx` — Consentimento no cadastro
 - `backend-dotnet/src/RenoveJa.Infrastructure/AiReading/OpenAiReadingService.cs` — IA para imagens
 - `backend-dotnet/src/RenoveJa.Infrastructure/Transcription/DeepgramTranscriptionService.cs` — Transcrição
-- `supabase/migrations/` — RLS, audit_logs
+- `backend-dotnet/src/RenoveJa.Infrastructure/Data/Postgres/MigrationRunner.cs` — RLS, audit_logs

@@ -21,6 +21,21 @@ import Daily, {
   DailyTrackState,
 } from '@daily-co/react-native-daily-js';
 
+// Tipos locais para eventos do Daily.co cujos tipos do pacote estão incompletos
+interface DailyParticipantEvent {
+  participant?: DailyParticipant & { session_id?: string };
+  action?: string;
+  reason?: string;
+}
+interface DailyMeetingEndedEvent {
+  action?: string;
+}
+interface DailyErrorEvent {
+  error?: { msg?: string };
+  errorMsg?: string;
+  action?: string;
+}
+
 export type CallState =
   | 'idle'
   | 'joining'
@@ -141,7 +156,7 @@ export function useDailyJoin({
         }
       });
 
-      call.on('participant-joined' as DailyEvent, (event: any) => {
+      call.on('participant-joined' as DailyEvent, (event: DailyParticipantEvent) => {
         updateParticipants();
         if (event && !event.participant?.local) {
           onRemoteJoined?.();
@@ -152,7 +167,7 @@ export function useDailyJoin({
         updateParticipants();
       });
 
-      call.on('participant-left' as DailyEvent, (event: any) => {
+      call.on('participant-left' as DailyEvent, (event: DailyParticipantEvent) => {
         const participant = event?.participant;
         const localSessionId = call.participants()?.local?.session_id;
 
@@ -186,7 +201,7 @@ export function useDailyJoin({
         }
       });
 
-      call.on('meeting-ended' as DailyEvent, (event: any) => {
+      call.on('meeting-ended' as DailyEvent, (event: DailyMeetingEndedEvent) => {
         if (__DEV__) {
           console.warn('[useDailyJoin] meeting-ended', { isDoctor, event });
         }
@@ -199,7 +214,7 @@ export function useDailyJoin({
         onCallEnded?.('left');
       });
 
-      call.on('error' as DailyEvent, (event: any) => {
+      call.on('error' as DailyEvent, (event: DailyErrorEvent) => {
         const msg = event?.error?.msg ?? event?.errorMsg ?? 'Erro na chamada de vídeo';
         setCallState('error');
         setErrorMessage(msg);
@@ -209,8 +224,8 @@ export function useDailyJoin({
       // --- Join the call ---
       await call.join({ url: roomUrl, token });
 
-    } catch (err: any) {
-      const msg = err?.message ?? 'Não foi possível entrar na sala';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Não foi possível entrar na sala';
       setCallState('error');
       setErrorMessage(msg);
       onError?.(msg);

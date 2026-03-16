@@ -89,7 +89,7 @@ public class RequestService(
 
         medicalRequest = await requestRepository.CreateAsync(medicalRequest, cancellationToken) ?? medicalRequest;
 
-        // AutoObservation em update separado — sem transação no Supabase HTTP.
+        // AutoObservation em update separado — sem transacao atomica.
         // Falha aqui não deve abortar a criação do pedido (o médico pode processar mesmo sem ela).
         try
         {
@@ -154,7 +154,7 @@ public class RequestService(
 
         medicalRequest = await requestRepository.CreateAsync(medicalRequest, cancellationToken) ?? medicalRequest;
 
-        // AutoObservation em update separado — sem transação no Supabase HTTP.
+        // AutoObservation em update separado — sem transacao atomica.
         try
         {
             var autoObs = RequestHelpers.GenerateAutoObservation(RequestType.Exam, examType: request.ExamType);
@@ -248,7 +248,7 @@ public class RequestService(
 
         medicalRequest = await requestRepository.CreateAsync(medicalRequest, cancellationToken) ?? medicalRequest;
 
-        // AutoObservation em update separado — sem transação no Supabase HTTP.
+        // AutoObservation em update separado — sem transacao atomica.
         try
         {
             var autoObs = RequestHelpers.GenerateAutoObservation(RequestType.Consultation);
@@ -419,6 +419,9 @@ public class RequestService(
     public Task<string?> GetTranscriptDownloadUrlAsync(Guid id, Guid userId, int expiresInSeconds = 3600, CancellationToken cancellationToken = default)
         => consultationLifecycleService.GetTranscriptDownloadUrlAsync(id, userId, expiresInSeconds, cancellationToken);
 
+    public Task<string?> GetRecordingDownloadUrlAsync(Guid id, Guid userId, int expiresInSeconds = 3600, CancellationToken cancellationToken = default)
+        => consultationLifecycleService.GetRecordingDownloadUrlAsync(id, userId, expiresInSeconds, cancellationToken);
+
     public Task<RequestResponseDto> SignAsync(Guid id, SignRequestDto dto, CancellationToken cancellationToken = default)
         => signatureService.SignAsync(id, dto, cancellationToken);
 
@@ -433,20 +436,20 @@ public class RequestService(
         var urls = dto.PrescriptionImageUrls.ToList();
         try
         {
-            logger.LogInformation("IA reanálise receita (paciente): request {RequestId}, {UrlCount} URL(s)", id, urls.Count);
+            logger.LogDebug("IA reanálise receita (paciente): request {RequestId}, {UrlCount} URL(s)", id, urls.Count);
             var result = await aiReadingService.AnalyzePrescriptionAsync(urls, cancellationToken);
             if (!result.ReadabilityOk)
             {
                 var msg = result.MessageToUser ?? "As imagens não parecem ser de receita médica. Envie apenas fotos do documento.";
                 request.Reject(msg);
                 request = await requestRepository.UpdateAsync(request, cancellationToken);
-                logger.LogInformation("IA reanálise receita: request {RequestId} REJEITADO - imagens inválidas", id);
+                logger.LogDebug("IA reanálise receita: request {RequestId} REJEITADO - imagens inválidas", id);
             }
             else if (result.HasDoubts == true)
             {
                 request.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, result.RiskLevel, null, true, null);
                 request = await requestRepository.UpdateAsync(request, cancellationToken);
-                logger.LogInformation("IA reanálise receita: request {RequestId} encaminhado ao médico com dúvidas documentadas", id);
+                logger.LogDebug("IA reanálise receita: request {RequestId} encaminhado ao médico com dúvidas documentadas", id);
                 if (request.DoctorId.HasValue)
                 {
                     await CreateNotificationAsync(
@@ -463,21 +466,21 @@ public class RequestService(
                 var msg = "O documento enviado apresenta sinais de adulteração, edição ou recorte para ocultar informações. Envie uma foto completa e original da receita, sem alterações.";
                 request.Reject(msg);
                 request = await requestRepository.UpdateAsync(request, cancellationToken);
-                logger.LogInformation("IA reanálise receita: request {RequestId} REJEITADO - adulteração detectada", id);
+                logger.LogDebug("IA reanálise receita: request {RequestId} REJEITADO - adulteração detectada", id);
             }
             else if (result.PatientNameVisible == false)
             {
                 var msg = "O nome do paciente não está visível na receita (recortado, em branco ou ilegível). Envie uma foto completa do documento onde o nome do paciente esteja claramente legível.";
                 request.Reject(msg);
                 request = await requestRepository.UpdateAsync(request, cancellationToken);
-                logger.LogInformation("IA reanálise receita: request {RequestId} REJEITADO - nome não visível", id);
+                logger.LogDebug("IA reanálise receita: request {RequestId} REJEITADO - nome não visível", id);
             }
             else if (result.PrescriptionTypeVisible == false)
             {
                 var msg = "O tipo da receita não está visível no documento (recortado ou oculto). Envie uma foto completa onde o cabeçalho da receita esteja visível.";
                 request.Reject(msg);
                 request = await requestRepository.UpdateAsync(request, cancellationToken);
-                logger.LogInformation("IA reanálise receita: request {RequestId} REJEITADO - tipo não visível", id);
+                logger.LogDebug("IA reanálise receita: request {RequestId} REJEITADO - tipo não visível", id);
             }
             else
             {
@@ -489,20 +492,20 @@ public class RequestService(
                     var msg = $"O documento enviado é uma receita {docLabel}, mas você selecionou receita {RequestHelpers.PrescriptionTypeToRejectionLabel(userType)}. O tipo da receita enviada deve corresponder ao tipo selecionado. Por favor, crie uma nova solicitação escolhendo o tipo correto.";
                     request.Reject(msg);
                     request = await requestRepository.UpdateAsync(request, cancellationToken);
-                    logger.LogInformation("IA reanálise receita: request {RequestId} REJEITADO - tipo incorreto. Documento={Doc}, Selecionado={Sel}", id, result.ExtractedPrescriptionType, userType);
+                    logger.LogDebug("IA reanálise receita: request {RequestId} REJEITADO - tipo incorreto. Documento={Doc}, Selecionado={Sel}", id, result.ExtractedPrescriptionType, userType);
                 }
                 else if (!string.IsNullOrEmpty(result.ExtractedPatientName) && !RequestHelpers.PatientNamesMatch(request.PatientName, result.ExtractedPatientName))
                 {
                     var msg = $"O nome do paciente na receita ({result.ExtractedPatientName}) não corresponde ao nome cadastrado no app ({request.PatientName ?? "cadastro"}). A receita deve ser do próprio titular da conta. Verifique se o nome no seu cadastro está correto ou envie uma receita em seu nome.";
                     request.Reject(msg);
                     request = await requestRepository.UpdateAsync(request, cancellationToken);
-                    logger.LogInformation("IA reanálise receita: request {RequestId} REJEITADO - nome do paciente não confere. Documento={Doc}, Cadastro={Cad}", id, result.ExtractedPatientName, request.PatientName);
+                    logger.LogDebug("IA reanálise receita: request {RequestId} REJEITADO - nome do paciente não confere. Documento={Doc}, Cadastro={Cad}", id, result.ExtractedPatientName, request.PatientName);
                 }
                 else
                 {
                     request.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, result.RiskLevel, null, true, null);
                     request = await requestRepository.UpdateAsync(request, cancellationToken);
-                    logger.LogInformation("IA reanálise receita: sucesso para request {RequestId}", id);
+                    logger.LogDebug("IA reanálise receita: sucesso para request {RequestId}", id);
                     if (request.DoctorId.HasValue)
                     {
                         await CreateNotificationAsync(
@@ -543,32 +546,32 @@ public class RequestService(
                 throw new InvalidOperationException("Não há imagens de receita para analisar.");
             try
             {
-                logger.LogInformation("IA reanálise receita (médico): request {RequestId}, {ImageCount} imagem(ns)", id, request.PrescriptionImages.Count);
+                logger.LogDebug("IA reanálise receita (médico): request {RequestId}, {ImageCount} imagem(ns)", id, request.PrescriptionImages.Count);
                 var result = await aiReadingService.AnalyzePrescriptionAsync(request.PrescriptionImages, cancellationToken);
                 if (result.ReadabilityOk)
                 {
                     if (result.HasDoubts == true)
                     {
                         request.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, result.RiskLevel, null, true, null);
-                        logger.LogInformation("IA reanálise receita (médico): request {RequestId} - dúvidas documentadas no resumo para avaliação", id);
+                        logger.LogDebug("IA reanálise receita (médico): request {RequestId} - dúvidas documentadas no resumo para avaliação", id);
                     }
                     else if (result.SignsOfTampering == true)
                     {
                         var msg = "O documento enviado apresenta sinais de adulteração, edição ou recorte para ocultar informações. Envie uma foto completa e original da receita, sem alterações.";
                         request.Reject(msg);
-                        logger.LogInformation("IA reanálise receita (médico): request {RequestId} REJEITADO - adulteração detectada", id);
+                        logger.LogDebug("IA reanálise receita (médico): request {RequestId} REJEITADO - adulteração detectada", id);
                     }
                     else if (result.PatientNameVisible == false)
                     {
                         var msg = "O nome do paciente não está visível na receita (recortado, em branco ou ilegível). Envie uma foto completa onde o nome esteja legível.";
                         request.Reject(msg);
-                        logger.LogInformation("IA reanálise receita (médico): request {RequestId} REJEITADO - nome não visível", id);
+                        logger.LogDebug("IA reanálise receita (médico): request {RequestId} REJEITADO - nome não visível", id);
                     }
                     else if (result.PrescriptionTypeVisible == false)
                     {
                         var msg = "O tipo da receita não está visível no documento (recortado ou oculto). Envie uma foto completa onde o cabeçalho esteja visível.";
                         request.Reject(msg);
-                        logger.LogInformation("IA reanálise receita (médico): request {RequestId} REJEITADO - tipo não visível", id);
+                        logger.LogDebug("IA reanálise receita (médico): request {RequestId} REJEITADO - tipo não visível", id);
                     }
                     else
                     {
@@ -579,25 +582,25 @@ public class RequestService(
                             var docLabel = RequestHelpers.PrescriptionTypeToRejectionLabel(result.ExtractedPrescriptionType);
                             var msg = $"O documento enviado é uma receita {docLabel}, mas a solicitação foi criada como receita {RequestHelpers.PrescriptionTypeToRejectionLabel(userType)}. O tipo da receita enviada deve corresponder ao tipo selecionado.";
                             request.Reject(msg);
-                            logger.LogInformation("IA reanálise receita (médico): request {RequestId} REJEITADO - tipo incorreto. Documento={Doc}, Selecionado={Sel}", id, result.ExtractedPrescriptionType, userType);
+                            logger.LogDebug("IA reanálise receita (médico): request {RequestId} REJEITADO - tipo incorreto. Documento={Doc}, Selecionado={Sel}", id, result.ExtractedPrescriptionType, userType);
                         }
                         else if (!string.IsNullOrEmpty(result.ExtractedPatientName) && !RequestHelpers.PatientNamesMatch(request.PatientName, result.ExtractedPatientName))
                         {
                             var msg = $"O nome do paciente na receita ({result.ExtractedPatientName}) não corresponde ao nome cadastrado no app ({request.PatientName ?? "cadastro"}). A receita deve ser do próprio titular da conta.";
                             request.Reject(msg);
-                            logger.LogInformation("IA reanálise receita (médico): request {RequestId} REJEITADO - nome do paciente não confere. Documento={Doc}, Cadastro={Cad}", id, result.ExtractedPatientName, request.PatientName);
+                            logger.LogDebug("IA reanálise receita (médico): request {RequestId} REJEITADO - nome do paciente não confere. Documento={Doc}, Cadastro={Cad}", id, result.ExtractedPatientName, request.PatientName);
                         }
                         else
                         {
                             request.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, result.RiskLevel, null, true, null);
-                            logger.LogInformation("IA reanálise receita (médico): sucesso para request {RequestId}", id);
+                            logger.LogDebug("IA reanálise receita (médico): sucesso para request {RequestId}", id);
                         }
                     }
                 }
                 else
                 {
                     request.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, result.RiskLevel, null, false, result.MessageToUser);
-                    logger.LogInformation("IA reanálise receita (médico): legibilidade falhou para request {RequestId}", id);
+                    logger.LogDebug("IA reanálise receita (médico): legibilidade falhou para request {RequestId}", id);
                 }
             }
             catch (Exception ex)
@@ -614,42 +617,42 @@ public class RequestService(
                 throw new InvalidOperationException("Não há imagens ou texto de exame para analisar.");
             try
             {
-                logger.LogInformation("IA reanálise exame (médico): request {RequestId}", id);
+                logger.LogDebug("IA reanálise exame (médico): request {RequestId}", id);
                 var result = await aiReadingService.AnalyzeExamAsync(imageUrls, textDescription, cancellationToken);
                 var hasImages = imageUrls != null && imageUrls.Count > 0;
                 if (hasImages && !result.ReadabilityOk)
                 {
                     var msg = result.MessageToUser ?? "A imagem não parece ser de pedido de exame.";
                     request.Reject(msg);
-                    logger.LogInformation("IA reanálise exame (médico): request {RequestId} REJEITADO - imagens inválidas", id);
+                    logger.LogDebug("IA reanálise exame (médico): request {RequestId} REJEITADO - imagens inválidas", id);
                 }
                 else if (hasImages && result.HasDoubts == true)
                 {
                     request.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, null, result.Urgency, true, null);
-                    logger.LogInformation("IA reanálise exame (médico): request {RequestId} - dúvidas documentadas para avaliação", id);
+                    logger.LogDebug("IA reanálise exame (médico): request {RequestId} - dúvidas documentadas para avaliação", id);
                 }
                 else if (hasImages && result.SignsOfTampering == true)
                 {
                     var msg = "O documento apresenta sinais de adulteração. Envie uma foto completa e original do pedido de exame.";
                     request.Reject(msg);
-                    logger.LogInformation("IA reanálise exame (médico): request {RequestId} REJEITADO - adulteração", id);
+                    logger.LogDebug("IA reanálise exame (médico): request {RequestId} REJEITADO - adulteração", id);
                 }
                 else if (hasImages && result.PatientNameVisible == false)
                 {
                     var msg = "O nome do paciente não está visível no documento. Envie uma foto completa onde o nome esteja legível.";
                     request.Reject(msg);
-                    logger.LogInformation("IA reanálise exame (médico): request {RequestId} REJEITADO - nome não visível", id);
+                    logger.LogDebug("IA reanálise exame (médico): request {RequestId} REJEITADO - nome não visível", id);
                 }
                 else if (hasImages && !string.IsNullOrEmpty(result.ExtractedPatientName) && !RequestHelpers.PatientNamesMatch(request.PatientName, result.ExtractedPatientName))
                 {
                     var msg = $"O nome no documento ({result.ExtractedPatientName}) não corresponde ao cadastro ({request.PatientName ?? "cadastro"}).";
                     request.Reject(msg);
-                    logger.LogInformation("IA reanálise exame (médico): request {RequestId} REJEITADO - nome não confere", id);
+                    logger.LogDebug("IA reanálise exame (médico): request {RequestId} REJEITADO - nome não confere", id);
                 }
                 else
                 {
                     request.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, null, result.Urgency, result.ReadabilityOk, result.MessageToUser);
-                    logger.LogInformation("IA reanálise exame (médico): sucesso para request {RequestId}", id);
+                    logger.LogDebug("IA reanálise exame (médico): sucesso para request {RequestId}", id);
                 }
             }
             catch (Exception ex)
@@ -684,7 +687,7 @@ public class RequestService(
             throw new ArgumentException("Envie imagens do pedido de exame e/ou texto para reanalisar.");
         try
         {
-            logger.LogInformation("IA reanálise exame (paciente): request {RequestId}, Imagens={ImageCount}, TextoLen={TextLen}", id, imageUrls.Count, textDescription?.Length ?? 0);
+            logger.LogDebug("IA reanálise exame (paciente): request {RequestId}, Imagens={ImageCount}, TextoLen={TextLen}", id, imageUrls.Count, textDescription?.Length ?? 0);
             var result = await aiReadingService.AnalyzeExamAsync(imageUrls, textDescription, cancellationToken);
             var hasImages = imageUrls.Count > 0;
             if (hasImages && !result.ReadabilityOk)
@@ -692,13 +695,13 @@ public class RequestService(
                 var msg = result.MessageToUser ?? "As imagens não parecem ser de pedido de exame. Envie apenas imagens do documento médico.";
                 request.Reject(msg);
                 request = await requestRepository.UpdateAsync(request, cancellationToken);
-                logger.LogInformation("IA reanálise exame: request {RequestId} REJEITADO - imagens inválidas", id);
+                logger.LogDebug("IA reanálise exame: request {RequestId} REJEITADO - imagens inválidas", id);
             }
             else if (hasImages && result.HasDoubts == true)
             {
                 request.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, null, result.Urgency, true, null);
                 request = await requestRepository.UpdateAsync(request, cancellationToken);
-                logger.LogInformation("IA reanálise exame: request {RequestId} encaminhado ao médico com dúvidas", id);
+                logger.LogDebug("IA reanálise exame: request {RequestId} encaminhado ao médico com dúvidas", id);
                 if (request.DoctorId.HasValue)
                 {
                     await CreateNotificationAsync(
@@ -715,27 +718,27 @@ public class RequestService(
                 var msg = "O documento apresenta sinais de adulteração ou recorte. Envie uma foto completa e original do pedido de exame.";
                 request.Reject(msg);
                 request = await requestRepository.UpdateAsync(request, cancellationToken);
-                logger.LogInformation("IA reanálise exame: request {RequestId} REJEITADO - adulteração", id);
+                logger.LogDebug("IA reanálise exame: request {RequestId} REJEITADO - adulteração", id);
             }
             else if (hasImages && result.PatientNameVisible == false)
             {
                 var msg = "O nome do paciente não está visível no documento. Envie uma foto completa onde o nome esteja legível.";
                 request.Reject(msg);
                 request = await requestRepository.UpdateAsync(request, cancellationToken);
-                logger.LogInformation("IA reanálise exame: request {RequestId} REJEITADO - nome não visível", id);
+                logger.LogDebug("IA reanálise exame: request {RequestId} REJEITADO - nome não visível", id);
             }
             else if (hasImages && !string.IsNullOrEmpty(result.ExtractedPatientName) && !RequestHelpers.PatientNamesMatch(request.PatientName, result.ExtractedPatientName))
             {
                 var msg = $"O nome no documento ({result.ExtractedPatientName}) não corresponde ao cadastro ({request.PatientName ?? "cadastro"}). O pedido deve ser do titular da conta.";
                 request.Reject(msg);
                 request = await requestRepository.UpdateAsync(request, cancellationToken);
-                logger.LogInformation("IA reanálise exame: request {RequestId} REJEITADO - nome não confere", id);
+                logger.LogDebug("IA reanálise exame: request {RequestId} REJEITADO - nome não confere", id);
             }
             else
             {
                 request.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, null, result.Urgency, result.ReadabilityOk, result.MessageToUser);
                 request = await requestRepository.UpdateAsync(request, cancellationToken);
-                logger.LogInformation("IA reanálise exame (paciente): sucesso para request {RequestId}", id);
+                logger.LogDebug("IA reanálise exame (paciente): sucesso para request {RequestId}", id);
                 if (request.DoctorId.HasValue)
                 {
                     await CreateNotificationAsync(
@@ -923,10 +926,10 @@ public class RequestService(
     {
         if (medicalRequest.PrescriptionImages == null || medicalRequest.PrescriptionImages.Count == 0)
         {
-            logger.LogInformation("IA receita: request {RequestId} sem imagens, pulando análise", medicalRequest.Id);
+            logger.LogDebug("IA receita: request {RequestId} sem imagens, pulando análise", medicalRequest.Id);
             return;
         }
-        logger.LogInformation("IA receita: iniciando análise para request {RequestId} com {ImageCount} imagem(ns). URLs: {Urls}",
+        logger.LogDebug("IA receita: iniciando análise para request {RequestId} com {ImageCount} imagem(ns). URLs: {Urls}",
             medicalRequest.Id, medicalRequest.PrescriptionImages.Count, string.Join("; ", medicalRequest.PrescriptionImages.Take(3)));
         try
         {
@@ -936,14 +939,14 @@ public class RequestService(
                 var msg = result.MessageToUser ?? "A imagem não parece ser de uma receita médica. Envie apenas fotos do documento da receita.";
                 medicalRequest.Reject(msg);
                 await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
-                logger.LogInformation("IA receita: request {RequestId} REJEITADO - imagens inválidas. Mensagem: {Msg}", medicalRequest.Id, msg);
+                logger.LogDebug("IA receita: request {RequestId} REJEITADO - imagens inválidas. Mensagem: {Msg}", medicalRequest.Id, msg);
                 return;
             }
             if (result.HasDoubts == true)
             {
                 medicalRequest.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, result.RiskLevel, null, true, null);
                 await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
-                logger.LogInformation("IA receita: request {RequestId} encaminhado ao médico com dúvidas documentadas no resumo", medicalRequest.Id);
+                logger.LogDebug("IA receita: request {RequestId} encaminhado ao médico com dúvidas documentadas no resumo", medicalRequest.Id);
                 return;
             }
             if (result.SignsOfTampering == true)
@@ -951,7 +954,7 @@ public class RequestService(
                 var msg = "O documento enviado apresenta sinais de adulteração, edição ou recorte para ocultar informações. Envie uma foto completa e original da receita, sem alterações.";
                 medicalRequest.Reject(msg);
                 await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
-                logger.LogInformation("IA receita: request {RequestId} REJEITADO - adulteração detectada", medicalRequest.Id);
+                logger.LogDebug("IA receita: request {RequestId} REJEITADO - adulteração detectada", medicalRequest.Id);
                 return;
             }
             if (result.PatientNameVisible == false)
@@ -959,7 +962,7 @@ public class RequestService(
                 var msg = "O nome do paciente não está visível na receita (recortado, em branco ou ilegível). Envie uma foto completa do documento onde o nome do paciente esteja claramente legível.";
                 medicalRequest.Reject(msg);
                 await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
-                logger.LogInformation("IA receita: request {RequestId} REJEITADO - nome do paciente não visível", medicalRequest.Id);
+                logger.LogDebug("IA receita: request {RequestId} REJEITADO - nome do paciente não visível", medicalRequest.Id);
                 return;
             }
             if (result.PrescriptionTypeVisible == false)
@@ -967,7 +970,7 @@ public class RequestService(
                 var msg = "O tipo da receita (simples, controlada ou azul) não está visível no documento (recortado ou oculto). Envie uma foto completa onde o cabeçalho da receita esteja visível.";
                 medicalRequest.Reject(msg);
                 await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
-                logger.LogInformation("IA receita: request {RequestId} REJEITADO - tipo da receita não visível", medicalRequest.Id);
+                logger.LogDebug("IA receita: request {RequestId} REJEITADO - tipo da receita não visível", medicalRequest.Id);
                 return;
             }
             var userType = RequestHelpers.PrescriptionTypeToDisplay(medicalRequest.PrescriptionType);
@@ -978,7 +981,7 @@ public class RequestService(
                 var msg = $"O documento enviado é uma receita {docLabel}, mas você selecionou receita {RequestHelpers.PrescriptionTypeToRejectionLabel(userType)}. O tipo da receita enviada deve corresponder ao tipo selecionado. Por favor, crie uma nova solicitação escolhendo o tipo correto.";
                 medicalRequest.Reject(msg);
                 await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
-                logger.LogInformation("IA receita: request {RequestId} REJEITADO - tipo incorreto. Documento={Doc}, Selecionado={Sel}", medicalRequest.Id, result.ExtractedPrescriptionType, userType);
+                logger.LogDebug("IA receita: request {RequestId} REJEITADO - tipo incorreto. Documento={Doc}, Selecionado={Sel}", medicalRequest.Id, result.ExtractedPrescriptionType, userType);
                 return;
             }
             if (!string.IsNullOrEmpty(result.ExtractedPatientName) && !RequestHelpers.PatientNamesMatch(medicalRequest.PatientName, result.ExtractedPatientName))
@@ -986,12 +989,12 @@ public class RequestService(
                 var msg = $"O nome do paciente na receita ({result.ExtractedPatientName}) não corresponde ao nome cadastrado no app ({medicalRequest.PatientName ?? "cadastro"}). A receita deve ser do próprio titular da conta. Verifique se o nome no seu cadastro está correto ou envie uma receita em seu nome.";
                 medicalRequest.Reject(msg);
                 await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
-                logger.LogInformation("IA receita: request {RequestId} REJEITADO - nome do paciente não confere. Documento={Doc}, Cadastro={Cad}", medicalRequest.Id, result.ExtractedPatientName, medicalRequest.PatientName);
+                logger.LogDebug("IA receita: request {RequestId} REJEITADO - nome do paciente não confere. Documento={Doc}, Cadastro={Cad}", medicalRequest.Id, result.ExtractedPatientName, medicalRequest.PatientName);
                 return;
             }
             medicalRequest.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, result.RiskLevel, null, true, null);
             await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
-            logger.LogInformation("IA receita: análise concluída para request {RequestId}. SummaryLength={Len}", medicalRequest.Id, result.SummaryForDoctor?.Length ?? 0);
+            logger.LogDebug("IA receita: análise concluída para request {RequestId}. SummaryLength={Len}", medicalRequest.Id, result.SummaryForDoctor?.Length ?? 0);
         }
         catch (Exception ex)
         {
@@ -1019,10 +1022,10 @@ public class RequestService(
         var imageUrls = medicalRequest.ExamImages?.Count > 0 ? medicalRequest.ExamImages : null;
         if (string.IsNullOrWhiteSpace(textDescription) && (imageUrls == null || imageUrls.Count == 0))
         {
-            logger.LogInformation("IA exame: request {RequestId} sem texto nem imagens, pulando análise", medicalRequest.Id);
+            logger.LogDebug("IA exame: request {RequestId} sem texto nem imagens, pulando análise", medicalRequest.Id);
             return;
         }
-        logger.LogInformation("IA exame: iniciando análise para request {RequestId}. Imagens={ImageCount}, TextoLen={TextLen}",
+        logger.LogDebug("IA exame: iniciando análise para request {RequestId}. Imagens={ImageCount}, TextoLen={TextLen}",
             medicalRequest.Id, imageUrls?.Count ?? 0, textDescription?.Length ?? 0);
         try
         {
@@ -1033,14 +1036,14 @@ public class RequestService(
                 var msg = result.MessageToUser ?? "A imagem não parece ser de pedido de exame ou documento médico. Envie apenas imagens do documento.";
                 medicalRequest.Reject(msg);
                 await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
-                logger.LogInformation("IA exame: request {RequestId} REJEITADO - imagens inválidas. Mensagem: {Msg}", medicalRequest.Id, msg);
+                logger.LogDebug("IA exame: request {RequestId} REJEITADO - imagens inválidas. Mensagem: {Msg}", medicalRequest.Id, msg);
                 return;
             }
             if (hasImages && result.HasDoubts == true)
             {
                 medicalRequest.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, null, result.Urgency, true, null);
                 await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
-                logger.LogInformation("IA exame: request {RequestId} encaminhado ao médico com dúvidas documentadas", medicalRequest.Id);
+                logger.LogDebug("IA exame: request {RequestId} encaminhado ao médico com dúvidas documentadas", medicalRequest.Id);
                 return;
             }
             if (hasImages && result.SignsOfTampering == true)
@@ -1048,7 +1051,7 @@ public class RequestService(
                 var msg = "O documento enviado apresenta sinais de adulteração, edição ou recorte para ocultar informações. Envie uma foto completa e original do pedido de exame, sem alterações.";
                 medicalRequest.Reject(msg);
                 await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
-                logger.LogInformation("IA exame: request {RequestId} REJEITADO - adulteração detectada", medicalRequest.Id);
+                logger.LogDebug("IA exame: request {RequestId} REJEITADO - adulteração detectada", medicalRequest.Id);
                 return;
             }
             if (hasImages && result.PatientNameVisible == false)
@@ -1056,7 +1059,7 @@ public class RequestService(
                 var msg = "O nome do paciente não está visível no documento (recortado, em branco ou ilegível). Envie uma foto completa onde o nome do paciente esteja claramente legível.";
                 medicalRequest.Reject(msg);
                 await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
-                logger.LogInformation("IA exame: request {RequestId} REJEITADO - nome do paciente não visível", medicalRequest.Id);
+                logger.LogDebug("IA exame: request {RequestId} REJEITADO - nome do paciente não visível", medicalRequest.Id);
                 return;
             }
             if (hasImages && !string.IsNullOrEmpty(result.ExtractedPatientName) && !RequestHelpers.PatientNamesMatch(medicalRequest.PatientName, result.ExtractedPatientName))
@@ -1064,12 +1067,12 @@ public class RequestService(
                 var msg = $"O nome do paciente no documento ({result.ExtractedPatientName}) não corresponde ao nome cadastrado no app ({medicalRequest.PatientName ?? "cadastro"}). O pedido deve ser do próprio titular da conta.";
                 medicalRequest.Reject(msg);
                 await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
-                logger.LogInformation("IA exame: request {RequestId} REJEITADO - nome do paciente não confere", medicalRequest.Id);
+                logger.LogDebug("IA exame: request {RequestId} REJEITADO - nome do paciente não confere", medicalRequest.Id);
                 return;
             }
             medicalRequest.SetAiAnalysis(result.SummaryForDoctor, result.ExtractedJson, null, result.Urgency, result.ReadabilityOk, result.MessageToUser);
             await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
-            logger.LogInformation("IA exame: análise concluída para request {RequestId}. SummaryLength={Len}", medicalRequest.Id, result.SummaryForDoctor?.Length ?? 0);
+            logger.LogDebug("IA exame: análise concluída para request {RequestId}. SummaryLength={Len}", medicalRequest.Id, result.SummaryForDoctor?.Length ?? 0);
         }
         catch (Exception ex)
         {
@@ -1119,7 +1122,7 @@ public class RequestService(
         request.SetAiConductSuggestion(result.ConductSuggestion, examsJson);
         await requestRepository.UpdateAsync(request, cancellationToken);
 
-        logger.LogInformation("AI conduct suggestion generated for request {RequestId}", requestId);
+        logger.LogDebug("AI conduct suggestion generated for request {RequestId}", requestId);
     }
 
     public async Task<RequestResponseDto> UpdateConductAsync(

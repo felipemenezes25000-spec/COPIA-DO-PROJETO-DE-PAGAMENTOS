@@ -44,7 +44,7 @@ function Metric({ value, label, valueColor, fontSize, labelSize }: MetricProps) 
   );
 }
 
-export function StatsGrid({ stats, responsive, onPressPedidos, onPressConsultas }: StatsGridProps) {
+function StatsGrid_Fn({ stats, responsive, onPressPedidos, onPressConsultas }: StatsGridProps) {
   const { typography } = responsive;
   const valSize = typography.statValue * 0.85;
   const lblSize = typography.quickLabel * 0.92;
@@ -143,3 +143,5 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
 });
+
+export const StatsGrid = React.memo(StatsGrid_Fn);

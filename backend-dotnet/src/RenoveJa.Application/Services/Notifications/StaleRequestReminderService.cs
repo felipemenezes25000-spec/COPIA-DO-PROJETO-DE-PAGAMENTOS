@@ -40,7 +40,10 @@ public class StaleRequestReminderService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao enviar lembretes de pedidos parados");
+                if (IsDatabaseNotConfigured(ex))
+                    _logger.LogDebug("Database não configurado, ignorando lembretes de pedidos parados");
+                else
+                    _logger.LogError(ex, "Erro ao enviar lembretes de pedidos parados");
             }
 
             await Task.Delay(RunInterval, stoppingToken);
@@ -93,5 +96,13 @@ public class StaleRequestReminderService : BackgroundService
                 _logger.LogWarning(ex, "Falha ao enviar lembrete de análise para request {RequestId}", req.Id);
             }
         }
+    }
+
+    private static bool IsDatabaseNotConfigured(Exception ex)
+    {
+        var msg = ex.Message ?? "";
+        return msg.Contains("Host", StringComparison.OrdinalIgnoreCase)
+            || msg.Contains("connection string", StringComparison.OrdinalIgnoreCase)
+            || msg.Contains("not configured", StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -5,13 +5,13 @@ using RenoveJa.Infrastructure.Data.Postgres;
 
 namespace RenoveJa.Infrastructure.Repositories;
 
-public class AiSuggestionRepository(PostgresClient supabase) : IAiSuggestionRepository
+public class AiSuggestionRepository(PostgresClient db) : IAiSuggestionRepository
 {
     private const string TableName = "ai_suggestions";
 
     public async Task<AiSuggestion?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<AiSuggestionModel>(
+        var model = await db.GetSingleAsync<AiSuggestionModel>(
             TableName,
             filter: $"id=eq.{id}",
             cancellationToken: cancellationToken);
@@ -31,7 +31,7 @@ public class AiSuggestionRepository(PostgresClient supabase) : IAiSuggestionRepo
             filter += $"&status=in.({statusesCsv})";
         }
 
-        var models = await supabase.GetAllAsync<AiSuggestionModel>(
+        var models = await db.GetAllAsync<AiSuggestionModel>(
             TableName,
             filter: $"{filter}&order=created_at.desc",
             cancellationToken: cancellationToken);
@@ -50,7 +50,7 @@ public class AiSuggestionRepository(PostgresClient supabase) : IAiSuggestionRepo
             : "doctor_id=is.null";
         var filter = $"consultation_id=eq.{consultationId}&{doctorValue}&payload_hash=eq.{payloadHash}";
 
-        var model = await supabase.GetSingleAsync<AiSuggestionModel>(
+        var model = await db.GetSingleAsync<AiSuggestionModel>(
             TableName,
             filter: filter,
             cancellationToken: cancellationToken);
@@ -60,7 +60,7 @@ public class AiSuggestionRepository(PostgresClient supabase) : IAiSuggestionRepo
 
     public async Task<AiSuggestion> CreateAsync(AiSuggestion suggestion, CancellationToken cancellationToken = default)
     {
-        var created = await supabase.InsertAsync<AiSuggestionModel>(
+        var created = await db.InsertAsync<AiSuggestionModel>(
             TableName,
             MapToModel(suggestion),
             cancellationToken);
@@ -69,7 +69,7 @@ public class AiSuggestionRepository(PostgresClient supabase) : IAiSuggestionRepo
 
     public async Task<AiSuggestion> UpdateAsync(AiSuggestion suggestion, CancellationToken cancellationToken = default)
     {
-        var updated = await supabase.UpdateAsync<AiSuggestionModel>(
+        var updated = await db.UpdateAsync<AiSuggestionModel>(
             TableName,
             $"id=eq.{suggestion.Id}",
             MapToModel(suggestion),

@@ -6,15 +6,15 @@ using RenoveJa.Infrastructure.Data.Postgres;
 namespace RenoveJa.Infrastructure.Repositories;
 
 /// <summary>
-/// Repositório para certificados digitais de médicos via Supabase REST API.
+/// Repositório para certificados digitais de médicos via db REST API.
 /// </summary>
-public class CertificateRepository(PostgresClient supabase) : ICertificateRepository
+public class CertificateRepository(PostgresClient db) : ICertificateRepository
 {
     private const string TableName = "doctor_certificates";
 
     public async Task<DoctorCertificate?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<CertificateModel>(
+        var model = await db.GetSingleAsync<CertificateModel>(
             TableName,
             filter: $"id=eq.{id}",
             cancellationToken: cancellationToken);
@@ -24,12 +24,12 @@ public class CertificateRepository(PostgresClient supabase) : ICertificateReposi
 
     public async Task<DoctorCertificate?> GetActiveByDoctorIdAsync(Guid doctorProfileId, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<CertificateModel>(
+        var model = await db.GetSingleAsync<CertificateModel>(
             TableName,
             filter: $"doctor_profile_id=eq.{doctorProfileId}&is_valid=eq.true&is_revoked=eq.false",
             cancellationToken: cancellationToken);
 
-        // Check expiry in code (Supabase REST doesn't easily support now() comparison)
+        // Check expiry in code (db REST doesn't easily support now() comparison)
         if (model != null && model.NotAfter < DateTime.UtcNow)
             return null;
 
@@ -38,7 +38,7 @@ public class CertificateRepository(PostgresClient supabase) : ICertificateReposi
 
     public async Task<List<DoctorCertificate>> GetByDoctorIdAsync(Guid doctorProfileId, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<CertificateModel>(
+        var models = await db.GetAllAsync<CertificateModel>(
             TableName,
             filter: $"doctor_profile_id=eq.{doctorProfileId}",
             orderBy: "created_at.desc",
@@ -50,7 +50,7 @@ public class CertificateRepository(PostgresClient supabase) : ICertificateReposi
     public async Task<DoctorCertificate> CreateAsync(DoctorCertificate certificate, CancellationToken cancellationToken = default)
     {
         var model = CertificateModel.FromDomain(certificate);
-        var created = await supabase.InsertAsync<CertificateModel>(
+        var created = await db.InsertAsync<CertificateModel>(
             TableName,
             model,
             cancellationToken);
@@ -61,7 +61,7 @@ public class CertificateRepository(PostgresClient supabase) : ICertificateReposi
     public async Task<DoctorCertificate> UpdateAsync(DoctorCertificate certificate, CancellationToken cancellationToken = default)
     {
         var model = CertificateModel.FromDomain(certificate);
-        var updated = await supabase.UpdateAsync<CertificateModel>(
+        var updated = await db.UpdateAsync<CertificateModel>(
             TableName,
             $"id=eq.{certificate.Id}",
             model,
@@ -74,7 +74,7 @@ public class CertificateRepository(PostgresClient supabase) : ICertificateReposi
     {
         try
         {
-            await supabase.DeleteAsync(
+            await db.DeleteAsync(
                 TableName,
                 $"id=eq.{id}",
                 cancellationToken);

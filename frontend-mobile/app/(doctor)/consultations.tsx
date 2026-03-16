@@ -17,6 +17,7 @@ import { useListBottomPadding } from '../../lib/ui/responsive';
 import { doctorDS } from '../../lib/themeDoctor';
 import { useAppTheme } from '../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../lib/designSystem';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRequestsEvents } from '../../contexts/RequestsEventsContext';
 import { useDoctorRequestsQuery, useInvalidateDoctorRequests } from '../../lib/hooks/useDoctorRequestsQuery';
 import { cacheRequest } from '../doctor-request/[id]';
@@ -29,6 +30,8 @@ import { haptics } from '../../lib/haptics';
 import type { RequestResponseDto } from '../../types/database';
 
 const pad = doctorDS.screenPaddingHorizontal;
+
+const DOCTOR_REQUESTS_STALE_MS = 10_000;
 
 const ACTIVE_STATUSES = [
   'submitted', 'pending', 'searching_doctor', 'approved_pending_payment',
@@ -58,7 +61,12 @@ export default function DoctorConsultations() {
   const invalidateDoctorRequests = useInvalidateDoctorRequests();
   const { data: requests = [], isLoading, refetch } = useDoctorRequestsQuery(isConnected);
 
-  useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
+  const queryClient = useQueryClient();
+  useFocusEffect(useCallback(() => {
+    const state = queryClient.getQueryState(['doctor-requests']);
+    const age = Date.now() - (state?.dataUpdatedAt ?? 0);
+    if (age > DOCTOR_REQUESTS_STALE_MS) refetch();
+  }, [queryClient, refetch]));
   React.useEffect(() => {
     return subscribe(() => invalidateDoctorRequests());
   }, [subscribe, invalidateDoctorRequests]);
@@ -173,6 +181,7 @@ export default function DoctorConsultations() {
               new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
             )}
             keyExtractor={keyExtractor}
+            getItemLayout={(_: unknown, i: number) => ({ length: 98, offset: 98 * i, index: i })}
             renderItem={renderItem}
             contentContainerStyle={[styles.listContent, { paddingBottom: listPadding }]}
             refreshControl={

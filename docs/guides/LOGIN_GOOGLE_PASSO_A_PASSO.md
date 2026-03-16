@@ -88,9 +88,9 @@ O backend precisa do **mesmo Client ID Web** para validar o token enviado pelo a
 
 O `appsettings.json` já está configurado com o Client ID.
 
-### Produção (Render)
+### Produção (AWS)
 
-1. Acesse o **Dashboard do Render** → seu serviço (ex: `ola-jamal`)
+1. Acesse a **Task Definition** ou **Parameter Store** da API (AWS)
 2. **Environment** → **Add Environment Variable**
 3. Nome: `Google__ClientId`
 4. Valor: o **mesmo** que `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`

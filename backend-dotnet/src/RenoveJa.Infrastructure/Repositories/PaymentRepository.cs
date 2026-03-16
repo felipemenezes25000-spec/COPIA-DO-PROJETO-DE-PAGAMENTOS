@@ -6,9 +6,9 @@ using RenoveJa.Infrastructure.Data.Postgres;
 namespace RenoveJa.Infrastructure.Repositories;
 
 /// <summary>
-/// Repositório de pagamentos via Supabase.
+/// Repositório de pagamentos via db.
 /// </summary>
-public class PaymentRepository(PostgresClient supabase) : IPaymentRepository
+public class PaymentRepository(PostgresClient db) : IPaymentRepository
 {
     private const string TableName = "payments";
 
@@ -17,7 +17,7 @@ public class PaymentRepository(PostgresClient supabase) : IPaymentRepository
     /// </summary>
     public async Task<Payment?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<PaymentModel>(
+        var model = await db.GetSingleAsync<PaymentModel>(
             TableName,
             filter: $"id=eq.{id}",
             cancellationToken: cancellationToken);
@@ -27,7 +27,7 @@ public class PaymentRepository(PostgresClient supabase) : IPaymentRepository
 
     public async Task<Payment?> GetByRequestIdAsync(Guid requestId, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<PaymentModel>(
+        var model = await db.GetSingleAsync<PaymentModel>(
             TableName,
             filter: $"request_id=eq.{requestId}",
             cancellationToken: cancellationToken);
@@ -37,7 +37,7 @@ public class PaymentRepository(PostgresClient supabase) : IPaymentRepository
 
     public async Task<Payment?> GetByExternalIdAsync(string externalId, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<PaymentModel>(
+        var model = await db.GetSingleAsync<PaymentModel>(
             TableName,
             filter: $"external_id=eq.{externalId}",
             cancellationToken: cancellationToken);
@@ -47,7 +47,7 @@ public class PaymentRepository(PostgresClient supabase) : IPaymentRepository
 
     public async Task<List<Payment>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<PaymentModel>(
+        var models = await db.GetAllAsync<PaymentModel>(
             TableName,
             filter: $"user_id=eq.{userId}",
             cancellationToken: cancellationToken);
@@ -58,7 +58,7 @@ public class PaymentRepository(PostgresClient supabase) : IPaymentRepository
     public async Task<Payment> CreateAsync(Payment payment, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(payment);
-        var created = await supabase.InsertAsync<PaymentModel>(
+        var created = await db.InsertAsync<PaymentModel>(
             TableName,
             model,
             cancellationToken);
@@ -69,7 +69,7 @@ public class PaymentRepository(PostgresClient supabase) : IPaymentRepository
     public async Task<Payment> UpdateAsync(Payment payment, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(payment);
-        var updated = await supabase.UpdateAsync<PaymentModel>(
+        var updated = await db.UpdateAsync<PaymentModel>(
             TableName,
             $"id=eq.{payment.Id}",
             model,
@@ -80,7 +80,7 @@ public class PaymentRepository(PostgresClient supabase) : IPaymentRepository
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        await supabase.DeleteAsync(
+        await db.DeleteAsync(
             TableName,
             $"id=eq.{id}",
             cancellationToken);

@@ -9,7 +9,7 @@ namespace RenoveJa.Infrastructure.Data.Postgres;
 
 /// <summary>
 /// Cliente de acesso a dados PostgreSQL via Npgsql/Dapper.
-/// Substituiu o Supabase REST API — mesma interface pública, zero mudanças nos repositórios.
+/// Cliente Postgres customizado — mesma interface pública, zero mudanças nos repositórios.
 /// </summary>
 public class PostgresClient
 {

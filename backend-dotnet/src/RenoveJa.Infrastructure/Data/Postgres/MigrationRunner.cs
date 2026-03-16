@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -11,7 +11,7 @@ namespace RenoveJa.Infrastructure.Data.Postgres;
 internal class MigrationRunnerLogger { }
 
 /// <summary>
-/// Executa migrations SQL no Postgres do Supabase quando DatabaseUrl está configurada.
+/// Executa migrations SQL no Postgres quando DatabaseUrl esta configurada.
 /// </summary>
 public static class MigrationRunner
 {
@@ -178,7 +178,10 @@ public static class MigrationRunner
         )
         """,
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_consultation_anamnesis_request_id ON public.consultation_anamnesis(request_id)",
-        "CREATE INDEX IF NOT EXISTS idx_consultation_anamnesis_patient_id ON public.consultation_anamnesis(patient_id)"
+        "CREATE INDEX IF NOT EXISTS idx_consultation_anamnesis_patient_id ON public.consultation_anamnesis(patient_id)",
+        "ALTER TABLE public.consultation_anamnesis ADD COLUMN IF NOT EXISTS transcript_file_url TEXT",
+        "ALTER TABLE public.consultation_anamnesis ADD COLUMN IF NOT EXISTS evidence_json TEXT",
+        "ALTER TABLE public.consultation_anamnesis ADD COLUMN IF NOT EXISTS recording_file_url TEXT"
     };
 
     private static readonly string[] PushTokensMigrations =
@@ -807,7 +810,7 @@ public static class MigrationRunner
     };
 
     /// <summary>
-    /// Executa todas as migrations. Só roda se Supabase:DatabaseUrl estiver definida.
+    /// Executa todas as migrations. Só roda se DatabaseUrl estiver definida.
     /// </summary>
     public static async Task RunAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken = default)
     {
@@ -816,7 +819,7 @@ public static class MigrationRunner
 
         if (config == null || string.IsNullOrWhiteSpace(config.DatabaseUrl))
         {
-            logger?.LogInformation("Supabase:DatabaseUrl not configured, skipping migrations");
+            logger?.LogInformation("DatabaseUrl not configured, skipping migrations");
             return;
         }
 

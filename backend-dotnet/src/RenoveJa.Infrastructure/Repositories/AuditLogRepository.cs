@@ -6,9 +6,9 @@ using RenoveJa.Infrastructure.Data.Postgres;
 namespace RenoveJa.Infrastructure.Repositories;
 
 /// <summary>
-/// Repositório de logs de auditoria via Supabase REST API.
+/// Repositório de logs de auditoria via db REST API.
 /// </summary>
-public class AuditLogRepository(PostgresClient supabase) : IAuditLogRepository
+public class AuditLogRepository(PostgresClient db) : IAuditLogRepository
 {
     private const string TableName = "audit_logs";
 
@@ -16,13 +16,13 @@ public class AuditLogRepository(PostgresClient supabase) : IAuditLogRepository
     public async Task CreateAsync(AuditLog auditLog, CancellationToken cancellationToken = default)
     {
         var model = AuditLogModel.FromDomain(auditLog);
-        await supabase.InsertAsync<AuditLogModel>(TableName, model, cancellationToken);
+        await db.InsertAsync<AuditLogModel>(TableName, model, cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task<List<AuditLog>> GetByUserIdAsync(Guid userId, int limit = 50, int offset = 0, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<AuditLogModel>(
+        var models = await db.GetAllAsync<AuditLogModel>(
             TableName,
             filter: $"user_id=eq.{userId}",
             orderBy: "created_at.desc",
@@ -35,7 +35,7 @@ public class AuditLogRepository(PostgresClient supabase) : IAuditLogRepository
     /// <inheritdoc />
     public async Task<List<AuditLog>> GetByEntityAsync(string entityType, Guid entityId, int limit = 50, int offset = 0, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<AuditLogModel>(
+        var models = await db.GetAllAsync<AuditLogModel>(
             TableName,
             filter: $"entity_type=eq.{entityType}&entity_id=eq.{entityId}",
             orderBy: "created_at.desc",
@@ -48,7 +48,7 @@ public class AuditLogRepository(PostgresClient supabase) : IAuditLogRepository
     /// <inheritdoc />
     public async Task<List<AuditLog>> GetRecentAsync(int limit = 100, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<AuditLogModel>(
+        var models = await db.GetAllAsync<AuditLogModel>(
             TableName,
             orderBy: "created_at.desc",
             limit: limit,
@@ -87,7 +87,7 @@ public class AuditLogRepository(PostgresClient supabase) : IAuditLogRepository
 
         var filter = filters.Count > 0 ? string.Join("&", filters) : null;
 
-        var models = await supabase.GetAllAsync<AuditLogModel>(
+        var models = await db.GetAllAsync<AuditLogModel>(
             TableName,
             filter: filter,
             orderBy: "created_at.desc",

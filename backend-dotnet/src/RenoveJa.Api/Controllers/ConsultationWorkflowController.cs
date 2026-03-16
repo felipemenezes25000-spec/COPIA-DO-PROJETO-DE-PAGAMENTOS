@@ -15,7 +15,7 @@ public class ConsultationWorkflowController(
     IRequestService requestService,
     IConsultationEncounterService consultationEncounterService,
     IRequestRepository requestRepository,
-    PostgresClient supabaseClient,
+    PostgresClient db,
     ILogger<ConsultationWorkflowController> logger) : ControllerBase
 {
     private Guid GetUserId()
@@ -47,7 +47,7 @@ public class ConsultationWorkflowController(
 
     private async Task<string?> BuildChronic180DaysWarningAsync(Guid patientUserId, CancellationToken cancellationToken)
     {
-        var patient = await supabaseClient.GetSingleAsync<PatientChronicRow>(
+        var patient = await db.GetSingleAsync<PatientChronicRow>(
             "patients",
             "id,has_chronic_condition",
             $"user_id=eq.{patientUserId}",
@@ -56,7 +56,7 @@ public class ConsultationWorkflowController(
         if (patient == null || !patient.HasChronicCondition)
             return null;
 
-        var lastPresential = await supabaseClient.GetSingleAsync<EncounterPresentialRow>(
+        var lastPresential = await db.GetSingleAsync<EncounterPresentialRow>(
             "encounters",
             "started_at",
             $"patient_id=eq.{patient.Id}&is_presential=eq.true&order=started_at.desc&limit=1",

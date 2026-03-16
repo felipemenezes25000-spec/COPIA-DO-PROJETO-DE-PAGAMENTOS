@@ -1,4 +1,4 @@
-# RIPD — RELATÓRIO DE IMPACTO À PROTEÇÃO DE DADOS (LGPD)
+﻿# RIPD — RELATÓRIO DE IMPACTO À PROTEÇÃO DE DADOS (LGPD)
 
 **Empresa:** RenoveJá Saúde Ltda.  
 **Sistema:** RenoveJá+ (telemedicina)  
@@ -35,7 +35,6 @@ Avaliar riscos e medidas de mitigação do tratamento de dados pessoais, especia
 
 ## 5. Fluxo e compartilhamento
 
-- Supabase: armazenamento e processamento principal
 - OpenAI: processamento de IA
 - Deepgram: transcrição
 - Daily.co: vídeo

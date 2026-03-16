@@ -1,177 +1,145 @@
-<!-- markdownlint-disable MD013 -->
-# Variáveis de Ambiente e Diagnóstico de Problemas
+# Variáveis de Ambiente — Backend .NET 8
 
-Este documento descreve as variáveis de ambiente necessárias para o backend
-e as causas prováveis dos problemas reportados.
+Referência completa das variáveis necessárias para o backend RenoveJá+.
 
 ---
 
-## 1. Variáveis de Ambiente Necessárias
+## 1. Lista de variáveis
 
-### Backend (.NET)
+| Variável | appsettings | Descrição | Obrigatória |
+|----------|-------------|-----------|-------------|
+| `ConnectionStrings__DefaultConnection` | `ConnectionStrings:DefaultConnection` | Connection string PostgreSQL (AWS RDS) | ✅ |
+| `OpenAI__ApiKey` | `OpenAI:ApiKey` | Chave OpenAI (`sk-proj-...`) — leitura de receitas/exames, anamnese, sugestão de conduta | ✅ |
+| `Gemini__ApiKey` | `Gemini:ApiKey` | Chave Gemini 2.5 Flash (fallback da OpenAI) | Recomendada |
+| `Api__BaseUrl` | `Api:BaseUrl` | URL pública da API — usada para proxy de imagens e links de documentos | ✅ |
+| `Api__DocumentTokenSecret` | `Api:DocumentTokenSecret` | String 32+ chars para tokens temporários de acesso a documentos | ✅ |
+| `MercadoPago__AccessToken` | `MercadoPago:AccessToken` | Token de acesso Mercado Pago | ✅ |
+| `MercadoPago__PublicKey` | `MercadoPago:PublicKey` | Chave pública Mercado Pago | ✅ |
+| `MercadoPago__WebhookSecret` | `MercadoPago:WebhookSecret` | Secret para validar webhooks de pagamento | ✅ |
+| `MercadoPago__NotificationUrl` | `MercadoPago:NotificationUrl` | URL de notificação de webhook | ✅ |
+| `DAILY_API_KEY` | — | Chave API Daily.co (videochamadas) | ✅ |
+| `DAILY_DOMAIN` | — | Domínio Daily.co (ex: `renove`) | ✅ |
+| `DAILY_ROOM_PREFIX` | — | Prefixo das salas Daily.co (ex: `consult`) | Opcional |
+| `DAILY_ROOM_EXPIRY_MINUTES` | — | Expiração das salas em minutos (default: 120) | Opcional |
+| `CertificateEncryption__Key` | `CertificateEncryption:Key` | Chave AES-256 em base64 para criptografar PFX dos médicos | ✅ |
+| `Google__ClientId` | `Google:ClientId` | Client ID Google OAuth | Login Google |
+| `Smtp__Host` | `Smtp:Host` | Host SMTP (ex: `smtp.gmail.com`) | Recuperação de senha |
+| `Smtp__Port` | `Smtp:Port` | Porta SMTP (ex: `587`) | Recuperação de senha |
+| `Smtp__UserName` | `Smtp:UserName` | E-mail remetente | Recuperação de senha |
+| `Smtp__Password` | `Smtp:Password` | Senha de app SMTP | Recuperação de senha |
+| `Smtp__FromEmail` | `Smtp:FromEmail` | E-mail de envio | Recuperação de senha |
+| `Smtp__ResetPasswordBaseUrl` | `Smtp:ResetPasswordBaseUrl` | URL base para link de reset de senha | Recuperação de senha |
+| `Verification__BaseUrl` | `Verification:BaseUrl` | URL do endpoint de verificação (codificada no QR) | QR Code |
+| `Verification__FrontendUrl` | `Verification:FrontendUrl` | URL do frontend de verificação | QR Code |
+| `Verification__ShortUrlBase` | `Verification:ShortUrlBase` | URL base para links curtos no QR | QR Code |
+| `InfoSimples__ApiToken` | `InfoSimples:ApiToken` | Token InfoSimples (validação de CRM) | Validação CRM |
+| `AWS_ACCESS_KEY_ID` | — | Credenciais AWS S3 (dev local) | Dev local |
+| `AWS_SECRET_ACCESS_KEY` | — | Credenciais AWS S3 (dev local) | Dev local |
+| `AWS_S3_PRESCRIPTIONS_BUCKET` | — | Bucket S3 receitas (default: `renoveja-prescriptions`) | Opcional |
+| `AWS_S3_CERTIFICATES_BUCKET` | — | Bucket S3 certificados (default: `renoveja-certificates`) | Opcional |
+| `AWS_S3_AVATARS_BUCKET` | — | Bucket S3 avatares (default: `renoveja-avatars`) | Opcional |
+| `AWS_S3_TRANSCRIPTS_BUCKET` | — | Bucket S3 transcrições (default: `renoveja-transcripts`) | Opcional |
+| `AWS_S3_PUBLIC_BASE_URL` | — | URL base CloudFront para URLs públicas (opcional) | Opcional |
 
-| Variável (PowerShell) | appsettings.json | Uso | Obrigatória para |
-| --------------------- | ---------------- | --- | ---------------- |
-| `Supabase__Url` | `Supabase:Url` | URL do projeto Supabase | DB, Storage, Auth |
-| `Supabase__ServiceKey` | `Supabase:ServiceKey` | Chave **secret** (`sb_secret_...` ou JWT `eyJ...`). **Não** usar `sb_publishable_` ou `sb_anon_` | DB, Storage, Auth |
-| `OpenAI__ApiKey` | `OpenAI:ApiKey` | Chave da API OpenAI (formato `sk-proj-...`) | Análise de receitas/exames, Whisper fallback |
-| `Verification__BaseUrl` | `Verification:BaseUrl` | URL base do endpoint da API (codificada no QR Code) | Integração validar.iti.gov.br |
-| `Verification__FrontendUrl` | `Verification:FrontendUrl` | URL base do frontend de verificação (redirect + texto do PDF) | Redirect de browsers |
-| `Verification__ShortUrlBase` | `Verification:ShortUrlBase` | URL base para links curtos no QR. Quando configurado, o QR usa `/r/{shortCode}` em vez da URL completa. | QR Code mais compacto |
-| `Api__BaseUrl` | `Api:BaseUrl` | URL pública da API. Usada para links de documento e **imagens de receita/exame** (proxy). | Documento assinado, imagens para médico |
-| `Api__DocumentTokenSecret` | `Api:DocumentTokenSecret` | Chave secreta para tokens temporários de acesso (documento e imagens). String aleatória de 32+ caracteres. | Documento assinado, imagens para médico |
-| `ASPNETCORE_ENVIRONMENT` | - | `Development` para mais logs e CORS aberto | Ambiente |
-
-### Formato da Supabase:ServiceKey
-
-O backend valida a chave em `SupabaseClient.EnsureServiceRoleKey()`:
-
-- **Válido**: `sb_secret_...` (formato novo) ou JWT começando com `eyJ` (service_role legado)
-- **Inválido**: vazio, `SUA_SERVICE_KEY_SUPABASE`, `sb_publishable_...`, `sb_anon_...`
-
-Onde obter: Supabase → Project Settings → API → Secret keys → `service_role`.
-
-### Formato da OpenAI:ApiKey
-
-- **Válido**: chave real da OpenAI (ex: `sk-proj-...` ou `sk-...`)
-- **Inválido**: vazio, `sk-proj-SUA_CHAVE_OPENAI`, chave expirada
-
-Onde obter: [platform.openai.com](https://platform.openai.com) → API keys → Create new.
+**Estrutura de paths no S3:** ver [STORAGE_S3_ESTRUTURA.md](STORAGE_S3_ESTRUTURA.md) — pedidos (receita/exame), consultas (transcrição/gravação), usuários (avatar/certificados), planos de cuidado.
+| `SENTRY_DSN` | — | DSN Sentry — desativa se vazio | Opcional |
+| `ASPNETCORE_ENVIRONMENT` | — | `Development` ou `Production` | Opcional |
 
 ---
 
-## 2. Configuração Recomendada
+## 2. Configuração local (desenvolvimento)
 
-### Opção A: `appsettings.Development.json` (recomendado para desenvolvimento local)
+Crie `src/RenoveJa.Api/appsettings.Development.json` (nunca commitar — está no `.gitignore`):
 
-1. Copie o arquivo de exemplo (PowerShell, dentro da pasta `RenoveJa.Api`):
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Database=renoveja;Username=postgres;Password=SUA_SENHA"
+  },
+  "OpenAI": {
+    "ApiKey": "sk-proj-SUA_CHAVE_REAL"
+  },
+  "Gemini": {
+    "ApiKey": "SUA_CHAVE_GEMINI"
+  },
+  "Api": {
+    "BaseUrl": "http://localhost:5000",
+    "DocumentTokenSecret": "CHAVE_ALEATORIA_MINIMO_32_CARACTERES"
+  },
+  "CertificateEncryption": {
+    "Key": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+  },
+  "MercadoPago": {
+    "AccessToken": "APP_USR-..."
+  }
+}
+```
 
-   ```powershell
-   Copy-Item appsettings.Development.json.example appsettings.Development.json
-   ```
+Copie também `.env.example` para `.env` e preencha `DAILY_API_KEY`, `DAILY_DOMAIN`, etc.
 
-2. Edite `appsettings.Development.json` e substitua os placeholders pelas chaves reais.
+Para rodar:
 
-**Importante**: O `appsettings.Development.json` não existe no projeto (está no `.gitignore`).
-Sem ele, o `appsettings.json` com placeholders é usado, causando os erros descritos.
-
-### Opção B: Variáveis de ambiente (não commitar chaves)
-
-```powershell
-# Windows PowerShell - antes de rodar dotnet run
-$env:Supabase__Url = "https://SEU_PROJETO.supabase.co"
-$env:Supabase__ServiceKey = "sb_secret_SUA_CHAVE"
-$env:OpenAI__ApiKey = "sk-proj-SUA_CHAVE_OPENAI"
-$env:ASPNETCORE_ENVIRONMENT = "Development"
+```bash
+cd src/RenoveJa.Api
 dotnet run
 ```
 
 ---
 
-## 3. Diagnóstico dos Problemas Reportados
+## 3. Diagnóstico de problemas comuns
 
-### Problema 1: Expo salva dados no banco, mas IA não funciona
+### IA não funciona (leitura de receita/exame)
 
-**Possíveis causas:**
+| Causa | Log | Solução |
+|-------|-----|---------|
+| `OpenAI:ApiKey` ausente ou placeholder | `IA receita: OpenAI:ApiKey não configurada` | Definir chave real em `appsettings.Development.json` ou env var |
+| Chave expirada ou inválida | `OpenAI API error: StatusCode=401` | Gerar nova chave em platform.openai.com |
+| Rate limit | `OpenAI API error: StatusCode=429` | Aguardar ou verificar limites da conta |
 
-| Causa | Verificação | Solução |
-| ----- | ----------- | ------- |
-| `OpenAI:ApiKey` ausente ou placeholder | Log: `IA receita: OpenAI:ApiKey não configurada` | Definir `OpenAI__ApiKey` ou em `appsettings.Development.json` |
-| `OpenAI:ApiKey` inválida ou expirada | Log: `OpenAI API error: StatusCode=401` | Gerar nova chave em platform.openai.com |
-| Imagens não chegando à IA | Log: `IA: URL #N retornou vazio` ou falha ao baixar | Verificar bucket Supabase e permissões |
-| Rate limit OpenAI (429) | Log: `OpenAI API error: StatusCode=429` | Aguardar ou verificar limites na conta OpenAI |
+### Imagens de receita/exame não carregam para o médico
 
-**Resumo:** Se o Expo salva dados, o **Supabase** está configurado. O problema é quase
-sempre a **OpenAI:ApiKey** ausente ou inválida.
+**Causa:** O bucket S3 `renoveja-prescriptions` é privado. O app precisa usar o proxy da API.
 
----
+**Solução:** Configure `Api__BaseUrl` e `Api__DocumentTokenSecret`. O backend retornará URLs de proxy (`/api/requests/{id}/image/...`) em vez de URLs diretas do S3.
 
-### Problema 2: Swagger retorna 400 e não salva dados
+### Transcrição da consulta não funciona
 
-**Possíveis causas:**
+**Causa:** A transcrição é feita pelo **Daily.co com Deepgram** — não há Whisper. Verifique:
 
 | Causa | Verificação | Solução |
-| ----- | ----------- | ------- |
-| `Supabase:ServiceKey` com formato inválido | Log: `Supabase:ServiceKey deve ser sb_secret_...` | Usar chave real em formato `sb_secret_...` ou JWT `eyJ...` |
-| Swagger envia `Authorization: Bearer` em todas as requisições | Se clicou em **Authorize** e colocou token, Swagger envia em **todos** os endpoints | Ao testar login, **limpar** o token: Authorize → Logout |
-| Placeholder no appsettings.json | `appsettings.json` tem `"ServiceKey": "SUA_SERVICE_KEY_SUPABASE"` | Criar `appsettings.Development.json` com chave real |
-| Ausência de `appsettings.Development.json` | O arquivo não existe no projeto | Criar o arquivo com as chaves reais (nunca commitar) |
+|-------|-------------|---------|
+| `DAILY_API_KEY` não configurada | Sala não é criada | Definir `DAILY_API_KEY` |
+| Microfone mutado durante consulta | Banner "0 transcrições" após 10s+ | Desmutar o microfone |
+| Request não em `InConsultation` | API retorna 400 | Clicar em "Iniciar Consulta" antes de falar |
 
-**Resumo:** O Swagger dispara o middleware de autenticação quando envia `Authorization`.
-Se a `Supabase:ServiceKey` estiver inválida, o `SupabaseClient` lança exceção e a API retorna 400.
+### API retorna 400 em todos os endpoints
 
----
-
-### Problema 3: Médico não consegue visualizar imagens de receita/exame ("Erro ao carregar imagem")
-
-**Causa:** O bucket `prescription-images` no Supabase foi tornado **privado** (migration de hardening). As URLs diretas do Supabase retornam 403. O app precisa usar o proxy da API.
-
-**Solução:** Configure `Api:BaseUrl` e `Api:DocumentTokenSecret` no backend
-(ou variáveis `Api__BaseUrl` e `Api__DocumentTokenSecret`):
-
-- `Api:BaseUrl`: URL pública da API (ex: `https://ola-jamal.onrender.com` no Render)
-- `Api:DocumentTokenSecret`: String aleatória de 32+ caracteres (`openssl rand -hex 32`)
-
-Com isso, a API retorna URLs de proxy em vez das URLs do Supabase,
-e o médico consegue visualizar as imagens.
+**Causa mais comum:** `ConnectionStrings__DefaultConnection` não configurada ou inválida. O `PostgresClient` falha na primeira query e lança exceção.
 
 ---
 
-## 4. Fluxo Resumido
+## 4. Fluxo de dados resumido
 
-```text
-Expo (celular)                    Backend
-     |                               |
-     |-- POST /api/requests/prescription (multipart) -->
-     |                               |
-     |                    [Auth: token válido ou ausente]
-     |                    [Storage: upload imagens Supabase]
-     |                    [DB: SupabaseClient/repositories]
-     |                    [IA: OpenAiReadingService → OpenAI API]
-     |                               |
-     |<-- 200 + dados -------------|
+```
+Mobile/Web
+  │
+  ├── POST /api/auth/login ──────────────> PostgreSQL (auth_tokens)
+  ├── POST /api/requests/prescription ───> S3 (imagens) + PostgreSQL (request)
+  │                                           └── OpenAI (leitura IA)
+  ├── POST /api/requests/{id}/approve ───> PostgreSQL (update status)
+  ├── POST /api/requests/{id}/sign ──────> S3 (PDF assinado) + PostgreSQL
+  ├── POST /api/video/rooms ─────────────> Daily.co (cria sala)
+  └── POST /api/payments ────────────────> Mercado Pago (cria pagamento PIX)
 ```
 
-- **Supabase** (Url + ServiceKey): necessário para Auth, Storage e DB.
-- **OpenAI** (ApiKey): necessário apenas para análise de receitas/exames por IA.
-
 ---
 
-## 5. Checklist de Verificação
+## 5. Checklist de verificação
 
-- [ ] `appsettings.Development.json` existe e contém `Supabase:Url`, `Supabase:ServiceKey` e `OpenAI:ApiKey` reais
-- [ ] `Supabase:ServiceKey` começa com `sb_secret_` ou `eyJ`
-- [ ] `OpenAI:ApiKey` é uma chave real (não placeholder)
-- [ ] `ASPNETCORE_ENVIRONMENT=Development` ao rodar o backend
-- [ ] No Swagger: ao testar login, **não** ter token em Authorize
-- [ ] Frontend `.env` com `EXPO_PUBLIC_API_URL` apontando para o IP correto
-
----
-
-### Problema 4: Transcrição da consulta não funciona (0 transcrições)
-
-**Possíveis causas:**
-
-| Causa | Verificação | Solução |
-| ----- | ----------- | ------- |
-| Daily.co não configurado | Transcrição não inicia | Transcrição é feita pelo Daily.co (Deepgram). Verifique `DAILY_API_KEY`. |
-| Mic do médico mutado | Banner "Gravando · 0 transcrições" após 10s+ | Desmutar o microfone durante a consulta |
-| Chunk muito pequeno (silêncio) | Log: `Chunk ignorado: arquivo muito pequeno` | Falar durante a gravação; os primeiros 10s são enviados após o ciclo |
-| Request não em `InConsultation` | API retorna 400 | Iniciar a consulta com o botão "Iniciar Consulta" antes de falar |
-| API inacessível do celular | App mostra "X falhas" no indicador | Verificar `EXPO_PUBLIC_API_URL` apontando para IP/URL acessível |
-
-**Como testar:**
-
-1. **Durante a consulta:** Transcrição é feita pelo Daily.co no cliente. Após "Iniciar Consulta", aguarde o primeiro ciclo. Fale claramente. O indicador mostra "Gravando · N transcrições". Se aparecer "X falhas", verifique logs do backend e conectividade.
-
-2. **Diagnóstico:** Ver `TRANSCRICAO_CONSULTA_DEBUG.md`.
-
----
-
-## 6. Arquivos de Configuração Atuais
-
-| Arquivo | Status | Conteúdo |
-| ------- | ------ | -------- |
-| `appsettings.json` | Existe | Placeholders: `SUA_SERVICE_KEY_SUPABASE`, `sk-proj-SUA_CHAVE_OPENAI` |
-| `appsettings.Development.json` | **Não existe** | Deveria conter chaves reais para dev |
-| Frontend `.env` | Existe | `EXPO_PUBLIC_API_URL=http://192.168.15.69:5000` |
+- [ ] `appsettings.Development.json` existe com `ConnectionStrings:DefaultConnection` e `OpenAI:ApiKey` reais
+- [ ] `OpenAI:ApiKey` começa com `sk-proj-` ou `sk-`
+- [ ] `Api:BaseUrl` e `Api:DocumentTokenSecret` configurados
+- [ ] `DAILY_API_KEY` e `DAILY_DOMAIN` configurados para videochamadas
+- [ ] AWS credentials disponíveis para acesso ao S3 (dev local)
+- [ ] `ASPNETCORE_ENVIRONMENT=Development` ao rodar o backend localmente
+- [ ] Frontend `.env` com `EXPO_PUBLIC_API_URL` apontando para o IP/URL correto

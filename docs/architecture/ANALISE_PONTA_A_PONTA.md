@@ -1,4 +1,4 @@
-# Análise Ponta a Ponta — RenoveJá+ (ola-jamal)
+﻿# Análise Ponta a Ponta — RenoveJá+ (ola-jamal)
 
 ## 1. Visão geral
 
@@ -7,7 +7,7 @@
 - **frontend-mobile**: app React Native (Expo) para pacientes e médicos
 - **frontend-web**: site em React (Vite) focado em verificação de receitas
 - **backend-dotnet**: API .NET 8 em Clean Architecture
-- **supabase**: PostgreSQL, Storage, Edge Functions (Verify v2)
+- **infra**: PostgreSQL/RDS + AWS S3
 
 ---
 
@@ -30,7 +30,7 @@ flowchart TB
         App --> Infra
     end
 
-    subgraph Supabase
+    subgraph PostgreSQL/RDS
         PG[(PostgreSQL)]
         Storage[(Storage)]
         EF[Edge Function verify]
@@ -69,7 +69,7 @@ flowchart TB
 | **Mobile**      | Expo 54, React Native 0.81, Expo Router 6, React Query, NativeWind (Tailwind), Daily.co (vídeo), SignalR, Zod |
 | **Web**         | React 18, Vite 5, React Router 6                                                                              |
 | **Backend**     | .NET 8, FluentValidation, Serilog, Swashbuckle (Swagger)                                                      |
-| **Infra**       | Supabase (PostgreSQL, Storage, Edge Functions), Npgsql, iText7 (PDF), BouncyCastle, QRCoder, Magick.NET       |
+| **Infra**       | PostgreSQL/RDS + AWS S3, Npgsql, iText7 (PDF), BouncyCastle, QRCoder, Magick.NET       |
 | **Integrações** | Mercado Pago, Google OAuth, OpenAI, Deepgram, InfoSimples (CRM), Daily.co                                     |
 
 ---
@@ -96,7 +96,7 @@ ola-jamal/
 │   │   ├── RenoveJa.Domain/        # Entities, Interfaces, Enums
 │   │   └── RenoveJa.Infrastructure/# Repositories, Storage, Auth, etc.
 │   └── tests/RenoveJa.UnitTests/
-├── supabase/
+├── 
 │   ├── migrations/           # SQL (prescriptions, RLS, etc.)
 │   ├── functions/verify/      # Edge Function Verify v2
 │   └── docs/
@@ -133,9 +133,9 @@ ola-jamal/
 
 O projeto possui **duas implementações** de verificação:
 
-| Aspecto              | Edge Function Supabase                    | Backend .NET                                                                                     |
+| Aspecto              | backend .NET                    | Backend .NET                                                                                     |
 | -------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| **URL**              | `POST {SUPABASE_URL}/functions/v1/verify` | `POST /api/prescriptions/verify`                                                                 |
+| **URL**              | `POST /api/prescriptions/verify` | `POST /api/prescriptions/verify`                                                                 |
 | **Body**             | `{ id, code, v? }`                        | `{ prescriptionId, verificationCode }`                                                           |
 | **Tabela**           | `prescriptions`                           | `medical_requests` + `prescription_verify_repository`                                            |
 | **Código**           | 6 dígitos (somente 0-9)                   | 4 ou 6 dígitos                                                                                   |
@@ -143,7 +143,7 @@ O projeto possui **duas implementações** de verificação:
 
 **Frontend-web** usa apenas o backend: `frontend-web/src/api/verify.ts` chama `POST /api/prescriptions/verify` com `prescriptionId` e `verificationCode`.
 
-O backend usa `medical_requests` e `requestRepository`; a Edge Function usa a tabela `prescriptions` do Supabase. O skill RenoveJá+ alignment trata possíveis desalinhamentos entre essas fontes.
+O backend usa `medical_requests` e `requestRepository`; a Edge Function usa a tabela `prescriptions` do PostgreSQL/RDS. O skill RenoveJá+ alignment trata possíveis desalinhamentos entre essas fontes.
 
 ---
 
@@ -208,9 +208,9 @@ Ambos:    Entram na videochamada
 
 | Ponto             | Descrição                                                                                                                                                                     |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Verify v2**     | Contrato: URL `/verify/<id>?v=<token>`, código 6 dígitos. Duas implementações: Edge Function Supabase e backend `POST /api/prescriptions/verify`. Frontend-web usa o backend. |
+| **Verify v2**     | Contrato: URL `/verify/<id>?v=<token>`, código 6 dígitos. Duas implementações: backend .NET e backend `POST /api/prescriptions/verify`. Frontend-web usa o backend. |
 | **CORS Verify**   | `VerifyCors` permite origem do frontend de verificação.                                                                                                                       |
-| **Prescriptions** | Tabelas `prescriptions` e `prescription_verification_logs` no Supabase; bucket `prescriptions` para PDFs.                                                                     |
+| **Prescriptions** | Tabelas `prescriptions` e `prescription_verification_logs` no PostgreSQL/RDS; bucket `prescriptions` para PDFs.                                                                     |
 | **Auth**          | JWT Bearer; `AuthContext` no mobile; token em AsyncStorage.                                                                                                                   |
 | **SignalR**       | Atualização em tempo real de pedidos (`RequestsEventsContext`).                                                                                                               |
 | **Mercado Pago**  | Webhook em `/api/payments/webhook` para confirmação de pagamento.                                                                                                             |
@@ -220,7 +220,7 @@ Ambos:    Entram na videochamada
 ## 10. Regras e guardrails
 
 - **Regras .cursor**: Performance, acessibilidade, design system, Verify v2 contract, runbook Windows, mobile-first, guardrails, qualidade core.
-- **Guardrails**: não criar chat, não inventar rotas novas, não expor `SUPABASE_SERVICE_ROLE_KEY` no frontend, patches mínimos, sem hardcode de preço/status.
+- **Guardrails**: não criar chat, não inventar rotas novas, não expor `AWS_SECRET_ACCESS_KEY` no frontend, patches mínimos, sem hardcode de preço/status.
 - **Qualidade**: TypeScript strict, loading/empty/error states, lint + typecheck + tests antes de finalizar.
 
 ---

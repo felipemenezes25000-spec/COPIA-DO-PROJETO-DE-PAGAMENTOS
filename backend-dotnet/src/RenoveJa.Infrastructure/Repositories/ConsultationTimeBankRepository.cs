@@ -5,16 +5,16 @@ using RenoveJa.Infrastructure.Data.Postgres;
 namespace RenoveJa.Infrastructure.Repositories;
 
 /// <summary>
-/// Repositório de banco de horas de consulta via Supabase.
+/// Repositório de banco de horas de consulta via db.
 /// </summary>
-public class ConsultationTimeBankRepository(PostgresClient supabase) : IConsultationTimeBankRepository
+public class ConsultationTimeBankRepository(PostgresClient db) : IConsultationTimeBankRepository
 {
     private const string BankTable = "consultation_time_bank";
     private const string TxTable = "consultation_time_bank_transactions";
 
     public async Task<int> GetBalanceSecondsAsync(Guid patientId, string consultationType, CancellationToken ct = default)
     {
-        var model = await supabase.GetSingleAsync<TimeBankModel>(
+        var model = await db.GetSingleAsync<TimeBankModel>(
             BankTable,
             filter: $"patient_id=eq.{patientId}&consultation_type=eq.{consultationType}",
             cancellationToken: ct);
@@ -26,7 +26,7 @@ public class ConsultationTimeBankRepository(PostgresClient supabase) : IConsulta
     {
         if (seconds <= 0) return;
 
-        var existing = await supabase.GetSingleAsync<TimeBankModel>(
+        var existing = await db.GetSingleAsync<TimeBankModel>(
             BankTable,
             filter: $"patient_id=eq.{patientId}&consultation_type=eq.{consultationType}",
             cancellationToken: ct);
@@ -42,7 +42,7 @@ public class ConsultationTimeBankRepository(PostgresClient supabase) : IConsulta
                 LastUpdatedAt = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow
             };
-            await supabase.InsertAsync<TimeBankModel>(BankTable, newRecord, ct);
+            await db.InsertAsync<TimeBankModel>(BankTable, newRecord, ct);
         }
         else
         {
@@ -51,7 +51,7 @@ public class ConsultationTimeBankRepository(PostgresClient supabase) : IConsulta
                 BalanceSeconds = existing.BalanceSeconds + seconds,
                 LastUpdatedAt = DateTime.UtcNow
             };
-            await supabase.UpdateAsync<TimeBankModel>(
+            await db.UpdateAsync<TimeBankModel>(
                 BankTable,
                 $"patient_id=eq.{patientId}&consultation_type=eq.{consultationType}",
                 updatePayload,
@@ -65,7 +65,7 @@ public class ConsultationTimeBankRepository(PostgresClient supabase) : IConsulta
     {
         if (seconds <= 0) return 0;
 
-        var existing = await supabase.GetSingleAsync<TimeBankModel>(
+        var existing = await db.GetSingleAsync<TimeBankModel>(
             BankTable,
             filter: $"patient_id=eq.{patientId}&consultation_type=eq.{consultationType}",
             cancellationToken: ct);
@@ -78,7 +78,7 @@ public class ConsultationTimeBankRepository(PostgresClient supabase) : IConsulta
             BalanceSeconds = existing.BalanceSeconds - debited,
             LastUpdatedAt = DateTime.UtcNow
         };
-        await supabase.UpdateAsync<TimeBankModel>(
+        await db.UpdateAsync<TimeBankModel>(
             BankTable,
             $"patient_id=eq.{patientId}&consultation_type=eq.{consultationType}",
             updatePayload,
@@ -91,7 +91,7 @@ public class ConsultationTimeBankRepository(PostgresClient supabase) : IConsulta
 
     public async Task<int> GetDebitedSecondsForRequestAsync(Guid requestId, CancellationToken ct = default)
     {
-        var rows = await supabase.GetAllAsync<TimeBankTransactionModel>(
+        var rows = await db.GetAllAsync<TimeBankTransactionModel>(
             TxTable,
             select: "delta_seconds",
             filter: $"request_id=eq.{requestId}",
@@ -111,7 +111,7 @@ public class ConsultationTimeBankRepository(PostgresClient supabase) : IConsulta
             Reason = reason,
             CreatedAt = DateTime.UtcNow
         };
-        await supabase.InsertAsync<TimeBankTransactionModel>(TxTable, tx, ct);
+        await db.InsertAsync<TimeBankTransactionModel>(TxTable, tx, ct);
     }
 
     private class TimeBankModel

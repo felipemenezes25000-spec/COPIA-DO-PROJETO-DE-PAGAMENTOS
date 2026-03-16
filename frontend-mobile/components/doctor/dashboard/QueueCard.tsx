@@ -14,7 +14,7 @@ interface QueueCardProps {
   responsive: DashboardResponsive;
 }
 
-export function QueueCard({ message, onPress, responsive }: QueueCardProps) {
+function QueueCard_Fn({ message, onPress, responsive }: QueueCardProps) {
   const { typography, heights, iconSizes } = responsive;
   const queueIconSize = iconSizes?.queueIcon ?? 24;
   return (
@@ -148,3 +148,5 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
 });
+
+export const QueueCard = React.memo(QueueCard_Fn);

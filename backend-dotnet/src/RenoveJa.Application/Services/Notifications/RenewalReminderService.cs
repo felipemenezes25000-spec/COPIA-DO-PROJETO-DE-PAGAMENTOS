@@ -39,7 +39,10 @@ public class RenewalReminderService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao enviar lembretes de renovação de receita");
+                if (IsDatabaseNotConfigured(ex))
+                    _logger.LogDebug("Database não configurado, ignorando lembretes de renovação de receita");
+                else
+                    _logger.LogError(ex, "Erro ao enviar lembretes de renovação de receita");
             }
 
             await Task.Delay(RunInterval, stoppingToken);
@@ -73,5 +76,13 @@ public class RenewalReminderService : BackgroundService
                 _logger.LogWarning(ex, "Falha ao enviar lembrete de renovação para request {RequestId}", req.Id);
             }
         }
+    }
+
+    private static bool IsDatabaseNotConfigured(Exception ex)
+    {
+        var msg = ex.Message ?? "";
+        return msg.Contains("Host", StringComparison.OrdinalIgnoreCase)
+            || msg.Contains("connection string", StringComparison.OrdinalIgnoreCase)
+            || msg.Contains("not configured", StringComparison.OrdinalIgnoreCase);
     }
 }

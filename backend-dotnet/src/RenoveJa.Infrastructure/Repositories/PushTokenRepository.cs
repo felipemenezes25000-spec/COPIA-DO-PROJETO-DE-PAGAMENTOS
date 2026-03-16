@@ -5,27 +5,27 @@ using RenoveJa.Infrastructure.Data.Postgres;
 
 namespace RenoveJa.Infrastructure.Repositories;
 
-public class PushTokenRepository(PostgresClient supabase) : IPushTokenRepository
+public class PushTokenRepository(PostgresClient db) : IPushTokenRepository
 {
     private const string TableName = "push_tokens";
 
     public async Task<PushToken?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<PushTokenModel>(
+        var model = await db.GetSingleAsync<PushTokenModel>(
             TableName, filter: $"id=eq.{id}", cancellationToken: cancellationToken);
         return model != null ? MapToDomain(model) : null;
     }
 
     public async Task<List<PushToken>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<PushTokenModel>(
+        var models = await db.GetAllAsync<PushTokenModel>(
             TableName, filter: $"user_id=eq.{userId}&active=eq.true", cancellationToken: cancellationToken);
         return models.Select(MapToDomain).ToList();
     }
 
     public async Task<List<PushToken>> GetAllByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<PushTokenModel>(
+        var models = await db.GetAllAsync<PushTokenModel>(
             TableName, filter: $"user_id=eq.{userId}", cancellationToken: cancellationToken);
         return models.Select(MapToDomain).ToList();
     }
@@ -34,7 +34,7 @@ public class PushTokenRepository(PostgresClient supabase) : IPushTokenRepository
     {
         // Use upsert to avoid duplicate key violation on idx_push_tokens_unique
         var model = MapToModel(pushToken);
-        await supabase.UpsertAsync(TableName, model, cancellationToken);
+        await db.UpsertAsync(TableName, model, cancellationToken);
         return pushToken;
     }
 
@@ -42,13 +42,13 @@ public class PushTokenRepository(PostgresClient supabase) : IPushTokenRepository
     {
         // No URL encoding needed with Npgsql/Dapper (SQL parameters handle special chars)
         var filter = $"user_id=eq.{pushToken.UserId}&token=eq.{pushToken.Token}";
-        var existing = await supabase.GetSingleAsync<PushTokenModel>(
+        var existing = await db.GetSingleAsync<PushTokenModel>(
             TableName, filter: filter, cancellationToken: cancellationToken);
 
         PushToken result;
         if (existing != null)
         {
-            var updated = await supabase.UpdateAsync<PushTokenModel>(
+            var updated = await db.UpdateAsync<PushTokenModel>(
                 TableName, filter, new { active = true }, cancellationToken);
             result = MapToDomain(updated);
         }
@@ -57,13 +57,13 @@ public class PushTokenRepository(PostgresClient supabase) : IPushTokenRepository
             var model = MapToModel(pushToken);
             try
             {
-                var created = await supabase.InsertAsync<PushTokenModel>(TableName, model, cancellationToken);
+                var created = await db.InsertAsync<PushTokenModel>(TableName, model, cancellationToken);
                 result = MapToDomain(created);
             }
             catch
             {
                 // Duplicate key â€” token already exists, just activate it
-                await supabase.UpdateAsync<PushTokenModel>(
+                await db.UpdateAsync<PushTokenModel>(
                     TableName, filter, new { active = true }, cancellationToken);
                 result = pushToken;
             }
@@ -73,7 +73,7 @@ public class PushTokenRepository(PostgresClient supabase) : IPushTokenRepository
         try
         {
             var deactivateFilter = $"token=eq.{pushToken.Token}&user_id=neq.{pushToken.UserId}&active=eq.true";
-            await supabase.UpdateAsync<PushTokenModel>(
+            await db.UpdateAsync<PushTokenModel>(
                 TableName, deactivateFilter, new { active = false }, cancellationToken);
         }
         catch { /* Don't fail registration because of cleanup */ }
@@ -83,7 +83,7 @@ public class PushTokenRepository(PostgresClient supabase) : IPushTokenRepository
 
     public async Task DeleteByTokenAsync(string token, Guid userId, CancellationToken cancellationToken = default)
     {
-        await supabase.UpdateAsync<PushTokenModel>(
+        await db.UpdateAsync<PushTokenModel>(
             TableName, $"token=eq.{token}&user_id=eq.{userId}", new { active = false }, cancellationToken);
     }
 
@@ -91,20 +91,20 @@ public class PushTokenRepository(PostgresClient supabase) : IPushTokenRepository
     {
         var token = await GetByIdAsync(id, cancellationToken);
         if (token == null || token.UserId != userId) return false;
-        await supabase.UpdateAsync<PushTokenModel>(
+        await db.UpdateAsync<PushTokenModel>(
             TableName, $"id=eq.{id}&user_id=eq.{userId}", new { active }, cancellationToken);
         return true;
     }
 
     public async Task SetAllActiveForUserAsync(Guid userId, bool active, CancellationToken cancellationToken = default)
     {
-        await supabase.UpdateAsync<PushTokenModel>(
+        await db.UpdateAsync<PushTokenModel>(
             TableName, $"user_id=eq.{userId}", new { active }, cancellationToken);
     }
 
     public async Task DeactivateByTokenAsync(string token, Guid userId, CancellationToken ct = default)
     {
-        await supabase.UpdateAsync<PushTokenModel>(
+        await db.UpdateAsync<PushTokenModel>(
             TableName, $"token=eq.{token}&user_id=eq.{userId}", new { active = false }, ct);
     }
 

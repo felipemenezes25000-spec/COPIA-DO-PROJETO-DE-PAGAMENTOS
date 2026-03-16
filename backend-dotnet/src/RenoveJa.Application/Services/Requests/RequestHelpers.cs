@@ -76,21 +76,26 @@ internal static class RequestHelpers
     }
 
     /// <summary>
-    /// Monta o conteúdo .txt da transcrição no formato:
-    /// Paciente minuto X segundo Y fala
-    /// Médico minuto X segundo Y fala
+    /// Monta o conteúdo .txt da transcrição. Garante que a transcrição saia inteira:
+    /// 1) Sempre inclui o texto completo (TranscriptText) como fonte de verdade.
+    /// 2) Se houver segmentos com tempo, acrescenta a versão "por tempo" para referência.
     /// Usa consultation_started_at como baseline; se null, usa o primeiro segmento.
     /// </summary>
     internal static string? BuildTranscriptTxtContent(ConsultationSessionData sessionData, DateTime? consultationStartedAt)
     {
+        var fullText = sessionData.TranscriptText?.Trim();
         var segments = sessionData.TranscriptSegments;
+
         if (segments == null || segments.Count == 0)
-            return sessionData.TranscriptText;
+            return string.IsNullOrEmpty(fullText) ? null : fullText;
+
+        var sb = new StringBuilder();
+        sb.Append("=== TRANSCRIÇÃO COMPLETA ===\n\n");
+        sb.AppendLine(string.IsNullOrEmpty(fullText) ? "(sem texto)" : fullText);
 
         var baseline = consultationStartedAt?.ToUniversalTime()
             ?? segments[0].ReceivedAtUtc;
-
-        var sb = new StringBuilder();
+        sb.Append("\n\n=== POR TEMPO (referência) ===\n\n");
         foreach (var seg in segments)
         {
             double elapsedSeconds;
@@ -327,7 +332,8 @@ internal static class RequestHelpers
         string? consultationTranscript = null,
         string? consultationAnamnesis = null,
         string? consultationAiSuggestions = null,
-        string? consultationEvidence = null)
+        string? consultationEvidence = null,
+        bool consultationHasRecording = false)
     {
         var signedUrl = request.SignedDocumentUrl;
         if (!string.IsNullOrWhiteSpace(apiBaseUrl) && !string.IsNullOrWhiteSpace(signedUrl))
@@ -376,6 +382,7 @@ internal static class RequestHelpers
             consultationAnamnesis,
             consultationAiSuggestions,
             consultationEvidence,
+            consultationHasRecording,
             request.ConsultationType,
             request.ContractedMinutes,
             request.PricePerMinute,

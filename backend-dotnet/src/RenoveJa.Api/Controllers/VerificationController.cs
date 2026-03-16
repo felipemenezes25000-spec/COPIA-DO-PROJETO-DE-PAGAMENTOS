@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Cors;
+﻿using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Http;
@@ -101,7 +101,7 @@ public class VerificationController(
 
     /// <summary>
     /// Retrocompatibilidade: valida o código de 4 dígitos e retorna dados completos da receita.
-    /// Clientes novos devem usar a Supabase Edge Function (POST /functions/v1/verify) com código de 6 dígitos.
+    /// Clientes novos devem usar POST /api/prescriptions/verify com codigo de 6 dígitos.
     /// </summary>
     [HttpPost("{id:guid}/full")]
     public async Task<IActionResult> GetFullVerification(
@@ -162,7 +162,7 @@ public class VerificationController(
             }
             else
             {
-                // Caso legado: pode ser URL pública do Supabase (que pode falhar se bucket for privado)
+                // Caso legado: URL publica de storage (pode falhar se bucket for privado)
                 bytes = await storageService.DownloadFromStorageUrlAsync(refOrUrl, cancellationToken);
 
                 // Fallback final: se não for URL do nosso storage, tenta HTTP normal

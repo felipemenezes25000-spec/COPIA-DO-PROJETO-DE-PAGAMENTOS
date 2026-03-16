@@ -1,4 +1,4 @@
-﻿import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { trackApiLatency } from './analytics';
 import { logApiError } from './logger';
@@ -44,7 +44,7 @@ const BASE_URL =
     : getDefaultBaseUrl();
 
 /** Timeout para evitar loading infinito quando a API está inacessível.
- *  Render free tier pode levar até 60s para cold start, então usamos 60s. */
+ *  API (AWS) pode levar até 60s para cold start, então usamos 60s. */
 const REQUEST_TIMEOUT_MS = 60_000;
 
 export interface ApiError {
@@ -226,10 +226,10 @@ class ApiClient {
         if (parsed?.status !== undefined) {
           throw e;
         }
-        // 400 com corpo vazio/não-JSON: comum com AllowedHosts, Supabase inválido ou backend acordando (Render)
+        // 400 com corpo vazio/nao-JSON: comum com AllowedHosts inválidos ou backend acordando (cold start)
         const hint =
           response.status === 400
-            ? ' Se usar Render, aguarde 1–2 min (serviço pode estar acordando). Verifique EXPO_PUBLIC_API_URL.'
+            ? ' Aguarde 1–2 min (serviço pode estar acordando). Verifique EXPO_PUBLIC_API_URL.'
             : '';
         errorMessage = `${response.status} ${response.statusText || 'Erro na requisição'}${hint}`;
       }

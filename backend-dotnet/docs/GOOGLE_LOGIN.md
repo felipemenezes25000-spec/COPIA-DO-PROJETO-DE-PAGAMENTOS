@@ -1,4 +1,4 @@
-# Como testar o login com Google
+﻿# Como testar o login com Google
 
 O endpoint `POST /api/auth/google` recebe o **ID token** retornado pelo Google Sign-In no frontend, valida no backend e devolve o token da aplicação (mesmo formato do login por e-mail/senha).
 
@@ -164,7 +164,7 @@ Usuários criados via Google entram com **cadastro incompleto**. O frontend deve
 3. **Salvar:** `PATCH /api/auth/complete-profile` com o body adequado (token no header). Após sucesso, `profileComplete: true`.
 4. **Cancelar:** `POST /api/auth/cancel-registration` (com token). O usuário é **removido** (rollback) e o token deixa de valer.
 
-**Migração no Supabase:** a tabela `users` precisa da coluna `profile_complete` (boolean, default true). No SQL Editor do Supabase:
+**Migração:** A coluna `profile_complete` é adicionada via MigrationRunner automaticamente no startup.
 
 ```sql
 ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_complete boolean NOT NULL DEFAULT true;

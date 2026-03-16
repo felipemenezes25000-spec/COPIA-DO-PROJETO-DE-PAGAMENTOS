@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from 'react';
+﻿﻿import React, { useEffect, useCallback, useState } from 'react';
 import { Platform, View, StyleSheet, LogBox } from 'react-native';
 import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -30,6 +30,8 @@ const queryClient = new QueryClient({
       staleTime: 30_000,
       gcTime: 5 * 60_000,
       retry: 1,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
     },
   },
 });

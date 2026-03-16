@@ -1,4 +1,4 @@
-using RenoveJa.Application.DTOs;
+﻿using RenoveJa.Application.DTOs;
 using RenoveJa.Application.DTOs.Auth;
 using RenoveJa.Application.DTOs.Doctors;
 using RenoveJa.Domain.Entities;
@@ -86,7 +86,7 @@ public class DoctorService(
     }
 
     /// <summary>
-    /// Lista médicos com paginação na query (Supabase), opcionalmente por especialidade e disponibilidade.
+    /// Lista medicos com paginacao na query, opcionalmente por especialidade e disponibilidade.
     /// </summary>
     public async Task<PagedResponse<DoctorListResponseDto>> GetDoctorsPagedAsync(
         string? specialty,

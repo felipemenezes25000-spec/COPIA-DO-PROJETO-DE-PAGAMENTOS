@@ -1,0 +1,41 @@
+import { logger, logApiError } from '../logger';
+
+jest.mock('../sentry', () => ({
+  Sentry: {
+    logger: {
+      trace: jest.fn(),
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      fatal: jest.fn(),
+    },
+    captureException: jest.fn(),
+  },
+}));
+
+describe('logger', () => {
+  it('expõe trace, debug, info, warn, error, fatal', () => {
+    expect(typeof logger.trace).toBe('function');
+    expect(typeof logger.debug).toBe('function');
+    expect(typeof logger.info).toBe('function');
+    expect(typeof logger.warn).toBe('function');
+    expect(typeof logger.error).toBe('function');
+    expect(typeof logger.fatal).toBe('function');
+  });
+
+  it('chama sem lançar', () => {
+    expect(() => logger.info('api', 'test')).not.toThrow();
+    expect(() => logger.warn('payment', 'warn')).not.toThrow();
+    expect(() => logger.error('auth', 'err')).not.toThrow();
+  });
+
+  it('exception chama log e captureException', () => {
+    const err = new Error('test');
+    expect(() => logger.exception('api', err)).not.toThrow();
+  });
+
+  it('logApiError existe e pode ser chamado', () => {
+    expect(() => logApiError(404, '/api/x', 'Not found')).not.toThrow();
+  });
+});

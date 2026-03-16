@@ -2,6 +2,7 @@ using Xunit;
 using FluentAssertions;
 using RenoveJa.Domain.Entities;
 using RenoveJa.Domain.Enums;
+using RenoveJa.Domain.Exceptions;
 
 namespace RenoveJa.UnitTests.Domain;
 
@@ -102,6 +103,57 @@ public class DomainEdgeCaseTests
         var r = MedicalRequest.CreatePrescription(Guid.NewGuid(), "P", PrescriptionType.Simple, new List<string> { "M" });
         r.UpdateStatus(RequestStatus.Paid);
         r.Status.Should().Be(RequestStatus.Paid);
+    }
+
+    // ── Testes de proteção contra status legados ──────────────
+
+#pragma warning disable CS0618 // Uso intencional de legados nos testes de proteção
+
+    [Theory]
+    [InlineData(RequestStatus.Pending)]
+    [InlineData(RequestStatus.Analyzing)]
+    [InlineData(RequestStatus.Approved)]
+    [InlineData(RequestStatus.Completed)]
+    [InlineData(RequestStatus.PendingPayment)]
+    public void MedicalRequest_UpdateStatus_WithLegacyStatus_ShouldThrowDomainException(RequestStatus legacy)
+    {
+        var r = MedicalRequest.CreatePrescription(Guid.NewGuid(), "P", PrescriptionType.Simple, new List<string> { "M" });
+
+        Action act = () => r.UpdateStatus(legacy);
+
+        act.Should().Throw<DomainException>()
+            .WithMessage($"*{legacy}*legado*");
+    }
+
+    [Theory]
+    [InlineData(RequestStatus.Pending)]
+    [InlineData(RequestStatus.Analyzing)]
+    [InlineData(RequestStatus.Approved)]
+    [InlineData(RequestStatus.Completed)]
+    [InlineData(RequestStatus.PendingPayment)]
+    public void RequestStatusExtensions_IsLegacy_ShouldReturnTrue_ForLegacyStatuses(RequestStatus legacy)
+    {
+        legacy.IsLegacy().Should().BeTrue();
+    }
+
+#pragma warning restore CS0618
+
+    [Theory]
+    [InlineData(RequestStatus.Submitted)]
+    [InlineData(RequestStatus.InReview)]
+    [InlineData(RequestStatus.ApprovedPendingPayment)]
+    [InlineData(RequestStatus.Paid)]
+    [InlineData(RequestStatus.Signed)]
+    [InlineData(RequestStatus.Delivered)]
+    [InlineData(RequestStatus.Rejected)]
+    [InlineData(RequestStatus.Cancelled)]
+    [InlineData(RequestStatus.SearchingDoctor)]
+    [InlineData(RequestStatus.ConsultationReady)]
+    [InlineData(RequestStatus.InConsultation)]
+    [InlineData(RequestStatus.ConsultationFinished)]
+    public void RequestStatusExtensions_IsLegacy_ShouldReturnFalse_ForCanonicalStatuses(RequestStatus canonical)
+    {
+        canonical.IsLegacy().Should().BeFalse();
     }
 
     // --- DoctorCertificate edge cases ---

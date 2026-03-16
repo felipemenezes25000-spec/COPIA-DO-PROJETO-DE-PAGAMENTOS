@@ -35,7 +35,7 @@ RUN mkdir -p /app/logs && chown -R appuser:appuser /app
 
 USER appuser
 
-# ECS usa porta 8080, Render usa 10000
+# ECS e ambientes AWS usam porta 8080
 ENV PORT=8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:8080

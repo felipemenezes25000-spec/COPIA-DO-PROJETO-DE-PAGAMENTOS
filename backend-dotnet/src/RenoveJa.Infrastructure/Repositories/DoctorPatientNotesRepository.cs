@@ -7,14 +7,14 @@ namespace RenoveJa.Infrastructure.Repositories;
 /// <summary>
 /// Repositório de notas clínicas do médico sobre o paciente.
 /// </summary>
-public class DoctorPatientNotesRepository(PostgresClient supabase) : IDoctorPatientNotesRepository
+public class DoctorPatientNotesRepository(PostgresClient db) : IDoctorPatientNotesRepository
 {
     private const string TableName = "doctor_patient_notes";
 
     public async Task<IReadOnlyList<DoctorPatientNoteEntity>> GetNotesAsync(Guid doctorId, Guid patientId, CancellationToken cancellationToken = default)
     {
         var filter = $"doctor_id=eq.{doctorId}&patient_id=eq.{patientId}";
-        var rows = await supabase.GetAllAsync<DoctorPatientNotesRow>(
+        var rows = await db.GetAllAsync<DoctorPatientNotesRow>(
             TableName,
             filter: filter,
             orderBy: "created_at.desc",
@@ -44,7 +44,7 @@ public class DoctorPatientNotesRepository(PostgresClient supabase) : IDoctorPati
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
-        var inserted = await supabase.InsertAsync<DoctorPatientNotesRow>(TableName, payload, cancellationToken);
+        var inserted = await db.InsertAsync<DoctorPatientNotesRow>(TableName, payload, cancellationToken);
         return new DoctorPatientNoteEntity(
             inserted.Id,
             inserted.DoctorId,

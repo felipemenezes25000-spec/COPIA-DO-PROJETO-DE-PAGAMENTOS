@@ -32,7 +32,7 @@ using RenoveJa.Api.Services;
 namespace RenoveJa.Api.Extensions;
 
 /// <summary>
-/// Extension methods para modularizar o registro de serviços no DI.
+/// Extension methods para modularizar o registro de servi�os no DI.
 /// </summary>
 public static class ServiceCollectionExtensions
 {
@@ -48,7 +48,7 @@ public static class ServiceCollectionExtensions
         return fromConfig?.Trim() ?? string.Empty;
     }
 
-    /// <summary>Registra todos os repositórios.</summary>
+    /// <summary>Registra todos os reposit�rios.</summary>
     public static IServiceCollection AddRepositories(this IServiceCollection services)
     {
         services.AddScoped<IUserRepository, UserRepository>();
@@ -83,7 +83,7 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>Registra os serviços de aplicação.</summary>
+    /// <summary>Registra os servi�os de aplica��o.</summary>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
         services.AddScoped<IAuthService, AuthService>();
@@ -112,11 +112,11 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>Registra os serviços de infraestrutura.</summary>
+    /// <summary>Registra os servi�os de infraestrutura.</summary>
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
     {
         // Storage: AWS S3 sempre (todos os ambientes).
-        // Buckets configuráveis via env vars; defaults apontam para os buckets de produção.
+        // Buckets configur�veis via env vars; defaults apontam para os buckets de produ��o.
         // Em dev local, configure AWS credentials via `aws configure` ou env vars
         // (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION).
         services.AddDefaultAWSOptions(new Amazon.Extensions.NETCore.Setup.AWSOptions
@@ -175,7 +175,7 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>Configura opções de Supabase, Google, MercadoPago, OpenAI, etc.</summary>
+    /// <summary>Configura opcoes de Google, MercadoPago, OpenAI, Daily, etc.</summary>
     public static IServiceCollection AddRenoveJaConfiguration(
         this IServiceCollection services,
         IConfiguration config,
@@ -183,9 +183,8 @@ public static class ServiceCollectionExtensions
     {
         services.Configure<DatabaseConfig>(options =>
         {
-            options.Url = EnvOrConfig(envVars, config, "Supabase__Url", "Supabase:Url");
-            options.ServiceKey = EnvOrConfig(envVars, config, "Supabase__ServiceKey", "Supabase:ServiceKey");
-            options.DatabaseUrl = EnvOrConfig(envVars, config, "Supabase__DatabaseUrl", "Supabase:DatabaseUrl");
+            options.DatabaseUrl = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+                ?? config.GetConnectionString("DefaultConnection");
         });
 
         services.Configure<GoogleAuthConfig>(config.GetSection("Google"));

@@ -6,15 +6,15 @@ using RenoveJa.Infrastructure.Data.Postgres;
 namespace RenoveJa.Infrastructure.Repositories;
 
 /// <summary>
-/// Repositório de cartões salvos via Supabase.
+/// Repositório de cartões salvos via db.
 /// </summary>
-public class SavedCardRepository(PostgresClient supabase) : ISavedCardRepository
+public class SavedCardRepository(PostgresClient db) : ISavedCardRepository
 {
     private const string TableName = "saved_cards";
 
     public async Task<SavedCard?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<SavedCardModel>(
+        var model = await db.GetSingleAsync<SavedCardModel>(
             TableName,
             filter: $"id=eq.{id}",
             cancellationToken: cancellationToken);
@@ -24,7 +24,7 @@ public class SavedCardRepository(PostgresClient supabase) : ISavedCardRepository
 
     public async Task<List<SavedCard>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<SavedCardModel>(
+        var models = await db.GetAllAsync<SavedCardModel>(
             TableName,
             filter: $"user_id=eq.{userId}",
             cancellationToken: cancellationToken);
@@ -35,7 +35,7 @@ public class SavedCardRepository(PostgresClient supabase) : ISavedCardRepository
     public async Task<SavedCard> CreateAsync(SavedCard savedCard, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(savedCard);
-        var created = await supabase.InsertAsync<SavedCardModel>(
+        var created = await db.InsertAsync<SavedCardModel>(
             TableName,
             model,
             cancellationToken);
@@ -45,7 +45,7 @@ public class SavedCardRepository(PostgresClient supabase) : ISavedCardRepository
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        await supabase.DeleteAsync(
+        await db.DeleteAsync(
             TableName,
             $"id=eq.{id}",
             cancellationToken);

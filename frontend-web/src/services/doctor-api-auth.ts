@@ -42,9 +42,7 @@ function clearAuth() {
   localStorage.removeItem(USER_KEY);
 }
 
-// FIX #19: Usa um contador + timestamp em vez de flag booleano simples,
-// evitando race conditions com múltiplas requests 401 simultâneas.
-let redirectCount = 0;
+// FIX #19: Cooldown por timestamp para evitar race conditions com múltiplas requests 401 simultâneas.
 let lastRedirectAt = 0;
 const REDIRECT_COOLDOWN_MS = 2000;
 
@@ -76,7 +74,6 @@ export async function authFetch(url: string, options: RequestInit = {}): Promise
     const now = Date.now();
     if (now - lastRedirectAt >= REDIRECT_COOLDOWN_MS) {
       lastRedirectAt = now;
-      redirectCount++;
       window.dispatchEvent(new CustomEvent('auth:expired'));
     }
     throw new Error('Sessão expirada');

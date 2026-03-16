@@ -1,18 +1,33 @@
-﻿using RenoveJa.Domain.Entities;
+using RenoveJa.Domain.Entities;
 using RenoveJa.Domain.Interfaces;
 using RenoveJa.Infrastructure.Data.Models;
 using RenoveJa.Infrastructure.Data.Postgres;
 
 namespace RenoveJa.Infrastructure.Repositories;
 
-public class CarePlanTaskRepository(PostgresClient supabase) : ICarePlanTaskRepository
+public class CarePlanTaskRepository(PostgresClient db) : ICarePlanTaskRepository
 {
     private const string TasksTable = "care_plan_tasks";
     private const string FilesTable = "care_plan_task_files";
 
+        public async Task<Dictionary<Guid, List<CarePlanTaskFile>>> GetFilesByTaskIdsAsync(
+        IEnumerable<Guid> taskIds, CancellationToken cancellationToken = default)
+    {
+        var idList = taskIds.ToList();
+        if (idList.Count == 0) return new Dictionary<Guid, List<CarePlanTaskFile>>();
+        var inClause = string.Join(",", idList.Select(id => $"'{id}'"));
+        // PERF: uma unica query em vez de N queries (uma por task)
+        var files = await db.GetAllAsync<CarePlanTaskFile>(
+            "care_plan_task_files",
+            filter: $"task_id=in.({inClause})",
+            cancellationToken: cancellationToken);
+        return files.GroupBy(f => f.TaskId)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+    }
+
     public async Task<CarePlanTask?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<CarePlanTaskModel>(
+        var model = await db.GetSingleAsync<CarePlanTaskModel>(
             TasksTable,
             filter: $"id=eq.{id}",
             cancellationToken: cancellationToken);
@@ -21,7 +36,7 @@ public class CarePlanTaskRepository(PostgresClient supabase) : ICarePlanTaskRepo
 
     public async Task<List<CarePlanTask>> GetByCarePlanIdAsync(Guid carePlanId, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<CarePlanTaskModel>(
+        var models = await db.GetAllAsync<CarePlanTaskModel>(
             TasksTable,
             filter: $"care_plan_id=eq.{carePlanId}&order=created_at.asc",
             cancellationToken: cancellationToken);
@@ -30,7 +45,7 @@ public class CarePlanTaskRepository(PostgresClient supabase) : ICarePlanTaskRepo
 
     public async Task<CarePlanTask> CreateAsync(CarePlanTask task, CancellationToken cancellationToken = default)
     {
-        var created = await supabase.InsertAsync<CarePlanTaskModel>(
+        var created = await db.InsertAsync<CarePlanTaskModel>(
             TasksTable,
             MapTaskToModel(task),
             cancellationToken);
@@ -39,7 +54,7 @@ public class CarePlanTaskRepository(PostgresClient supabase) : ICarePlanTaskRepo
 
     public async Task<CarePlanTask> UpdateAsync(CarePlanTask task, CancellationToken cancellationToken = default)
     {
-        var updated = await supabase.UpdateAsync<CarePlanTaskModel>(
+        var updated = await db.UpdateAsync<CarePlanTaskModel>(
             TasksTable,
             $"id=eq.{task.Id}",
             MapTaskToModel(task),
@@ -49,7 +64,7 @@ public class CarePlanTaskRepository(PostgresClient supabase) : ICarePlanTaskRepo
 
     public async Task<CarePlanTaskFile> CreateFileAsync(CarePlanTaskFile file, CancellationToken cancellationToken = default)
     {
-        var created = await supabase.InsertAsync<CarePlanTaskFileModel>(
+        var created = await db.InsertAsync<CarePlanTaskFileModel>(
             FilesTable,
             MapFileToModel(file),
             cancellationToken);
@@ -58,7 +73,7 @@ public class CarePlanTaskRepository(PostgresClient supabase) : ICarePlanTaskRepo
 
     public async Task<List<CarePlanTaskFile>> GetFilesByTaskIdAsync(Guid taskId, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<CarePlanTaskFileModel>(
+        var models = await db.GetAllAsync<CarePlanTaskFileModel>(
             FilesTable,
             filter: $"task_id=eq.{taskId}&order=created_at.asc",
             cancellationToken: cancellationToken);

@@ -7,13 +7,13 @@ using RenoveJa.Infrastructure.Utils;
 
 namespace RenoveJa.Infrastructure.Repositories;
 
-public class ConsentRepository(PostgresClient supabase) : IConsentRepository
+public class ConsentRepository(PostgresClient db) : IConsentRepository
 {
     private const string TableName = "consent_records";
 
     public async Task<ConsentRecord?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<ConsentRecordModel>(
+        var model = await db.GetSingleAsync<ConsentRecordModel>(
             TableName,
             filter: $"id=eq.{id}",
             cancellationToken: cancellationToken);
@@ -23,7 +23,7 @@ public class ConsentRepository(PostgresClient supabase) : IConsentRepository
 
     public async Task<List<ConsentRecord>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<ConsentRecordModel>(
+        var models = await db.GetAllAsync<ConsentRecordModel>(
             TableName,
             filter: $"patient_id=eq.{patientId}",
             orderBy: "accepted_at.desc",
@@ -35,7 +35,7 @@ public class ConsentRepository(PostgresClient supabase) : IConsentRepository
     public async Task<ConsentRecord> CreateAsync(ConsentRecord consent, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(consent);
-        var created = await supabase.InsertAsync<ConsentRecordModel>(
+        var created = await db.InsertAsync<ConsentRecordModel>(
             TableName,
             model,
             cancellationToken);

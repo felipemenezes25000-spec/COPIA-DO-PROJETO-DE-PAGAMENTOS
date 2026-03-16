@@ -1,4 +1,4 @@
-# Cursor Docs Seed (RenoveJá)
+﻿# Cursor Docs Seed (RenoveJá)
 
 Use these links in Cursor **Docs > Add Doc** (Settings > Features) ou via **@Docs > Add New Doc** no chat.
 
@@ -7,8 +7,6 @@ Use these links in Cursor **Docs > Add Doc** (Settings > Features) ou via **@Doc
 - https://docs.expo.dev/router/introduction/
 - https://reactnative.dev/docs/getting-started
 - https://tanstack.com/query/latest/docs/framework/react/overview
-- https://supabase.com/docs
-- https://supabase.com/docs/guides/functions
 - https://learn.microsoft.com/aspnet/core/?view=aspnetcore-8.0
 - https://learn.microsoft.com/aspnet/core/fundamentals/best-practices?view=aspnetcore-8.0
 - https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/
@@ -24,8 +22,6 @@ Use these links in Cursor **Docs > Add Doc** (Settings > Features) ou via **@Doc
 - https://docs.expo.dev/router/introduction/
 - https://reactnative.dev/docs/getting-started
 - https://tanstack.com/query/latest/docs/framework/react/overview
-- https://supabase.com/docs
-- https://supabase.com/docs/guides/functions
 - https://learn.microsoft.com/aspnet/core/?view=aspnetcore-8.0
 - https://learn.microsoft.com/dotnet/architecture/modern-web-apps-azure/
 
@@ -58,7 +54,6 @@ Use these links in Cursor **Docs > Add Doc** (Settings > Features) ou via **@Doc
 ## Ordem recomendada para adicionar primeiro (Top 10)
 1. https://docs.expo.dev/
 2. https://reactnative.dev/docs/getting-started
-3. https://supabase.com/docs
 4. https://learn.microsoft.com/aspnet/core/?view=aspnetcore-8.0
 5. https://learn.microsoft.com/aspnet/core/fundamentals/best-practices?view=aspnetcore-8.0
 6. https://learn.microsoft.com/dotnet/core/testing/

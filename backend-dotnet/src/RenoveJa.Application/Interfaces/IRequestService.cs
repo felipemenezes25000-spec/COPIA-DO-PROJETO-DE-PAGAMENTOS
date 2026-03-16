@@ -97,6 +97,9 @@ public interface IRequestService
     /// <summary>Retorna signed URL para download do .txt da transcrição (bucket privado). Médico ou paciente da consulta.</summary>
     Task<string?> GetTranscriptDownloadUrlAsync(Guid id, Guid userId, int expiresInSeconds = 3600, CancellationToken cancellationToken = default);
 
+    /// <summary>Retorna signed URL para reprodução da gravação de vídeo da consulta (bucket privado). Médico ou paciente da consulta.</summary>
+    Task<string?> GetRecordingDownloadUrlAsync(Guid id, Guid userId, int expiresInSeconds = 3600, CancellationToken cancellationToken = default);
+
     Task<RequestResponseDto> SignAsync(
         Guid id,
         SignRequestDto dto,

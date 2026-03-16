@@ -16,7 +16,7 @@ interface DashboardHeaderProps {
   responsive: DashboardResponsive;
 }
 
-export function DashboardHeader({
+function DashboardHeader_Fn({
   greeting,
   name,
   date,
@@ -129,3 +129,5 @@ const styles = StyleSheet.create({
     color: colors.primaryDark,
   },
 });
+
+export const DashboardHeader = React.memo(DashboardHeader_Fn);

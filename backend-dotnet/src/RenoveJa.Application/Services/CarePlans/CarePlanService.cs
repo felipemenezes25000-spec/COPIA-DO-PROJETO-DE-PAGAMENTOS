@@ -377,7 +377,7 @@ public class CarePlanService(
             throw new InvalidOperationException("Task não pertence ao care plan");
 
         var ext = Path.GetExtension(fileName);
-        var path = $"careplans/{carePlanId}/tasks/{taskId}/{Guid.NewGuid():N}{ext}";
+        var path = $"planos-de-cuidado/{carePlanId:N}/tarefas/{taskId:N}/anexos/{Guid.NewGuid():N}{ext}";
         var upload = await storageService.UploadAsync(path, fileBytes, contentType, cancellationToken);
         if (!upload.Success || string.IsNullOrWhiteSpace(upload.Url))
             throw new InvalidOperationException(upload.ErrorMessage ?? "Falha no upload do arquivo");
@@ -414,6 +414,10 @@ public class CarePlanService(
             throw new UnauthorizedAccessException("Apenas o médico responsável pode revisar");
 
         var tasks = await carePlanTaskRepository.GetByCarePlanIdAsync(carePlanId, cancellationToken);
+        var taskIds = tasks.Select(t => t.Id).ToList();
+        var allFiles = taskIds.Count > 0
+            ? await carePlanTaskRepository.GetFilesByTaskIdsAsync(taskIds, cancellationToken)
+            : new Dictionary<Guid, List<CarePlanTaskFile>>();
         var decisionByTask = request.TaskDecisions.ToDictionary(x => x.TaskId, x => x, EqualityComparer<Guid>.Default);
         foreach (var task in tasks)
         {
@@ -473,10 +477,14 @@ public class CarePlanService(
     private async Task<CarePlanResponseDto> BuildCarePlanResponseAsync(CarePlan carePlan, CancellationToken cancellationToken)
     {
         var tasks = await carePlanTaskRepository.GetByCarePlanIdAsync(carePlan.Id, cancellationToken);
+        var taskIds = tasks.Select(t => t.Id).ToList();
+        var allFiles = taskIds.Count > 0
+            ? await carePlanTaskRepository.GetFilesByTaskIdsAsync(taskIds, cancellationToken)
+            : new Dictionary<Guid, List<CarePlanTaskFile>>();
         var taskDtos = new List<CarePlanTaskResponseDto>(tasks.Count);
         foreach (var task in tasks)
         {
-            var files = await carePlanTaskRepository.GetFilesByTaskIdAsync(task.Id, cancellationToken);
+            var files = allFiles.TryGetValue(task.Id, out var _tf) ? _tf : new List<CarePlanTaskFile>();
             taskDtos.Add(new CarePlanTaskResponseDto(
                 task.Id,
                 task.CarePlanId,

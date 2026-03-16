@@ -12,7 +12,6 @@ Monorepo de telemedicina com 4 módulos principais:
 | frontend-mobile | Expo 54 / React Native 0.81 / TypeScript | 259 | ~47k |
 | backend-dotnet | .NET 8 / Clean Architecture | 321 (.cs) | ~45k |
 | frontend-web | Vite + React + TS | 139 | ~19k |
-| supabase | 36 migrations + Edge Functions | — | — |
 
 **Total:** ~111k linhas de código de produção.
 
@@ -60,7 +59,7 @@ Organização em camadas: Domain → Application → Infrastructure → API.
 - **Qualidade:** 26 test files, Zod, normalizers, design system, acessibilidade.
 - **CI:** GitHub Actions — typecheck + lint + test + build em todos os módulos.
 - **Domain-driven:** `lib/domain/` com requestUiModel, requestGuards, getRequestUiState.
-- **Infra:** Render (backend), Vercel (frontend-web), Supabase, Sentry.
+- **Infra:** AWS (backend + frontend-web), AWS S3, Sentry.
 - **Docs:** debug, fluxo receita, assinatura PAdES, MercadoPago, variáveis de ambiente.
 
 ---
@@ -71,7 +70,7 @@ Organização em camadas: Domain → Application → Infrastructure → API.
 |---|----------|------------|
 | 1 | **God Service** — RequestService.cs com 2.900 linhas e ~27 dependências | Alta |
 | 2 | **Telas grandes** — record.tsx (1.153), editor/[id].tsx (990), request-detail (973), register (875) | Média |
-| 3 | **Render Free Tier** — timeout 60s, cold start após inatividade | Média |
+| 3 | **API (AWS)** — timeout e cold start conforme configuração ECS/ALB | Média |
 | 4 | **react-native-background-timer** — histórico de conflitos com New Architecture RN 0.81 | Baixa |
 | 5 | **Sem testes de integração** — apenas unitários (ComplementaryTests, ServiceTests) | Média |
 | 6 | **Expo SDK 54 + RN 0.81 + React 19** — stack atualizada; Nativewind v4 relativamente novo | Baixa |

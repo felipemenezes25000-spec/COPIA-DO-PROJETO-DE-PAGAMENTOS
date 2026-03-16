@@ -478,4 +478,21 @@ public class ClinicalRecordsController(
             return NotFound(new { error = "Transcrição não encontrada ou sem permissão." });
         return Ok(new { signedUrl = url, expiresIn });
     }
+
+    /// <summary>
+    /// Retorna signed URL para reprodução da gravação de vídeo da consulta (bucket privado).
+    /// Médico ou paciente da consulta. expiresIn: segundos (padrão 3600).
+    /// </summary>
+    [HttpGet("{id}/recording-download-url")]
+    public async Task<IActionResult> GetRecordingDownloadUrl(
+        Guid id,
+        [FromQuery] int expiresIn = 3600,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = GetUserId();
+        var url = await requestService.GetRecordingDownloadUrlAsync(id, userId, Math.Clamp(expiresIn, 60, 86400), cancellationToken);
+        if (url == null)
+            return NotFound(new { error = "Gravação não encontrada ou sem permissão." });
+        return Ok(new { signedUrl = url, expiresIn });
+    }
 }

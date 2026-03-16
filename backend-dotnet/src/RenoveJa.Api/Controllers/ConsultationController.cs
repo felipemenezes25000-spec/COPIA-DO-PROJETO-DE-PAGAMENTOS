@@ -25,10 +25,11 @@ public class ConsultationController(
     IConsultationSessionStore sessionStore,
     IHubContext<VideoSignalingHub> hubContext,
     IMemoryCache memoryCache,
+    IStorageService storageService,
     ILogger<ConsultationController> logger) : ControllerBase
 {
     private const string AnamnesisThrottleKeyPrefix = "consultation_anamnesis_last_";
-    private static readonly TimeSpan AnamnesisThrottleInterval = TimeSpan.FromSeconds(20);
+    private static readonly TimeSpan AnamnesisThrottleInterval = TimeSpan.FromMinutes(1);
     private const int MinTranscriptLengthForAnamnesis = 200;
 
     /// <summary>
@@ -103,6 +104,24 @@ public class ConsultationController(
         using var ms = new MemoryStream();
         await fileStream.CopyToAsync(ms, cancellationToken);
         var audioBytes = ms.ToArray();
+
+        // Gravação de áudio na AWS (bucket de transcrições/gravações)
+        var fileName = file.FileName ?? "";
+        var ext = string.IsNullOrEmpty(Path.GetExtension(fileName)) ? "webm" : Path.GetExtension(fileName).TrimStart('.');
+        var recordingPath = $"consultas/{requestId:N}/gravacao-chunks/{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}.{ext}";
+        var contentType = string.IsNullOrWhiteSpace(file.ContentType) ? "audio/webm" : file.ContentType;
+        try
+        {
+            var uploadResult = await storageService.UploadAsync(recordingPath, audioBytes, contentType, cancellationToken);
+            if (!uploadResult.Success)
+                logger.LogWarning("[Transcribe] Gravação não enviada à AWS: RequestId={RequestId} Path={Path} Error={Error}", requestId, recordingPath, uploadResult.ErrorMessage);
+            else
+                logger.LogInformation("[Transcribe] Gravação enviada à AWS: RequestId={RequestId} Path={Path}", requestId, recordingPath);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "[Transcribe] Falha ao enviar gravação à AWS: RequestId={RequestId}", requestId);
+        }
 
         sessionStore.EnsureSession(requestId, request.PatientId);
         logger.LogDebug("[Transcribe] Sessão garantida para RequestId={RequestId}", requestId);

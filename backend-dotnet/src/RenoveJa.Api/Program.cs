@@ -41,7 +41,7 @@ using Microsoft.AspNetCore.Rewrite;
 using Microsoft.AspNetCore.HttpOverrides;
 using Sentry;
 
-// Carrega .env da pasta do projeto e garante Supabase no Environment (evita 400 por ServiceKey)
+// Carrega .env da pasta do projeto e configura variaveis de ambiente
 static string? FindEnvPath()
 {
     var baseDir = AppContext.BaseDirectory;
@@ -235,7 +235,7 @@ builder.Services.AddSwaggerGen(options =>
 // Add FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
 
-// Configuração centralizada (Supabase, Google, MercadoPago, OpenAI, Daily, etc.)
+// Configuracao centralizada (Google, MercadoPago, OpenAI, Daily, etc.)
 builder.Services.AddRenoveJaConfiguration(builder.Configuration, _envVars);
 
 // In-memory cache

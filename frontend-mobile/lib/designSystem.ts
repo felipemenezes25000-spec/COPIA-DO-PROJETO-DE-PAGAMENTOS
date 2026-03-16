@@ -11,6 +11,11 @@
  * - Contraste de textMuted corrigido para WCAG AA
  * - Border radius unificado (card: 16, consistente doctor + patient)
  * - constants/theme.ts tornado 100% proxy
+ *
+ * PERF v3.1:
+ * - createTokens agora retorna singletons por combinação (role × scheme).
+ *   Só existem 4 combinações possíveis — o cache garante referência estável,
+ *   evitando que useMemo([colors]) dispare sem necessidade em todo render.
  */
 
 // ─── Paleta Primitiva (Tailwind Slate / Sky) ────────────────────
@@ -242,15 +247,35 @@ const LAYOUT = {
 // ═════════════════════════════════════════════════════════════════
 // FACTORY — Single entry point for all tokens
 // ═════════════════════════════════════════════════════════════════
-export function createTokens(role: AppRole, scheme: ColorScheme) {
+
+// Cache singleton: só existem 4 combinações (patient|doctor × light|dark).
+// Garante referência estável — useMemo([colors]) não dispara sem necessidade.
+type TokenResult = {
+  role: AppRole;
+  scheme: ColorScheme;
+  colors: ReturnType<typeof _buildColors>;
+  gradients: ReturnType<typeof getGradients>;
+  spacing: typeof SPACING;
+  borderRadius: typeof BORDER_RADIUS;
+  radius: typeof BORDER_RADIUS;
+  shadows: typeof SHADOWS;
+  typography: typeof TYPOGRAPHY;
+  layout: typeof LAYOUT;
+  opacity: typeof OPACITY;
+  zIndex: typeof Z_INDEX;
+  palette: typeof palette;
+};
+
+const _tokenCache = new Map<string, TokenResult>();
+
+function _buildColors(role: AppRole, scheme: ColorScheme) {
   const isDoctor = role === 'doctor';
   const isDark = scheme === 'dark';
-
   const base = isDoctor
     ? (isDark ? DOCTOR_DARK : LIGHT_BASE)
     : (isDark ? DARK_BASE : LIGHT_BASE);
 
-  const colors = {
+  return {
     ...BRAND,
     ...base,
     ...HEADER_OVERLAY,
@@ -281,29 +306,40 @@ export function createTokens(role: AppRole, scheme: ColorScheme) {
     // Legacy compat
     ring: (base as any).ring || palette.primary[500],
   };
+}
 
-  return {
-    role,
-    scheme,
-    colors,
-    gradients:    getGradients(scheme),
-    spacing:      SPACING,
-    borderRadius: BORDER_RADIUS,
-    radius:       BORDER_RADIUS,
-    shadows:      SHADOWS,
-    typography:   TYPOGRAPHY,
-    layout:       LAYOUT,
-    opacity:      OPACITY,
-    zIndex:       Z_INDEX,
-    palette,
-  };
+/** Retorna tokens estáveis por referência — mesma combinação role+scheme
+ *  sempre devolve o MESMO objeto, evitando re-renders em cascata nos
+ *  componentes que fazem useMemo(() => makeStyles(colors), [colors]). */
+export function createTokens(role: AppRole, scheme: ColorScheme): TokenResult {
+  const key = `${role}-${scheme}`;
+  let cached = _tokenCache.get(key);
+  if (!cached) {
+    cached = {
+      role,
+      scheme,
+      colors: _buildColors(role, scheme),
+      gradients:    getGradients(scheme),
+      spacing:      SPACING,
+      borderRadius: BORDER_RADIUS,
+      radius:       BORDER_RADIUS,
+      shadows:      SHADOWS,
+      typography:   TYPOGRAPHY,
+      layout:       LAYOUT,
+      opacity:      OPACITY,
+      zIndex:       Z_INDEX,
+      palette,
+    };
+    _tokenCache.set(key, cached);
+  }
+  return cached;
 }
 
 // ─── Static Exports (compatibility) ─────────────────────────────
 export const patientTokens = createTokens('patient', 'light');
 export const doctorTokens  = createTokens('doctor', 'light');
 
-export type DesignTokens = ReturnType<typeof createTokens>;
+export type DesignTokens = TokenResult;
 export type DesignColors  = DesignTokens['colors'];
 
 // ─── Legacy re-exports for files that import from './theme' ─────

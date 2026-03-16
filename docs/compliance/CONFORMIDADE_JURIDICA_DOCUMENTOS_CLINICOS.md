@@ -12,7 +12,7 @@
 | OIDs ITI nos atributos | ✅ | `ItiHealthOidsSignatureContainer` — prescrição/exame, CRM, UF |
 | DocMDP (P=2) | ✅ | Evita "Assinatura Indeterminada" no validar.iti.gov.br |
 | Cadeia completa + TSA | ✅ | OCSP + CRL + timestamp TSA quando disponível |
-| Aceito pelo validar.iti.gov.br | ✅ | Configuração em `docs/RENDER_CONFIG_ITI.md` |
+| Aceito pelo validar.iti.gov.br | ✅ | Configuração em `docs/guides/CONFIG_ITI.md` |
 
 ---
 
@@ -46,7 +46,7 @@
 | Requisito | Status | Implementação |
 |-----------|--------|---------------|
 | QR Code no PDF | ✅ | URL codificada: `/verify/<id>?v=<token>` |
-| Página de verificação | ✅ | `frontend-web` rota `/verify/:id`; Edge Function `verify` (Supabase) |
+| Página de verificação | ✅ | `frontend-web` rota `/verify/:id`; `POST /api/prescriptions/verify` |
 | Código de 6 dígitos | ✅ | `verify_code_hash` (SHA256) em `prescriptions` |
 | Log de tentativas | ✅ | `prescription_verification_logs` — outcome, IP, user_agent |
 | Download 2ª via | ✅ | Signed URL do Storage ou endpoint `/api/verify/{id}/document?code=xxx` |
@@ -118,8 +118,8 @@
 ## 7. Arquivos de referência no projeto
 
 - `backend-dotnet/src/RenoveJa.Infrastructure/Certificates/DigitalCertificateService.cs` — assinatura PAdES
-- `supabase/functions/verify/index.ts` — verificação pública
-- `supabase/migrations/20260219000001_create_prescriptions_and_logs.sql` — schema prescriptions
-- `supabase/migrations/20260221000002_incremental_features.sql` — audit_logs
-- `supabase/migrations/20260306120000_audit_logs_old_new_values.sql` — old_values/new_values
-- `docs/RENDER_CONFIG_ITI.md` — configuração ITI
+- `POST /api/prescriptions/verify/index.ts` — verificação pública
+- `backend-dotnet/src/RenoveJa.Infrastructure/Data/Postgres/MigrationRunner.cs20260219000001_create_prescriptions_and_logs.sql` — schema prescriptions
+- `backend-dotnet/src/RenoveJa.Infrastructure/Data/Postgres/MigrationRunner.cs20260221000002_incremental_features.sql` — audit_logs
+- `backend-dotnet/src/RenoveJa.Infrastructure/Data/Postgres/MigrationRunner.cs20260306120000_audit_logs_old_new_values.sql` — old_values/new_values
+- `docs/guides/CONFIG_ITI.md` — configuração ITI

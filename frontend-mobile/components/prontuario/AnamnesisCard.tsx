@@ -47,7 +47,7 @@ function severityColor(severity: FieldSeverity, colors: DesignColors): string {
   }
 }
 
-export function AnamnesisCard({
+function AnamnesisCard_Fn({
   data,
   compact = false,
   showAlerts = true,
@@ -424,3 +424,5 @@ function makeStyles(colors: DesignColors) {
     },
   });
 }
+
+export const AnamnesisCard = React.memo(AnamnesisCard_Fn);

@@ -13,14 +13,14 @@ O painel admin está integrado ao **frontend-web** e é servido em **renovejasau
 
 ## Deploy
 
-O frontend-web já é deployado na Vercel. Ao fazer push na branch configurada, o deploy inclui automaticamente o admin.
+O frontend-web é deployado na AWS (CloudFront/S3 ou Amplify). O admin é servido junto com o build do frontend-web.
 
 - **Domínio:** renovejasaude.com.br
 - **Admin:** renovejasaude.com.br/admin
 
-## Variáveis de ambiente (Vercel)
+## Variáveis de ambiente (frontend na AWS)
 
-- `VITE_API_URL` — URL base da API (ex.: `https://ola-jamal.onrender.com`). Usada pelo verify e pelo admin.
+- `VITE_API_URL` — URL base da API (ex.: `https://api.renovejasaude.com.br`). Usada pelo verify e pelo admin. Definir no pipeline de build ou no console da AWS (Amplify/CodeBuild, conforme o fluxo usado).
 
 ## Usuário admin
 

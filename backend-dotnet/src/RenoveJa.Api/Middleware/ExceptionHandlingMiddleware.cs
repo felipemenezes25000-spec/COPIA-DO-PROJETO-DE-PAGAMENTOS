@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Text.Json;
 using FluentValidation;
 using RenoveJa.Application.Exceptions;
@@ -103,7 +103,7 @@ public class ExceptionHandlingMiddleware(
             return context.Response.WriteAsync(JsonSerializer.Serialize(response, jsonOptions));
         }
 
-        // 502/503/504 do upstream (Supabase): retornar 503 para o cliente poder exibir "tente novamente"
+        // 502/503/504 do upstream: retornar 503 para o cliente poder exibir "tente novamente"
         if (exception is HttpRequestException && (
             exception.Message.Contains("502", StringComparison.OrdinalIgnoreCase) ||
             exception.Message.Contains("503", StringComparison.OrdinalIgnoreCase) ||

@@ -14,7 +14,7 @@ public class VerificationConfig
 
     /// <summary>
     /// URL base do endpoint da API (codificada no QR Code).
-    /// Ex: <c>https://seu-servico.onrender.com/api/verify</c>.
+    /// Ex: <c>https://api.renovejasaude.com.br/api/verify</c>.
     /// O QR apontará para <c>{BaseUrl}/{requestId}</c>.
     /// </summary>
     public string BaseUrl { get; set; } = "";
@@ -28,7 +28,7 @@ public class VerificationConfig
 
     /// <summary>
     /// URL base para links curtos no QR Code (estilo Docway).
-    /// Ex: <c>https://re.renoveja.com.br</c> ou <c>https://ola-jamal.onrender.com</c>.
+    /// Ex: <c>https://re.renoveja.com.br</c> ou <c>https://api.renovejasaude.com.br</c>.
     /// Quando configurado, o QR usa <c>{ShortUrlBase}/r/{encoded}</c> em vez da URL completa.
     /// O endpoint /r/{shortCode} redireciona para /api/verify/{id}.
     /// </summary>

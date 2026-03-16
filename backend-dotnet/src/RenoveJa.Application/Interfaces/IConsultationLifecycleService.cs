@@ -26,6 +26,10 @@ public interface IConsultationLifecycleService
     Task<string?> GetTranscriptDownloadUrlAsync(
         Guid id, Guid userId, int expiresInSeconds = 3600, CancellationToken cancellationToken = default);
 
+    /// <summary>Retorna signed URL para reprodução da gravação de vídeo da consulta (bucket privado). Médico ou paciente da consulta.</summary>
+    Task<string?> GetRecordingDownloadUrlAsync(
+        Guid id, Guid userId, int expiresInSeconds = 3600, CancellationToken cancellationToken = default);
+
     Task<(int BalanceSeconds, int BalanceMinutes, string ConsultationType)> GetTimeBankBalanceAsync(
         Guid userId, string consultationType, CancellationToken cancellationToken = default);
 }

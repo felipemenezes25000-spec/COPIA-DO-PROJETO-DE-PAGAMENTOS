@@ -7,14 +7,14 @@ using RenoveJa.Infrastructure.Utils;
 
 namespace RenoveJa.Infrastructure.Repositories;
 
-public class AuditEventRepository(PostgresClient supabase) : IAuditEventRepository
+public class AuditEventRepository(PostgresClient db) : IAuditEventRepository
 {
     private const string TableName = "audit_events";
 
     public async Task<AuditEvent> CreateAsync(AuditEvent auditEvent, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(auditEvent);
-        var created = await supabase.InsertAsync<AuditEventModel>(
+        var created = await db.InsertAsync<AuditEventModel>(
             TableName,
             model,
             cancellationToken);
@@ -24,7 +24,7 @@ public class AuditEventRepository(PostgresClient supabase) : IAuditEventReposito
 
     public async Task<List<AuditEvent>> GetByEntityAsync(string entityType, Guid entityId, int limit = 50, int offset = 0, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<AuditEventModel>(
+        var models = await db.GetAllAsync<AuditEventModel>(
             TableName,
             filter: $"entity_type=eq.{entityType}&entity_id=eq.{entityId}",
             orderBy: "created_at.desc",
@@ -41,7 +41,7 @@ public class AuditEventRepository(PostgresClient supabase) : IAuditEventReposito
         if (action.HasValue)
             filter += $"&action=eq.{SnakeCaseHelper.ToSnakeCase(action.Value.ToString())}";
 
-        var models = await supabase.GetAllAsync<AuditEventModel>(
+        var models = await db.GetAllAsync<AuditEventModel>(
             TableName,
             filter: filter,
             orderBy: "created_at.desc",

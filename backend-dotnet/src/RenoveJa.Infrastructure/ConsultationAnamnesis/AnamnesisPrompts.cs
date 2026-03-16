@@ -152,6 +152,15 @@ Responda em um ÚNICO JSON válido com EXATAMENTE estes campos (nesta ordem):
   "suggestions": ["3-7 frases para prontuário. ESTRUTURA OBRIGATÓRIA: (1) Hipóteses: 'Pode ser X ou Y'. (2) Conduta: 'Para isso vamos usar medicamentos A, B e exames C, D'. (3) Seguimento e orientação para 'o que fazer enquanto os exames não saem'."]
 }
 
+═══ REGRAS CRÍTICAS — SUGGESTIONS (MEGA ASSERTIVAS, SEM VAZIOS) ═══
+- PROIBIDO: frases genéricas sem conteúdo clínico ("Avaliar necessidade", "Refinar hipótese diagnóstica", "Solicitar exames complementares" sem nomes, "Aguardando mais dados" quando já há CID/queixa).
+- OBRIGATÓRIO: cada frase de "suggestions" deve citar NOMES CONCRETOS:
+  • Hipóteses: usar EXATAMENTE os nomes do campo diagnostico_diferencial (ex: "Pode ser toxoplasmose adquirida ou mononucleose").
+  • Medicamentos: citar pelo menos 2-3 nomes do campo medicamentos_sugeridos (ex: "Paracetamol 750mg 6/6h, azitromicina 500mg em 1ª dose...").
+  • Exames: citar pelo menos 2-3 nomes do campo exames_sugeridos (ex: "Hemograma, PCR, sorologia para toxoplasmose").
+- Se o transcript ainda for insuficiente para diagnóstico diferencial sólido: NÃO invente hipóteses. Use UMA suggestion: "Dados iniciais — continuar anamnese (queixa, duração, medicamentos em uso, alergias) para definir hipóteses e conduta."
+- "O que fazer enquanto os exames não saem": SEMPRE específico (medicamento + dose + orientação), nunca só "manejo sintomático" ou "repouso" sem detalhar.
+
 ═══ REGRA OBRIGATÓRIA — RESPOSTA À PERGUNTA DO PACIENTE ═══
 Quando o paciente perguntar (ou implícito no contexto) "o que posso fazer enquanto os exames não saem?", "o que fazer em relação aos sintomas?", "enquanto espero os resultados?":
 - OBRIGATÓRIO incluir em "suggestions" e/ou "orientacoes_paciente" uma resposta CONCRETA e ESPECÍFICA para o caso.
@@ -236,6 +245,7 @@ Antes de escrever o JSON, valide:
 6. Medicamentos são coerentes com o CID?
 7. Exames investigam as hipóteses do diagnóstico diferencial?
 8. As suggestions incluem orientação para "o que fazer enquanto os exames não saem"? (OBRIGATÓRIO)
+9. Cada suggestion cita NOMES CONCRETOS (hipóteses do diferencial, medicamentos, exames)? Se não tiver dados suficientes, use UMA frase honesta: "Dados iniciais — continuar anamnese para definir hipóteses e conduta."
 ═══════════════════════════════════════════════════════════════
 """;
     }
@@ -247,7 +257,7 @@ Antes de escrever o JSON, valide:
     {
         return """
 Você é um especialista em MEDICINA BASEADA EM EVIDÊNCIAS para a plataforma RenoveJá+.
-O médico precisa de EMBASAMENTO CIENTÍFICO SÓLIDO e CONTEXTUALIZADO ao paciente.
+O médico precisa de EMBASAMENTO CIENTÍFICO SÓLIDO e MEGA ASSERTIVO — só evidência que se aplica DIRETAMENTE ao caso.
 
 CONTEXTO CLÍNICO DO PACIENTE:
 """ + clinicalContext + transcriptBlock + """
@@ -255,27 +265,17 @@ CONTEXTO CLÍNICO DO PACIENTE:
 ARTIGOS (abstracts em inglês):
 """ + articlesBlock + """
 
-Para CADA artigo [0], [1], etc., analise com RIGOR:
+Regras OBRIGATÓRIAS:
+1. Marque "relevant": true SOMENTE se o artigo trata do MESMO diagnóstico/condição/sintoma do paciente (CID, queixa, hipóteses do contexto). Se for condição diferente, população diferente ou só tangencialmente relacionado → "relevant": false.
+2. NUNCA marque relevante por genérico ("suporta prática clínica", "útil para diagnóstico") — exija relação direta: ex. "Artigo sobre tratamento de toxoplasmose em imunocompetentes aplica-se ao paciente com linfonodos + contato com gatos."
+3. Se RELEVANTE: excerpts (2-4 trechos traduzidos para português), clinicalRelevance e conexao_com_paciente OBRIGATÓRIOS e ESPECÍFICOS (citar critério/conduta que embasa ESTE caso).
+4. nivel_evidencia: I (RCT/meta-análise), II (coorte), III (caso-controle), IV (série/casos), V (opinião). Prefira I–III quando disponível.
+5. motivo_selecao: 1 frase objetiva (ex: "Guideline IDSA para sinusite bacteriana — confirma amoxicilina como primeira linha"). Sem frases vazias.
 
-1. RELEVÂNCIA: Este artigo se aplica ao quadro DESTE paciente? Considere diagnóstico, sintomas, perfil.
-2. Se RELEVANTE:
-   - Extraia 2-4 trechos-chave (critérios diagnósticos, evidências de tratamento, guidelines, dados de eficácia)
-   - Traduza para português brasileiro
-   - Explique a CONEXÃO COM O PACIENTE (1-2 frases: por que este artigo importa para ESTE caso específico)
-   - Classifique o NÍVEL DE EVIDÊNCIA (I=meta-análise/RCT, II=coorte, III=caso-controle, IV=série de casos, V=opinião expert)
-3. Se IRRELEVANTE: marque como irrelevante (será filtrado)
-
-Responda APENAS um JSON válido:
+Responda APENAS um JSON válido (um objeto por artigo, na mesma ordem [0], [1], ...):
 [
-  {
-    "relevant": true,
-    "excerpts": ["trecho1 traduzido", "trecho2"],
-    "clinicalRelevance": "Explicação de como embasa a decisão...",
-    "conexao_com_paciente": "Por que este artigo é relevante PARA ESTE PACIENTE: [relação direta com o que foi dito/apresentado]",
-    "nivel_evidencia": "I | II | III | IV | V",
-    "motivo_selecao": "Em 1 frase: por que este artigo foi escolhido entre tantos"
-  },
-  { "relevant": false, "excerpts": [], "clinicalRelevance": "", "conexao_com_paciente": "", "nivel_evidencia": "", "motivo_selecao": "" },
+  { "relevant": true, "excerpts": ["trecho1 traduzido", "trecho2"], "clinicalRelevance": "...", "conexao_com_paciente": "...", "nivel_evidencia": "I", "motivo_selecao": "..." },
+  { "relevant": false, "excerpts": [], "clinicalRelevance": "", "conexao_com_paciente": "", "nivel_evidencia": "", "motivo_selecao": "Não se aplica ao quadro do paciente." },
   ...
 ]
 Apenas JSON, sem markdown.

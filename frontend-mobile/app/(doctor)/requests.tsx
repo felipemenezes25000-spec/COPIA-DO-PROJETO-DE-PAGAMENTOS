@@ -19,6 +19,7 @@ import { useAppTheme } from '../../lib/ui/useAppTheme';
 import type { DesignColors } from '../../lib/designSystem';
 import { RequestResponseDto } from '../../types/database';
 import { cacheRequest } from '../doctor-request/[id]';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRequestsEvents } from '../../contexts/RequestsEventsContext';
 import { useDoctorRequestsQuery, useInvalidateDoctorRequests } from '../../lib/hooks/useDoctorRequestsQuery';
 import RequestCard from '../../components/RequestCard';
@@ -28,9 +29,14 @@ import { FadeIn } from '../../components/ui/FadeIn';
 import { showToast } from '../../components/ui/Toast';
 import { haptics } from '../../lib/haptics';
 import { motionTokens } from '../../lib/ui/motion';
+import { humanizeError } from '../../lib/errors/humanizeError';
+import type { ApiError } from '../../lib/api-client';
 import { useEffect } from 'react';
 
 const pad = doctorDS.screenPaddingHorizontal;
+
+// staleTime configurado em useDoctorRequestsQuery (10s) — refetch só se dado tiver mais
+const DOCTOR_REQUESTS_STALE_MS = 10_000;
 
 const TYPE_FILTER_ITEMS = [
   { key: 'all', label: 'Todos' },
@@ -66,7 +72,12 @@ export default function DoctorQueue() {
     return subscribe(() => invalidateDoctorRequests());
   }, [subscribe, invalidateDoctorRequests]);
 
-  useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
+  const queryClient = useQueryClient();
+  useFocusEffect(useCallback(() => {
+    const state = queryClient.getQueryState(['doctor-requests']);
+    const age = Date.now() - (state?.dataUpdatedAt ?? 0);
+    if (age > DOCTOR_REQUESTS_STALE_MS) refetch();
+  }, [queryClient, refetch]));
 
   const onRefresh = useCallback(async () => {
     haptics.light();
@@ -122,7 +133,14 @@ export default function DoctorQueue() {
     />
   ), [router]);
 
-  const error = isError ? ((queryError as Error)?.message ?? 'Erro ao carregar') : null;
+  const errorSubtitle = useMemo(() => {
+    if (!isError || !queryError) return null;
+    const err = queryError as ApiError;
+    if (err?.status === 401) return 'Sessão expirada. Faça login novamente.';
+    if (err?.status === 500) return 'Erro no servidor. Tente novamente em alguns instantes.';
+    return humanizeError(queryError, 'request');
+  }, [isError, queryError]);
+  const error = isError ? (errorSubtitle ?? (queryError as Error)?.message ?? 'Erro ao carregar') : null;
   const empty = !loading && !error && filteredRequests.length === 0;
   const isQueueEmpty = empty && requests.length === 0;
   const isFilteredEmpty = empty && requests.length > 0;
@@ -199,6 +217,7 @@ export default function DoctorQueue() {
           <FlatList
             data={filteredRequests}
             keyExtractor={keyExtractor}
+            getItemLayout={(_: unknown, i: number) => ({ length: 98, offset: 98 * i, index: i })}
             renderItem={renderDoctorItem}
             contentContainerStyle={[
               styles.listContent,

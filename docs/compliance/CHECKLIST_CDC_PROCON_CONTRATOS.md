@@ -1,4 +1,4 @@
-# Checklist CDC / Procon / Contratos
+﻿# Checklist CDC / Procon / Contratos
 
 **Referências:** Código de Defesa do Consumidor (CDC), Procon, Judiciário, Ministério Público.
 
@@ -148,4 +148,4 @@ Política de cancelamento e reembolso (esboço)
 - `frontend-mobile/app/new-request/prescription.tsx` — Mensagem "15 min" e estorno
 - `frontend-mobile/app/request-detail/[id].tsx` — `cancelRequest`, `canCancel`
 - `frontend-mobile/lib/company.ts` — Dados de contato
-- `supabase/migrations/20260223000001_consultation_time_bank.sql` — Banco de minutos
+- `backend-dotnet/src/RenoveJa.Infrastructure/Data/Postgres/MigrationRunner.cs20260223000001_consultation_time_bank.sql` — Banco de minutos

@@ -1,4 +1,4 @@
-# CLAUDE.md — Backend .NET 8 (RenoveJá+)
+﻿# CLAUDE.md — Backend .NET 8 (RenoveJá+)
 
 ## Build & Test
 ```bash
@@ -106,8 +106,6 @@ Compilar.
 
 Gerar um script PowerShell `scripts/aws-cleanup.ps1` que:
 1. Copia o valor de `/renoveja/prod/Supabase__DatabaseUrl` para `/renoveja/prod/Database__ConnectionString` no SSM
-2. Atualiza a ECS Task Definition para usar o novo nome do parâmetro
-3. NÃO deleta o parâmetro antigo (mantém para rollback)
 
 O script deve ser seguro (dry-run por padrão, --apply para executar).
 

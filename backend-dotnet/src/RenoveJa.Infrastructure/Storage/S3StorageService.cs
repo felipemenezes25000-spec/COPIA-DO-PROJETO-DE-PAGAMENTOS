@@ -1,4 +1,4 @@
-﻿using Amazon.S3;
+using Amazon.S3;
 using Amazon.S3.Model;
 using Microsoft.Extensions.Options;
 using RenoveJa.Application.Interfaces;
@@ -35,29 +35,48 @@ public class S3StorageService : IStorageService
 
     private string GetBucket(string path)
     {
-        if (path.StartsWith("certificates/", StringComparison.OrdinalIgnoreCase))
-            return _config.CertificatesBucket;
-        if (path.StartsWith("receitas/", StringComparison.OrdinalIgnoreCase) ||
-            path.StartsWith("signed/", StringComparison.OrdinalIgnoreCase) ||
-            path.StartsWith("prescription-images/", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(path)) return _config.PrescriptionsBucket;
+        var p = path.TrimStart('/');
+        // Estrutura nova (docs/STORAGE_S3_ESTRUTURA.md)
+        if (p.StartsWith("pedidos/", StringComparison.OrdinalIgnoreCase) ||
+            p.StartsWith("planos-de-cuidado/", StringComparison.OrdinalIgnoreCase))
             return _config.PrescriptionsBucket;
-        if (path.StartsWith("transcripts/", StringComparison.OrdinalIgnoreCase))
+        if (p.StartsWith("consultas/", StringComparison.OrdinalIgnoreCase))
             return _config.TranscriptsBucket;
-        if (path.StartsWith("avatars/", StringComparison.OrdinalIgnoreCase))
+        if (p.StartsWith("usuarios/", StringComparison.OrdinalIgnoreCase))
+        {
+            if (p.Contains("/certificados/", StringComparison.OrdinalIgnoreCase))
+                return _config.CertificatesBucket;
+            return _config.AvatarsBucket; // usuarios/{id}/avatar/
+        }
+        // Legado
+        if (p.StartsWith("certificates/", StringComparison.OrdinalIgnoreCase))
+            return _config.CertificatesBucket;
+        if (p.StartsWith("receitas/", StringComparison.OrdinalIgnoreCase) ||
+            p.StartsWith("signed/", StringComparison.OrdinalIgnoreCase) ||
+            p.StartsWith("prescription-images/", StringComparison.OrdinalIgnoreCase))
+            return _config.PrescriptionsBucket;
+        if (p.StartsWith("transcripts/", StringComparison.OrdinalIgnoreCase) ||
+            p.StartsWith("recordings/", StringComparison.OrdinalIgnoreCase))
+            return _config.TranscriptsBucket;
+        if (p.StartsWith("avatars/", StringComparison.OrdinalIgnoreCase))
             return _config.AvatarsBucket;
+        if (p.StartsWith("careplans/", StringComparison.OrdinalIgnoreCase))
+            return _config.PrescriptionsBucket;
         return _config.PrescriptionsBucket;
     }
 
     private static string CleanPath(string path)
     {
-        // Remove bucket prefix if present
-        var prefixes = new[] { "certificates/", "prescription-images/", "avatars/", "transcripts/", "receitas/", "signed/" };
+        if (string.IsNullOrWhiteSpace(path)) return path;
+        var p = path.TrimStart('/');
+        var prefixes = new[] { "pedidos/", "consultas/", "usuarios/", "planos-de-cuidado/", "certificates/", "prescription-images/", "avatars/", "transcripts/", "recordings/", "receitas/", "signed/", "careplans/" };
         foreach (var prefix in prefixes)
         {
-            if (path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                return path; // Keep as-is, S3 uses full key
+            if (p.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return p;
         }
-        return path;
+        return p;
     }
 
     public async Task<StorageUploadResult> UploadAsync(string path, byte[] data, string contentType, CancellationToken cancellationToken = default)
@@ -144,9 +163,23 @@ public class S3StorageService : IStorageService
         return $"https://{bucket}.s3.{_config.Region}.amazonaws.com/{key}";
     }
 
+    /// <summary>Upload de imagem de receita ou exame. kind: "receita" ou "exame" (default receita). Path: pedidos/{kind}/anexos/{userId}/{timestamp}-{guid}.{ext}</summary>
     public async Task<string> UploadPrescriptionImageAsync(Stream content, string fileName, string contentType, Guid userId, CancellationToken cancellationToken = default)
     {
-        var key = $"prescription-images/{userId}/{Guid.NewGuid()}/{fileName}";
+        return await UploadRequestImageAsync(content, fileName, contentType, userId, "receita", cancellationToken);
+    }
+
+    /// <summary>Upload de imagem de exame. Path: pedidos/exame/anexos/{userId}/{timestamp}-{guid}.{ext}</summary>
+    public async Task<string> UploadExamImageAsync(Stream content, string fileName, string contentType, Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await UploadRequestImageAsync(content, fileName, contentType, userId, "exame", cancellationToken);
+    }
+
+    private async Task<string> UploadRequestImageAsync(Stream content, string fileName, string contentType, Guid userId, string kind, CancellationToken cancellationToken = default)
+    {
+        var ext = Path.GetExtension(fileName);
+        if (string.IsNullOrEmpty(ext)) ext = ".jpg";
+        var key = $"pedidos/{kind}/anexos/{userId:N}/{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}{ext}";
         using var ms = new MemoryStream();
         await content.CopyToAsync(ms, cancellationToken);
 
@@ -159,7 +192,7 @@ public class S3StorageService : IStorageService
 
     public async Task<string> UploadAvatarAsync(Stream content, string fileName, string contentType, Guid userId, CancellationToken cancellationToken = default)
     {
-        var key = $"avatars/{userId}/{fileName}";
+        var key = $"usuarios/{userId:N}/avatar/{fileName}";
         using var ms = new MemoryStream();
         await content.CopyToAsync(ms, cancellationToken);
 
@@ -214,20 +247,6 @@ public class S3StorageService : IStorageService
         if (!string.IsNullOrWhiteSpace(_config.PublicBaseUrl) && url.StartsWith(_config.PublicBaseUrl))
         {
             return url[_config.PublicBaseUrl.Length..].TrimStart('/');
-        }
-
-        // Supabase URL fallback (for legacy data)
-        if (url.Contains("supabase.co/storage/"))
-        {
-            var idx = url.IndexOf("/object/public/");
-            if (idx >= 0) return url[(idx + "/object/public/".Length)..];
-            idx = url.IndexOf("/object/sign/");
-            if (idx >= 0)
-            {
-                var path = url[(idx + "/object/sign/".Length)..];
-                var qIdx = path.IndexOf('?');
-                return qIdx >= 0 ? path[..qIdx] : path;
-            }
         }
 
         return null;

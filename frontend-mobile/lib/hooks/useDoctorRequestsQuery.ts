@@ -13,12 +13,15 @@ export const DOCTOR_REQUESTS_QUERY_KEY = ['doctor-requests'] as const;
  *
  * Eventos SignalR devem chamar `useInvalidateDoctorRequests()` para
  * invalidar o cache e forçar refetch imediato sem polling.
+ *
+ * PERF: pageSize reduzido de 500 → 50. Médicos raramente têm mais de
+ * 50 pedidos ativos simultâneos. Reduz payload ~10× por poll.
  */
 export function useDoctorRequestsQuery(isSignalRConnected: boolean) {
   return useQuery<RequestResponseDto[]>({
     queryKey: DOCTOR_REQUESTS_QUERY_KEY,
     queryFn: async () => {
-      const response = await getRequests({ page: 1, pageSize: 500 });
+      const response = await getRequests({ page: 1, pageSize: 50 });
       return sortRequestsByNewestFirst(response.items ?? []);
     },
     staleTime: 10_000,

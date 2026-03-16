@@ -5,13 +5,13 @@ using RenoveJa.Infrastructure.Data.Postgres;
 
 namespace RenoveJa.Infrastructure.Repositories;
 
-public class PatientRepository(PostgresClient supabase) : IPatientRepository
+public class PatientRepository(PostgresClient db) : IPatientRepository
 {
     private const string TableName = "patients";
 
     public async Task<Patient?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<PatientModel>(
+        var model = await db.GetSingleAsync<PatientModel>(
             TableName,
             filter: $"id=eq.{id}",
             cancellationToken: cancellationToken);
@@ -21,7 +21,7 @@ public class PatientRepository(PostgresClient supabase) : IPatientRepository
 
     public async Task<Patient?> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<PatientModel>(
+        var model = await db.GetSingleAsync<PatientModel>(
             TableName,
             filter: $"user_id=eq.{userId}",
             cancellationToken: cancellationToken);
@@ -32,7 +32,7 @@ public class PatientRepository(PostgresClient supabase) : IPatientRepository
     public async Task<Patient> CreateAsync(Patient patient, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(patient);
-        var created = await supabase.InsertAsync<PatientModel>(
+        var created = await db.InsertAsync<PatientModel>(
             TableName,
             model,
             cancellationToken);
@@ -43,7 +43,7 @@ public class PatientRepository(PostgresClient supabase) : IPatientRepository
     public async Task<Patient> UpdateAsync(Patient patient, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(patient);
-        var updated = await supabase.UpdateAsync<PatientModel>(
+        var updated = await db.UpdateAsync<PatientModel>(
             TableName,
             $"id=eq.{patient.Id}",
             model,

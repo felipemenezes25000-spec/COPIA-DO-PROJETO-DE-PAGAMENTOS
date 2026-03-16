@@ -7,9 +7,9 @@ using RenoveJa.Infrastructure.Data.Postgres;
 namespace RenoveJa.Infrastructure.Repositories;
 
 /// <summary>
-/// RepositÃ³rio de notificaÃ§Ãµes via Supabase.
+/// RepositÃ³rio de notificaÃ§Ãµes via db.
 /// </summary>
-public class NotificationRepository(PostgresClient supabase) : INotificationRepository
+public class NotificationRepository(PostgresClient db) : INotificationRepository
 {
     private const string TableName = "notifications";
 
@@ -18,7 +18,7 @@ public class NotificationRepository(PostgresClient supabase) : INotificationRepo
     /// </summary>
     public async Task<Notification?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<NotificationModel>(
+        var model = await db.GetSingleAsync<NotificationModel>(
             TableName,
             filter: $"id=eq.{id}",
             cancellationToken: cancellationToken);
@@ -28,7 +28,7 @@ public class NotificationRepository(PostgresClient supabase) : INotificationRepo
 
     public async Task<List<Notification>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<NotificationModel>(
+        var models = await db.GetAllAsync<NotificationModel>(
             TableName,
             filter: $"user_id=eq.{userId}&order=created_at.desc",
             cancellationToken: cancellationToken);
@@ -39,7 +39,7 @@ public class NotificationRepository(PostgresClient supabase) : INotificationRepo
     public async Task<Notification> CreateAsync(Notification notification, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(notification);
-        var created = await supabase.InsertAsync<NotificationModel>(
+        var created = await db.InsertAsync<NotificationModel>(
             TableName,
             model,
             cancellationToken);
@@ -50,7 +50,7 @@ public class NotificationRepository(PostgresClient supabase) : INotificationRepo
     public async Task<Notification> UpdateAsync(Notification notification, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(notification);
-        var updated = await supabase.UpdateAsync<NotificationModel>(
+        var updated = await db.UpdateAsync<NotificationModel>(
             TableName,
             $"id=eq.{notification.Id}",
             model,
@@ -61,7 +61,7 @@ public class NotificationRepository(PostgresClient supabase) : INotificationRepo
 
     public async Task<int> GetUnreadCountAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        return await supabase.CountAsync(
+        return await db.CountAsync(
             TableName,
             $"user_id=eq.{userId}&read=eq.false",
             cancellationToken);
@@ -69,7 +69,7 @@ public class NotificationRepository(PostgresClient supabase) : INotificationRepo
 
     public async Task MarkAllAsReadAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        await supabase.UpdateAsync<NotificationModel>(
+        await db.UpdateAsync<NotificationModel>(
             TableName,
             $"user_id=eq.{userId}",
             new { read = true },

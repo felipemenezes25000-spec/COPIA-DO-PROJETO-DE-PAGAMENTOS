@@ -532,8 +532,18 @@ public class MedicalRequest : AggregateRoot
         UpdatedAt = DateTime.UtcNow;
     }
 
+    /// <summary>
+    /// Atualiza o status diretamente (escape hatch para fluxos externos).
+    /// Rejeita status legados em runtime — novas transições devem usar apenas canônicos.
+    /// Para parsing de dados históricos do banco, use <see cref="Reconstitute(MedicalRequestSnapshot)"/> que não passa por aqui.
+    /// </summary>
     public void UpdateStatus(RequestStatus newStatus)
     {
+        if (newStatus.IsLegacy())
+            throw new DomainException(
+                $"Status '{newStatus}' é legado e não pode ser usado em novas transições de estado. " +
+                "Utilize o status canônico equivalente (ex: Submitted, InReview, ApprovedPendingPayment).");
+
         Status = newStatus;
         UpdatedAt = DateTime.UtcNow;
     }

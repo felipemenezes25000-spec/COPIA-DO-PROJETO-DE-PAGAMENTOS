@@ -172,7 +172,7 @@ public class SignatureService(
                         if (pdfResult.Success && pdfResult.PdfBytes != null)
                         {
                             pdfBytes = pdfResult.PdfBytes;
-                            pdfFileName = $"receita-assinada-{request.Id}-{DateTime.UtcNow:yyyyMMddHHmmssfff}.pdf";
+                            pdfFileName = $"pedidos/{request.Id:N}/receita/assinado/receita-{request.Id:N}.pdf";
                         }
                         else
                             throw new InvalidOperationException("Falha ao gerar PDF da receita. " + (pdfResult.ErrorMessage ?? "Verifique os dados da receita e tente novamente."));
@@ -213,7 +213,7 @@ public class SignatureService(
                         if (pdfResult.Success && pdfResult.PdfBytes != null)
                         {
                             pdfBytes = pdfResult.PdfBytes;
-                            pdfFileName = $"pedido-exame-assinado-{request.Id}-{DateTime.UtcNow:yyyyMMddHHmmssfff}.pdf";
+                            pdfFileName = $"pedidos/{request.Id:N}/exame/assinado/pedido-exame-{request.Id:N}.pdf";
                         }
                         else
                             throw new InvalidOperationException("Falha ao gerar PDF do exame. " + (pdfResult.ErrorMessage ?? "Verifique os dados do pedido e tente novamente."));
@@ -232,7 +232,7 @@ public class SignatureService(
                     var signResult = await digitalCertificateService.SignPdfAsync(
                                 certInfo.Id,
                                 pdfBytes,
-                                pdfFileName,
+                                pdfFileName, // storage path completo, ex.: pedidos/{id}/receita/assinado/receita-{id}.pdf
                                 normalizedPfxPassword,
                                 documentTypeHint,
                                 cancellationToken);
@@ -249,7 +249,7 @@ public class SignatureService(
                                     try
                                     {
                                         var accessCode = request.AccessCode ?? RequestHelpers.GenerateAccessCode(request.Id);
-                                        var pdfPath = $"signed/{pdfFileName}";
+                                        var pdfPath = pdfFileName; // já é path completo
                                         var emissionDate = DateTime.UtcNow;
                                         var verifyRecord = new PrescriptionVerifyRecord(
                                             Id: request.Id,

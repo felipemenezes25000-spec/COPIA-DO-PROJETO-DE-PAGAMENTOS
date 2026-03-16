@@ -77,7 +77,7 @@ O relatório pode mostrar "Tipo de assinatura: Destacada" — isso refere-se à 
 
 1. **QR Code na receita**  
    O PDF contém um QR Code que aponta para o endpoint da API (`Verification:BaseUrl`).  
-   Ex.: `https://sua-api.onrender.com/api/verify/{requestId}`  
+   Ex.: `https://api.renovejasaude.com.br/api/verify/{requestId}`  
    O texto impresso no PDF mostra a URL amigável do frontend (`Verification:FrontendUrl`).
 
 2. **Configuração**  

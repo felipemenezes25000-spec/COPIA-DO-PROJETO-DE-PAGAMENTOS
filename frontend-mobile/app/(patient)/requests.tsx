@@ -30,7 +30,8 @@ import { needsPayment } from '../../lib/domain/getRequestUiState';
 import { haptics } from '../../lib/haptics';
 import { showToast } from '../../components/ui/Toast';
 import { motionTokens } from '../../lib/ui/motion';
-import { useRequestsQuery } from '../../lib/hooks/useRequestsQuery';
+import { useRequestsQuery, REQUESTS_QUERY_KEY } from '../../lib/hooks/useRequestsQuery';
+import { useQueryClient } from '@tanstack/react-query';
 
 const ListSeparator = () => null;
 
@@ -41,6 +42,9 @@ const FILTER_ITEMS: { key: string; label: string; type?: RequestType }[] = [
   { key: 'consultation', label: 'Consultas', type: 'consultation' },
 ];
 
+// staleTime configurado em useRequestsQuery (30s) — refetch só se dado tiver mais tempo que isso
+const REQUESTS_STALE_THRESHOLD_MS = 30_000;
+
 export default function PatientRequests() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -49,6 +53,7 @@ export default function PatientRequests() {
   const [search, setSearch] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const debouncedSearch = useDebounce(search, 300);
+  const queryClient = useQueryClient();
 
   const { colors, gradients } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -70,7 +75,15 @@ export default function PatientRequests() {
     consultation: requests.filter((r) => r.requestType === 'consultation').length,
   }), [requests]);
 
-  useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
+  // PERF: só refaz fetch ao focar se o dado tiver mais de 30s — respeita staleTime
+  // em vez de disparar request desnecessária a cada troca de tab.
+  useFocusEffect(useCallback(() => {
+    const state = queryClient.getQueryState(REQUESTS_QUERY_KEY);
+    const age = Date.now() - (state?.dataUpdatedAt ?? 0);
+    if (age > REQUESTS_STALE_THRESHOLD_MS) {
+      refetch();
+    }
+  }, [queryClient, refetch]));
 
   const toPayCount = useMemo(() => requests.filter(r => needsPayment(r)).length, [requests]);
   useTriageEval({
@@ -200,6 +213,7 @@ export default function PatientRequests() {
           <FlatList
             data={filteredRequests}
             keyExtractor={keyExtractor}
+            getItemLayout={(_: unknown, i: number) => ({ length: 98, offset: 98 * i, index: i })}
             renderItem={renderPatientItem}
             contentContainerStyle={[styles.listContent, { paddingBottom: listPadding }, empty && styles.listContentEmpty]}
             ItemSeparatorComponent={ListSeparator}

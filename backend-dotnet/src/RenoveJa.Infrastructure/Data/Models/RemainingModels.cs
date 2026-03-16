@@ -38,6 +38,8 @@ public class ConsultationAnamnesisModel
     public string? TranscriptText { get; set; }
     [System.Text.Json.Serialization.JsonPropertyName("transcript_file_url")]
     public string? TranscriptFileUrl { get; set; }
+    [System.Text.Json.Serialization.JsonPropertyName("recording_file_url")]
+    public string? RecordingFileUrl { get; set; }
     [System.Text.Json.Serialization.JsonPropertyName("anamnesis_json")]
     public string? AnamnesisJson { get; set; }
     [System.Text.Json.Serialization.JsonPropertyName("ai_suggestions_json")]

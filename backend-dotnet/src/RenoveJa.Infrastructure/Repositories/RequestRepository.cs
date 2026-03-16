@@ -9,9 +9,9 @@ using RenoveJa.Infrastructure.Utils;
 namespace RenoveJa.Infrastructure.Repositories;
 
 /// <summary>
-/// RepositÃ³rio de solicitaÃ§Ãµes mÃ©dicas via Supabase.
+/// RepositÃ³rio de solicitaÃ§Ãµes mÃ©dicas via db.
 /// </summary>
-public class RequestRepository(PostgresClient supabase) : IRequestRepository
+public class RequestRepository(PostgresClient db) : IRequestRepository
 {
     private const string TableName = "requests";
 
@@ -20,7 +20,7 @@ public class RequestRepository(PostgresClient supabase) : IRequestRepository
     /// </summary>
     public async Task<MedicalRequest?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<RequestModel>(
+        var model = await db.GetSingleAsync<RequestModel>(
             TableName,
             filter: $"id=eq.{id}",
             cancellationToken: cancellationToken);
@@ -35,7 +35,7 @@ public class RequestRepository(PostgresClient supabase) : IRequestRepository
         var normalized = shortCode.ToLowerInvariant().Trim();
         if (normalized.Length > 12)
             normalized = normalized[..12];
-        var model = await supabase.GetSingleAsync<RequestModel>(
+        var model = await db.GetSingleAsync<RequestModel>(
             TableName,
             filter: $"short_code=eq.{normalized}",
             cancellationToken: cancellationToken);
@@ -44,7 +44,7 @@ public class RequestRepository(PostgresClient supabase) : IRequestRepository
 
     public async Task<List<MedicalRequest>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<RequestModel>(
+        var models = await db.GetAllAsync<RequestModel>(
             TableName,
             cancellationToken: cancellationToken);
 
@@ -53,7 +53,7 @@ public class RequestRepository(PostgresClient supabase) : IRequestRepository
 
     public async Task<List<MedicalRequest>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<RequestModel>(
+        var models = await db.GetAllAsync<RequestModel>(
             TableName,
             filter: $"patient_id=eq.{patientId}",
             orderBy: "created_at.desc",
@@ -64,7 +64,7 @@ public class RequestRepository(PostgresClient supabase) : IRequestRepository
 
     public async Task<List<MedicalRequest>> GetByDoctorIdAsync(Guid doctorId, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<RequestModel>(
+        var models = await db.GetAllAsync<RequestModel>(
             TableName,
             filter: $"doctor_id=eq.{doctorId}",
             cancellationToken: cancellationToken);
@@ -75,7 +75,7 @@ public class RequestRepository(PostgresClient supabase) : IRequestRepository
     public async Task<List<MedicalRequest>> GetByStatusAsync(RequestStatus status, CancellationToken cancellationToken = default)
     {
         var statusStr = SnakeCaseHelper.ToSnakeCase(status.ToString());
-        var models = await supabase.GetAllAsync<RequestModel>(
+        var models = await db.GetAllAsync<RequestModel>(
             TableName,
             filter: $"status=eq.{statusStr}",
             cancellationToken: cancellationToken);
@@ -86,7 +86,7 @@ public class RequestRepository(PostgresClient supabase) : IRequestRepository
     public async Task<List<MedicalRequest>> GetByTypeAsync(RequestType type, CancellationToken cancellationToken = default)
     {
         var typeStr = type.ToString().ToLowerInvariant();
-        var models = await supabase.GetAllAsync<RequestModel>(
+        var models = await db.GetAllAsync<RequestModel>(
             TableName,
             filter: $"request_type=eq.{typeStr}",
             cancellationToken: cancellationToken);
@@ -117,7 +117,7 @@ public class RequestRepository(PostgresClient supabase) : IRequestRepository
         const string eligibleStatuses = "submitted,searching_doctor,pending,analyzing";
         var filter = $"status=in.({eligibleStatuses})&or=(doctor_id.is.null,doctor_id.eq.00000000-0000-0000-0000-000000000000)";
 
-        var models = await supabase.GetAllAsync<RequestModel>(
+        var models = await db.GetAllAsync<RequestModel>(
             TableName,
             select: "*",
             filter: filter,
@@ -131,18 +131,18 @@ public class RequestRepository(PostgresClient supabase) : IRequestRepository
     {
         // pending: sem mÃ©dico em submitted/paid (fila)
         var pendingFilter = "status=in.(submitted,paid)&or=(doctor_id.is.null,doctor_id.eq.00000000-0000-0000-0000-000000000000)";
-        var pendingCount = await supabase.CountAsync(TableName, pendingFilter, cancellationToken);
+        var pendingCount = await db.CountAsync(TableName, pendingFilter, cancellationToken);
 
         // inReview: com mÃ©dico em in_review, approved, signed, consultation_ready, in_consultation
         var inReviewFilter = $"doctor_id=eq.{doctorId}&status=in.(in_review,approved,signed,consultation_ready,in_consultation)";
-        var inReviewCount = await supabase.CountAsync(TableName, inReviewFilter, cancellationToken);
+        var inReviewCount = await db.CountAsync(TableName, inReviewFilter, cancellationToken);
 
         // completed: com mÃ©dico em completed, delivered, consultation_finished
         var completedFilter = $"doctor_id=eq.{doctorId}&status=in.(completed,delivered,consultation_finished)";
-        var completedCount = await supabase.CountAsync(TableName, completedFilter, cancellationToken);
+        var completedCount = await db.CountAsync(TableName, completedFilter, cancellationToken);
 
         // totalEarnings: soma de price dos completed
-        var priceModels = await supabase.GetAllAsync<RequestPriceModel>(
+        var priceModels = await db.GetAllAsync<RequestPriceModel>(
             TableName,
             select: "price",
             filter: completedFilter,
@@ -157,7 +157,7 @@ public class RequestRepository(PostgresClient supabase) : IRequestRepository
     {
         var cutoffStr = cutoffUtc.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
         var filter = $"status=eq.approved_pending_payment&updated_at=lt.{cutoffStr}";
-        var models = await supabase.GetAllAsync<RequestModel>(
+        var models = await db.GetAllAsync<RequestModel>(
             TableName,
             filter: filter,
             cancellationToken: cancellationToken);
@@ -168,7 +168,7 @@ public class RequestRepository(PostgresClient supabase) : IRequestRepository
     {
         var cutoffStr = cutoffUtc.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
         var filter = $"status=eq.in_review&updated_at=lt.{cutoffStr}&doctor_id=not.is.null";
-        var models = await supabase.GetAllAsync<RequestModel>(
+        var models = await db.GetAllAsync<RequestModel>(
             TableName,
             filter: filter,
             cancellationToken: cancellationToken);
@@ -178,7 +178,7 @@ public class RequestRepository(PostgresClient supabase) : IRequestRepository
     public async Task<List<MedicalRequest>> GetPrescriptionsExpiringSoonAsync(DateTime nowUtc, int daysAhead = 7, CancellationToken cancellationToken = default)
     {
         var filter = "request_type=eq.prescription&status=eq.delivered&signed_at=not.is.null";
-        var models = await supabase.GetAllAsync<RequestModel>(
+        var models = await db.GetAllAsync<RequestModel>(
             TableName,
             filter: filter,
             cancellationToken: cancellationToken);
@@ -201,7 +201,7 @@ public class RequestRepository(PostgresClient supabase) : IRequestRepository
     public async Task<MedicalRequest> CreateAsync(MedicalRequest request, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(request);
-        var created = await supabase.InsertAsync<RequestModel>(
+        var created = await db.InsertAsync<RequestModel>(
             TableName,
             model,
             cancellationToken);
@@ -250,7 +250,7 @@ public class RequestRepository(PostgresClient supabase) : IRequestRepository
             PatientCallConnectedAt = model.PatientCallConnectedAt,
             UpdatedAt = model.UpdatedAt
         };
-        var updated = await supabase.UpdateAsync<RequestModel>(
+        var updated = await db.UpdateAsync<RequestModel>(
             TableName,
             $"id=eq.{request.Id}",
             updatePayload,
@@ -303,9 +303,82 @@ public class RequestRepository(PostgresClient supabase) : IRequestRepository
         public DateTime UpdatedAt { get; set; }
     }
 
+
+    // ── Paginação real no banco ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Pedidos do paciente com paginação real (LIMIT/OFFSET no banco).
+    /// Evita buscar todos os pedidos e fazer Skip/Take em memória.
+    /// </summary>
+    public async Task<(List<MedicalRequest> Items, int TotalCount)> GetByPatientIdPagedAsync(
+        Guid patientId,
+        string? status = null,
+        string? type = null,
+        int page = 1,
+        int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var filter = $"patient_id=eq.{patientId}";
+        if (!string.IsNullOrWhiteSpace(status))
+            filter += $"&status=eq.{status}";
+        if (!string.IsNullOrWhiteSpace(type))
+            filter += $"&request_type=eq.{type}";
+
+        var totalCount = await db.CountAsync(TableName, filter, cancellationToken);
+        if (totalCount == 0)
+            return (new List<MedicalRequest>(), 0);
+
+        var offset = (page - 1) * pageSize;
+        var models = await db.GetAllAsync<RequestModel>(
+            TableName,
+            filter: filter,
+            orderBy: "created_at.desc",
+            limit: pageSize,
+            offset: offset,
+            cancellationToken: cancellationToken);
+
+        return (models.Select(MapToDomain).ToList(), totalCount);
+    }
+
+    /// <summary>
+    /// Fila do médico com paginação real: combina pedidos atribuídos + disponíveis
+    /// numa única query usando OR, depois ordena e pagina no banco.
+    /// </summary>
+    public async Task<(List<MedicalRequest> Items, int TotalCount)> GetDoctorQueuePagedAsync(
+        Guid doctorId,
+        string? status = null,
+        string? type = null,
+        int page = 1,
+        int pageSize = 50,
+        CancellationToken cancellationToken = default)
+    {
+        // Combina: atribuídos ao médico OU disponíveis na fila (sem médico, em status elegíveis)
+        const string eligibleStatuses = "submitted,searching_doctor,pending,analyzing";
+        var baseFilter = $"or=(doctor_id.eq.{doctorId},and(status=in.({eligibleStatuses}),or(doctor_id.is.null,doctor_id.eq.00000000-0000-0000-0000-000000000000)))";
+
+        if (!string.IsNullOrWhiteSpace(status))
+            baseFilter += $"&status=eq.{status}";
+        if (!string.IsNullOrWhiteSpace(type))
+            baseFilter += $"&request_type=eq.{type}";
+
+        var totalCount = await db.CountAsync(TableName, baseFilter, cancellationToken);
+        if (totalCount == 0)
+            return (new List<MedicalRequest>(), 0);
+
+        var offset = (page - 1) * pageSize;
+        var models = await db.GetAllAsync<RequestModel>(
+            TableName,
+            filter: baseFilter,
+            orderBy: "created_at.desc",
+            limit: pageSize,
+            offset: offset,
+            cancellationToken: cancellationToken);
+
+        return (models.Select(MapToDomain).ToList(), totalCount);
+    }
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        await supabase.DeleteAsync(
+        await db.DeleteAsync(
             TableName,
             $"id=eq.{id}",
             cancellationToken);

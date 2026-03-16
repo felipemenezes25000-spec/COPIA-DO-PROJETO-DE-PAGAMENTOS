@@ -6,9 +6,9 @@ using RenoveJa.Infrastructure.Data.Postgres;
 namespace RenoveJa.Infrastructure.Repositories;
 
 /// <summary>
-/// Repositório de usuários (pacientes e médicos) via Supabase.
+/// Repositório de usuários (pacientes e médicos) via db.
 /// </summary>
-public class UserRepository(PostgresClient supabase) : IUserRepository
+public class UserRepository(PostgresClient db) : IUserRepository
 {
     private const string TableName = "users";
 
@@ -17,7 +17,7 @@ public class UserRepository(PostgresClient supabase) : IUserRepository
     /// </summary>
     public async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<UserModel>(
+        var model = await db.GetSingleAsync<UserModel>(
             TableName,
             filter: $"id=eq.{id}",
             cancellationToken: cancellationToken);
@@ -35,7 +35,7 @@ public class UserRepository(PostgresClient supabase) : IUserRepository
             return new List<User>();
 
         var filter = $"id=in.({string.Join(",", idList)})";
-        var models = await supabase.GetAllAsync<UserModel>(
+        var models = await db.GetAllAsync<UserModel>(
             TableName,
             filter: filter,
             cancellationToken: cancellationToken);
@@ -45,7 +45,7 @@ public class UserRepository(PostgresClient supabase) : IUserRepository
 
     public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<UserModel>(
+        var model = await db.GetSingleAsync<UserModel>(
             TableName,
             filter: $"email=eq.{email}",
             cancellationToken: cancellationToken);
@@ -55,7 +55,7 @@ public class UserRepository(PostgresClient supabase) : IUserRepository
 
     public async Task<List<User>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<UserModel>(
+        var models = await db.GetAllAsync<UserModel>(
             TableName,
             cancellationToken: cancellationToken);
 
@@ -65,7 +65,7 @@ public class UserRepository(PostgresClient supabase) : IUserRepository
     public async Task<User> CreateAsync(User user, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(user);
-        var created = await supabase.InsertAsync<UserModel>(
+        var created = await db.InsertAsync<UserModel>(
             TableName,
             model,
             cancellationToken);
@@ -76,7 +76,7 @@ public class UserRepository(PostgresClient supabase) : IUserRepository
     public async Task<User> UpdateAsync(User user, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(user);
-        var updated = await supabase.UpdateAsync<UserModel>(
+        var updated = await db.UpdateAsync<UserModel>(
             TableName,
             $"id=eq.{user.Id}",
             model,
@@ -87,7 +87,7 @@ public class UserRepository(PostgresClient supabase) : IUserRepository
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        await supabase.DeleteAsync(
+        await db.DeleteAsync(
             TableName,
             $"id=eq.{id}",
             cancellationToken);
@@ -108,7 +108,7 @@ public class UserRepository(PostgresClient supabase) : IUserRepository
         if (digits.Length != 11)
             return false;
 
-        var model = await supabase.GetSingleAsync<UserModel>(
+        var model = await db.GetSingleAsync<UserModel>(
             TableName,
             filter: $"cpf=eq.{digits}",
             cancellationToken: cancellationToken);

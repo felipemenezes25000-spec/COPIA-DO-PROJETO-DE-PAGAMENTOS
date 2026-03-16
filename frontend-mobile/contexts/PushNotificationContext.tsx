@@ -156,7 +156,8 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
       try {
         const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
         if (!projectId) {
-          return; // Skip push registration; run "eas init" and add projectId to app.json
+          if (__DEV__) console.warn('[Push] projectId ausente — rode eas init e adicione projectId ao app.json');
+          return;
         }
 
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -168,6 +169,7 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
         }
 
         if (finalStatus !== 'granted') {
+          if (__DEV__) console.warn('[Push] Permissao negada — status:', finalStatus, '— habilite notificacoes nas configuracoes do dispositivo');
           return;
         }
 
@@ -180,6 +182,7 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
         await registerPushToken(token, Platform.OS);
         lastRegisteredToken.current = token;
         setLastRegisteredPushToken(token);
+        if (__DEV__) console.log('[Push] Token registrado:', token.slice(0, 24) + '...');
       } catch (error) {
         console.warn('Push token registration failed:', error);
       }
@@ -192,8 +195,9 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
     };
   }, [user?.id, user]);
 
+    const pushCtxValue = React.useMemo(() => ({ lastNotificationAt }), [lastNotificationAt]);
   return (
-    <PushNotificationContext.Provider value={{ lastNotificationAt }}>
+    <PushNotificationContext.Provider value={pushCtxValue}>
       {children}
     </PushNotificationContext.Provider>
   );

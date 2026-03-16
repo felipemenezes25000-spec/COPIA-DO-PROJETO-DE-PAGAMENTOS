@@ -9,13 +9,13 @@ using RenoveJa.Infrastructure.Utils;
 
 namespace RenoveJa.Infrastructure.Repositories;
 
-public class MedicalDocumentRepository(PostgresClient supabase) : IMedicalDocumentRepository
+public class MedicalDocumentRepository(PostgresClient db) : IMedicalDocumentRepository
 {
     private const string TableName = "medical_documents";
 
     public async Task<MedicalDocument?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<MedicalDocumentModel>(
+        var model = await db.GetSingleAsync<MedicalDocumentModel>(
             TableName,
             filter: $"id=eq.{id}",
             cancellationToken: cancellationToken);
@@ -25,7 +25,7 @@ public class MedicalDocumentRepository(PostgresClient supabase) : IMedicalDocume
 
     public async Task<List<MedicalDocument>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<MedicalDocumentModel>(
+        var models = await db.GetAllAsync<MedicalDocumentModel>(
             TableName,
             filter: $"patient_id=eq.{patientId}",
             orderBy: "created_at.desc",
@@ -36,7 +36,7 @@ public class MedicalDocumentRepository(PostgresClient supabase) : IMedicalDocume
 
     public async Task<List<MedicalDocument>> GetByEncounterIdAsync(Guid encounterId, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<MedicalDocumentModel>(
+        var models = await db.GetAllAsync<MedicalDocumentModel>(
             TableName,
             filter: $"encounter_id=eq.{encounterId}",
             orderBy: "created_at.desc",
@@ -48,7 +48,7 @@ public class MedicalDocumentRepository(PostgresClient supabase) : IMedicalDocume
     public async Task<List<MedicalDocument>> GetByPatientAndTypeAsync(Guid patientId, DocumentType documentType, CancellationToken cancellationToken = default)
     {
         var typeStr = SnakeCaseHelper.ToSnakeCase(documentType.ToString());
-        var models = await supabase.GetAllAsync<MedicalDocumentModel>(
+        var models = await db.GetAllAsync<MedicalDocumentModel>(
             TableName,
             filter: $"patient_id=eq.{patientId}&document_type=eq.{typeStr}",
             orderBy: "created_at.desc",
@@ -60,7 +60,7 @@ public class MedicalDocumentRepository(PostgresClient supabase) : IMedicalDocume
     public async Task<MedicalDocument?> GetBySourceRequestIdAsync(Guid sourceRequestId, DocumentType documentType, CancellationToken cancellationToken = default)
     {
         var typeStr = SnakeCaseHelper.ToSnakeCase(documentType.ToString());
-        var model = await supabase.GetSingleAsync<MedicalDocumentModel>(
+        var model = await db.GetSingleAsync<MedicalDocumentModel>(
             TableName,
             filter: $"source_request_id=eq.{sourceRequestId}&document_type=eq.{typeStr}",
             cancellationToken: cancellationToken);
@@ -77,7 +77,7 @@ public class MedicalDocumentRepository(PostgresClient supabase) : IMedicalDocume
             model.SignedDocumentUrl = signedDocumentUrl;
         if (!string.IsNullOrEmpty(signatureId))
             model.SignatureId = signatureId;
-        var created = await supabase.InsertAsync<MedicalDocumentModel>(
+        var created = await db.InsertAsync<MedicalDocumentModel>(
             TableName,
             model,
             cancellationToken);
@@ -88,14 +88,14 @@ public class MedicalDocumentRepository(PostgresClient supabase) : IMedicalDocume
     public async Task<MedicalDocument> UpdateAsync(MedicalDocument document, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(document);
-        var existing = await supabase.GetSingleAsync<MedicalDocumentModel>(TableName, filter: $"id=eq.{document.Id}", cancellationToken: cancellationToken);
+        var existing = await db.GetSingleAsync<MedicalDocumentModel>(TableName, filter: $"id=eq.{document.Id}", cancellationToken: cancellationToken);
         if (existing != null)
         {
             model.SourceRequestId = existing.SourceRequestId;
             model.SignedDocumentUrl = existing.SignedDocumentUrl ?? model.SignedDocumentUrl;
             model.SignatureId = existing.SignatureId ?? model.SignatureId;
         }
-        var updated = await supabase.UpdateAsync<MedicalDocumentModel>(
+        var updated = await db.UpdateAsync<MedicalDocumentModel>(
             TableName,
             $"id=eq.{document.Id}",
             model,

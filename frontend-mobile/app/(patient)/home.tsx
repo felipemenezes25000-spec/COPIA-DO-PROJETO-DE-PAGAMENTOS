@@ -179,15 +179,37 @@ export default function PatientHome() {
 
   const [followUpActionFromApi, setFollowUpActionFromApi] = useState<AssistantNextActionResponseData | null>(null);
 
+  // PERF: cache em memória das respostas do assistente para evitar re-fetch em toda
+  // navegação quando o mesmo pedido ainda está em andamento.
+  // Chave: requestId:status — invalida automaticamente quando o status muda.
+  const assistantCacheRef = React.useRef<Map<string, AssistantNextActionResponseData>>(new Map());
+
   useEffect(() => {
     if (!followUpRequest?.id) {
       setFollowUpActionFromApi(null);
       return;
     }
+    const cacheKey = `${followUpRequest.id}:${followUpRequest.status}`;
+    const cached = assistantCacheRef.current.get(cacheKey);
+    if (cached) {
+      setFollowUpActionFromApi(cached);
+      return;
+    }
+
     let cancelled = false;
     const currentFollowUp = followUpRequest; // capture stable ref for .catch
     getAssistantNextAction({ requestId: currentFollowUp.id })
-      .then((res) => { if (!cancelled) setFollowUpActionFromApi(res); })
+      .then((res) => {
+        if (!cancelled) {
+          // Guarda no cache (máximo 20 entradas para não vazar memória)
+          if (assistantCacheRef.current.size >= 20) {
+            const firstKey = assistantCacheRef.current.keys().next().value;
+            if (firstKey) assistantCacheRef.current.delete(firstKey);
+          }
+          assistantCacheRef.current.set(cacheKey, res);
+          setFollowUpActionFromApi(res);
+        }
+      })
       .catch(() => {
         if (!cancelled && currentFollowUp) {
           const local = getNextBestActionForRequest(currentFollowUp);
@@ -283,8 +305,7 @@ export default function PatientHome() {
       </LinearGradient>
 
       {/* ─── STATS: 3 cards flutuantes ─── */}
-      <FadeIn visible={!loading} {...motionTokens.fade.patientSection} delay={50} fill={false}>
-      <View style={styles.statsRow}>
+            <View style={styles.statsRow}>
         <StatsCard
           icon="analytics"
           label={DASHBOARD_STATS_LABELS.analyzing}
@@ -352,11 +373,9 @@ export default function PatientHome() {
           </Pressable>
         </View>
       ) : null}
-      </FadeIn>
 
       {/* ─── InfoCard da triagem ─── */}
-      <FadeIn visible={!loading} {...motionTokens.fade.patientSection} delay={100} fill={false}>
-      {showInfoCard && (
+            {showInfoCard && (
         <View style={styles.aiBannerWrap}>
           <InfoCard
             icon="sparkles-outline"
@@ -370,11 +389,9 @@ export default function PatientHome() {
           />
         </View>
       )}
-      </FadeIn>
 
       {/* ─── Quick Actions ─── */}
-      <FadeIn visible={!loading} {...motionTokens.fade.patientSectionLong} delay={140} fill={false}>
-      <View style={styles.actionsSection}>
+            <View style={styles.actionsSection}>
         <Text style={styles.sectionLabel}>O QUE VOCÊ PRECISA?</Text>
         <View style={styles.actionsColumn}>
           <LargeActionCard
@@ -415,11 +432,9 @@ export default function PatientHome() {
           />
         </View>
       </View>
-      </FadeIn>
 
       {/* ─── Record Card v2 ─── */}
-      <FadeIn visible={!loading} {...motionTokens.fade.patientSection} delay={200} fill={false}>
-      <View style={styles.section}>
+            <View style={styles.section}>
         <Pressable
           style={({ pressed }) => [styles.recordCard, pressed && { opacity: 0.88, transform: [{ scale: 0.985 }] }]}
           onPress={() => {
@@ -441,11 +456,9 @@ export default function PatientHome() {
           </View>
         </Pressable>
       </View>
-      </FadeIn>
 
       {/* ─── Recent Requests ─── */}
-      <FadeIn visible={!loading} {...motionTokens.fade.patientSectionLong} delay={240} fill={false}>
-      {recentRequests.length > 0 ? (
+            {recentRequests.length > 0 ? (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Pedidos recentes</Text>
@@ -483,7 +496,6 @@ export default function PatientHome() {
           />
         </View>
       )}
-      </FadeIn>
 
           <View style={{ height: dsLayout.cardGap * 3 }} />
         </ScrollView>

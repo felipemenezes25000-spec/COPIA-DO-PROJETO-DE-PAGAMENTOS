@@ -163,8 +163,8 @@ public class DigitalCertificateService : IDigitalCertificateService
         // Criptografa o PFX antes de armazenar
         var encryptedPfx = EncryptPfx(pfxBytes, password);
 
-        // Faz upload do PFX criptografado para o storage
-        var storagePath = $"certificates/{doctorProfileId}/{Guid.NewGuid()}.pfx.enc";
+        // Faz upload do PFX criptografado para o storage (estrutura: usuarios/{id}/certificados/{guid}.pfx.enc)
+        var storagePath = $"usuarios/{doctorProfileId:N}/certificados/{Guid.NewGuid()}.pfx.enc";
         var uploadResult = await _storageService.UploadAsync(
             storagePath,
             encryptedPfx,
@@ -210,7 +210,7 @@ public class DigitalCertificateService : IDigitalCertificateService
     public async Task<DigitalSignatureResult> SignPdfAsync(
         Guid certificateId,
         byte[] pdfBytes,
-        string outputFileName,
+        string storagePath,
         string? pfxPassword = null,
         string? documentTypeHint = null,
         CancellationToken cancellationToken = default)
@@ -271,8 +271,8 @@ public class DigitalCertificateService : IDigitalCertificateService
             // Hash SHA256 do PDF assinado (prova de integridade para auditoria)
             var pdfHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(signedPdfBytes)).ToLowerInvariant();
 
-            // Upload do PDF assinado
-            var signedPath = $"signed/{outputFileName}";
+            // Upload do PDF assinado (storagePath já é o path completo, ex.: pedidos/{requestId}/receita/assinado/receita-{requestId}.pdf)
+            var signedPath = storagePath?.Trim() ?? $"signed/{Guid.NewGuid():N}.pdf";
             var uploadResult = await _storageService.UploadAsync(
                 signedPath,
                 signedPdfBytes,

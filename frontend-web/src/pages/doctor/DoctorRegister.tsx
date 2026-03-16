@@ -100,7 +100,22 @@ export default function DoctorRegister() {
     }
     setLoading(true);
     try {
-      await registerDoctorFull(form);
+      const specialtyName = specialties.find(s => s.id === form.specialtyId)?.name ?? form.specialtyId;
+      await registerDoctorFull({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        phone: form.phone,
+        cpf: form.cpf,
+        crm: form.crm,
+        crmState: form.crmState,
+        specialty: specialtyName,
+        professionalPhone: form.professionalPhone || undefined,
+        cep: form.cep || undefined,
+        city: form.city || undefined,
+        state: form.state || undefined,
+        professionalAddress: form.professionalAddress || undefined,
+      });
       toast.success('Conta criada! Aguarde a aprovação do seu cadastro.');
       navigate('/login');
     } catch (err) {

@@ -1,4 +1,4 @@
-# ROPA — REGISTRO DAS OPERAÇÕES DE TRATAMENTO (LGPD)
+﻿# ROPA — REGISTRO DAS OPERAÇÕES DE TRATAMENTO (LGPD)
 
 **Empresa (Controladora):** RenoveJá Saúde Ltda.  
 **CNPJ:** 14.376.070/0001-53  
@@ -12,7 +12,7 @@
 - **Categoria:** dados pessoais
 - **Base legal:** execução de contrato (art. 7º, V)
 - **Retenção:** enquanto conta ativa + prazos legais
-- **Compartilhamento:** Supabase (infra)
+- **Compartilhamento:** AWS (RDS + S3)
 - **Transferência internacional:** possível via operadores
 
 ## 2. Teleconsulta e prontuário
@@ -72,7 +72,7 @@ Fluxo de atendimento: recebimento → triagem → resposta → registro.
 
 ## 9. Inventário de operadores (resumo)
 
-- Supabase (banco/storage)
+- PostgreSQL/RDS + AWS S3
 - OpenAI (IA)
 - Deepgram (transcrição)
 - Daily.co (video)

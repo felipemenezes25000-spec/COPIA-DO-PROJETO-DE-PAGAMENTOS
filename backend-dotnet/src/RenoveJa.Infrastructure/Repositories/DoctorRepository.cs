@@ -7,9 +7,9 @@ using RenoveJa.Infrastructure.Data.Postgres;
 namespace RenoveJa.Infrastructure.Repositories;
 
 /// <summary>
-/// Repositório de perfis de médicos via Supabase.
+/// Repositório de perfis de médicos via db.
 /// </summary>
-public class DoctorRepository(PostgresClient supabase) : IDoctorRepository
+public class DoctorRepository(PostgresClient db) : IDoctorRepository
 {
     private const string TableName = "doctor_profiles";
 
@@ -18,7 +18,7 @@ public class DoctorRepository(PostgresClient supabase) : IDoctorRepository
     /// </summary>
     public async Task<DoctorProfile?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<DoctorProfileModel>(
+        var model = await db.GetSingleAsync<DoctorProfileModel>(
             TableName,
             filter: $"id=eq.{id}",
             cancellationToken: cancellationToken);
@@ -28,7 +28,7 @@ public class DoctorRepository(PostgresClient supabase) : IDoctorRepository
 
     public async Task<DoctorProfile?> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<DoctorProfileModel>(
+        var model = await db.GetSingleAsync<DoctorProfileModel>(
             TableName,
             filter: $"user_id=eq.{userId}",
             cancellationToken: cancellationToken);
@@ -38,7 +38,7 @@ public class DoctorRepository(PostgresClient supabase) : IDoctorRepository
 
     public async Task<List<DoctorProfile>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<DoctorProfileModel>(
+        var models = await db.GetAllAsync<DoctorProfileModel>(
             TableName,
             cancellationToken: cancellationToken);
 
@@ -47,7 +47,7 @@ public class DoctorRepository(PostgresClient supabase) : IDoctorRepository
 
     public async Task<List<DoctorProfile>> GetBySpecialtyAsync(string specialty, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<DoctorProfileModel>(
+        var models = await db.GetAllAsync<DoctorProfileModel>(
             TableName,
             filter: $"specialty=eq.{specialty}",
             cancellationToken: cancellationToken);
@@ -61,7 +61,7 @@ public class DoctorRepository(PostgresClient supabase) : IDoctorRepository
         if (!string.IsNullOrWhiteSpace(specialty))
             filter += $"&specialty=eq.{specialty}";
 
-        var models = await supabase.GetAllAsync<DoctorProfileModel>(
+        var models = await db.GetAllAsync<DoctorProfileModel>(
             TableName,
             filter: filter,
             cancellationToken: cancellationToken);
@@ -83,14 +83,14 @@ public class DoctorRepository(PostgresClient supabase) : IDoctorRepository
             filter = $"specialty=eq.{specialty}";
         }
 
-        var models = await supabase.GetAllAsync<DoctorProfileModel>(
+        var models = await db.GetAllAsync<DoctorProfileModel>(
             TableName,
             filter: filter,
             limit: limit,
             offset: offset,
             cancellationToken: cancellationToken);
 
-        var totalCount = await supabase.CountAsync(TableName, filter: filter, cancellationToken: cancellationToken);
+        var totalCount = await db.CountAsync(TableName, filter: filter, cancellationToken: cancellationToken);
         var items = models.Select(MapToDomain).ToList();
         return (items, totalCount);
     }
@@ -98,7 +98,7 @@ public class DoctorRepository(PostgresClient supabase) : IDoctorRepository
     public async Task<DoctorProfile> CreateAsync(DoctorProfile doctorProfile, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(doctorProfile);
-        var created = await supabase.InsertAsync<DoctorProfileModel>(
+        var created = await db.InsertAsync<DoctorProfileModel>(
             TableName,
             model,
             cancellationToken);
@@ -109,7 +109,7 @@ public class DoctorRepository(PostgresClient supabase) : IDoctorRepository
     public async Task<DoctorProfile> UpdateAsync(DoctorProfile doctorProfile, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(doctorProfile);
-        var updated = await supabase.UpdateAsync<DoctorProfileModel>(
+        var updated = await db.UpdateAsync<DoctorProfileModel>(
             TableName,
             $"id=eq.{doctorProfile.Id}",
             model,
@@ -120,7 +120,7 @@ public class DoctorRepository(PostgresClient supabase) : IDoctorRepository
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        await supabase.DeleteAsync(
+        await db.DeleteAsync(
             TableName,
             $"id=eq.{id}",
             cancellationToken);

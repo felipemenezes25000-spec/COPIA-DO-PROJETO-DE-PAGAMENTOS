@@ -30,4 +30,32 @@ public interface IRequestRepository
     Task<MedicalRequest> CreateAsync(MedicalRequest request, CancellationToken cancellationToken = default);
     Task<MedicalRequest> UpdateAsync(MedicalRequest request, CancellationToken cancellationToken = default);
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
+    // ── Paginação real no banco (evita buscar tudo + Skip/Take em memória) ──────────
+
+    /// <summary>
+    /// Pedidos do paciente com paginação real no banco (LIMIT/OFFSET).
+    /// Filtros opcionais: status snake_case, requestType snake_case.
+    /// Retorna (items, totalCount) para montar PagedResponse sem query extra.
+    /// </summary>
+    Task<(List<MedicalRequest> Items, int TotalCount)> GetByPatientIdPagedAsync(
+        Guid patientId,
+        string? status = null,
+        string? type = null,
+        int page = 1,
+        int pageSize = 20,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Pedidos da fila do médico (atribuídos + disponíveis) com paginação real.
+    /// Combina GetByDoctorIdAsync + GetAvailableForQueueAsync em memória leve
+    /// (apenas IDs + status, depois busca a página completa).
+    /// </summary>
+    Task<(List<MedicalRequest> Items, int TotalCount)> GetDoctorQueuePagedAsync(
+        Guid doctorId,
+        string? status = null,
+        string? type = null,
+        int page = 1,
+        int pageSize = 50,
+        CancellationToken cancellationToken = default);
 }

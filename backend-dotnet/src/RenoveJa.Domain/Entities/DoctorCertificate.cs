@@ -1,4 +1,4 @@
-using RenoveJa.Domain.Exceptions;
+﻿using RenoveJa.Domain.Exceptions;
 
 namespace RenoveJa.Domain.Entities;
 
@@ -20,7 +20,7 @@ public class DoctorCertificate : Entity
     public DateTime NotAfter { get; private set; }
 
     // Referência ao arquivo PFX criptografado
-    public string PfxStoragePath { get; private set; } // Caminho no storage (ex: Supabase)
+    public string PfxStoragePath { get; private set; } // Caminho no storage (S3)
     public string PfxFileName { get; private set; }
 
     // Status

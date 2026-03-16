@@ -9,11 +9,11 @@ using RenoveJa.Infrastructure.Data.Postgres;
 namespace RenoveJa.Infrastructure.Repositories;
 
 /// <summary>
-/// Registra e atualiza linhas na tabela 'prescriptions' do Supabase para o fluxo Verify v2.
+/// Registra e atualiza linhas na tabela 'prescriptions' do db para o fluxo Verify v2.
 /// Usa upsert (merge-duplicates) para ser idempotente em caso de retry.
 /// </summary>
 public class PrescriptionVerifyRepository(
-    PostgresClient supabase,
+    PostgresClient db,
     ILogger<PrescriptionVerifyRepository> logger) : IPrescriptionVerifyRepository
 {
     private const string TableName = "prescriptions";
@@ -36,7 +36,7 @@ public class PrescriptionVerifyRepository(
 
         try
         {
-            await supabase.UpsertAsync(TableName, model, ct);
+            await db.UpsertAsync(TableName, model, ct);
             logger.LogInformation("Prescrição {Id} registrada na tabela verify (path: {Path})", record.Id, record.PdfStoragePath);
         }
         catch (Exception ex)
@@ -51,7 +51,7 @@ public class PrescriptionVerifyRepository(
         if (string.IsNullOrWhiteSpace(code) || (code.Length != 4 && code.Length != 6))
             return false;
 
-        var row = await supabase.GetSingleAsync<PrescriptionVerifyRow>(
+        var row = await db.GetSingleAsync<PrescriptionVerifyRow>(
             TableName,
             "verify_code_hash",
             $"id=eq.{requestId}",
@@ -66,7 +66,7 @@ public class PrescriptionVerifyRepository(
 
     public async Task<bool> IsDispensedAsync(Guid requestId, CancellationToken ct = default)
     {
-        var row = await supabase.GetSingleAsync<PrescriptionDispenseRow>(
+        var row = await db.GetSingleAsync<PrescriptionDispenseRow>(
             TableName,
             "dispensed_at",
             $"id=eq.{requestId}",
@@ -87,7 +87,7 @@ public class PrescriptionVerifyRepository(
             dispensed_pharmacist = pharmacistName
         };
 
-        await supabase.UpdateAsync<PrescriptionDispenseRow>(TableName, $"id=eq.{requestId}", patch, ct);
+        await db.UpdateAsync<PrescriptionDispenseRow>(TableName, $"id=eq.{requestId}", patch, ct);
         return true;
     }
 

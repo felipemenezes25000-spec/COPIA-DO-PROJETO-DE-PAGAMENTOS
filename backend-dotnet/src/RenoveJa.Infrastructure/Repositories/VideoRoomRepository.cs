@@ -6,9 +6,9 @@ using RenoveJa.Infrastructure.Data.Postgres;
 namespace RenoveJa.Infrastructure.Repositories;
 
 /// <summary>
-/// Repositório de salas de vídeo via Supabase.
+/// Repositório de salas de vídeo via db.
 /// </summary>
-public class VideoRoomRepository(PostgresClient supabase) : IVideoRoomRepository
+public class VideoRoomRepository(PostgresClient db) : IVideoRoomRepository
 {
     private const string TableName = "video_rooms";
 
@@ -17,7 +17,7 @@ public class VideoRoomRepository(PostgresClient supabase) : IVideoRoomRepository
     /// </summary>
     public async Task<VideoRoom?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<VideoRoomModel>(
+        var model = await db.GetSingleAsync<VideoRoomModel>(
             TableName,
             filter: $"id=eq.{id}",
             cancellationToken: cancellationToken);
@@ -27,7 +27,7 @@ public class VideoRoomRepository(PostgresClient supabase) : IVideoRoomRepository
 
     public async Task<VideoRoom?> GetByRequestIdAsync(Guid requestId, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<VideoRoomModel>(
+        var model = await db.GetSingleAsync<VideoRoomModel>(
             TableName,
             filter: $"request_id=eq.{requestId}",
             cancellationToken: cancellationToken);
@@ -38,7 +38,7 @@ public class VideoRoomRepository(PostgresClient supabase) : IVideoRoomRepository
     public async Task<VideoRoom> CreateAsync(VideoRoom videoRoom, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(videoRoom);
-        var created = await supabase.InsertAsync<VideoRoomModel>(
+        var created = await db.InsertAsync<VideoRoomModel>(
             TableName,
             model,
             cancellationToken);
@@ -49,7 +49,7 @@ public class VideoRoomRepository(PostgresClient supabase) : IVideoRoomRepository
     public async Task<VideoRoom> UpdateAsync(VideoRoom videoRoom, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(videoRoom);
-        var updated = await supabase.UpdateAsync<VideoRoomModel>(
+        var updated = await db.UpdateAsync<VideoRoomModel>(
             TableName,
             $"id=eq.{videoRoom.Id}",
             model,

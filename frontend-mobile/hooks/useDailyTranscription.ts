@@ -12,6 +12,18 @@ import { MutableRefObject } from 'react';
 import type { DailyCall } from '@daily-co/react-native-daily-js';
 import { transcribeTextChunk } from '../lib/api';
 
+// Tipo local: o SDK Daily.co não exporta tipos para eventos de transcrição
+interface DailyTranscriptionMessageEvent {
+  text?: string;
+  message?: { text?: string; start?: number; start_time?: number };
+  start?: number;
+  start_time?: number;
+  participantId?: string;
+  participant_id?: string;
+  session_id?: string;
+  participant?: { session_id?: string };
+}
+
 interface UseDailyTranscriptionOptions {
   /** Ref do DailyCall (de useDailyCall) */
   callRef: MutableRefObject<DailyCall | null>;
@@ -83,7 +95,7 @@ export function useDailyTranscription({
     // Médico: precisa estar na chamada. Paciente: só escuta eventos.
     if (isDoctor && !callJoined) return;
 
-    const handleMessage = (event: any) => {
+    const handleMessage = (event: DailyTranscriptionMessageEvent) => {
       const text = event?.text ?? event?.message?.text ?? '';
       if (!text?.trim()) return;
 

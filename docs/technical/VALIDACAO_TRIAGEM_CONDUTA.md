@@ -1,4 +1,4 @@
-# Validação: Dra. Renova + Conduta + Observações
+﻿# Validação: Dra. Renova + Conduta + Observações
 
 Comparação do projeto **renovejatac** com o guia e os arquivos de referência em `C:\Users\anabe\Downloads\files`.
 
@@ -14,7 +14,7 @@ O projeto está alinhado com o guia de implementação e com os arquivos da past
 
 | Item | Status | Observação |
 |------|--------|------------|
-| Migration SQL | OK | `backend-dotnet/supabase/migrations/20260302_...sql` e `supabase/migrations/20260302000000_...sql` — mesmas colunas e comentários que em `files`. |
+| Migration SQL | OK | `backend-dotnet/backend-dotnet/src/RenoveJa.Infrastructure/Data/Postgres/MigrationRunner.cs20260302_...sql` e `backend-dotnet/src/RenoveJa.Infrastructure/Data/Postgres/MigrationRunner.cs20260302000000_...sql` — mesmas colunas e comentários que em `files`. |
 | Domain `MedicalRequest.cs` | OK | 7 propriedades (AutoObservation, DoctorConductNotes, IncludeConductInPdf, AiConductSuggestion, AiSuggestedExams, ConductUpdatedAt, ConductUpdatedBy) e métodos SetAutoObservation, UpdateConduct, SetAiConductSuggestion. |
 | Persistence (Models + Repository) | OK | Mapeamento dos 7 campos. |
 | DTOs | OK | RequestResponseDto com os 6 campos de conduta/observação; UpdateConductDto. |
@@ -70,10 +70,10 @@ O projeto está alinhado com o guia de implementação e com os arquivos da past
 
 ## 5. Migration SQL — diferença entre pastas
 
-- **`files/20260302_triage_assistant_conduct_observation.sql`** e **`backend-dotnet/supabase/migrations/...`**: usam `auth.users(id)` em `conduct_updated_by`.
-- **`supabase/migrations/20260302000000_...sql`**: usa `public.users(id)` e prefixo `public.` nas tabelas.
+- **`files/20260302_triage_assistant_conduct_observation.sql`** e **`backend-dotnet/backend-dotnet/src/RenoveJa.Infrastructure/Data/Postgres/MigrationRunner.cs...`**: usam `auth.users(id)` em `conduct_updated_by`.
+- **`backend-dotnet/src/RenoveJa.Infrastructure/Data/Postgres/MigrationRunner.cs20260302000000_...sql`**: usa `public.users(id)` e prefixo `public.` nas tabelas.
 
-Use a migration que bater com seu schema no Supabase (auth.users vs public.users). Conteúdo das colunas e comentários está equivalente.
+Use a migration que bater com seu schema do banco (PostgreSQL/RDS). Conteúdo das colunas e comentários está equivalente.
 
 ---
 
@@ -97,4 +97,4 @@ Use a migration que bater com seu schema no Supabase (auth.users vs public.users
 
 ---
 
-**Conclusão:** A implementação no **renovejatac** está completa e consistente com o guia e com os arquivos em `C:\Users\anabe\Downloads\files`. Nenhuma alteração obrigatória identificada; a única decisão é qual migration SQL usar conforme o schema do Supabase (auth.users vs public.users).
+**Conclusão:** A implementação no **renovejatac** está completa e consistente com o guia e com os arquivos em `C:\Users\anabe\Downloads\files`. Nenhuma alteração obrigatória identificada; a única decisão é qual migration SQL usar conforme o schema do PostgreSQL/RDS (auth.users vs public.users).

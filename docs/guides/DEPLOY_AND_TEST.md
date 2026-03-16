@@ -1,13 +1,13 @@
 # Deploy e teste — Dra. Renova + conduta
 
-## 1. Supabase — migration e feature flag
+## 1. PostgreSQL/RDS — migration e feature flag
 
 ### 1.1 Rodar a migration (se ainda não rodou)
 
 1. Abra o **SQL Editor** do projeto:  
-   https://supabase.com/dashboard/project/ifgxgppxsawauaceudec/sql/new  
+   AWS RDS (migrations aplicadas automaticamente via MigrationRunner no startup)  
 2. Cole o conteúdo do arquivo abaixo e execute (**Run**).
-3. Arquivo: `backend-dotnet/supabase/migrations/20260302_triage_assistant_conduct_observation.sql`
+3. Arquivo: `backend-dotnet/backend-dotnet/src/RenoveJa.Infrastructure/Data/Postgres/MigrationRunner.cs20260302_triage_assistant_conduct_observation.sql`
 
 Ou execute este SQL diretamente:
 
@@ -58,13 +58,11 @@ EXPO_PUBLIC_TRIAGE_ENABLED=true
 
 ---
 
-## 3. Render — redeploy do backend
+## 3. AWS — redeploy do backend
 
-1. Acesse: https://dashboard.render.com  
-2. Abra o serviço **ola-jamal** (API .NET).
-3. Aba **Manual Deploy** → **Deploy latest commit** (ou escolha a branch `fix/frontend-performance-responsive` e faça deploy).
-4. Aguarde o build e o deploy terminarem (status **Live**).
-5. (Opcional) Confirme as env vars do serviço (Supabase, OpenAI, `Api__BaseUrl`, etc.).
+1. No pipeline ou console da **API na AWS** (ECS, App Runner ou equivalente), dispare um **novo deploy** (última imagem ou último commit, conforme o fluxo).
+2. Aguarde o deploy terminar (status **Running** / **Active**).
+3. (Opcional) Confirme as env vars (RDS, OpenAI, `Api__BaseUrl`, etc.) na Task Definition ou Parameter Store.
 
 ---
 
@@ -105,7 +103,7 @@ EXPO_PUBLIC_TRIAGE_ENABLED=true
 
 | Onde            | Ação |
 |-----------------|------|
-| **Supabase**    | Rodar migration; conferir `feature_flags`. |
+| **RDS**         | Migrations aplicadas automaticamente via MigrationRunner; conferir `feature_flags`. |
 | **Mobile**      | `.env` com `EXPO_PUBLIC_TRIAGE_ENABLED=true`; novo build. |
-| **Render**      | Deploy latest (branch `fix/frontend-performance-responsive`). |
+| **API (AWS)**   | Novo deploy (imagem ou commit conforme pipeline). |
 | **Teste**       | Home (banner), Detalhe (cards), Editor (conduta + PDF). |

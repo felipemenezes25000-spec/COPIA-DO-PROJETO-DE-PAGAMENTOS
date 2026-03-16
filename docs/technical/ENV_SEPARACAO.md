@@ -8,13 +8,12 @@ Cada parte do projeto tem seu próprio `.env` e `.env.example`. **Não misture**
 
 | Arquivo | Conteúdo | Commitar? |
 | --- | --- | --- |
-| `backend-dotnet/src/RenoveJa.Api/.env` | Valores reais (local ou copiados do Render) | **Não** |
+| `backend-dotnet/src/RenoveJa.Api/.env` | Valores reais (local ou copiados da API na AWS) | **Não** |
 | `backend-dotnet/src/RenoveJa.Api/.env.example` | Todas as chaves com placeholders | Sim |
 
 **Chaves usadas pela API (só backend):**
 
 - Runtime: `ASPNETCORE_ENVIRONMENT`, `PORT`, `ASPNETCORE_URLS`
-- Supabase: `Supabase__Url`, `Supabase__ServiceKey`, `Supabase__DatabaseUrl` (opcional)
 - API: `Api__BaseUrl`, `Api__DocumentTokenSecret`
 - Verificação ITI: `Verification__BaseUrl`, `Verification__FrontendUrl`
 - Google: `Google__ClientId`
@@ -27,7 +26,7 @@ Cada parte do projeto tem seu próprio `.env` e `.env.example`. **Não misture**
 
 CORS é definido em `appsettings.json` (`Cors:AllowedOrigins`), não em `.env`.
 
-No **Render**, configure as mesmas chaves em: Dashboard → serviço (ola-jamal) → **Environment**.
+Na **API (AWS)**, configure as mesmas chaves na Task Definition ou no Parameter Store.
 
 ---
 
@@ -46,7 +45,7 @@ No **Render**, configure as mesmas chaves em: Dashboard → serviço (ola-jamal)
 - `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` — opcional (build iOS)
 - `EXPO_PUBLIC_TRIAGE_ENABLED` — assistente Dra. Renova (true/false)
 
-Não coloque no mobile: `Supabase__ServiceKey`, chaves do Mercado Pago, OpenAI, etc.
+Não coloque no mobile: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, OpenAI, etc.
 
 **Login com Google:** para o botão "Continuar com Google" funcionar, `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` no mobile deve ser **o mesmo** Client ID (Web) que está em `Google__ClientId` no backend. Use o mesmo valor nos dois.
 
@@ -61,8 +60,6 @@ Não coloque no mobile: `Supabase__ServiceKey`, chaves do Mercado Pago, OpenAI, 
 
 **Chaves (só web):**
 
-- `VITE_SUPABASE_URL` — URL do projeto Supabase
-- `VITE_SUPABASE_ANON_KEY` — chave anônima (pública) do Supabase
 - `VITE_API_URL` — URL base da API
 
 ---

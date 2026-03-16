@@ -1,4 +1,4 @@
-﻿using RenoveJa.Domain.Entities;
+using RenoveJa.Domain.Entities;
 using RenoveJa.Domain.Interfaces;
 using RenoveJa.Infrastructure.Data.Models;
 using RenoveJa.Infrastructure.Data.Postgres;
@@ -7,15 +7,15 @@ using ConsultationAnamnesisEntity = RenoveJa.Domain.Entities.ConsultationAnamnes
 namespace RenoveJa.Infrastructure.Repositories;
 
 /// <summary>
-/// Repositório de anamnese de consulta via Supabase.
+/// Repositório de anamnese de consulta via db.
 /// </summary>
-public class ConsultationAnamnesisRepository(PostgresClient supabase) : IConsultationAnamnesisRepository
+public class ConsultationAnamnesisRepository(PostgresClient db) : IConsultationAnamnesisRepository
 {
     private const string TableName = "consultation_anamnesis";
 
     public async Task<ConsultationAnamnesisEntity?> GetByRequestIdAsync(Guid requestId, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<ConsultationAnamnesisModel>(
+        var model = await db.GetSingleAsync<ConsultationAnamnesisModel>(
             TableName,
             filter: $"request_id=eq.{requestId}",
             cancellationToken: cancellationToken);
@@ -30,14 +30,14 @@ public class ConsultationAnamnesisRepository(PostgresClient supabase) : IConsult
 
         var idsStr = string.Join(",", ids.Select(i => i.ToString()));
         var filter = $"request_id=in.({idsStr})";
-        var models = await supabase.GetAllAsync<ConsultationAnamnesisModel>(TableName, filter: filter, cancellationToken: cancellationToken);
+        var models = await db.GetAllAsync<ConsultationAnamnesisModel>(TableName, filter: filter, cancellationToken: cancellationToken);
         return models.ToDictionary(m => m.RequestId, MapToDomain);
     }
 
     public async Task<ConsultationAnamnesisEntity> CreateAsync(ConsultationAnamnesisEntity entity, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(entity);
-        var created = await supabase.InsertAsync<ConsultationAnamnesisModel>(
+        var created = await db.InsertAsync<ConsultationAnamnesisModel>(
             TableName,
             model,
             cancellationToken);
@@ -48,7 +48,7 @@ public class ConsultationAnamnesisRepository(PostgresClient supabase) : IConsult
     public async Task<ConsultationAnamnesisEntity> UpdateAsync(ConsultationAnamnesisEntity entity, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(entity);
-        var updated = await supabase.UpdateAsync<ConsultationAnamnesisModel>(
+        var updated = await db.UpdateAsync<ConsultationAnamnesisModel>(
             TableName,
             $"id=eq.{entity.Id}",
             model,
@@ -65,6 +65,7 @@ public class ConsultationAnamnesisRepository(PostgresClient supabase) : IConsult
             model.PatientId,
             model.TranscriptText,
             model.TranscriptFileUrl,
+            model.RecordingFileUrl,
             model.AnamnesisJson,
             model.AiSuggestionsJson,
             model.EvidenceJson,
@@ -80,6 +81,7 @@ public class ConsultationAnamnesisRepository(PostgresClient supabase) : IConsult
             PatientId = entity.PatientId,
             TranscriptText = entity.TranscriptText,
             TranscriptFileUrl = entity.TranscriptFileUrl,
+            RecordingFileUrl = entity.RecordingFileUrl,
             AnamnesisJson = entity.AnamnesisJson,
             AiSuggestionsJson = entity.AiSuggestionsJson,
             EvidenceJson = entity.EvidenceJson,

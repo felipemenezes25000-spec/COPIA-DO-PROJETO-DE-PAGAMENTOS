@@ -110,5 +110,10 @@ export function humanizeError(error: unknown, context?: HumanizeErrorContext): s
     return 'Erro no servidor. Tente novamente em alguns instantes.';
   }
 
+  // Mensagem genérica do backend (ExceptionHandlingMiddleware em produção)
+  if (rawMessage.includes('Ocorreu um erro ao processar sua solicitação')) {
+    return 'Erro no servidor. Tente novamente em alguns instantes.';
+  }
+
   return FALLBACK_MESSAGE;
 }

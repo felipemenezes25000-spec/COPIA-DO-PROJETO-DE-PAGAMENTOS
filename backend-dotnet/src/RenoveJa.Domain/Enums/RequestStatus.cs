@@ -1,3 +1,5 @@
+using System.ComponentModel;
+
 namespace RenoveJa.Domain.Enums;
 
 /// <summary>
@@ -13,8 +15,12 @@ namespace RenoveJa.Domain.Enums;
 ///   Submitted → SearchingDoctor → ApprovedPendingPayment → Paid → InConsultation → ConsultationFinished
 ///   Qualquer estado → Rejected | Cancelled
 ///
-/// Status marcados com [Obsolete] são legados e não devem ser usados em novas transições.
-/// Mantidos apenas para parsing de dados históricos existentes no banco.
+/// Status marcados com [Obsolete] + [EditorBrowsable(Never)] são legados:
+///   - Não devem ser usados em novas transições de estado.
+///   - Mantidos exclusivamente para parsing de registros históricos vindos do banco.
+///   - Somem do autocomplete do IDE (EditorBrowsable.Never).
+///   - Geram warning CS0618 em qualquer uso, exceto onde suprimido com #pragma intencional.
+///   - MedicalRequest.UpdateStatus() rejeita legados em runtime via RequestStatusExtensions.IsLegacy().
 /// </summary>
 public enum RequestStatus
 {
@@ -47,7 +53,8 @@ public enum RequestStatus
     /// <summary>Aguardando médico disponível aceitar a consulta.</summary>
     SearchingDoctor,
 
-    /// <summary>[Legado] Médico aceitou sem pagamento prévio. Novo fluxo: ApprovedPendingPayment → Paid.</summary>
+    /// <summary>[Semi-legado] Médico aceitou sem pagamento prévio. Novo fluxo: ApprovedPendingPayment → Paid.
+    /// Ainda aceito como origem de transição em Approve() para compatibilidade.</summary>
     ConsultationReady,
 
     /// <summary>Consulta por vídeo em andamento.</summary>
@@ -57,23 +64,58 @@ public enum RequestStatus
     ConsultationFinished,
 
     // ── Legados (não usar em novas transições) ────────────────
+    // EditorBrowsable.Never: some do autocomplete do IDE.
+    // Obsolete: gera warning CS0618 em qualquer uso novo.
+    // IsLegacy(): permite rejeição em runtime (ver RequestStatusExtensions).
+
     /// <summary>Use <see cref="Submitted"/> para novas solicitações.</summary>
     [Obsolete("Status legado. Use Submitted para novos requests.")]
+    [EditorBrowsable(EditorBrowsableState.Never)]
     Pending,
 
     /// <summary>Use <see cref="InReview"/> para novas solicitações.</summary>
     [Obsolete("Status legado. Use InReview para novas transições.")]
+    [EditorBrowsable(EditorBrowsableState.Never)]
     Analyzing,
 
     /// <summary>Use <see cref="ApprovedPendingPayment"/> para novas solicitações.</summary>
     [Obsolete("Status legado. Use ApprovedPendingPayment para novas transições.")]
+    [EditorBrowsable(EditorBrowsableState.Never)]
     Approved,
 
     /// <summary>Use <see cref="ConsultationFinished"/> ou <see cref="Delivered"/> para novas solicitações.</summary>
     [Obsolete("Status legado. Use ConsultationFinished ou Delivered para novas transições.")]
+    [EditorBrowsable(EditorBrowsableState.Never)]
     Completed,
 
     /// <summary>Use <see cref="ApprovedPendingPayment"/> para novas solicitações.</summary>
     [Obsolete("Status legado. Use ApprovedPendingPayment para novas transições.")]
+    [EditorBrowsable(EditorBrowsableState.Never)]
     PendingPayment,
+}
+
+/// <summary>
+/// Extensões de verificação de legado para <see cref="RequestStatus"/>.
+/// Fonte única de verdade: atualizar <see cref="_legacy"/> sempre que um status
+/// for marcado ou desmarcado como <see cref="ObsoleteAttribute"/>.
+/// </summary>
+public static class RequestStatusExtensions
+{
+#pragma warning disable CS0618 // Referência intencional — este é o ponto de registro dos legados
+    private static readonly HashSet<RequestStatus> _legacy = new()
+    {
+        RequestStatus.Pending,
+        RequestStatus.Analyzing,
+        RequestStatus.Approved,
+        RequestStatus.Completed,
+        RequestStatus.PendingPayment,
+    };
+#pragma warning restore CS0618
+
+    /// <summary>
+    /// Retorna <c>true</c> se o status for legado.
+    /// Status legados são mantidos apenas para parsing de dados históricos do banco;
+    /// novas transições de estado NUNCA devem usá-los.
+    /// </summary>
+    public static bool IsLegacy(this RequestStatus status) => _legacy.Contains(status);
 }

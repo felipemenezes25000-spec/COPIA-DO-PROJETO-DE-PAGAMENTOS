@@ -34,7 +34,7 @@ interface DoctorActionButtonsProps {
   isInQueue: boolean;
 }
 
-export function DoctorActionButtons({
+function DoctorActionButtons_Fn({
   canApprove,
   canReject,
   canSign,
@@ -338,3 +338,5 @@ function makeStyles(colors: DesignColors, typography: any, spacing: any, borderR
     },
   });
 }
+
+export const DoctorActionButtons = React.memo(DoctorActionButtons_Fn);

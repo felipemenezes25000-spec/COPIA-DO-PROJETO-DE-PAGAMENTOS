@@ -1,4 +1,4 @@
-# Push Notifications — RenoveJá
+﻿# Push Notifications — RenoveJá
 
 ## Status: Implementado
 
@@ -52,7 +52,7 @@ O backend agora parseia a resposta da Expo e loga erros individuais (ex.: `Devic
 
 ## Fluxo
 
-1. **Login** → `PushNotificationProvider` chama `registerPushToken(token, Platform.OS)` → token salvo no Supabase
+1. **Login** → `PushNotificationProvider` chama `registerPushToken(token, Platform.OS)` → token salvo no PostgreSQL/RDS
 2. **Evento** (pagamento, médico na sala, etc.) → backend chama `CreateNotificationAsync` → `pushNotificationSender.SendAsync`
 3. **ExpoPushService** busca tokens ativos do usuário → envia para `https://exp.host/--/api/v2/push/send`
 4. **Tap na notificação** → app navega para `/request-detail/{id}` (paciente) ou `/doctor-request/{id}` (médico)

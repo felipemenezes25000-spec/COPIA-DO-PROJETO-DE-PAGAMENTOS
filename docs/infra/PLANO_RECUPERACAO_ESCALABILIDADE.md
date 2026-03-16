@@ -3,10 +3,10 @@
 ## 1. Backup e recuperação
 
 ### 1.1 Backup automático
-- **Frequência**: diário (Supabase point-in-time recovery)
+- **Frequência**: diário (AWS RDS automated backups)
 - **Retenção**: 30 dias (plano Pro) / 7 dias (plano Free)
 - **Tipo**: incremental + snapshot completo semanal
-- **Armazenamento**: redundante (multi-AZ na infra Supabase/AWS)
+- **Armazenamento**: redundante (multi-AZ na infra AWS RDS)
 
 ### 1.2 RPO e RTO
 - **RPO** (Recovery Point Objective): < 24 horas
@@ -18,7 +18,7 @@
 
 ### 1.3 Procedimento de restauração
 1. Identificar ponto de falha (via Sentry + logs)
-2. Acessar dashboard Supabase → Database → Backups
+2. Acessar AWS RDS Console → Databases → Snapshots
 3. Selecionar snapshot mais recente antes da falha
 4. Restaurar para instância temporária para validação
 5. Confirmar integridade dos dados (contagem de registros, último atendimento)
@@ -37,9 +37,9 @@
 
 | Cenário | Impacto | Mitigação | Tempo recuperação |
 |---------|---------|-----------|-------------------|
-| Queda do Render (API) | API indisponível | Auto-restart, health check | 2-5 minutos |
-| Queda do Supabase | Banco indisponível | Backup + restauração | 30min - 2h |
-| Queda do Vercel (web) | Frontend web offline | CDN redundante | 5-15 minutos |
+| Queda da API (AWS) | API indisponível | Auto-restart, health check, ECS | 2-5 minutos |
+| Queda do RDS | Banco indisponível | Failover multi-AZ + restore de backup | 30min - 2h |
+| Queda do frontend na AWS (web) | Frontend web offline | CDN redundante (CloudFront) | 5-15 minutos |
 | Corrupção de dados | Dados inconsistentes | Restaurar backup | 1-4 horas |
 | Ataque/invasão | Dados comprometidos | Backup limpo + reset credenciais | 2-8 horas |
 
@@ -54,19 +54,19 @@
 
 | Componente | Atual | Capacidade |
 |-----------|-------|------------|
-| API (.NET) | Render Free | 1 instância, 512MB RAM |
-| Banco | Supabase Free | 500MB, 2 conexões diretas |
-| Frontend Web | Vercel Free | CDN global |
+| API (.NET) | AWS ECS Fargate | 1 instância, conforme task definition |
+| Banco | AWS RDS t3.micro | 20GB, dev/staging |
+| Frontend Web | AWS (S3 + CloudFront) | CDN global |
 | Mobile | Expo/React Native | Build local |
 
 ### 3.2 Migração para produção (5-35 UBS)
 
 | Componente | Recomendado | Custo estimado |
 |-----------|-------------|----------------|
-| API (.NET) | Render Starter ou Railway | R$100-300/mês |
-| Banco | Supabase Pro | R$125/mês (8GB, 60 conexões) |
-| Frontend Web | Vercel Pro | R$100/mês |
-| CDN/Assets | Supabase Storage | Incluso |
+| API (.NET) | AWS ECS/App Runner (já na conta) | Custo conforme uso |
+| Banco | AWS RDS t3.small | 100GB, produção |
+| Frontend Web | AWS CloudFront + S3 (já na conta) | Custo conforme uso |
+| CDN/Assets | AWS S3 | Incluso |
 | Monitoramento | Sentry Team | R$130/mês |
 | **Total estimado** | | **R$455-655/mês** |
 
@@ -75,24 +75,24 @@
 | Componente | Recomendado | Custo estimado |
 |-----------|-------------|----------------|
 | API (.NET) | AWS ECS / Azure App Service | R$500-1500/mês |
-| Banco | Supabase Pro+ ou RDS | R$500-1000/mês |
+| Banco | AWS RDS t3.medium+ | R$500-1000/mês |
 | Cache | Redis (ElastiCache) | R$200-400/mês |
-| CDN | CloudFront ou Supabase | R$100/mês |
+| CDN | CloudFront | R$100/mês |
 | Monitoramento | Sentry + Datadog | R$300-600/mês |
 | Backup extra | S3 cross-region | R$50-100/mês |
 | **Total estimado** | | **R$1.650-3.600/mês** |
 
 ### 3.4 Escalabilidade horizontal
 - API .NET é **stateless** — escala com múltiplas instâncias atrás de load balancer
-- Banco PostgreSQL suporta connection pooling (PgBouncer incluído no Supabase)
+- Banco PostgreSQL suporta connection pooling (PgBouncer (configurar no RDS Proxy))
 - SignalR suporta backplane Redis para múltiplas instâncias
-- Assets estáticos em CDN (Supabase Storage + Vercel Edge)
+- Assets estáticos em CDN (AWS S3 + CloudFront)
 
 ## 4. Contato de emergência
 
 - **Equipe técnica**: a definir
-- **Supabase support**: support@supabase.com
-- **Render support**: via dashboard
+- **AWS Support:** console.aws.amazon.com
+- **AWS Support**: via console
 - **Sentry**: alertas automáticos configurados
 
 ## 5. Revisão

@@ -1,473 +1,184 @@
-# RenoveJá Backend .NET - Clean Architecture + DDD
+# RenoveJá+ — Backend .NET 8
 
-Backend do RenoveJá reimplementado em C#/.NET 8 com arquitetura DDD (Domain-Driven Design) e Clean Architecture, mantendo total compatibilidade com o backend Python/FastAPI existente.
+API do RenoveJá+ em C#/.NET 8 com Clean Architecture. PostgreSQL (AWS RDS), storage AWS S3, IA (OpenAI/Gemini), videochamadas (Daily.co), assinatura digital ICP-Brasil.
 
-## 📋 Índice
-
-- [Visão Geral](#visão-geral)
-- [Arquitetura](#arquitetura)
-- [Pré-requisitos](#pré-requisitos)
-- [Configuração](#configuração)
-- [Execução](#execução)
-- [Testes](#testes)
-- [Estrutura do Projeto](#estrutura-do-projeto)
-- [Endpoints](#endpoints)
-- [Decisões Arquiteturais](#decisões-arquiteturais)
+Documentação geral do monorepo: [README principal](../README.md) · [docs/](../docs/README.md)
 
 ---
 
-## 🎯 Visão Geral
+## Arquitetura
 
-O RenoveJá é uma plataforma de telemedicina que permite:
-- Renovação de receitas médicas
-- Solicitação de exames
-- Consultas online
-- Chat entre paciente e médico
-- Notificações
-- Pagamentos via PIX (MercadoPago)
-- Salas de vídeo para consultas
-
-Este backend .NET mantém **100% de compatibilidade** com o frontend existente, preservando as mesmas rotas, payloads JSON e regras de negócio.
-
----
-
-## 🏗️ Arquitetura
-
-### Clean Architecture + DDD
-
-Estrutura convencional .NET (Microsoft / eShopOnWeb / Clean Architecture): pasta **src/** para código, **tests/** para testes, projetos com prefixo da solution (`RenoveJa.*`).
+Clean Architecture com 4 camadas:
 
 ```
-/backend-dotnet
+backend-dotnet/
 ├── src/
-│   ├── RenoveJa.Domain/           # Camada de Domínio
-│   │   ├── Entities/              # Entidades e raízes de agregado
-│   │   ├── ValueObjects/          # VOs (Email, Phone, Money)
-│   │   ├── Enums/                 # Enumerações
-│   │   ├── Interfaces/            # Contratos de Repositórios
-│   │   └── Exceptions/            # Exceções de Domínio
-│   │
-│   ├── RenoveJa.Application/      # Camada de Aplicação
-│   │   ├── DTOs/                  # Data Transfer Objects (por bounded context)
-│   │   ├── Services/              # Use Cases (AuthService, RequestService, etc.)
-│   │   ├── Interfaces/            # Contratos de Serviços
-│   │   └── Validators/            # FluentValidation
-│   │
-│   ├── RenoveJa.Infrastructure/   # Camada de Infraestrutura
-│   │   ├── Data/
-│   │   │   ├── Supabase/          # Cliente Supabase
-│   │   │   └── Models/            # Modelos de Persistência
-│   │   └── Repositories/          # Implementações de Repositórios
-│   │
-│   └── RenoveJa.Api/              # Camada de Apresentação (Host)
-│       ├── Controllers/           # Endpoints REST
-│       ├── Middleware/            # Exception Handling, Correlation ID
-│       └── Authentication/        # Bearer Token Handler
-│
-├── tests/
-│   └── RenoveJa.UnitTests/        # Testes unitários (xUnit)
-│
-└── RenoveJa.sln
+│   ├── RenoveJa.Domain/          # Entidades, enums, value objects, interfaces de repositório
+│   ├── RenoveJa.Application/     # DTOs, serviços (use cases), interfaces, validators
+│   ├── RenoveJa.Infrastructure/  # Repositórios, PostgresClient, S3, OpenAI, Daily.co, etc.
+│   └── RenoveJa.Api/             # Controllers, middlewares, autenticação, Program.cs
+└── tests/
+    └── RenoveJa.UnitTests/       # Testes unitários (xUnit + FluentAssertions)
 ```
+
+**Fluxo de dependência:** `Api → Application → Domain ← Infrastructure`
 
 ---
 
-## ✅ Pré-requisitos
+## Pré-requisitos
 
-- **.NET 8 SDK** ou superior
-- **Supabase Account** (URL e Service Key)
-- **MercadoPago Access Token** (para pagamentos)
-- **IDE:** Visual Studio 2022, VS Code ou Rider
+- .NET 8 SDK
+- PostgreSQL acessível (AWS RDS em prod, local em dev)
+- AWS credentials com acesso ao S3 (dev local: `aws configure` ou variáveis de ambiente)
+- Chaves: OpenAI, Mercado Pago, Daily.co, Google OAuth
 
 ---
 
-## ⚙️ Configuração
+## Configuração local
 
-### 1. Clonar o Repositório
-
-```bash
-git clone https://github.com/felipemenezes25000-spec/teste-do-jamal.git
-cd teste-do-jamal/backend-dotnet
-```
-
-### 2. Configurar Variáveis de Ambiente
-
-Crie um arquivo `appsettings.Development.json` em `src/RenoveJa.Api/`:
+Crie `src/RenoveJa.Api/appsettings.Development.json` (não commitar — está no `.gitignore`):
 
 ```json
 {
-  "Supabase": {
-    "Url": "https://ifgxgppxsawauaceudec.supabase.co",
-    "ServiceKey": "SEU_SERVICE_KEY_AQUI"
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Database=renoveja;Username=postgres;Password=SUA_SENHA"
+  },
+  "OpenAI": {
+    "ApiKey": "sk-proj-SUA_CHAVE"
   },
   "MercadoPago": {
-    "AccessToken": "SEU_TOKEN_MERCADOPAGO_AQUI"
+    "AccessToken": "APP_USR-..."
+  },
+  "Api": {
+    "BaseUrl": "http://localhost:5000",
+    "DocumentTokenSecret": "CHAVE_MIN_32_CARACTERES_ALEATORIA"
+  },
+  "CertificateEncryption": {
+    "Key": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
   }
 }
 ```
 
-**IMPORTANTE:** Nunca commitar este arquivo! Ele está no `.gitignore`.
-
-### 3. Restaurar Pacotes
-
-```bash
-dotnet restore
-```
+Copie `.env.example` para `.env` e preencha as demais variáveis (Daily.co, Google, SMTP, etc.).
 
 ---
 
-## 🚀 Execução
-
-### Modo Desenvolvimento
+## Execução
 
 ```bash
+cd backend-dotnet
+dotnet restore
+dotnet build
+
 cd src/RenoveJa.Api
 dotnet run
 ```
 
-O servidor estará disponível em:
-- **HTTP:** http://localhost:5000
-- **HTTPS:** https://localhost:5001
-- **Swagger:** http://localhost:5000/swagger
+- API: `http://localhost:5000`
+- Swagger: `http://localhost:5000/swagger` (apenas em Development)
 
-### Modo Produção
+### Docker
 
 ```bash
-dotnet run --configuration Release
+cd backend-dotnet
+docker-compose up --build
 ```
 
 ---
 
-## 🧪 Testes
-
-### Executar Todos os Testes
+## Testes
 
 ```bash
+cd backend-dotnet
 dotnet test
-```
 
-### Executar com Cobertura
-
-```bash
+# Com cobertura
 dotnet test --collect:"XPlat Code Coverage"
 ```
 
 ---
 
-## 📁 Estrutura do Projeto
+## Variáveis de ambiente
 
-### Domain Layer (Núcleo do Negócio)
+Ver `docs/VARIAVEIS_AMBIENTE.md` para lista completa. As principais:
 
-**Entities:**
-- `User` - Usuário (paciente ou médico)
-- `DoctorProfile` - Perfil do médico
-- `MedicalRequest` - Solicitação (receita/exame/consulta)
-- `Payment` - Pagamento
-- `ChatMessage` - Mensagem de chat
-- `Notification` - Notificação
-- `VideoRoom` - Sala de vídeo
-- `AuthToken` - Token de autenticação
-- `PushToken` - Token de push notification
-
-**Value Objects:**
-- `Email` - Email validado
-- `Phone` - Telefone validado
-- `Money` - Valor monetário
-
-**Enums:**
-- `UserRole` (Patient, Doctor)
-- `RequestType` (Prescription, Exam, Consultation)
-- `RequestStatus` (17 estados diferentes)
-- `PaymentStatus` (Pending, Approved, Rejected, Refunded)
-
-### Application Layer (Casos de Uso)
-
-**Services:**
-- `AuthService` - Registro, login, logout, validação de token
-- `RequestService` - CRUD de solicitações, aprovação, rejeição, assinatura
-- `PaymentService` - Criação de pagamento, webhook, confirmação
-- `ChatService` - Envio e listagem de mensagens
-- `NotificationService` - Notificações do usuário
-- `VideoService` - Criação e gerenciamento de salas
-- `DoctorService` - Listagem e detalhes de médicos
-
-### Infrastructure Layer (Implementações)
-
-**Supabase Client:**
-- Cliente HTTP customizado para PostgREST
-- Métodos: `GetAllAsync`, `GetSingleAsync`, `InsertAsync`, `UpdateAsync`, `DeleteAsync`
-
-**Repositories:**
-- Implementam interfaces do Domain
-- Mapeiam Domain <-> Persistence Models
-
-### API Layer (Endpoints)
-
-**Controllers:**
-- `HealthController` - `/api/health`
-- `AuthController` - `/api/auth/*`
-- `RequestsController` - `/api/requests/*`
-- `PaymentsController` - `/api/payments/*`
-- `ChatController` - `/api/chat/*`
-- `NotificationsController` - `/api/notifications/*`
-- `VideoController` - `/api/video/*`
-- `DoctorsController` - `/api/doctors/*`
+| Variável | Descrição | Obrigatória |
+|----------|-----------|-------------|
+| `ConnectionStrings__DefaultConnection` | Connection string PostgreSQL (AWS RDS) | ✅ |
+| `OpenAI__ApiKey` | Chave OpenAI (leitura de receitas/exames, anamnese, IA) | ✅ |
+| `Gemini__ApiKey` | Chave Gemini 2.5 Flash (fallback da OpenAI) | Recomendada |
+| `Api__BaseUrl` | URL pública da API (proxy de documentos e imagens) | ✅ |
+| `Api__DocumentTokenSecret` | Secret 32+ chars para tokens de documento | ✅ |
+| `MercadoPago__AccessToken` | Token Mercado Pago | ✅ |
+| `MercadoPago__WebhookSecret` | Secret para validar webhooks | ✅ |
+| `DAILY_API_KEY` | Chave Daily.co | ✅ |
+| `DAILY_DOMAIN` | Domínio Daily.co | ✅ |
+| `CertificateEncryption__Key` | AES-256 key (base64) para PFX | ✅ |
+| `Google__ClientId` | Google OAuth client ID | Para login Google |
+| `Smtp__*` | Config SMTP (recuperação de senha) | Para e-mail |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Credenciais AWS (dev local) | Dev local |
+| `AWS_S3_PRESCRIPTIONS_BUCKET` | Bucket S3 receitas (default: `renoveja-prescriptions`) | Opcional |
+| `SENTRY_DSN` | DSN Sentry — desativa se vazio | Opcional |
 
 ---
 
-## 🔌 Endpoints
+## Banco de dados
 
-### Health
+PostgreSQL via **AWS RDS**. Acesso via Npgsql + Dapper através do `PostgresClient` (wrapper HTTP-REST-like sobre Dapper).
 
-```http
-GET /api/health
-```
+Migrations são executadas automaticamente no startup via `MigrationRunner` quando `ConnectionStrings__DefaultConnection` está configurada.
 
-### Autenticação
-
-```http
-POST /api/auth/register
-POST /api/auth/register-doctor
-POST /api/auth/login
-GET  /api/auth/me               [Requires: Bearer Token]
-POST /api/auth/logout           [Requires: Bearer Token]
-POST /api/auth/google   # Login com Google (ID token). Ver [docs/GOOGLE_LOGIN.md](docs/GOOGLE_LOGIN.md) para testar.
-```
-
-### Solicitações (Requests)
-
-```http
-POST /api/requests/prescription     [Requires: Bearer Token]
-POST /api/requests/exam             [Requires: Bearer Token]
-POST /api/requests/consultation     [Requires: Bearer Token]
-GET  /api/requests                  [Requires: Bearer Token]
-GET  /api/requests/{id}             [Requires: Bearer Token]
-PUT  /api/requests/{id}/status      [Requires: Bearer Token, Role: Doctor]
-POST /api/requests/{id}/approve     [Requires: Bearer Token, Role: Doctor]
-POST /api/requests/{id}/reject      [Requires: Bearer Token, Role: Doctor]
-POST /api/requests/{id}/sign        [Requires: Bearer Token, Role: Doctor]
-```
-
-### Pagamentos
-
-```http
-POST /api/payments                  [Requires: Bearer Token]
-GET  /api/payments/{id}             [Requires: Bearer Token]
-POST /api/payments/{id}/confirm     [Dev/Test Only]
-POST /api/payments/webhook          [MercadoPago Webhook]
-```
-
-### Chat
-
-```http
-POST /api/chat/{request_id}/messages    [Requires: Bearer Token]
-GET  /api/chat/{request_id}/messages    [Requires: Bearer Token]
-GET  /api/chat/unread-count             [Requires: Bearer Token]
-PUT  /api/chat/{request_id}/mark-read   [Requires: Bearer Token]
-```
-
-### Notificações
-
-```http
-GET /api/notifications              [Requires: Bearer Token]
-PUT /api/notifications/{id}/read    [Requires: Bearer Token]
-PUT /api/notifications/read-all     [Requires: Bearer Token]
-```
-
-### Vídeo
-
-```http
-POST /api/video/rooms               [Requires: Bearer Token]
-GET  /api/video/rooms/{id}          [Requires: Bearer Token]
-```
-
-### Médicos
-
-```http
-GET /api/doctors                    
-GET /api/doctors/{id}               
-GET /api/doctors/queue              [Requires: Bearer Token, Role: Doctor]
-PUT /api/doctors/{id}/availability  [Requires: Bearer Token, Role: Doctor]
-```
+**Tabelas principais:** `users`, `doctor_profiles`, `requests`, `payments`, `notifications`, `video_rooms`, `consultation_anamnesis`, `medical_documents`, `encounters`, `care_plans`, `push_tokens`, `audit_logs`, `certificates`.
 
 ---
 
-## 🛡️ Segurança
+## Storage (AWS S3)
 
-### Autenticação Bearer Token
+Implementado em `S3StorageService`. Buckets configuráveis via env vars:
 
-O sistema usa autenticação customizada via Bearer Token:
+| Bucket (env var) | Default | Conteúdo |
+|------------------|---------|----------|
+| `AWS_S3_PRESCRIPTIONS_BUCKET` | `renoveja-prescriptions` | Imagens de receita, PDFs assinados |
+| `AWS_S3_CERTIFICATES_BUCKET` | `renoveja-certificates` | Certificados PFX dos médicos |
+| `AWS_S3_AVATARS_BUCKET` | `renoveja-avatars` | Fotos de perfil |
+| `AWS_S3_TRANSCRIPTS_BUCKET` | `renoveja-transcripts` | Transcrições de consultas |
 
-1. **Login/Registro** → Gera token e armazena na tabela `auth_tokens`
-2. **Requests Protegidos** → Valida token consultando o banco
-3. **Claims Populadas** → `userId` e `role` (patient/doctor)
-4. **Autorização** → Policies baseadas em roles
-
-**Exemplo de Request:**
-
-```http
-GET /api/auth/me
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
-
-### Senhas
-
-- **Hashing:** BCrypt (compatível com Python)
-- **Salt:** Gerado automaticamente pelo BCrypt
-- **Validação:** Mínimo 8 caracteres (FluentValidation)
-
-### CORS
-
-Configurado para aceitar requisições do frontend (ajustar em produção):
-
-```csharp
-app.UseCors(policy => 
-    policy.AllowAnyOrigin()
-          .AllowAnyMethod()
-          .AllowAnyHeader()
-);
-```
+URLs públicas via CloudFront (`AWS_S3_PUBLIC_BASE_URL`) ou diretamente pelo S3.
 
 ---
 
-## 📊 Banco de Dados (Supabase)
+## IA e transcrição
 
-### Tabelas
-
-- `users` - Usuários (pacientes e médicos)
-- `doctor_profiles` - Perfis de médicos
-- `requests` - Solicitações (receitas, exames, consultas)
-- `payments` - Pagamentos
-- `chat_messages` - Mensagens de chat
-- `notifications` - Notificações
-- `video_rooms` - Salas de vídeo
-- `auth_tokens` - Tokens de autenticação
-- `push_tokens` - Tokens de push notification
-
-### Acesso
-
-O backend acessa o Supabase via **PostgREST API** (HTTP):
-
-- **Base URL:** `https://ifgxgppxsawauaceudec.supabase.co/rest/v1/`
-- **Header:** `apikey: SERVICE_KEY`
-- **Header:** `Authorization: Bearer SERVICE_KEY`
-
-**Sem necessidade de conexão Postgres direta!**
+- **Leitura de receitas/exames:** OpenAI GPT-4o (fallback: Gemini 2.5 Flash)
+- **Geração de anamnese:** GPT-4o/Gemini a partir da transcrição da consulta
+- **Transcrição de consulta:** Daily.co com Deepgram (nativo — não usa Whisper)
+- **Sugestão de conduta:** OpenAI com contexto clínico
+- **Evidências clínicas:** PubMed + Europe PMC + Semantic Scholar + ClinicalTrials
 
 ---
 
-## 🧩 Integrações Externas
+## Controllers (44 endpoints)
 
-### MercadoPago (Pagamentos PIX)
-
-```csharp
-// TODO: Implementar MercadoPagoService
-// SDK: MercadoPago.Client
-```
-
-### PDF Generator (Receitas/Exames)
-
-```csharp
-// TODO: Implementar PdfGeneratorService
-// Biblioteca: QuestPDF ou iTextSharp
-```
-
-### Push Notifications
-
-```csharp
-// TODO: Implementar PushNotificationService
-// FCM ou Expo Push
-```
-
-### Video Service
-
-Vídeo 1:1 para consultas via WebRTC próprio: signaling com SignalR (`/hubs/video`), página de chamada em `GET /api/video/call-page` (WebView no app). STUN: `stun.l.google.com:19302`.
+Organizados em: Auth, Requests, RequestApproval, Prescriptions, Consultation, ConsultationWorkflow, Payments, Doctors, Patients, Video, Notifications, PushTokens, Certificates, ClinicalRecords, CarePlans, AuditLogs, Analytics, Assistant, Triage, Verification, Sus, Integrations, Rnds, FhirLite, Specialties, Cid10, Contact, ShortUrl, Health, AdminDoctors, AdminClinicalBackfill, GeminiTest, DevSample.
 
 ---
 
-## 📝 Decisões Arquiteturais
+## Autenticação
 
-Veja [DECISIONS.md](./DECISIONS.md) para decisões detalhadas sobre:
-
-- Clean Architecture + DDD
-- Supabase via PostgREST
-- Autenticação customizada
-- BCrypt para senhas
-- FluentValidation
-- Patterns utilizados
+Bearer token customizado: token gerado no login, armazenado na tabela `auth_tokens`, validado por `BearerAuthenticationHandler` em cada request. Senhas: BCrypt. Google OAuth: ID token validado pelo backend.
 
 ---
 
-## 🧪 Status de Implementação
+## Deploy (AWS)
 
-### ✅ Completo
-
-- [x] Domain Layer (Entities, VOs, Enums, Interfaces)
-- [x] Application Layer (DTOs, AuthService, Interfaces)
-- [x] Infrastructure Layer (SupabaseClient, UserRepository)
-- [x] API Layer (Program.cs, HealthController, AuthController)
-- [x] Middleware (Exception Handling, Correlation ID)
-- [x] Authentication (Bearer Token Handler)
-
-### ⏳ Em Progresso
-
-- [ ] Repositories restantes (Doctor, Request, Payment, etc.)
-- [ ] Services restantes (Request, Payment, Chat, etc.)
-- [ ] Controllers restantes
-- [ ] FluentValidation Validators
-- [ ] Integrações externas (MercadoPago, PDF, Push)
-- [ ] Testes unitários
-
-### 📋 Backlog
-
-- [ ] Testes de integração
-- [ ] Logging estruturado (Serilog)
-- [ ] Docker e CI/CD
-- [ ] Migração para JWT (futuro)
-- [ ] CQRS (se necessário)
+- **AWS ECS Fargate (ou App Runner):** Docker (`backend-dotnet/Dockerfile`), variáveis via SSM Parameter Store (ver `infra/task-definition.json`)
+- **Migrations:** aplicadas automaticamente no startup
 
 ---
 
-## 🤝 Contribuição
+## Decisões arquiteturais relevantes
 
-### Fluxo de Desenvolvimento
-
-1. **Clone o repo**
-2. **Crie uma branch:** `git checkout -b feature/minha-feature`
-3. **Implemente incrementalmente** (Domain → Application → Infrastructure → API)
-4. **Escreva testes unitários**
-5. **Build sem warnings:** `dotnet build`
-6. **Testes passando:** `dotnet test`
-7. **Commit lógico:** `git commit -m "feat: implementa RequestService"`
-8. **Push:** `git push origin feature/minha-feature`
-9. **Pull Request**
-
----
-
-## 📞 Suporte
-
-- **Documentação Técnica:** [DECISIONS.md](./DECISIONS.md)
-- **Inventário de Endpoints:** [INVENTORY.md](./INVENTORY.md)
-- **Issues:** GitHub Issues
-- **Email:** suporte@renoveja.com
-
----
-
-## 📜 Licença
-
-Este projeto é proprietário. Todos os direitos reservados.
-
----
-
-## 🎉 Agradecimentos
-
-- **Arquitetura:** Clean Architecture (Uncle Bob) + DDD (Eric Evans)
-- **Framework:** .NET 8 (Microsoft)
-- **Backend de Dados:** Supabase
-- **Pagamentos:** MercadoPago
-
----
-
-**Versão:** 1.0.0  
-**Data:** 2026-02-02  
-**Autor:** Equipe RenoveJá + Claude (Arquiteto .NET + DDD)
+- **Sem ORM pesado:** Dapper via `PostgresClient` — queries SQL diretas, rápidas e auditáveis.
+- **S3 em todos os ambientes:** não há fallback para storage local. Em dev, use AWS credentials reais ou LocalStack.
+- **Transcrição via Daily.co:** Deepgram é gerenciado pelo Daily.co — nenhuma configuração adicional além de `DAILY_API_KEY`.
+- **`DatabaseConfig`** mantém apenas `DatabaseUrl` por compatibilidade com o `MigrationRunner`. A connection string real vem de `ConnectionStrings__DefaultConnection`.

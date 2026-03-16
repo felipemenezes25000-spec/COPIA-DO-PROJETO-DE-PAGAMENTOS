@@ -632,7 +632,10 @@ public class RequestServiceFullTests
             .ToList();
 
         _userRepoMock.Setup(r => r.GetByIdAsync(patientId, It.IsAny<CancellationToken>())).ReturnsAsync(patient);
-        _requestRepoMock.Setup(r => r.GetByPatientIdAsync(patientId, It.IsAny<CancellationToken>())).ReturnsAsync(requests);
+        // GetUserRequestsPagedAsync usa GetByPatientIdPagedAsync (não GetByPatientIdAsync)
+        var page2Items = requests.Skip(5).Take(5).ToList();
+        _requestRepoMock.Setup(r => r.GetByPatientIdPagedAsync(patientId, It.IsAny<string?>(), It.IsAny<string?>(), 2, 5, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((page2Items, 15));
 
         var result = await _sut.GetUserRequestsPagedAsync(patientId, page: 2, pageSize: 5);
         result.Items.Should().HaveCount(5);

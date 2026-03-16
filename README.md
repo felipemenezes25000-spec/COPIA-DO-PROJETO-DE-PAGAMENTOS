@@ -1,60 +1,54 @@
 # RenoveJá+
 
-Plataforma de telemedicina para **renovação de receitas**, **pedidos de exame** e **consultas por vídeo**. Fluxo completo: solicitação do paciente → triagem com IA → aprovação e assinatura digital ICP-Brasil pelo médico → pagamento PIX/cartão → verificação pública via QR Code.
+Plataforma de **telemedicina** para renovação de receitas, pedidos de exame e consultas por vídeo. Fluxo completo: solicitação do paciente → triagem com IA → aprovação e assinatura digital ICP-Brasil pelo médico → pagamento PIX/cartão → verificação pública via QR Code.
 
 ---
 
 ## Stack
 
-| Camada | Tecnologia |
-|--------|------------|
-| **Backend** | .NET 8, Clean Architecture |
-| **Mobile** | Expo 54, React Native, TypeScript |
-| **Web** | React (Vite), TypeScript |
-| **Banco** | Supabase (PostgreSQL, Storage, Edge Functions) |
-| **Pagamentos** | Mercado Pago |
-| **Vídeo** | Daily.co |
-| **IA** | OpenAI GPT-4o (padrão), Gemini 2.5 Flash (fallback), Deepgram (transcrição) |
-| **Assinatura** | ICP-Brasil (PAdES) |
-| **Monitoramento** | Sentry (erros + logs estruturados) |
+| Camada      | Tecnologia |
+|------------|------------|
+| Backend    | .NET 8, Clean Architecture |
+| Mobile     | Expo 54, React Native, TypeScript |
+| Web        | Vite + React, TypeScript |
+| Banco      | PostgreSQL (AWS RDS, Npgsql + Dapper) |
+| Storage    | AWS S3 (receitas, certificados, avatares, transcrições) |
+| Pagamentos | Mercado Pago (PIX + cartão) |
+| Vídeo      | Daily.co (WebRTC + transcrição Deepgram) |
+| IA         | OpenAI GPT-4o · fallback Gemini 2.5 Flash |
+| Assinatura | ICP-Brasil PAdES (iText7 + BouncyCastle) |
+| Deploy     | AWS (backend + web) · EAS Build (mobile) |
+| Monitoramento | Sentry (todos os módulos) |
 
 ---
 
-## Estrutura do Projeto
+## Estrutura do repositório
 
 ```
 ola-jamal/
-├── backend-dotnet/     # API .NET 8 (Clean Architecture)
-├── frontend-mobile/    # App Expo (iOS/Android/Web)
-├── frontend-web/       # Landing + verificação de receitas
-├── supabase/           # Migrations + Edge Function verify
-├── docs/               # Documentação organizada
-│   ├── guides/         # Tutoriais e guias
-│   ├── architecture/   # Arquitetura e fluxos
-│   ├── compliance/     # LGPD, contratos
-│   ├── deploy/         # Deploy (Vercel, Render)
-│   ├── setup/          # Configuração inicial
-│   ├── technical/      # Convenções técnicas (logs, etc.)
-│   └── infra/          # Migrations, Supabase
-└── scripts/            # Scripts utilitários (FCM, testes)
+├── backend-dotnet/   # API .NET 8 (Clean Architecture)
+├── frontend-mobile/  # App Expo (iOS/Android)
+├── frontend-web/     # Landing, portal médico, verificação de receitas
+├── infra/            # Terraform (AWS: ECS, RDS, S3, CloudFront, WAF)
+├── docs/             # Documentação central (arquitetura, compliance, guias)
+└── scripts/          # Scripts auxiliares (ex.: perf-fix-all.ps1)
 ```
+
+Cada módulo tem seu próprio **README** com setup e comandos. Documentação detalhada: **[docs/README.md](docs/README.md)**.
 
 ---
 
-## Quick Start
+## Quick start
 
 ### Backend
 
 ```bash
 cd backend-dotnet
-dotnet build
-dotnet test
-cd src/RenoveJa.Api
-# Configure appsettings.Development.json ou variáveis de ambiente
-dotnet run
+dotnet restore && dotnet build
+cd src/RenoveJa.Api && dotnet run
 ```
 
-API em `http://localhost:5000`, Swagger em `/swagger` (Development).
+API em `http://localhost:5000` · Swagger em `/swagger` (apenas em Development).
 
 ### Mobile
 
@@ -70,104 +64,56 @@ npx expo start
 ```bash
 cd frontend-web
 npm install
-npm run build
+cp .env.example .env   # Preencha VITE_API_URL
+npm run dev
 ```
 
-### Docker (Backend)
+### Infra (AWS)
 
 ```bash
-cd backend-dotnet
-docker-compose up --build
+cd infra
+cp terraform.tfvars.example terraform.tfvars   # Edite com seus valores
+terraform init && terraform plan && terraform apply
 ```
 
 ---
 
-## Variáveis de Ambiente
+## Variáveis de ambiente
 
-| Módulo | Principais variáveis |
-|--------|----------------------|
-| **Backend** | `Supabase__Url`, `Supabase__ServiceKey`, `OpenAI__ApiKey`, `Gemini__ApiKey`, `MercadoPago__AccessToken`, `SENTRY_DSN` |
-| **Mobile** | `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`, `EXPO_PUBLIC_SENTRY_DSN` |
-| **Web** | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_URL`, `VITE_SENTRY_DSN` |
+- **Backend:** `backend-dotnet/docs/VARIAVEIS_AMBIENTE.md` e `backend-dotnet/README.md`
+- **Mobile:** `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`, etc. — ver `.env.example`
+- **Web:** `VITE_API_URL`, `VITE_FORMSPREE_FORM_ID`, `VITE_SENTRY_DSN` — ver `.env.example`
 
-Consulte `backend-dotnet/docs/VARIAVEIS_AMBIENTE.md`, `docs/setup/CONFIG_GOOGLE_OAUTH.md` e os `.env.example` de cada módulo.
-
----
-
-## Funcionalidades
-
-- **Paciente:** Renovação de receita, pedido de exame, teleconsulta, pagamento PIX/cartão, prontuário
-- **Médico:** Fila de atendimentos, triagem com IA, aprovação/rejeição, assinatura digital, vídeo
-- **Verificação:** QR Code no documento → digitar código 6 dígitos → validar e baixar 2ª via (sem login). Verify v2 via Supabase Edge Function.
-- **Admin:** Trilha de auditoria, feature flags, gestão de médicos
-
----
-
-## Monitoramento (Sentry)
-
-Sentry está integrado em todos os módulos. Se o DSN estiver vazio, o Sentry fica desativado sem quebrar o app.
-
-| Módulo | DSN | Comportamento |
-|--------|-----|---------------|
-| Backend | `SENTRY_DSN` | Erros + logs Warning+ |
-| Frontend Web | `VITE_SENTRY_DSN` | Erros + logs Warning+ |
-| Frontend Mobile | `EXPO_PUBLIC_SENTRY_DSN` | Erros + logs Warning+ |
-
-- **Logger estruturado:** `lib/logger` (web/mobile) envia `warn`/`error`/`exception` ao Sentry; `info`/`debug` ficam só no console.
-- **Convenção de logs:** `docs/technical/LOGS_CONVENCAO.md`
-
----
-
-## Deploy
-
-| Componente | Plataforma |
-|------------|------------|
-| Backend | Render (Docker) |
-| Web | Vercel |
-| Mobile | EAS Build |
-| Supabase | Dashboard |
-
-Ver `docs/deploy/` para instruções específicas.
-
----
-
-## Documentação
-
-| Categoria | Conteúdo |
-|-----------|----------|
-| [Guides](docs/guides/) | Quick Start, tutoriais, deploy, Expo |
-| [Architecture](docs/architecture/) | Análise ponta a ponta, fluxos |
-| [Technical](docs/technical/) | Convenção de logs, validação triagem |
-| [Compliance](docs/compliance/) | LGPD, RIPD, ROPA, checklists |
-| [Setup](docs/setup/) | Google OAuth, configuração |
-| [Backend](backend-dotnet/docs/) | Variáveis, debug, Mercado Pago |
+Nunca commitar `.env` ou chaves; usar `.env.example` como modelo.
 
 ---
 
 ## Testes
 
-```bash
-# Backend
-cd backend-dotnet && dotnet test
-
-# Mobile
-cd frontend-mobile && npm run test -- --watchAll=false
-
-# Web
-cd frontend-web && npm run test:run && npm run build
-```
+| Módulo | Comando |
+|--------|---------|
+| Backend | `cd backend-dotnet && dotnet test` |
+| Mobile  | `cd frontend-mobile && npm run test -- --watchAll=false` |
+| Web     | `cd frontend-web && npm run test:run` |
 
 ---
 
-## CI/CD
+## Deploy
 
-GitHub Actions em `main` e `fix/frontend-performance-responsive`:
-
-- Backend: build + test
-- Docker: build da imagem
-- Frontend Web: build
-- Frontend Mobile: typecheck + lint + test + export web
+| Componente | Onde | Observação |
+|-----------|------|------------|
+| Backend   | AWS ECS Fargate (Docker) | `backend-dotnet/Dockerfile` |
+| Web       | AWS CloudFront + S3 (ou Amplify) | Build: `npm run build` |
+| Mobile    | EAS Build | `frontend-mobile/eas.json` |
+| Banco     | AWS RDS PostgreSQL | Schema: `infra/schema.sql` e `infra/migrations/` |
+| Infra     | Terraform | `infra/*.tf` |
 
 ---
 
-**RenoveJá+** — .NET 8 · Expo · Supabase · Mercado Pago · Daily.co · OpenAI · Gemini · ICP-Brasil · Sentry
+## Documentação
+
+Índice completo: **[docs/README.md](docs/README.md)** — guias, arquitetura, compliance (LGPD/RIPD/ROPA), troubleshooting e configuração por módulo.
+
+---
+
+**RenoveJá+** — .NET 8 · Expo 54 · PostgreSQL/RDS · AWS S3 · Mercado Pago · Daily.co · OpenAI · Gemini · ICP-Brasil · Sentry

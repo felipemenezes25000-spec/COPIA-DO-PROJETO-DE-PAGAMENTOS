@@ -11,4 +11,5 @@ public interface ICarePlanTaskRepository
 
     Task<CarePlanTaskFile> CreateFileAsync(CarePlanTaskFile file, CancellationToken cancellationToken = default);
     Task<List<CarePlanTaskFile>> GetFilesByTaskIdAsync(Guid taskId, CancellationToken cancellationToken = default);
+    Task<Dictionary<Guid, List<CarePlanTaskFile>>> GetFilesByTaskIdsAsync(IEnumerable<Guid> taskIds, CancellationToken cancellationToken = default);
 }

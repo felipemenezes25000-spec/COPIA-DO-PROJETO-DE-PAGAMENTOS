@@ -491,7 +491,14 @@ REGRA ABSOLUTA: Ignore o cid_sugerido anterior. Derive o CID EXCLUSIVAMENTE do t
                 var isRelevant = true;
                 if (el.TryGetProperty("relevant", out var relFlag) && relFlag.ValueKind == JsonValueKind.False)
                     isRelevant = false;
-                if (!isRelevant && excerpts.Count == 0)
+                if (!isRelevant)
+                {
+                    idx++;
+                    continue;
+                }
+                // Só incluir evidência que tenha conteúdo útil (trechos ou relevância clínica)
+                var hasUsefulContent = excerpts.Count > 0 || !string.IsNullOrWhiteSpace(relevance);
+                if (!hasUsefulContent)
                 {
                     idx++;
                     continue;

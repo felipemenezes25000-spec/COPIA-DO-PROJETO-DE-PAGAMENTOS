@@ -11,10 +11,6 @@ const GUARDRAIL_ALERT =
 // FIX #10: Domínios permitidos para download de PDF
 const ALLOWED_DOWNLOAD_DOMAINS = [
   'renovejasaude.com.br',
-  'supabase.co',
-  'supabase.in',
-  'render.com',
-  'onrender.com',
   'localhost',
 ];
 

@@ -5,7 +5,7 @@ using RenoveJa.Infrastructure.Data.Postgres;
 
 namespace RenoveJa.Infrastructure.Repositories;
 
-public class PasswordResetTokenRepository(PostgresClient supabase) : IPasswordResetTokenRepository
+public class PasswordResetTokenRepository(PostgresClient db) : IPasswordResetTokenRepository
 {
     private const string TableName = "password_reset_tokens";
 
@@ -13,7 +13,7 @@ public class PasswordResetTokenRepository(PostgresClient supabase) : IPasswordRe
     {
         // Busca no backend: traz tokens recentes e filtra em memória (banco só persiste dados, lógica no backend)
         var rawToken = Uri.UnescapeDataString(token.Trim());
-        var list = await supabase.GetAllAsync<PasswordResetTokenModel>(
+        var list = await db.GetAllAsync<PasswordResetTokenModel>(
             TableName,
             select: "*",
             filter: null,
@@ -28,14 +28,14 @@ public class PasswordResetTokenRepository(PostgresClient supabase) : IPasswordRe
     public async Task<PasswordResetToken> CreateAsync(PasswordResetToken entity, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(entity);
-        var created = await supabase.InsertAsync<PasswordResetTokenModel>(TableName, model, cancellationToken);
+        var created = await db.InsertAsync<PasswordResetTokenModel>(TableName, model, cancellationToken);
         return MapToDomain(created);
     }
 
     public async Task UpdateAsync(PasswordResetToken entity, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(entity);
-        await supabase.UpdateAsync<PasswordResetTokenModel>(
+        await db.UpdateAsync<PasswordResetTokenModel>(
             TableName,
             $"id=eq.{entity.Id}",
             new { Used = model.Used },
@@ -44,7 +44,7 @@ public class PasswordResetTokenRepository(PostgresClient supabase) : IPasswordRe
 
     public async Task InvalidateByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        await supabase.UpdateAsync<PasswordResetTokenModel>(
+        await db.UpdateAsync<PasswordResetTokenModel>(
             TableName,
             $"user_id=eq.{userId}",
             new { Used = true },

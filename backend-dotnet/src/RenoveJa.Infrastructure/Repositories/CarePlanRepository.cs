@@ -5,13 +5,13 @@ using RenoveJa.Infrastructure.Data.Postgres;
 
 namespace RenoveJa.Infrastructure.Repositories;
 
-public class CarePlanRepository(PostgresClient supabase) : ICarePlanRepository
+public class CarePlanRepository(PostgresClient db) : ICarePlanRepository
 {
     private const string TableName = "care_plans";
 
     public async Task<CarePlan?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<CarePlanModel>(
+        var model = await db.GetSingleAsync<CarePlanModel>(
             TableName,
             filter: $"id=eq.{id}",
             cancellationToken: cancellationToken);
@@ -20,7 +20,7 @@ public class CarePlanRepository(PostgresClient supabase) : ICarePlanRepository
 
     public async Task<CarePlan?> GetActiveByConsultationIdAsync(Guid consultationId, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<CarePlanModel>(
+        var model = await db.GetSingleAsync<CarePlanModel>(
             TableName,
             filter:
             $"consultation_id=eq.{consultationId}&status=in.(active,waiting_patient,waiting_results,ready_for_review)",
@@ -30,7 +30,7 @@ public class CarePlanRepository(PostgresClient supabase) : ICarePlanRepository
 
     public async Task<CarePlan> CreateAsync(CarePlan carePlan, CancellationToken cancellationToken = default)
     {
-        var created = await supabase.InsertAsync<CarePlanModel>(
+        var created = await db.InsertAsync<CarePlanModel>(
             TableName,
             MapToModel(carePlan),
             cancellationToken);
@@ -39,7 +39,7 @@ public class CarePlanRepository(PostgresClient supabase) : ICarePlanRepository
 
     public async Task<CarePlan> UpdateAsync(CarePlan carePlan, CancellationToken cancellationToken = default)
     {
-        var updated = await supabase.UpdateAsync<CarePlanModel>(
+        var updated = await db.UpdateAsync<CarePlanModel>(
             TableName,
             $"id=eq.{carePlan.Id}",
             MapToModel(carePlan),

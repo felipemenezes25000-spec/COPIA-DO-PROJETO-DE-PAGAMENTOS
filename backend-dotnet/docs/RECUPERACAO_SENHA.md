@@ -1,12 +1,12 @@
-# Recuperação de senha (Esqueci minha senha)
+﻿# Recuperação de senha (Esqueci minha senha)
 
 ## Erro 400: "Could not find the table 'public.password_reset_tokens'"
 
-Esse erro ocorre quando a tabela ainda não existe no Supabase. **Escolha uma das opções:**
+Esse erro ocorre quando a tabela ainda não existe no PostgreSQL/RDS. **Escolha uma das opções:**
 
 ### Opção A – Executar SQL no Dashboard (recomendado)
 
-1. Acesse [Supabase Dashboard](https://supabase.com/dashboard) e faça login.
+1. Acesse [AWS RDS (migrations são aplicadas automaticamente no startup via MigrationRunner)
 2. Abra o projeto (ex.: `ifgxgppxsawauaceudec`).
 3. No menu lateral: **SQL Editor** → **New query**.
 4. Cole o conteúdo do arquivo **`docs/migrations/run_all_migrations.sql`** (cria `password_reset_tokens`, `chat_messages` e colunas de IA em `requests`) e clique em **Run**.  
@@ -14,15 +14,15 @@ Esse erro ocorre quando a tabela ainda não existe no Supabase. **Escolha uma da
 
 ### Opção B – Migration automática na subida da API
 
-1. No Supabase: **Project Settings** → **Database** → copie a **Connection string** (URI, com a senha do banco).
-2. Em `appsettings.Development.json`, na seção `Supabase`, defina `"DatabaseUrl": "postgresql://postgres.[ref]:[SENHA]@..."` (a string completa).
+1. No AWS RDS: obtenha a connection string e configure `ConnectionStrings__DefaultConnection`
+2. Em `appsettings.Development.json`, na seção `PostgreSQL/RDS`, defina `"DatabaseUrl": "postgresql://postgres.[ref]:[SENHA]@..."` (a string completa).
 3. Reinicie a API; na primeira subida a tabela será criada automaticamente.
 
 ---
 
-## 1. Migration no Supabase (referência)
+## 1. Migration
 
-Execute o SQL no **SQL Editor** do projeto Supabase (Dashboard):
+Migration aplicada automaticamente via MigrationRunner no startup. Para aplicar manualmente, conecte ao RDS e execute:
 
 ```sql
 -- Arquivo: docs/migrations/add_password_reset_tokens.sql
@@ -80,7 +80,7 @@ Se estiver usando `contato@renovejasaude.com.br` mas a senha de app foi criada e
    - Assim o link do e-mail abre sua tela de redefinição local. (Em produção, use `https://renovejasaude.com.br/recuperar-senha`.)
 
 3. **Pedir redefinição de senha**  
-   - Use um e-mail que **exista** na tabela `users` do Supabase.  
+   - Use um e-mail que **exista** na tabela `users` do banco.  
    - **PowerShell:**  
      ```powershell
      Invoke-RestMethod -Uri "http://localhost:5000/api/auth/forgot-password" -Method POST -ContentType "application/json" -Body '{"email":"felipemenezes25000@gmail.com"}'

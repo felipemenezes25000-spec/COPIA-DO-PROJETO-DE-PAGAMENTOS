@@ -6,15 +6,15 @@ using RenoveJa.Infrastructure.Data.Postgres;
 namespace RenoveJa.Infrastructure.Repositories;
 
 /// <summary>
-/// Repositório de preferências de push via Supabase.
+/// Repositório de preferências de push via db.
 /// </summary>
-public class UserPushPreferencesRepository(PostgresClient supabase) : IUserPushPreferencesRepository
+public class UserPushPreferencesRepository(PostgresClient db) : IUserPushPreferencesRepository
 {
     private const string TableName = "user_push_preferences";
 
     public async Task<UserPushPreferences?> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
     {
-        var model = await supabase.GetSingleAsync<UserPushPreferencesModel>(
+        var model = await db.GetSingleAsync<UserPushPreferencesModel>(
             TableName,
             filter: $"user_id=eq.{userId}",
             cancellationToken: ct);
@@ -29,7 +29,7 @@ public class UserPushPreferencesRepository(PostgresClient supabase) : IUserPushP
 
         var prefs = UserPushPreferences.CreateDefault(userId);
         var model = MapToModel(prefs);
-        await supabase.InsertAsync<UserPushPreferencesModel>(TableName, model, ct);
+        await db.InsertAsync<UserPushPreferencesModel>(TableName, model, ct);
         return prefs;
     }
 
@@ -37,7 +37,7 @@ public class UserPushPreferencesRepository(PostgresClient supabase) : IUserPushP
     {
         var model = MapToModel(prefs);
         model.UpdatedAt = DateTime.UtcNow;
-        await supabase.UpdateAsync<UserPushPreferencesModel>(
+        await db.UpdateAsync<UserPushPreferencesModel>(
             TableName,
             $"user_id=eq.{prefs.UserId}",
             new

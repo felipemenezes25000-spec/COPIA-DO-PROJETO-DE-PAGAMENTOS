@@ -131,6 +131,9 @@ export default function PatientRecordScreen() {
   const [summary, setSummary] = useState<PatientSummaryDto | null>(null);
   const [encounters, setEncounters] = useState<EncounterSummaryDto[]>([]);
   const [documents, setDocuments] = useState<MedicalDocumentSummaryDto[]>([]);
+  // PERF: evita 3 API calls em cada troca de aba — recarrega só se dado tiver > 60s
+  const lastLoadedAt = useRef<number>(0);
+  const RECORD_STALE_MS = 60_000;
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -242,6 +245,7 @@ export default function PatientRecordScreen() {
         safeSummary = null;
       }
       if (cancelledRef.current) return;
+      lastLoadedAt.current = Date.now();
       setSummary(safeSummary);
       const safeEncounters = Array.isArray(encountersData)
         ? encountersData
@@ -290,8 +294,12 @@ export default function PatientRecordScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (user?.id) load();
-      else setLoading(false);
+      if (user?.id) {
+        // PERF: só recarrega se dado tiver > 60s — evita 3 API calls por troca de aba
+        if (Date.now() - lastLoadedAt.current > RECORD_STALE_MS) load();
+      } else {
+        setLoading(false);
+      }
       return () => {
         cancelledRef.current = true;
       };
@@ -374,6 +382,7 @@ export default function PatientRecordScreen() {
             if (item.kind === 'encounter') return item.data.id ?? `enc-${idx}`;
             return item.data.id ?? `doc-${idx}`;
           }}
+              getItemLayout={(_: unknown, i: number) => ({ length: 88, offset: 88 * i, index: i })}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

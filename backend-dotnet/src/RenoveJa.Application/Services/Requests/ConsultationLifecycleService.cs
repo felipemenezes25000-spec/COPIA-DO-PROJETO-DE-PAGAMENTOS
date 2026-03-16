@@ -257,7 +257,7 @@ public class ConsultationLifecycleService(
             {
                 try
                 {
-                    var path = $"transcripts/{id}.txt";
+                    var path = $"consultas/{id:N}/transcricao/transcricao-{id:N}.txt";
                     var bytes = Encoding.UTF8.GetBytes(contentToSave);
                     var result = await storageService.UploadAsync(path, bytes, "text/plain", cancellationToken);
                     if (result.Success && !string.IsNullOrEmpty(result.Url))
@@ -294,7 +294,7 @@ public class ConsultationLifecycleService(
                         ["ai_suggestions_json"] = existing.AiSuggestionsJson,
                         ["evidence_json"] = existing.EvidenceJson
                     };
-                    existing.Update(sessionData.TranscriptText, transcriptFileUrl, sessionData.AnamnesisJson, sessionData.AiSuggestionsJson, sessionData.EvidenceJson);
+                    existing.Update(sessionData.TranscriptText, transcriptFileUrl, null, sessionData.AnamnesisJson, sessionData.AiSuggestionsJson, sessionData.EvidenceJson);
                     await consultationAnamnesisRepository.UpdateAsync(existing, cancellationToken);
                     var newValues = new Dictionary<string, object?>
                     {
@@ -309,7 +309,7 @@ public class ConsultationLifecycleService(
                 else
                 {
                     var entity = ConsultationAnamnesis.Create(
-                        id, sessionData.PatientId, sessionData.TranscriptText, transcriptFileUrl,
+                        id, sessionData.PatientId, sessionData.TranscriptText, transcriptFileUrl, null,
                         sessionData.AnamnesisJson, sessionData.AiSuggestionsJson, sessionData.EvidenceJson);
                     await consultationAnamnesisRepository.CreateAsync(entity, cancellationToken);
                     var newValues = new Dictionary<string, object?>
@@ -368,7 +368,25 @@ public class ConsultationLifecycleService(
         if (anamnesis?.TranscriptFileUrl == null) return null;
 
         var path = storageService.ExtractPathFromStorageUrl(anamnesis.TranscriptFileUrl)
-            ?? $"transcripts/{id}.txt";
+            ?? $"consultas/{id:N}/transcricao/transcricao-{id:N}.txt";
+        return await storageService.CreateSignedUrlAsync(path, expiresInSeconds, cancellationToken);
+    }
+
+    public async Task<string?> GetRecordingDownloadUrlAsync(Guid id, Guid userId, int expiresInSeconds = 3600, CancellationToken cancellationToken = default)
+    {
+        var request = await requestRepository.GetByIdAsync(id, cancellationToken);
+        if (request == null) return null;
+        if (request.RequestType != RequestType.Consultation) return null;
+
+        var isDoctor = request.DoctorId == userId;
+        var isPatient = request.PatientId == userId;
+        if (!isDoctor && !isPatient) return null;
+
+        var anamnesis = await consultationAnamnesisRepository.GetByRequestIdAsync(id, cancellationToken);
+        if (anamnesis?.RecordingFileUrl == null) return null;
+
+        var path = storageService.ExtractPathFromStorageUrl(anamnesis.RecordingFileUrl);
+        if (string.IsNullOrWhiteSpace(path)) return null;
         return await storageService.CreateSignedUrlAsync(path, expiresInSeconds, cancellationToken);
     }
 

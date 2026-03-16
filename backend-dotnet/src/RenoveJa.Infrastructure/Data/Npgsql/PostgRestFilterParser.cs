@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 
 namespace RenoveJa.Infrastructure.Data.Npgsql;
 
@@ -40,6 +40,32 @@ public static class PostgRestFilterParser
 
             var column = part[..eqIndex];
             var operatorAndValue = part[(eqIndex + 1)..];
+
+            // PostgREST or=(cond1,cond2): gera (cond1 OR cond2)
+            if (column == "or" && operatorAndValue.StartsWith("(") && operatorAndValue.EndsWith(")"))
+            {
+                var inner = operatorAndValue.Trim('(', ')');
+                var orConditions = new List<string>();
+                foreach (var segment in SplitByCommaRespectParens(inner))
+                {
+                    var seg = segment.Trim();
+                    var dotIdx = seg.IndexOf('.');
+                    if (dotIdx <= 0) continue;
+                    var segCol = seg[..dotIdx];
+                    var segOpVal = seg[(dotIdx + 1)..];
+                    var (sqlCond, segParam) = ParseOperator(segCol, segOpVal, paramIndex, false);
+                    if (string.IsNullOrEmpty(sqlCond)) continue;
+                    orConditions.Add(sqlCond);
+                    if (segParam.HasValue)
+                    {
+                        parameters[$"p{paramIndex}"] = segParam.Value.value;
+                        paramIndex++;
+                    }
+                }
+                if (orConditions.Count > 0)
+                    conditions.Add($"({string.Join(" OR ", orConditions)})");
+                continue;
+            }
 
             // Handle "not." prefix: not.eq.xxx, not.is.null
             var negate = false;
@@ -86,7 +112,7 @@ public static class PostgRestFilterParser
             var dotIndex = part.LastIndexOf('.');
             if (dotIndex > 0)
             {
-                var col = SanitizeColumn(part[..dotIndex]);
+                var col = QuoteColumn(part[..dotIndex]);
                 var dir = part[(dotIndex + 1)..].ToUpperInvariant();
                 if (dir is "ASC" or "DESC")
                     sqlParts.Add($"{col} {dir}");
@@ -99,7 +125,7 @@ public static class PostgRestFilterParser
             }
             else
             {
-                sqlParts.Add(SanitizeColumn(part));
+                sqlParts.Add(QuoteColumn(part));
             }
         }
 
@@ -109,7 +135,7 @@ public static class PostgRestFilterParser
     private static (string condition, (string key, object? value)? param) ParseOperator(
         string column, string operatorValue, int paramIndex, bool negate)
     {
-        var col = SanitizeColumn(column);
+        var col = QuoteColumn(column);
         var paramName = $"@p{paramIndex}";
         var not = negate ? "NOT " : "";
 
@@ -230,6 +256,15 @@ public static class PostgRestFilterParser
     }
 
     /// <summary>
+    /// Quota identificador para PostgreSQL (evita conflito com palavras reservadas como OR).
+    /// </summary>
+    private static string QuoteColumn(string column)
+    {
+        var safe = SanitizeColumn(column);
+        return string.IsNullOrEmpty(safe) ? safe : $"\"{safe}\"";
+    }
+
+    /// <summary>
     /// Split filter string by '&' but respect parentheses in values like "in.(a,b,c)"
     /// </summary>
     private static List<string> SplitFilterParts(string filter)
@@ -243,6 +278,37 @@ public static class PostgRestFilterParser
             if (c == '(') depth++;
             else if (c == ')') depth--;
             else if (c == '&' && depth == 0)
+            {
+                if (current.Length > 0)
+                {
+                    parts.Add(current.ToString());
+                    current.Clear();
+                }
+                continue;
+            }
+            current.Append(c);
+        }
+
+        if (current.Length > 0)
+            parts.Add(current.ToString());
+
+        return parts;
+    }
+
+    /// <summary>
+    /// Split by comma but respect parentheses (e.g. or=(a.is.null,b.eq.x)).
+    /// </summary>
+    private static List<string> SplitByCommaRespectParens(string input)
+    {
+        var parts = new List<string>();
+        var current = new System.Text.StringBuilder();
+        var depth = 0;
+
+        foreach (var c in input)
+        {
+            if (c == '(') depth++;
+            else if (c == ')') depth--;
+            else if (c == ',' && depth == 0)
             {
                 if (current.Length > 0)
                 {

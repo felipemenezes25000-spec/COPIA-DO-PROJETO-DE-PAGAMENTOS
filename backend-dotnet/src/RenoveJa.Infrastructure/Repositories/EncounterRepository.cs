@@ -7,13 +7,13 @@ using RenoveJa.Infrastructure.Utils;
 
 namespace RenoveJa.Infrastructure.Repositories;
 
-public class EncounterRepository(PostgresClient supabase) : IEncounterRepository
+public class EncounterRepository(PostgresClient db) : IEncounterRepository
 {
     private const string TableName = "encounters";
 
     public async Task<Encounter?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<EncounterModel>(
+        var model = await db.GetSingleAsync<EncounterModel>(
             TableName,
             filter: $"id=eq.{id}",
             cancellationToken: cancellationToken);
@@ -23,7 +23,7 @@ public class EncounterRepository(PostgresClient supabase) : IEncounterRepository
 
     public async Task<List<Encounter>> GetByPatientIdAsync(Guid patientId, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<EncounterModel>(
+        var models = await db.GetAllAsync<EncounterModel>(
             TableName,
             filter: $"patient_id=eq.{patientId}",
             orderBy: "started_at.desc",
@@ -34,7 +34,7 @@ public class EncounterRepository(PostgresClient supabase) : IEncounterRepository
 
     public async Task<List<Encounter>> GetByPractitionerIdAsync(Guid practitionerId, CancellationToken cancellationToken = default)
     {
-        var models = await supabase.GetAllAsync<EncounterModel>(
+        var models = await db.GetAllAsync<EncounterModel>(
             TableName,
             filter: $"practitioner_id=eq.{practitionerId}",
             orderBy: "started_at.desc",
@@ -46,7 +46,7 @@ public class EncounterRepository(PostgresClient supabase) : IEncounterRepository
     public async Task<List<Encounter>> GetByPatientAndTypeAsync(Guid patientId, EncounterType type, CancellationToken cancellationToken = default)
     {
         var typeStr = SnakeCaseHelper.ToSnakeCase(type.ToString());
-        var models = await supabase.GetAllAsync<EncounterModel>(
+        var models = await db.GetAllAsync<EncounterModel>(
             TableName,
             filter: $"patient_id=eq.{patientId}&type=eq.{typeStr}",
             orderBy: "started_at.desc",
@@ -57,7 +57,7 @@ public class EncounterRepository(PostgresClient supabase) : IEncounterRepository
 
     public async Task<Encounter?> GetBySourceRequestIdAsync(Guid sourceRequestId, CancellationToken cancellationToken = default)
     {
-        var model = await supabase.GetSingleAsync<EncounterModel>(
+        var model = await db.GetSingleAsync<EncounterModel>(
             TableName,
             filter: $"source_request_id=eq.{sourceRequestId}",
             cancellationToken: cancellationToken);
@@ -68,7 +68,7 @@ public class EncounterRepository(PostgresClient supabase) : IEncounterRepository
     public async Task<Encounter> CreateAsync(Encounter encounter, CancellationToken cancellationToken = default, Guid? sourceRequestId = null)
     {
         var model = MapToModel(encounter, sourceRequestId);
-        var created = await supabase.InsertAsync<EncounterModel>(
+        var created = await db.InsertAsync<EncounterModel>(
             TableName,
             model,
             cancellationToken);
@@ -79,7 +79,7 @@ public class EncounterRepository(PostgresClient supabase) : IEncounterRepository
     public async Task<Encounter> UpdateAsync(Encounter encounter, CancellationToken cancellationToken = default)
     {
         var model = MapToModel(encounter);
-        var updated = await supabase.UpdateAsync<EncounterModel>(
+        var updated = await db.UpdateAsync<EncounterModel>(
             TableName,
             $"id=eq.{encounter.Id}",
             model,
