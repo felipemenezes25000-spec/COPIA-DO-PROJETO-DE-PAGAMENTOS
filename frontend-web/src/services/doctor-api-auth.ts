@@ -42,8 +42,11 @@ function clearAuth() {
   localStorage.removeItem(USER_KEY);
 }
 
-/** Flag para evitar múltiplos redirects simultâneos */
-let isRedirecting = false;
+// FIX #19: Usa um contador + timestamp em vez de flag booleano simples,
+// evitando race conditions com múltiplas requests 401 simultâneas.
+let redirectCount = 0;
+let lastRedirectAt = 0;
+const REDIRECT_COOLDOWN_MS = 2000;
 
 /** Base HTTP client with JWT auth. Used by all doctor-api-* modules. */
 export async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
@@ -69,13 +72,12 @@ export async function authFetch(url: string, options: RequestInit = {}): Promise
 
   if (res.status === 401) {
     clearAuth();
-    // Disparar evento para o React lidar — sem hard reload
-    if (!isRedirecting) {
-      isRedirecting = true;
+    // FIX #19: Cooldown baseado em timestamp, sem flag global stale
+    const now = Date.now();
+    if (now - lastRedirectAt >= REDIRECT_COOLDOWN_MS) {
+      lastRedirectAt = now;
+      redirectCount++;
       window.dispatchEvent(new CustomEvent('auth:expired'));
-      setTimeout(() => {
-        isRedirecting = false;
-      }, 2000);
     }
     throw new Error('Sessão expirada');
   }
@@ -105,6 +107,8 @@ export async function loginDoctor(email: string, password: string) {
   return data;
 }
 
+// FIX #8: Alinhado campo `specialty` (nome da especialidade) com o mobile.
+// O backend espera `specialty` (string), não `specialtyId`.
 export async function registerDoctorFull(payload: {
   name: string;
   email: string;
@@ -113,7 +117,7 @@ export async function registerDoctorFull(payload: {
   cpf: string;
   crm: string;
   crmState: string;
-  specialtyId: string;
+  specialty: string;
   professionalPhone?: string;
   professionalAddress?: string;
   city?: string;

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { verifyReceita, type VerifySuccess } from '@/api/verify';
 import '@/styles/recuperar-verify.css';
@@ -7,6 +7,27 @@ type VerifyState = 'idle' | 'loading' | 'success' | 'error';
 
 const GUARDRAIL_ALERT =
   'Importante: Decisão e responsabilidade é do profissional. Conteúdo exibido para verificação.';
+
+// FIX #10: Domínios permitidos para download de PDF
+const ALLOWED_DOWNLOAD_DOMAINS = [
+  'renovejasaude.com.br',
+  'supabase.co',
+  'supabase.in',
+  'render.com',
+  'onrender.com',
+  'localhost',
+];
+
+function isAllowedDownloadUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return ALLOWED_DOWNLOAD_DOMAINS.some(d => parsed.hostname === d || parsed.hostname.endsWith('.' + d));
+  } catch {
+    return false;
+  }
+}
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Formata ISO string da API para exibição em pt-BR (apenas dados retornados pela API). */
 function formatIsoDate(iso: string | null | undefined): string {
@@ -40,37 +61,44 @@ function formatIsoDateTime(iso: string | null | undefined): string {
 export default function Verify() {
   const { id } = useParams<{ id: string }>();
 
-  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const isValidId = id && UUID_REGEX.test(id.trim());
 
   const [code, setCode] = useState('');
   const [state, setState] = useState<VerifyState>('idle');
   const [result, setResult] = useState<VerifySuccess | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  // FIX #25: Guard contra double-click / submissão duplicada
+  const submittingRef = useRef(false);
 
+  // FIX #15: isValidId agora é calculado fora do callback e incluído no deps
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!isValidId || code.length !== 6) return;
+      if (!isValidId || code.length !== 6 || submittingRef.current) return;
+      submittingRef.current = true;
       setState('loading');
       setErrorMessage('');
       setResult(null);
-      const res = await verifyReceita({ id: id.trim(), code: code.trim() });
+      try {
+        const res = await verifyReceita({ id: id!.trim(), code: code.trim() });
 
-      if (res.status === 'error') {
-        setErrorMessage(res.message);
-        setState('error');
-        return;
+        if (res.status === 'error') {
+          setErrorMessage(res.message);
+          setState('error');
+          return;
+        }
+        if (res.status === 'invalid') {
+          setErrorMessage(res.message);
+          setState('error');
+          return;
+        }
+        setResult(res.data);
+        setState('success');
+      } finally {
+        submittingRef.current = false;
       }
-      if (res.status === 'invalid') {
-        setErrorMessage(res.message);
-        setState('error');
-        return;
-      }
-      setResult(res.data);
-      setState('success');
     },
-    [id, code]
+    [id, code, isValidId]
   );
 
   if (!isValidId) {
@@ -156,8 +184,13 @@ export default function Verify() {
             <button
               type="button"
               onClick={() => {
+                // FIX #10: Valida domínio do downloadUrl antes de abrir
                 if (result.downloadUrl) {
-                  window.open(result.downloadUrl, '_blank', 'noopener,noreferrer');
+                  if (isAllowedDownloadUrl(result.downloadUrl)) {
+                    window.open(result.downloadUrl, '_blank', 'noopener,noreferrer');
+                  } else {
+                    alert('URL de download inválida. Contate o suporte.');
+                  }
                 } else {
                   alert('Download não disponível. O PDF pode ainda estar sendo processado.');
                 }
@@ -205,6 +238,7 @@ export default function Verify() {
   );
 }
 
+// FIX #29: Removido 'downloadButtonWrap' não utilizado
 const styles: Record<string, React.CSSProperties> = {
   container: {
     minHeight: '100vh',
@@ -304,10 +338,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     cursor: 'pointer',
     fontSize: 14,
-  },
-  downloadButtonWrap: {
-    display: 'block',
-    marginTop: 16,
   },
   errorBox: {
     marginBottom: 24,

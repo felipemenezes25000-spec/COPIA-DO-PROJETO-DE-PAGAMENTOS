@@ -67,7 +67,9 @@ export function useRequestEvents(onEvent?: EventHandler) {
 
       const connection = new sr.HubConnectionBuilder()
         .withUrl(`${base}/hubs/requests`, {
-          accessTokenFactory: () => token,
+          // FIX #5: Sempre lê o token atual do localStorage ao reconectar,
+          // em vez de capturar uma closure do token antigo.
+          accessTokenFactory: () => getToken() ?? '',
         })
         .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
         .configureLogging(sr.LogLevel.Warning)
@@ -127,6 +129,13 @@ export function useVideoSignaling(requestId: string | undefined) {
     if (!requestId) return;
     let cancelled = false;
 
+    // FIX #23: Limpar estados ao trocar de requestId para não exibir dados do request anterior
+    setTranscript('');
+    setAnamnesis(null);
+    setSuggestions([]);
+    setEvidence([]);
+    setConnected(false);
+
     async function connect() {
       const sr = await getSignalR();
       if (!sr || cancelled) return;
@@ -137,7 +146,8 @@ export function useVideoSignaling(requestId: string | undefined) {
       const base = getApiBase();
       const connection = new sr.HubConnectionBuilder()
         .withUrl(`${base}/hubs/video`, {
-          accessTokenFactory: () => token,
+          // FIX #5: Token sempre fresco ao reconectar
+          accessTokenFactory: () => getToken() ?? '',
         })
         .withAutomaticReconnect()
         .configureLogging(sr.LogLevel.Warning)

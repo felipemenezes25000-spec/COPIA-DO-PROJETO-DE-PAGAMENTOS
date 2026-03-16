@@ -41,10 +41,11 @@ import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { useModalVisibility } from '../../contexts/ModalVisibilityContext';
 import { useAuth } from '../../contexts/AuthContext';
 
-/** Texto expansível: mostra N linhas com "Ver mais" / "Ver menos". */
+// FIX #18: onTextLayout não funciona no React Native Web — na web, mostra texto completo
 function ExpandableText({ text, maxLines = 4, style }: { text: string; maxLines?: number; style?: any }) {
   const { colors } = useAppTheme();
-  const [expanded, setExpanded] = React.useState(false);
+  const isWeb = Platform.OS === 'web';
+  const [expanded, setExpanded] = React.useState(isWeb);
   const [needsExpand, setNeedsExpand] = React.useState(false);
   return (
     <View>
@@ -52,13 +53,13 @@ function ExpandableText({ text, maxLines = 4, style }: { text: string; maxLines?
         style={style}
         numberOfLines={expanded ? undefined : maxLines}
         ellipsizeMode="tail"
-        onTextLayout={(e) => {
+        onTextLayout={isWeb ? undefined : (e) => {
           if (!needsExpand && e.nativeEvent.lines.length > maxLines) setNeedsExpand(true);
         }}
       >
         {text}
       </Text>
-      {needsExpand && (
+      {!isWeb && needsExpand && (
         <TouchableOpacity onPress={() => setExpanded(!expanded)} style={{ marginTop: 4 }}>
           <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>
             {expanded ? 'Ver menos' : 'Ver mais'}
@@ -114,9 +115,13 @@ function getNextActionIcon(intent: NextActionIntent): keyof typeof Ionicons.glyp
   }
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default function RequestDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const requestId = Array.isArray(id) ? id[0] : id;
+  // FIX #6: Validação de UUID — previne crash com deep links malformados
+  const isValidRequestId = !!requestId && UUID_RE.test(requestId);
   const router = useRouter();
   const { user } = useAuth();
 
@@ -297,6 +302,36 @@ export default function RequestDetailScreen() {
       ]
     );
   };
+
+  // FIX #6: UUID inválido — mostra erro imediato sem chamar API
+  if (!isValidRequestId) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Detalhes</Text>
+          <View style={{ width: 44 }} />
+        </View>
+        <View style={styles.center}>
+          <AppEmptyState
+            icon="alert-circle-outline"
+            title="ID inválido"
+            subtitle="O link acessado contém um identificador inválido. Volte e tente novamente."
+            actionLabel="Voltar"
+            onAction={() => router.back()}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (loading) {
     return (

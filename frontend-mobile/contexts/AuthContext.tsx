@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+﻿import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient } from '../lib/api-client';
 import { AUTH_TOKEN_KEY } from '../lib/constants/storage-keys';
@@ -187,7 +187,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
     } catch (error) {
-      console.error('Error loading stored user:', error);
+      if (__DEV__) console.error('Error loading stored user:', error);
       await clearAuth();
     } finally {
       clearTimeout(guard);
@@ -248,7 +248,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(response.user);
       return response.user;
     } catch (error: unknown) {
-      console.error('Sign in error:', error);
+      if (__DEV__) console.error('Sign in error:', error);
       const msg = error instanceof Error ? error.message : (error as { message?: string })?.message;
       throw new Error(msg || 'Erro ao fazer login');
     }
@@ -268,7 +268,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(response.user);
       return response.user;
     } catch (error: unknown) {
-      console.error('Sign up error:', error);
+      if (__DEV__) console.error('Sign up error:', error);
       const msg = error instanceof Error ? error.message : (error as { message?: string })?.message;
       throw new Error(msg || 'Erro ao criar conta');
     }
@@ -309,7 +309,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       return { user: response.user, requiresApproval };
     } catch (error: unknown) {
-      console.error('Doctor sign up error:', error);
+      if (__DEV__) console.error('Doctor sign up error:', error);
       const err = error as { message?: string; errors?: string[]; messages?: string[] };
       const msg = err?.message || (Array.isArray(err?.errors) ? err.errors[0] : null) || err?.messages?.[0] || 'Erro ao criar conta de médico';
       throw new Error(typeof msg === 'string' ? msg : 'Erro ao criar conta de médico');
@@ -332,7 +332,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(response.user);
       return response.user;
     } catch (error: unknown) {
-      console.error('Google sign in error:', error);
+      if (__DEV__) console.error('Google sign in error:', error);
       const msg = error instanceof Error ? error.message : (error as { message?: string })?.message;
       throw new Error(msg || 'Erro ao fazer login com Google');
     }
@@ -376,7 +376,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await setItemSafe(USER_KEY, currentUser ? JSON.stringify(currentUser) : undefined);
       setUser(currentUser);
     } catch (error) {
-      console.error('Error refreshing user:', error);
+      if (__DEV__) console.error('Error refreshing user:', error);
       await clearAuth();
     }
   }, [user, clearAuth]);
@@ -390,7 +390,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setDoctorProfile(profile);
       }
     } catch (error) {
-      console.error('Error refreshing doctor profile:', error);
+      if (__DEV__) console.error('Error refreshing doctor profile:', error);
     }
   }, [user?.role]);
 
@@ -401,7 +401,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(updatedUser);
       return updatedUser;
     } catch (error: unknown) {
-      console.error('Complete profile error:', error);
+      if (__DEV__) console.error('Complete profile error:', error);
       const msg = error instanceof Error ? error.message : (error as { message?: string })?.message;
       throw new Error(msg || 'Erro ao completar perfil');
     }
@@ -411,7 +411,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await apiClient.post('/api/auth/forgot-password', { email });
     } catch (error: unknown) {
-      console.error('Forgot password error:', error);
+      if (__DEV__) console.error('Forgot password error:', error);
       const msg = error instanceof Error ? error.message : (error as { message?: string })?.message;
       throw new Error(msg || 'Erro ao solicitar recuperação de senha');
     }
@@ -421,7 +421,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await apiClient.post('/api/auth/reset-password', { token, newPassword });
     } catch (error: unknown) {
-      console.error('Reset password error:', error);
+      if (__DEV__) console.error('Reset password error:', error);
       const msg = error instanceof Error ? error.message : (error as { message?: string })?.message;
       throw new Error(msg || 'Erro ao redefinir senha');
     }

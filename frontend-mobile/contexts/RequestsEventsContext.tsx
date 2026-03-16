@@ -15,20 +15,25 @@ export interface PendingRequestUpdate {
   message: string;
 }
 
-interface RequestsEventsContextType {
-  /** Se a conexão SignalR com o hub de solicitações está ativa. */
+// FIX #4: Separar em dois contexts para evitar re-renders cascata.
+// StableContext: isConnected + subscribe (muda raramente)
+// VolatileContext: pendingUpdate (muda a cada evento SignalR)
+
+interface StableContextType {
   isConnected: boolean;
-  /**
-   * Inscreve um callback para ser chamado quando qualquer solicitação for atualizada (status, pagamento, assinatura, etc.).
-   * Retorna função para cancelar a inscrição.
-   */
   subscribe: (listener: RequestUpdatedListener) => () => void;
-  /** Atualização de pedido recebida em tempo real — exibir banner na tela atual (ex.: Configurações). Limpar ao navegar ou dispensar. */
+}
+
+interface VolatileContextType {
   pendingUpdate: PendingRequestUpdate | null;
   setPendingUpdate: (update: PendingRequestUpdate | null) => void;
 }
 
-const RequestsEventsContext = createContext<RequestsEventsContextType | undefined>(undefined);
+// Tipo unificado para backward-compat do hook useRequestsEvents
+export interface RequestsEventsContextType extends StableContextType, VolatileContextType {}
+
+const StableContext = createContext<StableContextType | undefined>(undefined);
+const VolatileContext = createContext<VolatileContextType | undefined>(undefined);
 
 export function RequestsEventsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -42,7 +47,9 @@ export function RequestsEventsProvider({ children }: { children: React.ReactNode
     }
     let cancelled = false;
     let retryCount = 0;
-    const maxRetries = 3;
+    // FIX #32: Aumentado de 3 para 8 retries com backoff exponencial
+    // Em redes 4G/3G brasileiras, quedas momentâneas são comuns
+    const maxRetries = 8;
 
     const RECONNECT_COOLDOWN_MS = 10_000;
     let lastReconnectAt = 0;
@@ -51,10 +58,11 @@ export function RequestsEventsProvider({ children }: { children: React.ReactNode
       if (cancelled) return;
       startRequestsEventsConnection().then((ok) => {
         if (!cancelled) setConnected(ok && isRequestsEventsConnected());
-        // Se falhou e ainda não esgotou retries, tenta de novo em 10s (evita spam em cold start)
         if (!ok && !cancelled && retryCount < maxRetries) {
           retryCount++;
-          setTimeout(tryConnect, 10_000);
+          // FIX #32: Backoff exponencial: 5s, 10s, 20s, 40s, 60s, 60s, 60s, 60s
+          const delay = Math.min(5_000 * Math.pow(2, retryCount - 1), 60_000);
+          setTimeout(tryConnect, delay);
         }
       });
     };
@@ -89,22 +97,45 @@ export function RequestsEventsProvider({ children }: { children: React.ReactNode
     });
   }, []);
 
-  const value = useMemo(
-    () => ({ isConnected, subscribe, pendingUpdate, setPendingUpdate }),
-    [isConnected, subscribe, pendingUpdate, setPendingUpdate],
+  // FIX #4: Stable value só muda quando isConnected ou subscribe mudam
+  const stableValue = useMemo(
+    () => ({ isConnected, subscribe }),
+    [isConnected, subscribe],
+  );
+
+  // FIX #4: Volatile value muda a cada pendingUpdate — só afeta consumers que leem pendingUpdate
+  const volatileValue = useMemo(
+    () => ({ pendingUpdate, setPendingUpdate }),
+    [pendingUpdate],
   );
 
   return (
-    <RequestsEventsContext.Provider value={value}>
-      {children}
-    </RequestsEventsContext.Provider>
+    <StableContext.Provider value={stableValue}>
+      <VolatileContext.Provider value={volatileValue}>
+        {children}
+      </VolatileContext.Provider>
+    </StableContext.Provider>
   );
 }
 
+/**
+ * Hook unificado para backward-compat. Retorna ambos os contexts.
+ * Se performance for crítica, use useRequestsEventsStable() para evitar re-renders do pendingUpdate.
+ */
 export function useRequestsEvents(): RequestsEventsContextType {
-  const ctx = useContext(RequestsEventsContext);
-  if (ctx === undefined) {
+  const stable = useContext(StableContext);
+  const volatile = useContext(VolatileContext);
+  if (stable === undefined || volatile === undefined) {
     throw new Error('useRequestsEvents must be used within RequestsEventsProvider');
+  }
+  return { ...stable, ...volatile };
+}
+
+/** Hook otimizado que NÃO re-renderiza quando pendingUpdate muda. */
+export function useRequestsEventsStable(): StableContextType {
+  const ctx = useContext(StableContext);
+  if (ctx === undefined) {
+    throw new Error('useRequestsEventsStable must be used within RequestsEventsProvider');
   }
   return ctx;
 }

@@ -29,17 +29,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth, FORBIDDEN_MESSAGE_KEY } from '../../contexts/AuthContext';
 import { validate } from '../../lib/validation';
 import { loginSchema } from '../../lib/validation/schemas';
+import { COMPANY } from '../../lib/company';
 
 const LOG_RENDER = __DEV__ && false;
-const WHATSAPP_NUMBER = '5511986318000';
 const SMALL_SCREEN_HEIGHT = 700;
 
-// Fallback Google OAuth — garante botão ativo mesmo quando extra/env não carrega (APK antigo, cache)
-const GOOGLE_FALLBACK = {
-  web: '598286841038-j095u3iopiqltpgbvu0f5od924etobk7.apps.googleusercontent.com',
-  android: '598286841038-780e9kksjoscthg0g611virnchlb7kcr.apps.googleusercontent.com',
-  ios: '598286841038-28ili7c5stg5524sicropmm7s7nkq936.apps.googleusercontent.com',
-};
+// FIX #3: Removido GOOGLE_FALLBACK hardcoded. Se env vars não estiverem presentes,
+// o login Google fica desabilitado em vez de usar client IDs expostos no bundle.
 
 export default function Login() {
   const router = useRouter();
@@ -58,12 +54,13 @@ export default function Login() {
   const isSmallScreen = windowHeight < SMALL_SCREEN_HEIGHT;
 
   const extra = Constants.expoConfig?.extra as Record<string, string> | undefined;
+  // FIX #3: Sem fallback hardcoded — se env var estiver vazia, retorna '' e Google fica disabled
   const googleWebClientId =
-    (extra?.googleWebClientId || process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '').trim() || GOOGLE_FALLBACK.web;
+    (extra?.googleWebClientId || process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '').trim();
   const googleAndroidClientId =
-    (extra?.googleAndroidClientId || process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '').trim() || GOOGLE_FALLBACK.android;
+    (extra?.googleAndroidClientId || process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '').trim();
   const googleIosClientId =
-    (extra?.googleIosClientId || process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '').trim() || GOOGLE_FALLBACK.ios;
+    (extra?.googleIosClientId || process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '').trim();
 
   const hasGoogleConfig = !!(googleWebClientId || googleAndroidClientId || googleIosClientId);
 
@@ -197,9 +194,9 @@ export default function Login() {
     }
   }, [hasGoogleConfig, googleWebClientId, googleAndroidClientId, googleIosClientId, signInWithGoogle, router]);
 
+  // FIX #22: Usa constante compartilhada de COMPANY ao invés de WHATSAPP_NUMBER local
   const openWhatsApp = useCallback(() => {
-    const url = `https://wa.me/${WHATSAPP_NUMBER}`;
-    Linking.openURL(url).catch(() => {});
+    Linking.openURL(COMPANY.whatsapp).catch(() => {});
   }, []);
 
   useEffect(() => {

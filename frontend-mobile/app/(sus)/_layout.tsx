@@ -28,9 +28,22 @@ export default function SusLayout() {
   // SUS module color — verde SUS
   const SUS_PRIMARY = '#16A34A';
 
+  // FIX #14: Guard de role — redireciona se o usuário não for sus/admin
   useEffect(() => {
     if (!loading && !user) {
       router.replace('/(auth)/login');
+      return;
+    }
+    if (!loading && user) {
+      if (user.role === 'patient') {
+        router.replace('/(patient)/home');
+        return;
+      }
+      if (user.role === 'doctor') {
+        router.replace('/(doctor)/dashboard');
+        return;
+      }
+      // Somente roles 'sus' e 'admin' continuam
     }
   }, [loading, user, router]);
 

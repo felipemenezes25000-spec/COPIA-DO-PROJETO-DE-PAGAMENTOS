@@ -84,19 +84,22 @@ export function useDailyCall({
     setIsCameraOff(newOff);
   }, [isCameraOff, callRef]);
 
+  // FIX #16: Só atualiza isFrontCamera APÓS cycleCamera() ser bem-sucedido.
+  // Anteriormente, o estado era invertido antes do await, e o catch silenciava a falha,
+  // deixando UI e câmera real dessincronizados.
   const flipCamera = useCallback(async () => {
     const call = callRef.current;
     if (!call) return;
 
-    const newFront = !isFrontCamera;
-    setIsFrontCamera(newFront);
-
     try {
       await call.cycleCamera();
-    } catch {
-      // Some devices don't support this
+      // Sucesso: agora sim inverte o estado
+      setIsFrontCamera((prev) => !prev);
+    } catch (e) {
+      // Dispositivo não suporta cycleCamera — não inverte o estado
+      if (__DEV__) console.warn('[useDailyCall] cycleCamera falhou:', e);
     }
-  }, [isFrontCamera, callRef]);
+  }, [callRef]);
 
   return {
     callState,

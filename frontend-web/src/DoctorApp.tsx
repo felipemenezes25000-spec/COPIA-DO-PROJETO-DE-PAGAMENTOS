@@ -1,4 +1,4 @@
-/**
+﻿/**
  * DoctorApp — Entry point do portal do médico.
  *
  * Premium features integradas:

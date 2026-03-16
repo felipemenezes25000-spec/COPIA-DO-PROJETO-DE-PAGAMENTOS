@@ -27,6 +27,7 @@ import { PaymentMethodSelection } from '../../components/payment/PaymentMethodSe
 import { SkeletonList } from '../../components/ui/SkeletonLoader';
 import { AppEmptyState } from '../../components/ui';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
+import { showToast } from '../../components/ui/Toast';
 
 type PayScreen = 'selection' | 'pix';
 
@@ -179,6 +180,8 @@ export default function PaymentScreen() {
       if (pollCountRef.current >= MAX_POLLS) {
         if (pollRef.current) clearInterval(pollRef.current);
         setAutoPolling(false);
+        // FIX #28: Avisa o usuário que o acompanhamento automático expirou
+        showToast({ message: 'Verificação automática encerrada. Use o botão "Já paguei" para checar.', type: 'warning' });
         return;
       }
       const currentPayment = paymentRef.current;
@@ -312,7 +315,13 @@ export default function PaymentScreen() {
   // PIX screen
   const pixCopyPaste = payment?.pixCopyPaste || pixCode;
   const isApproved = payment?.status === 'approved';
-  const pixExpiresAt = payment ? new Date(new Date(payment.createdAt).getTime() + PIX_EXPIRATION_MINUTES * 60 * 1000) : null;
+  // FIX #20: Usa expiresAt do backend se disponível (Mercado Pago define a expiração real),
+  // senão calcula fallback com PIX_EXPIRATION_MINUTES
+  const pixExpiresAt = payment
+    ? ((payment as any).expiresAt
+      ? new Date((payment as any).expiresAt)
+      : new Date(new Date(payment.createdAt).getTime() + PIX_EXPIRATION_MINUTES * 60 * 1000))
+    : null;
   const expiresInMinutes = pixExpiresAt ? Math.floor((pixExpiresAt.getTime() - Date.now()) / 60000) : null;
 
   return (

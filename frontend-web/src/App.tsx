@@ -18,14 +18,40 @@ import { Loader2 } from 'lucide-react';
 
 const DoctorApp = lazy(() => import('@/DoctorApp'));
 
+// FIX #7: Em localhost, não assume portal médico automaticamente.
+// Usa query param ?portal=doctor ou paths que não são públicos.
+// Em produção, detecta pelo subdomínio medico.*
 function isDoctorPortal(): boolean {
   const path = window.location.pathname;
+  // Rotas públicas — nunca são portal médico
   if (path.startsWith('/admin')) return false;
   if (path === '/' || path.startsWith('/verify') || path.startsWith('/recuperar-senha') || path.startsWith('/cookies')) return false;
 
   const host = window.location.hostname;
-  if (host === 'localhost' || host === '127.0.0.1') return true;
-  return host === 'medico.renovejasaude.com.br' || host.startsWith('medico.');
+  // Produção: subdomínio medico.* → portal médico
+  if (host === 'medico.renovejasaude.com.br' || host.startsWith('medico.')) return true;
+
+  // Localhost/dev: verifica se há token de médico no localStorage OU query param
+  if (host === 'localhost' || host === '127.0.0.1') {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('portal') === 'doctor') return true;
+    // Se tem token de médico salvo, assume portal médico (continuidade de sessão)
+    try {
+      const storedUser = localStorage.getItem('doctor_user');
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        if (user?.role === 'doctor') return true;
+      }
+    } catch { /* ignore */ }
+    // Rotas específicas do portal médico em dev
+    const doctorPaths = ['/login', '/registro', '/dashboard', '/pedidos', '/consultas',
+      '/pacientes', '/notificacoes', '/perfil', '/video', '/configuracoes',
+      '/certificado', '/fila', '/sobre', '/ajuda', '/termos', '/privacidade',
+      '/completar-cadastro', '/resumo-consulta', '/care-plans', '/paciente'];
+    return doctorPaths.some(dp => path === dp || path.startsWith(dp + '/'));
+  }
+
+  return false;
 }
 
 function AdminProtectedRoute({ children }: { children: React.ReactNode }) {

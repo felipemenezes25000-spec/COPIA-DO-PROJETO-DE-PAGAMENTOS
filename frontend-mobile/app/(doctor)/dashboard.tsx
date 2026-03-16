@@ -19,6 +19,7 @@ import { haptics } from '../../lib/haptics';
 import { showToast } from '../../components/ui/Toast';
 import { getGreeting } from '../../lib/utils/format';
 import { SkeletonList } from '../../components/ui/SkeletonLoader';
+import { useAppTheme } from '../../lib/ui/useAppTheme';
 
 import {
   ConnectionBanner,
@@ -27,11 +28,8 @@ import {
   StatsGrid,
   QuickAccess,
   CertificateAlert,
-  clinicalSoftTokens,
 } from '../../components/doctor/dashboard';
 import { useDashboardResponsive } from '../../components/doctor/dashboard/useDashboardResponsive';
-
-const { colors } = clinicalSoftTokens;
 
 // ─── Helpers ────────────────────────────────────────────────────
 function sanitizeDoctorName(name: string): { displayFirst: string; greetingName: string } {
@@ -52,6 +50,9 @@ export default function DoctorDashboard() {
   const insets = useSafeAreaInsets();
   const responsive = useDashboardResponsive();
   const { user } = useAuth();
+  // FIX #24: Usa useAppTheme dinâmico ao invés de clinicalSoftTokens.colors estático.
+  // Isso garante que loading state e render principal respeitem dark mode.
+  const { colors } = useAppTheme({ role: 'doctor' });
 
   const [refreshing, setRefreshing] = useState(false);
   const [hasCertificate, setHasCertificate] = useState<boolean | null>(null);
@@ -165,6 +166,7 @@ export default function DoctorDashboard() {
                   width: responsive.avatarSize,
                   height: responsive.avatarSize,
                   borderRadius: responsive.avatarSize / 2,
+                  backgroundColor: colors.surfaceSecondary,
                 },
               ]}
             />
@@ -172,7 +174,7 @@ export default function DoctorDashboard() {
           <View
             style={[
               styles.loadingCard,
-              { minHeight: responsive.heights.queueCardMin },
+              { minHeight: responsive.heights.queueCardMin, backgroundColor: colors.surfaceSecondary },
             ]}
           />
           <SkeletonList count={5} />
@@ -264,12 +266,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 24,
   },
-  loadingAvatar: {
-    backgroundColor: '#E8ECF2',
-  },
+  loadingAvatar: {},
   loadingCard: {
     borderRadius: 28,
-    backgroundColor: '#E8ECF2',
     marginBottom: 20,
   },
 });

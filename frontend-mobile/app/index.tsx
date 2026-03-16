@@ -10,6 +10,7 @@ import { isOnboardingDone } from '../lib/onboarding';
 
 // Se após esse tempo ainda estiver na splash, força ir para login (evita tela travada)
 const SPLASH_MAX_MS = 4000;
+const NAVIGATION_DELAY_MS = 100;
 
 export default function SplashScreen() {
   const { user, loading } = useAuth();
@@ -17,41 +18,50 @@ export default function SplashScreen() {
   const router = useRouter();
   const hasNavigated = useRef(false);
 
+  // FIX #1 + #27: Unificação da lógica de navegação — elimina race condition entre
+  // os dois useEffects anteriores e remove dead code (delay ternário redundante).
+  // O timeout de segurança (SPLASH_MAX_MS) agora é parte do mesmo effect.
   useEffect(() => {
+    // Guarda: se já navegou, não faz nada
+    const navigate = (route: string) => {
+      if (hasNavigated.current) return;
+      hasNavigated.current = true;
+      router.replace(route as any);
+    };
+
+    // Plano B: timeout de segurança — se após SPLASH_MAX_MS nada acontecer, força login
+    const fallbackTimer = setTimeout(() => {
+      navigate('/(auth)/login');
+    }, SPLASH_MAX_MS);
+
     if (!loading) {
-      const delay = user ? 100 : 100;  // Was 400ms for authenticated; reduced for faster navigation
-      const t = setTimeout(async () => {
+      const navTimer = setTimeout(async () => {
         if (hasNavigated.current) return;
-        hasNavigated.current = true;
         if (user) {
           if (user.role === 'patient') {
-            router.replace('/(patient)/home');
+            navigate('/(patient)/home');
           } else if (user.role === 'sus' || user.role === 'admin') {
-            router.replace('/(sus)/dashboard');
+            navigate('/(sus)/dashboard');
           } else if (user.role === 'doctor' && !user.profileComplete) {
-            router.replace('/(auth)/complete-doctor');
+            navigate('/(auth)/complete-doctor');
           } else {
-            router.replace('/(doctor)/dashboard');
+            navigate('/(doctor)/dashboard');
           }
         } else {
           // Primeiro acesso: mostrar onboarding para pacientes
           const done = await isOnboardingDone();
-          router.replace(done ? '/(auth)/login' : '/onboarding');
+          navigate(done ? '/(auth)/login' : '/onboarding');
         }
-      }, delay);
-      return () => clearTimeout(t);
-    }
-  }, [user, loading, router]);
+      }, NAVIGATION_DELAY_MS);
 
-  // Plano B: se após SPLASH_MAX_MS ainda estiver na splash, força login (evita tela travada)
-  useEffect(() => {
-    const t = setTimeout(() => {
-      if (hasNavigated.current) return;
-      hasNavigated.current = true;
-      router.replace('/(auth)/login');
-    }, SPLASH_MAX_MS);
-    return () => clearTimeout(t);
-  }, [router]);
+      return () => {
+        clearTimeout(navTimer);
+        clearTimeout(fallbackTimer);
+      };
+    }
+
+    return () => clearTimeout(fallbackTimer);
+  }, [user, loading, router]);
 
   return (
     <LinearGradient

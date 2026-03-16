@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Rota da videoconferência (Daily.co).
  * Em Expo Go ou se o módulo nativo falhar: mostra instruções amigáveis.
  * Em development build funcional: carrega VideoCallScreenInner dinamicamente.
@@ -16,9 +16,9 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, borderRadius } from '../../lib/theme';
+// FIX #9: Unificado imports — spacing, borderRadius e shadows todos de designSystem
 import { useAppTheme } from '../../lib/ui/useAppTheme';
-import { shadows } from '../../lib/designSystem';
+import { spacing, borderRadius, shadows } from '../../lib/designSystem';
 import type { DesignColors } from '../../lib/designSystem';
 import { isExpoGo } from '../../lib/expo-go';
 
@@ -128,9 +128,9 @@ export default function VideoRequestIdRoute() {
 
           {Platform.OS !== 'web' && (
             <View style={styles.tipsRow}>
-              <Tip icon="wifi-outline" text="Conexão estável" />
-              <Tip icon="mic-outline" text="Microfone liberado" />
-              <Tip icon="videocam-outline" text="Câmera liberada" />
+              <Tip icon="wifi-outline" text="Conexão estável" colors={colors} tipStyle={styles.tip} tipTextStyle={styles.tipText} />
+              <Tip icon="mic-outline" text="Microfone liberado" colors={colors} tipStyle={styles.tip} tipTextStyle={styles.tipText} />
+              <Tip icon="videocam-outline" text="Câmera liberada" colors={colors} tipStyle={styles.tip} tipTextStyle={styles.tipText} />
             </View>
           )}
         </View>
@@ -151,13 +151,12 @@ export default function VideoRequestIdRoute() {
   return <Inner />;
 }
 
-function Tip({ icon, text }: { icon: keyof typeof import('@expo/vector-icons').Ionicons.glyphMap; text: string }) {
-  const { colors } = useAppTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+// FIX #21: Tip recebe colors e styles via props para evitar recriar styles por instância
+function Tip({ icon, text, colors, tipStyle, tipTextStyle }: { icon: keyof typeof import('@expo/vector-icons').Ionicons.glyphMap; text: string; colors: DesignColors; tipStyle: any; tipTextStyle: any }) {
   return (
-    <View style={styles.tip}>
+    <View style={tipStyle}>
       <Ionicons name={icon} size={16} color={colors.primary} />
-      <Text style={styles.tipText}>{text}</Text>
+      <Text style={tipTextStyle}>{text}</Text>
     </View>
   );
 }
