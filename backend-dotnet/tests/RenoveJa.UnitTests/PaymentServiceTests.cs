@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using RenoveJa.Application.Configuration;
+using RenoveJa.Application.DTOs.Notifications;
 using RenoveJa.Application.DTOs.Payments;
 using RenoveJa.Application.Interfaces;
 using RenoveJa.Application.Services.Payments;
@@ -55,245 +56,10 @@ public class PaymentServiceTests
 
     private static MedicalRequest PendingRequest(Guid patientId, decimal price = 49.9m)
     {
-        var r = new MedicalRequest
-        {
-            Id          = Guid.NewGuid(),
-            PatientId   = patientId,
-            DoctorId    = Guid.NewGuid(),
-            Status      = RequestStatus.ApprovedPendingPayment,
-            Type        = RequestType.Prescription,
-            RequestType = RequestType.Prescription,
-            CreatedAt   = DateTime.UtcNow,
-        };
-        r.SetPrice(price, "BRL");
+        var r = MedicalRequest.CreatePrescription(patientId, "Patient", PrescriptionType.Simple, new List<string> { "Med" });
+        r.Approve(price);
         return r;
     }
-
-    // ── CreatePaymentAsync ────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task CreatePaymentAsync_RequestNotFound_ThrowsKeyNotFoundException()
-    {
-        _requestRepo.Setup(x => x.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-                    .ReturnsAsync((MedicalRequest?)null);
-
-        await CreateSut().Invoking(s => s.CreatePaymentAsync(
-                new CreatePaymentRequestDto { RequestId = Guid.NewGuid(), PaymentMethod = "pix" },
-                Guid.NewGuid(), CancellationToken.None))
-            .Should().ThrowAsync<KeyNotFoundException>();
-    }
-
-    [Fact]
-    public async Task CreatePaymentAsync_WrongPatient_ThrowsUnauthorizedException()
-    {
-        var req = MakeApprovedRequest(Guid.NewGuid());
-        _requestRepo.Setup(x => x.GetByIdAsync(req.Id, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(req);
-
-        await CreateSut().Invoking(s => s.CreatePaymentAsync(
-                new CreatePaymentRequestDto { RequestId = req.Id, PaymentMethod = "pix" },
-                Guid.NewGuid(), CancellationToken.None))
-            .Should().ThrowAsync<UnauthorizedAccessException>();
-    }
-
-    [Fact]
-    public async Task CreatePaymentAsync_WrongStatus_ThrowsInvalidOperation()
-    {
-        var patientId = Guid.NewGuid();
-        var req = MakeApprovedRequest(patientId);
-        req.Status = RequestStatus.Pending;
-
-        _requestRepo.Setup(x => x.GetByIdAsync(req.Id, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(req);
-
-        await CreateSut().Invoking(s => s.CreatePaymentAsync(
-                new CreatePaymentRequestDto { RequestId = req.Id, PaymentMethod = "pix" },
-                patientId, CancellationToken.None))
-            .Should().ThrowAsync<InvalidOperationException>();
-    }
-
-    [Fact]
-    public async Task CreatePaymentAsync_AlreadyApprovedPayment_ThrowsAndFixesRequest()
-    {
-        var patientId = Guid.NewGuid();
-        var req       = MakeApprovedRequest(patientId);
-        var approved  = MakePendingPix(req.Id, patientId, "mp-001");
-        approved.Approve();
-
-        _requestRepo.Setup(x => x.GetByIdAsync(req.Id, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(req);
-        _paymentRepo.Setup(x => x.GetByRequestIdAsync(req.Id, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(approved);
-        _requestRepo.Setup(x => x.UpdateAsync(It.IsAny<MedicalRequest>(), It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(req);
-
-        await CreateSut().Invoking(s => s.CreatePaymentAsync(
-                new CreatePaymentRequestDto { RequestId = req.Id, PaymentMethod = "pix" },
-                patientId, CancellationToken.None))
-            .Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*já possui pagamento aprovado*");
-    }
-
-    // ── ConfirmPaymentAsync ───────────────────────────────────────────────────
-
-    [Fact]
-    public async Task ConfirmPaymentAsync_ValidPayment_MarksPaid()
-    {
-        var patientId = Guid.NewGuid();
-        var req       = MakeApprovedRequest(patientId);
-        var payment   = MakePendingPix(req.Id, patientId, "mp-001");
-
-        _paymentRepo.Setup(x => x.GetByIdAsync(payment.Id, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(payment);
-        _paymentRepo.Setup(x => x.UpdateAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(payment);
-        _requestRepo.Setup(x => x.GetByIdAsync(req.Id, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(req);
-        _requestRepo.Setup(x => x.UpdateAsync(It.IsAny<MedicalRequest>(), It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(req);
-        SetupNotifMocks();
-
-        var result = await CreateSut().ConfirmPaymentAsync(payment.Id, CancellationToken.None);
-
-        result.Should().NotBeNull();
-        _requestRepo.Verify(x => x.UpdateAsync(
-            It.Is<MedicalRequest>(r => r.Status == RequestStatus.Paid),
-            It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task ConfirmPaymentAsync_NotFound_ThrowsKeyNotFoundException()
-    {
-        _paymentRepo.Setup(x => x.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-                    .ReturnsAsync((Payment?)null);
-
-        await CreateSut().Invoking(s => s.ConfirmPaymentAsync(Guid.NewGuid(), CancellationToken.None))
-                          .Should().ThrowAsync<KeyNotFoundException>();
-    }
-
-    // ── ConfirmPaymentByRequestIdAsync ────────────────────────────────────────
-
-    [Fact]
-    public async Task ConfirmByRequestId_NoPendingPayment_ThrowsKeyNotFound()
-    {
-        _paymentRepo.Setup(x => x.GetByRequestIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-                    .ReturnsAsync((Payment?)null);
-
-        await CreateSut().Invoking(s => s.ConfirmPaymentByRequestIdAsync(Guid.NewGuid(), CancellationToken.None))
-                          .Should().ThrowAsync<KeyNotFoundException>();
-    }
-
-    [Fact]
-    public async Task ConfirmByRequestId_AlreadyApproved_ThrowsInvalidOperation()
-    {
-        var patientId = Guid.NewGuid();
-        var payment   = MakePendingPix(Guid.NewGuid(), patientId);
-        payment.Approve();
-
-        _paymentRepo.Setup(x => x.GetByRequestIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(payment);
-
-        await CreateSut().Invoking(s => s.ConfirmPaymentByRequestIdAsync(Guid.NewGuid(), CancellationToken.None))
-                          .Should().ThrowAsync<InvalidOperationException>()
-                          .WithMessage("*não está pendente*");
-    }
-
-    // ── GetPaymentByRequestIdAsync ────────────────────────────────────────────
-
-    [Fact]
-    public async Task GetPaymentByRequestId_WrongPatient_ThrowsUnauthorized()
-    {
-        var req = MakeApprovedRequest(Guid.NewGuid());
-        _requestRepo.Setup(x => x.GetByIdAsync(req.Id, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(req);
-
-        await CreateSut().Invoking(s =>
-                s.GetPaymentByRequestIdAsync(req.Id, Guid.NewGuid(), CancellationToken.None))
-            .Should().ThrowAsync<UnauthorizedAccessException>();
-    }
-
-    [Fact]
-    public async Task GetPaymentByRequestId_NoPayment_ReturnsNull()
-    {
-        var patientId = Guid.NewGuid();
-        var req       = MakeApprovedRequest(patientId);
-
-        _requestRepo.Setup(x => x.GetByIdAsync(req.Id, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(req);
-        _paymentRepo.Setup(x => x.GetByRequestIdAsync(req.Id, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync((Payment?)null);
-
-        var result = await CreateSut().GetPaymentByRequestIdAsync(req.Id, patientId, CancellationToken.None);
-        result.Should().BeNull();
-    }
-
-    // ── ValidateWebhookSignature ──────────────────────────────────────────────
-
-    [Fact]
-    public void ValidateWebhookSignature_EmptySecret_ReturnsFalse()
-        => CreateSut("").ValidateWebhookSignature("ts=1,v1=abc", "req", "123").Should().BeFalse();
-
-    [Fact]
-    public void ValidateWebhookSignature_NullSignature_ReturnsFalse()
-        => CreateSut().ValidateWebhookSignature(null, "req", "123").Should().BeFalse();
-
-    [Fact]
-    public void ValidateWebhookSignature_BadFormat_ReturnsFalse()
-        => CreateSut().ValidateWebhookSignature("not-valid", "req", "123").Should().BeFalse();
-
-    [Fact]
-    public void ValidateWebhookSignature_CorrectHmac_ReturnsTrue()
-    {
-        const string secret  = "hmac-secret-test";
-        const string ts      = "1719000000";
-        const string dataId  = "99988";
-        const string reqId   = "request-xyz";
-        var manifest = $"id:{dataId};request-id:{reqId};ts:{ts};";
-        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
-        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(manifest));
-        var v1   = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
-
-        CreateSut(secret).ValidateWebhookSignature($"ts={ts},v1={v1}", reqId, dataId)
-                          .Should().BeTrue();
-    }
-
-    // ── IsPaymentProcessedByExternalIdAsync ──────────────────────────────────
-
-    [Fact]
-    public async Task IsPaymentProcessed_Empty_ReturnsFalse()
-        => (await CreateSut().IsPaymentProcessedByExternalIdAsync("", CancellationToken.None))
-           .Should().BeFalse();
-
-    [Fact]
-    public async Task IsPaymentProcessed_NotFound_ReturnsFalse()
-    {
-        _paymentRepo.Setup(x => x.GetByExternalIdAsync("x", It.IsAny<CancellationToken>()))
-                    .ReturnsAsync((Payment?)null);
-        (await CreateSut().IsPaymentProcessedByExternalIdAsync("x", CancellationToken.None))
-           .Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task IsPaymentProcessed_ApprovedPayment_ReturnsTrue()
-    {
-        var p = MakePendingPix(Guid.NewGuid(), Guid.NewGuid(), "mp-ok");
-        p.Approve();
-        _paymentRepo.Setup(x => x.GetByExternalIdAsync("mp-ok", It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(p);
-        (await CreateSut().IsPaymentProcessedByExternalIdAsync("mp-ok", CancellationToken.None))
-           .Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task IsPaymentProcessed_PendingPayment_ReturnsFalse()
-    {
-        var p = MakePendingPix(Guid.NewGuid(), Guid.NewGuid(), "mp-pend");
-        _paymentRepo.Setup(x => x.GetByExternalIdAsync("mp-pend", It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(p);
-        (await CreateSut().IsPaymentProcessedByExternalIdAsync("mp-pend", CancellationToken.None))
-           .Should().BeFalse();
-    }
-}
 
     // ─── CreatePaymentAsync — validações ─────────────────────────────────
 
@@ -304,7 +70,7 @@ public class PaymentServiceTests
                 .ReturnsAsync((MedicalRequest?)null);
 
         var sut = CreateSut();
-        var dto = new CreatePaymentRequestDto { RequestId = Guid.NewGuid(), PaymentMethod = "pix" };
+        var dto = new CreatePaymentRequestDto(Guid.NewGuid());
 
         await sut.Invoking(s => s.CreatePaymentAsync(dto, Guid.NewGuid(), CancellationToken.None))
                  .Should().ThrowAsync<KeyNotFoundException>();
@@ -320,7 +86,7 @@ public class PaymentServiceTests
                 .ReturnsAsync(request);
 
         var sut = CreateSut();
-        var dto = new CreatePaymentRequestDto { RequestId = request.Id, PaymentMethod = "pix" };
+        var dto = new CreatePaymentRequestDto(request.Id);
 
         // Outro userId
         await sut.Invoking(s => s.CreatePaymentAsync(dto, Guid.NewGuid(), CancellationToken.None))
@@ -331,14 +97,14 @@ public class PaymentServiceTests
     public async Task CreatePaymentAsync_WhenStatusNotApprovedPendingPayment_Throws()
     {
         var patientId = Guid.NewGuid();
-        var request   = PendingRequest(patientId);
-        request.Status = RequestStatus.Pending; // status errado
+        var request   = MedicalRequest.CreatePrescription(patientId, "P", PrescriptionType.Simple, new List<string> { "M" });
+        // Status = Submitted, não ApprovedPendingPayment
 
         _reqRepo.Setup(x => x.GetByIdAsync(request.Id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(request);
 
         var sut = CreateSut();
-        var dto = new CreatePaymentRequestDto { RequestId = request.Id, PaymentMethod = "pix" };
+        var dto = new CreatePaymentRequestDto(request.Id);
 
         await sut.Invoking(s => s.CreatePaymentAsync(dto, patientId, CancellationToken.None))
                  .Should().ThrowAsync<InvalidOperationException>();
@@ -361,7 +127,7 @@ public class PaymentServiceTests
                 .ReturnsAsync(request);
 
         var sut = CreateSut();
-        var dto = new CreatePaymentRequestDto { RequestId = request.Id, PaymentMethod = "pix" };
+        var dto = new CreatePaymentRequestDto(request.Id);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => sut.CreatePaymentAsync(dto, patientId, CancellationToken.None));
@@ -432,7 +198,6 @@ public class PaymentServiceTests
     {
         var patientId = Guid.NewGuid();
         var request   = PendingRequest(patientId);
-        request.Status = RequestStatus.ApprovedPendingPayment;
 
         var payment = Payment.CreatePixPayment(request.Id, patientId, 49.9m);
 
@@ -445,7 +210,7 @@ public class PaymentServiceTests
         _reqRepo.Setup(x => x.UpdateAsync(It.IsAny<MedicalRequest>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(request);
         _notifRepo.Setup(x => x.CreateAsync(It.IsAny<Notification>(), It.IsAny<CancellationToken>()))
-                  .ReturnsAsync(new Notification());
+                  .ReturnsAsync((Notification n, CancellationToken _) => n);
         _pushSender.Setup(x => x.SendAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(),
                           It.IsAny<Dictionary<string, object?>>(), It.IsAny<CancellationToken>()))
                    .Returns(Task.CompletedTask);
