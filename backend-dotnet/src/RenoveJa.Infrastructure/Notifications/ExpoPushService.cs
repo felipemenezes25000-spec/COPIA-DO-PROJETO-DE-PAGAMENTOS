@@ -79,21 +79,24 @@ public class ExpoPushService : IPushNotificationSender
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("Expo push failed: {StatusCode} {Error}", response.StatusCode, responseBody);
-                return;
+                throw new InvalidOperationException($"Expo API retornou {(int)response.StatusCode}: {responseBody}");
             }
 
             // Expo retorna 200 mesmo quando tickets individuais falham; parsear para diagnosticar
+            var allFailed = false;
             try
             {
                 using var doc = JsonDocument.Parse(responseBody);
                 if (doc.RootElement.TryGetProperty("data", out var dataArr) && dataArr.ValueKind == JsonValueKind.Array)
                 {
                     var idx = 0;
+                    var errorCount = 0;
                     foreach (var ticket in dataArr.EnumerateArray())
                     {
                         var status = ticket.TryGetProperty("status", out var s) ? s.GetString() : null;
                         if (status == "error")
                         {
+                            errorCount++;
                             var msg = ticket.TryGetProperty("message", out var m) ? m.GetString() : "unknown";
                             var details = ticket.TryGetProperty("details", out var d) ? d.GetRawText() : null;
                             var tokenPreview = idx < activeTokens.Count
@@ -101,18 +104,16 @@ public class ExpoPushService : IPushNotificationSender
                                 : "?";
                             _logger.LogWarning("Expo push ticket error for user {UserId} token[{Idx}]: {Message} | details: {Details} | token: {TokenPreview}",
                                 request.UserId, idx, msg, details ?? "null", tokenPreview);
-                            // DeviceNotRegistered → ReceiptChecker desativa o token
                         }
                         else if (status == "ok" && _receiptChecker != null)
                         {
                             var ticketId = ticket.TryGetProperty("id", out var tid) ? tid.GetString() : null;
                             if (ticketId != null && idx < activeTokens.Count)
-                            {
                                 _receiptChecker.EnqueueTicket(ticketId, activeTokens[idx].Token, request.UserId);
-                            }
                         }
                         idx++;
                     }
+                    allFailed = errorCount > 0 && errorCount == idx;
                 }
                 if (doc.RootElement.TryGetProperty("errors", out var errArr) && errArr.ValueKind == JsonValueKind.Array)
                 {
@@ -124,16 +125,17 @@ public class ExpoPushService : IPushNotificationSender
                     }
                 }
             }
-            catch (JsonException)
-            {
-                // Resposta inesperada; log genérico
-            }
+            catch (JsonException) { /* Resposta inesperada; log genérico */ }
+
+            if (allFailed)
+                throw new InvalidOperationException("Todos os tokens retornaram erro no Expo Push. Verifique se o token é válido.");
 
             _logger.LogInformation("Push sent to {Count} tokens for user {UserId} [{Type}]", activeTokens.Count, request.UserId, request.Payload.Type);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not InvalidOperationException)
         {
             _logger.LogError(ex, "Failed to send push notification to user {UserId}", request.UserId);
+            throw; // re-throw para o caller (test push) saber que falhou
         }
     }
 

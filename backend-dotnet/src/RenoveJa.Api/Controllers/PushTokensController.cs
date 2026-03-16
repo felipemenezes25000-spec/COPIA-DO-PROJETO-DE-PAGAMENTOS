@@ -124,7 +124,13 @@ public class PushTokensController(
         var userId = GetUserId();
         var tokens = await pushTokenRepository.GetByUserIdAsync(userId, cancellationToken);
         if (tokens.Count == 0)
-            return BadRequest(new { message = "Nenhum token de push registrado. Faça login no app em um dispositivo físico e aceite as permissões." });
+        {
+            // Verificar se tem tokens inativos para dar mensagem mais útil
+            var allTokens = await pushTokenRepository.GetAllByUserIdAsync(userId, cancellationToken);
+            if (allTokens.Count > 0)
+                return BadRequest(new { message = "Seu token de push está inativo. Saia do app, entre novamente e tente outra vez." });
+            return BadRequest(new { message = "Nenhum token de push registrado. Abra o app em um dispositivo físico e aceite as permissões de notificação." });
+        }
 
         var payload = new PushNotificationPayload(
             "test",
