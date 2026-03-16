@@ -21,8 +21,8 @@ public class PostgresClient
         _connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") ?? config.Value.DatabaseUrl ?? "";
         // ConnectionStrings__DefaultConnection ja lido acima
         // Connection pooling: garante limites saudaveis para RDS db.t3.micro (max_connections ~80)
-        if (!_connectionString.Contains("Max Pool Size", StringComparison.OrdinalIgnoreCase))
-            _connectionString += ";Max Pool Size=20;Min Pool Size=2;Connection Idle Lifetime=300;Timeout=15";
+        if (!_connectionString.Contains("Maximum Pool Size", StringComparison.OrdinalIgnoreCase) && !_connectionString.Contains("Pooling", StringComparison.OrdinalIgnoreCase))
+            _connectionString += ";Maximum Pool Size=20;Minimum Pool Size=2;Connection Idle Lifetime=300;Timeout=15";
 
         if (string.IsNullOrWhiteSpace(_connectionString))
             throw new InvalidOperationException("Database connection string not configured.");
