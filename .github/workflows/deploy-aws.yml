@@ -40,11 +40,18 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-      - name: Force New Deployment
+      - name: Register Task Definition
+        run: |
+          aws ecs register-task-definition \
+            --cli-input-json file://infra/task-definition.json \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Update ECS Service
         run: |
           aws ecs update-service \
             --cluster $ECS_CLUSTER \
             --service $ECS_SERVICE \
+            --task-definition renoveja-api \
             --force-new-deployment \
             --region $AWS_REGION
 
