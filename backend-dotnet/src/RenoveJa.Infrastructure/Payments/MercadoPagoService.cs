@@ -135,13 +135,26 @@ public class MercadoPagoService(
         {
             ["email"] = email,
             ["first_name"] = firstName,
-            ["last_name"] = lastName,
-            ["phone"] = new
-            {
-                area_code = phoneAreaCode ?? "55",
-                number = phoneNumber ?? "999999999"
-            }
+            ["last_name"] = lastName
         };
+
+        // Só envia phone se for real (>= 8 dígitos após strip de não-dígitos).
+        // Phone é opcional na API /v1/customers; enviar defaults falsos polui os registros MP.
+        static bool IsRealPhone(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return false;
+            var digits = new string(value.Trim().Where(char.IsDigit).ToArray());
+            return digits.Length >= 8;
+        }
+
+        if (IsRealPhone(phoneNumber))
+        {
+            request["phone"] = new
+            {
+                area_code = !string.IsNullOrWhiteSpace(phoneAreaCode) ? phoneAreaCode : "55",
+                number = phoneNumber
+            };
+        }
 
         var json = JsonSerializer.Serialize(request, new JsonSerializerOptions
         {

@@ -258,7 +258,7 @@ public class PaymentAttemptModel
 {
     public Guid Id { get; set; }
     [JsonPropertyName("payment_id")]
-    public Guid PaymentId { get; set; }
+    public Guid? PaymentId { get; set; }
     [JsonPropertyName("request_id")]
     public Guid RequestId { get; set; }
     [JsonPropertyName("user_id")]

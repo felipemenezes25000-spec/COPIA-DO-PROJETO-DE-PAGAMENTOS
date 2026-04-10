@@ -26,8 +26,8 @@ public class CreatePaymentRequestValidator : AbstractValidator<CreatePaymentRequ
             RuleFor(x => x.PaymentMethodId)
                 .NotEmpty().WithMessage("PaymentMethodId é obrigatório para cartão (ex: 'visa', 'master').");
             RuleFor(x => x.Installments)
-                .GreaterThanOrEqualTo(1).When(x => x.Installments.HasValue)
-                .WithMessage("Installments deve ser pelo menos 1.");
+                .InclusiveBetween(1, 12).When(x => x.Installments.HasValue)
+                .WithMessage("Installments deve estar entre 1 e 12.");
         });
     }
 }

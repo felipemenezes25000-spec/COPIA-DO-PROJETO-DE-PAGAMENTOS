@@ -6,7 +6,7 @@ namespace RenoveJa.Domain.Entities;
 /// </summary>
 public class PaymentAttempt : Entity
 {
-    public Guid PaymentId { get; private set; }
+    public Guid? PaymentId { get; private set; }
     public Guid RequestId { get; private set; }
     public Guid UserId { get; private set; }
     public string CorrelationId { get; private set; }
@@ -31,7 +31,7 @@ public class PaymentAttempt : Entity
     }
 
     public PaymentAttempt(
-        Guid paymentId,
+        Guid? paymentId,
         Guid requestId,
         Guid userId,
         string correlationId,
@@ -87,7 +87,7 @@ public class PaymentAttempt : Entity
 
     public static PaymentAttempt Reconstitute(
         Guid id,
-        Guid paymentId,
+        Guid? paymentId,
         Guid requestId,
         Guid userId,
         string correlationId,

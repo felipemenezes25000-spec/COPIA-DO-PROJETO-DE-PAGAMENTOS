@@ -86,8 +86,13 @@ public class PaymentService(
             throw new InvalidOperationException("Esta solicitação já possui pagamento aprovado. Atualize a tela do pedido (puxe para atualizar) para ver o status atualizado.");
         }
 
-        if (medicalRequest.Price == null || medicalRequest.Price.Amount <= 0)
+        if (medicalRequest.Price == null || medicalRequest.Price.Amount < 0)
             throw new InvalidOperationException("Solicitação sem valor definido");
+
+        // Banco de horas: se o preço é 0 (crédito do paciente cobre toda a consulta), pula o Mercado Pago
+        // e marca a solicitação como paga diretamente. Ver docs/features/PAGAMENTOS_FLUXO_COMPLETO.md §15.2.
+        if (medicalRequest.Price.Amount == 0)
+            return await CreateBancoHorasPaymentInternalAsync(medicalRequest, userId, cancellationToken);
 
         var amount = medicalRequest.Price.Amount;
         var paymentMethod = string.IsNullOrWhiteSpace(request.PaymentMethod) ? "pix" : request.PaymentMethod.Trim().ToLowerInvariant();
@@ -244,13 +249,14 @@ public class PaymentService(
         }
         catch (Exception ex)
         {
-            // Persistir PaymentAttempt com falha
+            // Persistir PaymentAttempt com falha.
+            // IMPORTANTE: NÃO criamos um Payment "fantasma" apenas para satisfazer a FK —
+            // isso deixava linhas Payment Pending órfãs a cada falha do Mercado Pago.
+            // PaymentAttempt.PaymentId é nullable; registramos a tentativa sem Payment associado.
             if (attempt == null)
             {
-                var tempPayment = Payment.CreatePixPayment(requestId, userId, amount);
-                tempPayment = await paymentRepository.CreateAsync(tempPayment, cancellationToken);
                 attempt = new PaymentAttempt(
-                    tempPayment.Id,
+                    paymentId: null,
                     requestId,
                     userId,
                     correlationId,
@@ -274,6 +280,38 @@ public class PaymentService(
                 correlationId, requestId);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Banco de horas: cria um Payment já Approved (método "banco_horas"), marca a MedicalRequest como Paid
+    /// e publica os eventos/notificações correspondentes, sem qualquer interação com Mercado Pago.
+    /// </summary>
+    private async Task<PaymentResponseDto> CreateBancoHorasPaymentInternalAsync(
+        Domain.Entities.MedicalRequest medicalRequest,
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        var payment = Payment.CreateBancoHorasPayment(medicalRequest.Id, userId, 0m);
+        payment = await paymentRepository.CreateAsync(payment, cancellationToken);
+
+        medicalRequest.MarkAsPaid();
+        await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
+
+        await PublishRequestPaidAsync(medicalRequest, cancellationToken);
+        await NotifyDoctorPaymentPaidAsync(medicalRequest, cancellationToken);
+
+        await CreateNotificationAsync(
+            userId,
+            "Consulta Pronta",
+            "Sua consulta foi paga com seu banco de horas. Entre na sala de vídeo.",
+            cancellationToken,
+            medicalRequest.Id);
+
+        logger.LogInformation(
+            "[PAYMENT-BANCO-HORAS] Request {RequestId} quitada via banco de horas (sem Mercado Pago). PaymentId={PaymentId}",
+            medicalRequest.Id, payment.Id);
+
+        return MapToDto(payment);
     }
 
     private async Task<PaymentResponseDto> CreateCardPaymentInternalAsync(

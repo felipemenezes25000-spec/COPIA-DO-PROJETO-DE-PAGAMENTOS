@@ -273,6 +273,9 @@ public static class MigrationRunner
         """,
         "CREATE INDEX IF NOT EXISTS idx_payment_attempts_correlation_id ON public.payment_attempts(correlation_id)",
         "CREATE INDEX IF NOT EXISTS idx_payment_attempts_payment_id ON public.payment_attempts(payment_id)",
+        // Torna payment_id nullable para permitir registrar tentativas de pagamento que falharam
+        // antes de um Payment ser criado (evita linhas Payment Pending órfãs quando o Mercado Pago falha).
+        "ALTER TABLE public.payment_attempts ALTER COLUMN payment_id DROP NOT NULL",
         "CREATE INDEX IF NOT EXISTS idx_payment_attempts_request_id ON public.payment_attempts(request_id)",
         "CREATE INDEX IF NOT EXISTS idx_payment_attempts_mp_payment_id ON public.payment_attempts(mercado_pago_payment_id)",
         "CREATE INDEX IF NOT EXISTS idx_payment_attempts_mp_preference_id ON public.payment_attempts(mercado_pago_preference_id)",

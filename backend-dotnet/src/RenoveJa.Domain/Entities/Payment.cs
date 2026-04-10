@@ -60,6 +60,35 @@ public class Payment : Entity
     }
 
     /// <summary>
+    /// Cria um pagamento quitado via Banco de Horas (crédito do paciente). Não há interação com gateway:
+    /// já nasce Approved, com PaidAt = now. Usado quando a consulta tem valor 0 após aplicar o crédito.
+    /// </summary>
+    public static Payment CreateBancoHorasPayment(
+        Guid requestId,
+        Guid userId,
+        decimal amount)
+    {
+        if (requestId == Guid.Empty)
+            throw new DomainException("Request ID is required");
+        if (userId == Guid.Empty)
+            throw new DomainException("User ID is required");
+        if (amount != 0)
+            throw new DomainException("Banco de horas payment must have amount zero");
+        var now = DateTime.UtcNow;
+        var payment = new Payment(
+            Guid.NewGuid(),
+            requestId,
+            userId,
+            Money.Create(amount),
+            PaymentStatus.Approved,
+            "banco_horas",
+            now,
+            now);
+        payment.PaidAt = now;
+        return payment;
+    }
+
+    /// <summary>
     /// Cria um pagamento com cartão (crédito ou débito). ExternalId é definido depois via SetExternalId.
     /// </summary>
     public static Payment CreateCardPayment(
