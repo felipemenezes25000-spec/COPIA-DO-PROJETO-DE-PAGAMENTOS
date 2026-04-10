@@ -90,6 +90,14 @@ public interface IDigitalCertificateService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Valida a senha do certificado PFX sem assinar nada.
+    /// </summary>
+    Task<bool> ValidateCertificatePasswordAsync(
+        Guid certificateId,
+        string password,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Remove um certificado (revoga).
     /// </summary>
     Task<bool> RevokeCertificateAsync(
@@ -109,4 +117,6 @@ public record CertificateInfo(
     DateTime NotAfter,
     bool IsValid,
     bool IsExpired,
-    int DaysUntilExpiry);
+    int DaysUntilExpiry,
+    string? Cpf = null,
+    string? CrmNumber = null);

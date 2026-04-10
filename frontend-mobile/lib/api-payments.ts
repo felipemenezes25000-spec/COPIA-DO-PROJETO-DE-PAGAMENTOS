@@ -77,3 +77,21 @@ export async function payWithSavedCard(
     token,
   });
 }
+
+// ============================================
+// CONSULTATION TIME BANK
+// ============================================
+
+export interface TimeBankBalanceEntry {
+  consultationType: string;
+  balanceMinutes: number;
+}
+
+export interface TimeBankBalanceResponse {
+  balances: TimeBankBalanceEntry[];
+}
+
+/** Retorna saldo do banco de horas de consulta do paciente. */
+export async function getTimeBankBalance(): Promise<TimeBankBalanceResponse> {
+  return apiClient.get('/api/consultation-time-bank/balance');
+}

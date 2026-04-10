@@ -99,4 +99,13 @@ public interface IStorageService
     /// Retorna null se não for do nosso storage.
     /// </summary>
     string? ExtractPathFromStorageUrl(string url);
+
+    /// <summary>
+    /// Faz upload de um stream para o storage.
+    /// </summary>
+    Task<StorageUploadResult> UploadStreamAsync(
+        string path,
+        Stream stream,
+        string contentType,
+        CancellationToken cancellationToken = default);
 }

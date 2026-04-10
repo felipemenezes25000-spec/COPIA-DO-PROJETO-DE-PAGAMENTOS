@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using RenoveJa.Application.Configuration;
 using RenoveJa.Application.DTOs.Requests;
 using RenoveJa.Application.DTOs.Video;
+using RenoveJa.Application.Helpers;
 using RenoveJa.Application.Interfaces;
 using RenoveJa.Application.Services.Notifications;
 using RenoveJa.Domain.Entities;

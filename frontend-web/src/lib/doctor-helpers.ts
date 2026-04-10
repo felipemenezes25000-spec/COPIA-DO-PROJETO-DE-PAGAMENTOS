@@ -15,6 +15,8 @@ import {
   Shield,
   Eye,
   Play,
+  CreditCard,
+  Hourglass,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -115,20 +117,20 @@ const STATUS_MAP: Record<string, StatusInfo> = {
     priority: 2,
   },
   approved_pending_payment: {
-    label: 'Aprovado',
+    label: 'Aguardando pagamento',
     variant: 'outline',
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-50 border-blue-200',
-    icon: CheckCircle2,
+    color: 'text-amber-700',
+    bgColor: 'bg-amber-50 border-amber-200',
+    icon: Hourglass,
     priority: 3,
   },
   paid: {
-    label: 'Aprovado',
+    label: 'Pago — Pronto para assinar',
     variant: 'outline',
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-50 border-blue-200',
-    icon: CheckCircle2,
-    priority: 3,
+    color: 'text-emerald-700',
+    bgColor: 'bg-emerald-50 border-emerald-200',
+    icon: CreditCard,
+    priority: 2,
   },
   in_consultation: {
     label: 'Em consulta',
@@ -221,11 +223,11 @@ const STATUS_MAP: Record<string, StatusInfo> = {
     priority: 3,
   },
   pending_payment: {
-    label: 'Aprovado',
+    label: 'Aguardando pagamento',
     variant: 'outline',
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-50 border-blue-200',
-    icon: CheckCircle2,
+    color: 'text-amber-700',
+    bgColor: 'bg-amber-50 border-amber-200',
+    icon: Hourglass,
     priority: 3,
   },
   completed: {
@@ -439,4 +441,51 @@ export function getWaitingTime(createdAt: string): {
   if (hours < 24) return { label: `${hours}h`, urgent: hours > 2 };
   const days = Math.floor(hours / 24);
   return { label: `${days}d`, urgent: true };
+}
+
+// ── Payment Status Helpers ──
+
+/** Returns true when the request is approved but waiting for the patient to pay. */
+export function isAwaitingPayment(request: { status?: string }): boolean {
+  const norm = normalizeStatus(request.status);
+  return norm === 'approved_pending_payment' || norm === 'pending_payment';
+}
+
+/** Returns true when the patient has paid and the doctor can sign. */
+export function canSign(request: { status?: string }): boolean {
+  const norm = normalizeStatus(request.status);
+  return norm === 'paid';
+}
+
+export interface PaymentStatusInfo {
+  label: string;
+  color: string;
+  bgColor: string;
+  icon: LucideIcon;
+}
+
+/** Returns display info for the payment status badge shown to the doctor. */
+export function getPaymentStatusInfo(request: {
+  status?: string;
+}): PaymentStatusInfo | null {
+  const norm = normalizeStatus(request.status);
+  if (norm === 'approved_pending_payment' || norm === 'pending_payment') {
+    return {
+      label: 'Aguardando pagamento do paciente',
+      color: 'text-amber-700 dark:text-amber-300',
+      bgColor:
+        'bg-amber-50 border-amber-300 dark:bg-amber-950/30 dark:border-amber-700',
+      icon: Hourglass,
+    };
+  }
+  if (norm === 'paid') {
+    return {
+      label: 'Pagamento confirmado',
+      color: 'text-emerald-700 dark:text-emerald-300',
+      bgColor:
+        'bg-emerald-50 border-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-700',
+      icon: CreditCard,
+    };
+  }
+  return null;
 }

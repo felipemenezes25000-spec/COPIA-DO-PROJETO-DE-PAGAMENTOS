@@ -22,4 +22,7 @@ public interface IConsultationTimeBankRepository
 
     /// <summary>Retorna os segundos já debitados para esta solicitação (banco de horas usado na criação).</summary>
     Task<int> GetDebitedSecondsForRequestAsync(Guid requestId, CancellationToken ct = default);
+
+    /// <summary>Retorna todos os saldos do paciente, agrupados por tipo de consulta.</summary>
+    Task<IReadOnlyList<(string ConsultationType, int BalanceSeconds)>> GetAllBalancesAsync(Guid patientId, CancellationToken ct = default);
 }

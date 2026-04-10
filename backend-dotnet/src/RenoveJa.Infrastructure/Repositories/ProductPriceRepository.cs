@@ -1,6 +1,7 @@
 using Dapper;
 using RenoveJa.Application.DTOs.Productivity;
 using RenoveJa.Application.Interfaces;
+using RenoveJa.Domain.Interfaces;
 using RenoveJa.Infrastructure.Data.Postgres;
 
 namespace RenoveJa.Infrastructure.Repositories;

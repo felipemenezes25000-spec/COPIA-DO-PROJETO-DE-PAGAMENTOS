@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using RenoveJa.Application.DTOs.Payments;
 using RenoveJa.Application.Interfaces;
 using RenoveJa.Application.Services.Payments;
+using RenoveJa.Domain.Interfaces;
 
 namespace RenoveJa.Api.Controllers;
 
@@ -177,6 +178,26 @@ public class PaymentsController(
         if (payment == null)
             return NotFound(new { message = "Nenhum pagamento encontrado para esta solicitação" });
         return Ok(payment);
+    }
+
+    /// <summary>
+    /// Retorna o saldo do banco de horas do paciente por tipo de consulta.
+    /// </summary>
+    [HttpGet("/api/consultation-time-bank/balance")]
+    [Authorize]
+    public async Task<IActionResult> GetTimeBankBalance(
+        [FromServices] IConsultationTimeBankRepository timeBankRepository,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        var balances = await timeBankRepository.GetAllBalancesAsync(userId, cancellationToken);
+        var result = balances.Select(b => new
+        {
+            consultationType = b.ConsultationType,
+            balanceSeconds = b.BalanceSeconds,
+            balanceMinutes = b.BalanceSeconds / 60
+        });
+        return Ok(result);
     }
 
     /// <summary>

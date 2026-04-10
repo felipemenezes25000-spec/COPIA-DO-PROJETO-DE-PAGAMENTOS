@@ -36,11 +36,21 @@ import {
   Clock,
   FileText,
   ClipboardList,
+  Hourglass,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { normalizeStatus } from '@/lib/doctor-helpers';
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from '@/components/ui/tooltip';
+import {
+  normalizeStatus,
+  isAwaitingPayment,
+  getPaymentStatusInfo,
+} from '@/lib/doctor-helpers';
 import type { MedicalRequest } from '@/services/doctorApi';
 
 interface Props {
@@ -265,12 +275,32 @@ export function RequestActionsCard({
     !primary && secondary.length === 0 && destructive.length === 0;
   const hasLoading = !!actionLoading;
 
+  const awaitingPayment = isAwaitingPayment(request);
+  const paymentInfo = getPaymentStatusInfo(request);
+
   return (
-    <Card className="shadow-sm lg:sticky lg:top-6">
+    <Card
+      className={`shadow-sm lg:sticky lg:top-6 ${awaitingPayment ? 'border-amber-200 dark:border-amber-800' : ''}`}
+    >
       <CardHeader className="pb-3">
         <CardTitle className="text-base">Ações</CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
+        {/* ── Payment status banner ── */}
+        {paymentInfo && (
+          <div
+            className={`mb-3 flex items-center gap-2.5 rounded-lg border p-3 ${paymentInfo.bgColor}`}
+          >
+            <paymentInfo.icon
+              className={`h-4 w-4 shrink-0 ${paymentInfo.color}`}
+              aria-hidden
+            />
+            <p className={`text-xs font-medium ${paymentInfo.color}`}>
+              {paymentInfo.label}
+            </p>
+          </div>
+        )}
+
         {noActions ? (
           <div className="py-4 text-center">
             <Clock className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
@@ -279,22 +309,39 @@ export function RequestActionsCard({
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className={`space-y-3 ${awaitingPayment ? 'opacity-60' : ''}`}>
             {/* ── Primária ── */}
-            {primary && (
-              <Button
-                className="w-full gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
-                onClick={primary.onClick}
-                disabled={hasLoading}
-              >
-                {primary.loadingKey && actionLoading === primary.loadingKey ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <primary.icon className="h-4 w-4" />
-                )}
-                {primary.label}
-              </Button>
-            )}
+            {primary &&
+              (awaitingPayment ? (
+                <Tooltip>
+                  <TooltipTrigger className="w-full">
+                    <Button
+                      className="w-full cursor-not-allowed gap-2 bg-gray-400 text-white"
+                      disabled
+                    >
+                      <Hourglass className="h-4 w-4" />
+                      Aguardando pagamento
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    Aguarde o pagamento do paciente para prosseguir
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <Button
+                  className="w-full gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                  onClick={primary.onClick}
+                  disabled={hasLoading}
+                >
+                  {primary.loadingKey &&
+                  actionLoading === primary.loadingKey ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <primary.icon className="h-4 w-4" />
+                  )}
+                  {primary.label}
+                </Button>
+              ))}
 
             {/* ── Secundárias (grid 2-col quando couber) ── */}
             {secondary.length > 0 && (

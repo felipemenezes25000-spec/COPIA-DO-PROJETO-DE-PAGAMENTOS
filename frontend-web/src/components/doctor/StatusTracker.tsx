@@ -16,6 +16,7 @@ import {
   Video,
   XCircle,
   Ban,
+  CreditCard,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { normalizeStatus } from '@/lib/doctor-helpers';
@@ -37,10 +38,16 @@ const PRESCRIPTION_STEPS: Step[] = [
     statuses: ['analyzing', 'in_review'],
   },
   {
+    key: 'payment',
+    label: 'Pagamento',
+    icon: CreditCard,
+    statuses: ['approved_pending_payment', 'pending_payment'],
+  },
+  {
     key: 'approved',
     label: 'Assinatura',
     icon: FileText,
-    statuses: ['approved_pending_payment', 'pending_payment', 'paid'],
+    statuses: ['paid'],
   },
   { key: 'signed', label: 'Assinado', icon: ShieldCheck, statuses: ['signed'] },
   {
@@ -60,16 +67,16 @@ const CONSULTATION_STEPS: Step[] = [
     statuses: ['searching_doctor'],
   },
   {
+    key: 'payment',
+    label: 'Pagamento',
+    icon: CreditCard,
+    statuses: ['approved_pending_payment', 'pending_payment'],
+  },
+  {
     key: 'ready',
     label: 'Consulta pronta',
     icon: CheckCircle2,
-    statuses: [
-      'approved_pending_payment',
-      'pending_payment',
-      'paid',
-      'consultation_ready',
-      'consultation_accepted',
-    ],
+    statuses: ['paid', 'consultation_ready', 'consultation_accepted'],
   },
   {
     key: 'in_consultation',

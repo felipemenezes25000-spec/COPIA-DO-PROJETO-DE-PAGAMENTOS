@@ -89,6 +89,19 @@ public class ConsultationTimeBankRepository(PostgresClient db) : IConsultationTi
         return debited;
     }
 
+    public async Task<IReadOnlyList<(string ConsultationType, int BalanceSeconds)>> GetAllBalancesAsync(Guid patientId, CancellationToken ct = default)
+    {
+        var rows = await db.GetAllAsync<TimeBankModel>(
+            BankTable,
+            filter: $"patient_id=eq.{patientId}",
+            cancellationToken: ct);
+
+        return rows
+            .Where(r => r.BalanceSeconds > 0)
+            .Select(r => (r.ConsultationType, r.BalanceSeconds))
+            .ToList();
+    }
+
     public async Task<int> GetDebitedSecondsForRequestAsync(Guid requestId, CancellationToken ct = default)
     {
         var rows = await db.GetAllAsync<TimeBankTransactionModel>(

@@ -22,6 +22,8 @@ import {
   getWaitingTime,
   parseApiList,
   isActionableStatus,
+  isAwaitingPayment,
+  canSign,
 } from '@/lib/doctor-helpers';
 import { getUrgencyLabelPt } from '@/lib/aiCopilotHelpers';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -42,6 +44,8 @@ import {
   ClipboardList,
   Stethoscope,
   CalendarDays,
+  Hourglass,
+  CreditCard,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { SkeletonStats, SkeletonQueue } from '@/components/ui/skeleton';
@@ -188,6 +192,8 @@ export default function DoctorDashboard() {
   }, []);
 
   const pendentes = requests.filter((r) => isActionableStatus(r.status));
+  const aguardandoPagamento = requests.filter((r) => isAwaitingPayment(r));
+  const prontosParaAssinar = requests.filter((r) => canSign(r));
   const consultasAtivas = requests.filter(
     (r) =>
       r.type === 'consultation' &&
@@ -235,6 +241,26 @@ export default function DoctorDashboard() {
       bg: 'bg-amber-100 dark:bg-amber-900/40',
       ringColor: 'ring-amber-200 dark:ring-amber-800',
       urgent: (stats?.pendingCount ?? pendentes.length) > 0,
+      filterParam: 'pending',
+    },
+    {
+      label: 'Aguardando pgto',
+      value: aguardandoPagamento.length,
+      icon: Hourglass,
+      color: 'text-amber-600 dark:text-amber-400',
+      bg: 'bg-amber-100 dark:bg-amber-900/40',
+      ringColor: 'ring-amber-200 dark:ring-amber-800',
+      urgent: aguardandoPagamento.length > 0,
+      filterParam: 'pending',
+    },
+    {
+      label: 'Prontos p/ assinar',
+      value: prontosParaAssinar.length,
+      icon: CreditCard,
+      color: 'text-emerald-600 dark:text-emerald-400',
+      bg: 'bg-emerald-100 dark:bg-emerald-900/40',
+      ringColor: 'ring-emerald-200 dark:ring-emerald-800',
+      urgent: prontosParaAssinar.length > 0,
       filterParam: 'pending',
     },
     {
@@ -480,7 +506,7 @@ export default function DoctorDashboard() {
             </motion.div>
 
             {/* ── Stats Grid (4 columns on desktop, 2 on tablet, 1 on small mobile) ── */}
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
               {statsCards.map((stat, i) => (
                 <motion.div
                   key={stat.label}

@@ -38,6 +38,8 @@ import {
   getTypeIcon,
   getStatusInfo,
   normalizeStatus,
+  isAwaitingPayment,
+  getPaymentStatusInfo,
 } from '@/lib/doctor-helpers';
 import { getUrgencyLabelPt } from '@/lib/aiCopilotHelpers';
 import { StatusTracker } from '@/components/doctor/StatusTracker';
@@ -314,6 +316,8 @@ export default function DoctorRequestDetail() {
   const reqType = (request.type ?? '').toLowerCase();
   const Icon = getTypeIcon(reqType);
   const symptomsList = normalizeSymptoms(request.symptoms);
+  const paymentInfo = getPaymentStatusInfo(request);
+  const awaitingPayment = isAwaitingPayment(request);
 
   return (
     <DoctorLayout>
@@ -362,6 +366,23 @@ export default function DoctorRequestDetail() {
                   {statusInfo.label}
                 </div>
               </div>
+
+              {/* ── Payment status badge ── */}
+              {paymentInfo && (
+                <div
+                  className={`mt-3 flex items-center gap-2 rounded-lg border px-3 py-2 ${paymentInfo.bgColor}`}
+                >
+                  <paymentInfo.icon
+                    className={`h-4 w-4 shrink-0 ${paymentInfo.color}`}
+                    aria-hidden
+                  />
+                  <span
+                    className={`text-xs font-medium sm:text-sm ${paymentInfo.color}`}
+                  >
+                    {paymentInfo.label}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* ── Status tracker ── */}
@@ -710,7 +731,7 @@ export default function DoctorRequestDetail() {
               {/* end main column */}
 
               {/* ── Actions sidebar ── */}
-              <div className="space-y-4">
+              <div className={`space-y-4 ${awaitingPayment ? 'relative' : ''}`}>
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}

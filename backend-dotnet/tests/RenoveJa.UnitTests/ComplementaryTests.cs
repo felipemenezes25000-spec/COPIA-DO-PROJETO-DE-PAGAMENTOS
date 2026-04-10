@@ -492,6 +492,8 @@ public class RequestServiceFullTests
             .Returns(Task.CompletedTask);
         var requestApprovalLoggerMock = new Mock<Microsoft.Extensions.Logging.ILogger<RequestApprovalService>>();
         var scopeFactoryMock = new Mock<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>();
+        var consultationTimeBankRepoMock = new Mock<RenoveJa.Domain.Interfaces.IConsultationTimeBankRepository>();
+        var pricingOptionsMock = Microsoft.Extensions.Options.Options.Create(new RenoveJa.Application.Configuration.PricingConfig());
         var requestApprovalService = new RequestApprovalService(
             _requestRepoMock.Object,
             _userRepoMock.Object,
@@ -499,6 +501,8 @@ public class RequestServiceFullTests
             pushDispatcherMock.Object,
             _requestEventsPublisherMock.Object,
             _aiConductSuggestionServiceMock.Object,
+            consultationTimeBankRepoMock.Object,
+            pricingOptionsMock,
             scopeFactoryMock.Object,
             requestApprovalLoggerMock.Object);
         _sut = new RequestService(

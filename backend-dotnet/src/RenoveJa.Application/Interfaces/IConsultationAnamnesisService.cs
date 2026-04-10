@@ -19,5 +19,6 @@ public interface IConsultationAnamnesisService
     Task<ConsultationAnamnesisResult?> UpdateAnamnesisAndSuggestionsAsync(
         string transcriptSoFar,
         string? previousAnamnesisJson,
+        string? consultationType = null,
         CancellationToken cancellationToken = default);
 }

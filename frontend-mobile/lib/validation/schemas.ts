@@ -138,9 +138,7 @@ export const createConsultationSchema = z.object({
   durationMinutes: z
     .number()
     .int()
-    .min(0)
-    .optional()
-    .default(0),
+    .min(5, 'Duração mínima de 5 minutos'),
   symptoms: z
     .string()
     .transform(normalizeText)

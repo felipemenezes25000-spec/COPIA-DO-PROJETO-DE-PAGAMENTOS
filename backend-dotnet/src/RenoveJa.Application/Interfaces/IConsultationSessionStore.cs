@@ -23,6 +23,15 @@ public interface IConsultationSessionStore
 
     /// <summary>Remove a sessão e retorna os dados para persistência. Retorna null se não houver sessão.</summary>
     ConsultationSessionData? GetAndRemove(Guid requestId);
+
+    /// <summary>Obtém o JSON de evidências clínicas da sessão.</summary>
+    string? GetEvidenceJson(Guid requestId);
+
+    /// <summary>Define o tipo de consulta para a sessão.</summary>
+    void SetConsultationType(Guid requestId, string consultationType);
+
+    /// <summary>Obtém o tipo de consulta da sessão.</summary>
+    string? GetConsultationType(Guid requestId);
 }
 
 /// <summary>Segmento de transcrição com timestamp (para .txt formatado).</summary>

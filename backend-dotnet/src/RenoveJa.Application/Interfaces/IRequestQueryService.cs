@@ -40,4 +40,9 @@ public interface IRequestQueryService
     Task<(int PendingCount, int InReviewCount, int CompletedCount, decimal TotalEarnings)> GetDoctorStatsAsync(
         Guid doctorId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Lista pedidos rejeitados pela IA para revisão médica.</summary>
+    Task<IReadOnlyList<RequestResponseDto>> ListAiRejectedAsync(
+        Guid doctorId,
+        CancellationToken cancellationToken = default);
 }

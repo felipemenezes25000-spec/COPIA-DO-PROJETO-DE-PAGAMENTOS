@@ -60,7 +60,8 @@ export type AppRoute =
   | `/consultation-summary/${string}`
   | `/post-consultation-emit/${string}`
   | `/doctor-patient/${string}`
-  | `/doctor-patient-summary/${string}`;
+  | `/doctor-patient-summary/${string}`
+  | `/payment/request/${string}`;
 
 export const nav = {
   push(router: AnyRouter, route: AppRoute) {

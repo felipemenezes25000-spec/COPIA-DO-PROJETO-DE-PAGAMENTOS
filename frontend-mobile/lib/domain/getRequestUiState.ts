@@ -2,9 +2,9 @@
  * Único ponto de verdade para mapear request (backend) → estado de UI.
  * Design system: Azul = ação, Verde = sucesso, Amarelo = aguardando, Cinza = histórico.
  *
- * State machine canônica (backend) — sem pagamento:
- *   prescription/exam: submitted → in_review → approved → signed → delivered
- *   consultation:      submitted → searching_doctor → approved → in_consultation → consultation_finished
+ * State machine canônica (backend) — com pagamento:
+ *   prescription/exam: submitted → in_review → approved_pending_payment → paid → signed → delivered
+ *   consultation:      submitted → searching_doctor → approved_pending_payment → paid → in_consultation → consultation_finished
  *   Qualquer estado:   → rejected | cancelled
  */
 
@@ -71,20 +71,21 @@ export function getRequestUiState(
   const status = request?.status ?? '';
   const requestType = (request as { requestType?: string | null })?.requestType ?? null;
 
-  // Consulta no estado "approved/paid" → pronta para vídeo (ação, azul).
-  if (requestType === 'consultation' && ['approved', 'approved_pending_payment', 'paid'].includes(status)) {
+  // Qualquer tipo: "approved_pending_payment" → aguardando pagamento (ação necessária).
+  if (status === 'approved_pending_payment') {
+    return { uiState: 'needs_action', label: 'Aguardando pagamento', colorKey: 'waiting' };
+  }
+
+  // Consulta "paid" → pronta para vídeo (ação, azul).
+  if (requestType === 'consultation' && ['approved', 'paid'].includes(status)) {
     return { uiState: 'ready', label: 'Consulta pronta', colorKey: 'action' };
   }
 
-  // Receita/exame em "approved" ou variantes legadas → o documento já foi
-  // aprovado pelo médico mas ainda não foi assinado digitalmente. O label
-  // canônico "Aprovado" era ambíguo nesse contexto: o médico entendia como
-  // "pronto/finalizado", mas o fluxo estava parado esperando assinatura.
-  // Alinhamos ao StatusTracker (que já usa "Aguardando assinatura" neste
-  // passo) para que badge, timeline e dashboard contem a mesma história.
+  // Receita/exame em "approved" ou "paid" → o documento já foi
+  // aprovado pelo médico e pago, mas ainda não assinado digitalmente.
   if (
     (requestType === 'prescription' || requestType === 'exam') &&
-    ['approved', 'approved_pending_payment', 'pending_payment', 'paid'].includes(status)
+    ['approved', 'pending_payment', 'paid'].includes(status)
   ) {
     return { uiState: 'needs_action', label: 'Aguardando assinatura', colorKey: 'waiting' };
   }
@@ -200,6 +201,16 @@ export function getHistoricalGroupedByPeriod(requests: RequestResponseDto[]): Pe
 export function isSignedOrDelivered(request: RequestResponseDto | { status: string }): boolean {
   const s = request.status;
   return ['signed', 'delivered', 'completed', 'consultation_finished'].includes(s);
+}
+
+/** True quando o pedido está aguardando pagamento do paciente. */
+export function needsPayment(request: RequestResponseDto | { status?: string | null }): boolean {
+  return request?.status === 'approved_pending_payment';
+}
+
+/** True quando o paciente pode efetuar pagamento (mesmo que needsPayment — guarda semântica). */
+export function canPay(request: RequestResponseDto | { status?: string | null }): boolean {
+  return request?.status === 'approved_pending_payment';
 }
 
 export const UI_STATUS_COLORS: Record<RequestUiColorKey, { color: string; bg: string }> = {

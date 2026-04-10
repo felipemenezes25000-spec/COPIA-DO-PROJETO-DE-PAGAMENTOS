@@ -570,8 +570,9 @@ public class MedicalRequest : AggregateRoot
             Medications = medications;
         if (exams != null)
             Exams = exams;
-        // Aprovação vai direto para Paid (pronto para assinatura)
-        Status = RequestStatus.Paid;
+        // Aprovação vai para ApprovedPendingPayment — paciente precisa pagar antes
+        // de o médico poder assinar (receita/exame) ou a sala ser liberada (consulta).
+        Status = RequestStatus.ApprovedPendingPayment;
         UpdatedAt = DateTime.UtcNow;
     }
 

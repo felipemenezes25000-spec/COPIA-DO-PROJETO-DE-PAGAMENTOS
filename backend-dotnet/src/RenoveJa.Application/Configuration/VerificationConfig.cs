@@ -33,4 +33,10 @@ public class VerificationConfig
     /// O endpoint /r/{shortCode} redireciona para /api/verify/{id}.
     /// </summary>
     public string ShortUrlBase { get; set; } = "";
+
+    /// <summary>Máximo de downloads permitidos por documento assinado.</summary>
+    public int MaxDownloadsPerDocument { get; set; } = 10;
+
+    /// <summary>Máximo de downloads permitidos por receita.</summary>
+    public int MaxDownloadsPerPrescription { get; set; } = 10;
 }

@@ -227,7 +227,7 @@ export default function VideoCallScreenInner() {
   }, [remoteParticipant]);
 
   // Server-synced timer + countdown alerts — extracted hook
-  const { callSeconds, setCallSeconds } = useConsultationTimer(
+  const { callSeconds, setCallSeconds, remainingSeconds, isWarning: timerWarning, isExpired: timerExpired } = useConsultationTimer(
     consultationStartedAt,
     contractedMinutes,
     () => doEndRef.current(true),
@@ -896,6 +896,9 @@ export default function VideoCallScreenInner() {
           callSeconds={callSeconds}
           contractedMinutes={contractedMinutes}
           isAiActive={isAiActive}
+          remainingSeconds={remainingSeconds}
+          isWarning={timerWarning}
+          isExpired={timerExpired}
         />
       )}
 
@@ -909,6 +912,25 @@ export default function VideoCallScreenInner() {
           <TouchableOpacity onPress={() => setLgpdDismissed(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Ionicons name="close" size={14} color="rgba(255,255,255,0.6)" />
           </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Countdown warning banner — visible when < 2 minutes remain */}
+      {!isInPipMode && callState === 'joined' && (timerWarning || timerExpired) && (
+        <View style={[S.countdownBanner, {
+          top: insets.top + 60 + (lgpdDismissed ? 0 : 48),
+          backgroundColor: timerExpired ? 'rgba(239,68,68,0.9)' : 'rgba(245,158,11,0.9)',
+        }]}>
+          <Ionicons
+            name={timerExpired ? 'alert-circle' : 'warning'}
+            size={16}
+            color="#FFFFFF"
+          />
+          <Text style={S.countdownBannerText}>
+            {timerExpired
+              ? 'Tempo contratado encerrado. A consulta sera finalizada.'
+              : `Menos de 2 minutos restantes. ${remainingSeconds != null ? Math.ceil(remainingSeconds / 60) : 0} min restante(s).`}
+          </Text>
         </View>
       )}
 
@@ -1190,6 +1212,8 @@ function makeStyles(colors: VideoColors, modalColors?: VideoColors) {
   // LGPD recording banner
   lgpdBanner: { position: 'absolute', left: 12, right: 12, zIndex: 30, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: 'rgba(245,158,11,0.15)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.3)' },
   lgpdText: { flex: 1, color: '#FDE68A', fontSize: 11, lineHeight: 16, fontWeight: '500' },
+  countdownBanner: { position: 'absolute', left: 12, right: 12, zIndex: 35, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12 },
+  countdownBannerText: { flex: 1, color: '#FFFFFF', fontSize: 13, fontWeight: '700', lineHeight: 18 },
 
   // Reconnecting overlay (Bug #6)
   reconnectOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', gap: 8 },

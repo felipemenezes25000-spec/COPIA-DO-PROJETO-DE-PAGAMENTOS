@@ -1,6 +1,5 @@
 using RenoveJa.Application.DTOs;
 using RenoveJa.Application.DTOs.Requests;
-using RenoveJa.Application.DTOs.Payments;
 using RenoveJa.Application.DTOs.Video;
 
 namespace RenoveJa.Application.Interfaces;
@@ -11,19 +10,19 @@ namespace RenoveJa.Application.Interfaces;
 public interface IRequestService
 {
     /// <summary>Cria solicitação de receita (foto + medicamentos). Status Submitted; pagamento é criado quando o médico aprovar.</summary>
-    Task<(RequestResponseDto Request, PaymentResponseDto? Payment)> CreatePrescriptionAsync(
+    Task<RequestResponseDto> CreatePrescriptionAsync(
         CreatePrescriptionRequestDto request,
         Guid userId,
         CancellationToken cancellationToken = default);
 
     /// <summary>Cria solicitação de exame. Status Submitted; pagamento criado na aprovação.</summary>
-    Task<(RequestResponseDto Request, PaymentResponseDto? Payment)> CreateExamAsync(
+    Task<RequestResponseDto> CreateExamAsync(
         CreateExamRequestDto request,
         Guid userId,
         CancellationToken cancellationToken = default);
 
     /// <summary>Cria solicitação de consulta. Status SearchingDoctor.</summary>
-    Task<(RequestResponseDto Request, PaymentResponseDto? Payment)> CreateConsultationAsync(
+    Task<RequestResponseDto> CreateConsultationAsync(
         CreateConsultationRequestDto request,
         Guid userId,
         CancellationToken cancellationToken = default);
@@ -62,6 +61,7 @@ public interface IRequestService
     Task<RequestResponseDto> UpdateStatusAsync(
         Guid id,
         UpdateRequestStatusDto dto,
+        Guid doctorId,
         CancellationToken cancellationToken = default);
 
     /// <summary>Aprova a solicitação e define o valor (da tabela product_prices). Pagamento é criado pelo paciente ao chamar POST /api/payments.</summary>
@@ -74,6 +74,7 @@ public interface IRequestService
     Task<RequestResponseDto> RejectAsync(
         Guid id,
         RejectRequestDto dto,
+        Guid doctorId,
         CancellationToken cancellationToken = default);
 
     Task<RequestResponseDto> AssignToQueueAsync(
@@ -148,9 +149,6 @@ public interface IRequestService
 
     /// <summary>Encerramento automático da consulta pelo cliente quando o timer expirar.</summary>
     Task<RequestResponseDto> AutoFinishConsultationAsync(Guid id, Guid userId, CancellationToken cancellationToken = default);
-
-    /// <summary>Retorna o saldo do banco de horas do paciente para o tipo de consulta especificado.</summary>
-    Task<(int BalanceSeconds, int BalanceMinutes, string ConsultationType)> GetTimeBankBalanceAsync(Guid userId, string consultationType, CancellationToken cancellationToken = default);
 
     /// <summary>Médico atualiza conduta do pedido (audit trail automático).</summary>
     Task<RequestResponseDto> UpdateConductAsync(Guid requestId, UpdateConductDto dto, Guid doctorId, CancellationToken cancellationToken = default);

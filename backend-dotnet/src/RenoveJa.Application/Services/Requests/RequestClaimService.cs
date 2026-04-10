@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using RenoveJa.Application.DTOs.Requests;
 using RenoveJa.Application.Interfaces;
 using RenoveJa.Domain.Entities;
 using RenoveJa.Domain.Interfaces;

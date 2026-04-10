@@ -3,33 +3,67 @@
  * Backend enums, API e banco NÃO devem ser alterados — apenas o que o usuário vê.
  *
  * Use este mapa em: badges, timeline, cards, contadores, listas de pedidos.
- * Sem fluxo de pagamento.
+ * Inclui fluxo de pagamento (approved_pending_payment → paid).
  */
 
 export const STATUS_LABELS_PT: Record<string, string> = {
   // Prescription / Exam (canônicos)
-  submitted: 'Enviado',
-  analyzing: 'Em análise médica',
-  in_review: 'Em análise médica',
+  submitted: 'Solicitado',
+  analyzing: 'Em análise',
+  in_review: 'Em análise',
   approved: 'Aprovado',
+  approved_pending_payment: 'Aguardando pagamento',
+  paid: 'Pagamento confirmado',
   signed: 'Assinado',
-  delivered: 'Entregue',
+  delivered: 'Concluído',
   // Consultation (canônicos)
   searching_doctor: 'Buscando profissional',
-  consultation_ready: 'Consulta pronta',
-  in_consultation: 'Em consulta',
-  pending_post_consultation: 'Emitir documentos',
-  consultation_finished: 'Finalizada',
+  consultation_ready: 'Sala pronta',
+  in_consultation: 'Em atendimento',
+  pending_post_consultation: 'Finalizando consulta',
+  consultation_finished: 'Consulta concluída',
   // Common
-  rejected: 'Rejeitado',
+  rejected: 'Reprovado',
   cancelled: 'Cancelado',
   // Legados (retrocompatibilidade — dados históricos do banco)
   pending: 'Pendente',
-  pending_payment: 'Aprovado',
-  approved_pending_payment: 'Aprovado',
-  paid: 'Aprovado',
+  pending_payment: 'Aguardando pagamento',
   completed: 'Concluído',
 };
+
+/**
+ * Cores de badge por status. Mapeia cada status a uma cor semântica para
+ * uso em badges, indicadores e highlights.
+ *
+ * gray = neutro/aguardando, blue = em progresso, amber = ação necessária,
+ * green = sucesso/concluído, red = erro/rejeição.
+ */
+export type StatusColorKey = 'gray' | 'blue' | 'amber' | 'green' | 'red';
+
+export const STATUS_COLOR_MAP: Record<string, StatusColorKey> = {
+  submitted: 'gray',
+  in_review: 'blue',
+  analyzing: 'blue',
+  approved: 'green',
+  approved_pending_payment: 'amber',
+  paid: 'green',
+  signed: 'green',
+  delivered: 'green',
+  searching_doctor: 'blue',
+  consultation_ready: 'blue',
+  in_consultation: 'blue',
+  pending_post_consultation: 'blue',
+  consultation_finished: 'green',
+  rejected: 'red',
+  cancelled: 'gray',
+  pending: 'gray',
+  pending_payment: 'amber',
+  completed: 'green',
+};
+
+export function getStatusColor(status: string | null | undefined): StatusColorKey {
+  return STATUS_COLOR_MAP[status ?? ''] ?? 'gray';
+}
 
 /** Label para cards/listas genéricas (ex.: "Na fila" para submitted). Pode divergir de STATUS_LABELS_PT. */
 export const STATUS_DISPLAY_LABELS_PT: Record<string, string> = {

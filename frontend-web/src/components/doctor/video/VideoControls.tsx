@@ -114,23 +114,50 @@ export function VideoTopBar({
         </div>
       </div>
 
-      {/* Center: Timer */}
-      <div
-        className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 font-mono text-xs sm:gap-2 sm:px-4 sm:py-1.5 sm:text-sm ${
-          timeExceeded
-            ? 'bg-red-500/20 text-red-400 ring-1 ring-red-500/30'
-            : timeWarning
-              ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/30'
-              : 'bg-white/5 text-gray-300'
-        }`}
-      >
-        <Timer className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-        <span>{formatTimer(timerSeconds)}</span>
-        {contractedMinutes && (
-          <span className="hidden text-gray-500 sm:inline">
-            / {contractedMinutes}min
-          </span>
-        )}
+      {/* Center: Timer + remaining countdown */}
+      <div className="flex shrink-0 flex-col items-center gap-0.5">
+        <div
+          className={`flex items-center gap-1.5 rounded-full px-3 py-1 font-mono text-xs sm:gap-2 sm:px-4 sm:py-1.5 sm:text-sm ${
+            timeExceeded
+              ? 'bg-red-500/20 text-red-400 ring-1 ring-red-500/30'
+              : timeWarning
+                ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/30'
+                : 'bg-white/5 text-gray-300'
+          }`}
+        >
+          <Timer className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+          <span>{formatTimer(timerSeconds)}</span>
+          {contractedMinutes && (
+            <span className="hidden text-gray-500 sm:inline">
+              / {contractedMinutes}min
+            </span>
+          )}
+        </div>
+        {/* Remaining time countdown */}
+        {contractedMinutes &&
+          (() => {
+            const remainingSec = contractedMinutes * 60 - timerSeconds;
+            const isLow = remainingSec <= 120 && remainingSec > 0;
+            if (remainingSec <= 0) {
+              return (
+                <span className="animate-pulse text-[10px] font-semibold text-red-400">
+                  Tempo excedido
+                </span>
+              );
+            }
+            if (isLow) {
+              return (
+                <span className="animate-pulse text-[10px] font-semibold text-amber-400">
+                  Restam {formatTimer(remainingSec)}
+                </span>
+              );
+            }
+            return (
+              <span className="text-[10px] text-gray-500">
+                Restam {formatTimer(remainingSec)}
+              </span>
+            );
+          })()}
       </div>
 
       {/* Right: Patient + actions */}

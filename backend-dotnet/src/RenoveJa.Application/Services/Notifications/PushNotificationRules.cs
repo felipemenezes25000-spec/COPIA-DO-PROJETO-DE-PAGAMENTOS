@@ -122,7 +122,31 @@ public static class PushNotificationRules
             deepLinkSuffix: $"request-detail/{requestId}?tab=reason",
             extra: reason != null ? new Dictionary<string, object?> { ["reasonCode"] = reason.Length > 50 ? reason[..50] : reason, ["reasonShort"] = reason } : null);
 
+    /// <summary>Paciente notificado quando solicitação é aprovada e aguarda pagamento.</summary>
+    public static PushNotificationRequest RequestApprovedPendingPayment(Guid patientId, Guid requestId, RequestType requestType) =>
+        BuildRequest(patientId, "request_approved_pending_payment", requestId, requestType, RequestStatus.ApprovedPendingPayment,
+            "Pedido aprovado!",
+            "Seu pedido foi aprovado! Realize o pagamento para continuar.",
+            targetRole: "patient",
+            deepLinkSuffix: $"request-detail/{requestId}?action=pay",
+            channel: PushChannel.Default,
+            category: PushCategory.Requests,
+            bypassQuietHours: true);
+
     // ── Médico: Pedidos ───────────────────────────────────────────────────
+
+    /// <summary>Médico notificado quando pagamento do paciente é confirmado. Pode assinar/iniciar consulta.</summary>
+    public static PushNotificationRequest PaidForDoctor(Guid doctorId, Guid requestId, RequestType requestType) =>
+        BuildRequest(doctorId, "payment_confirmed", requestId, requestType, RequestStatus.Paid,
+            "Pagamento confirmado!",
+            requestType == RequestType.Consultation
+                ? "Pagamento confirmado! Você pode iniciar a consulta."
+                : "Pagamento confirmado! Você pode assinar o documento.",
+            targetRole: "doctor",
+            deepLinkSuffix: $"doctor-request/{requestId}",
+            channel: PushChannel.Default,
+            category: PushCategory.Requests,
+            bypassQuietHours: true);
 
     public static PushNotificationRequest NewRequestAvailable(Guid doctorId, string tipoSolicitacao, string? patientName = null, int count = 1) =>
         new(doctorId,
@@ -209,6 +233,28 @@ public static class PushNotificationRules
             "Sua consulta foi encerrada. Os documentos serão disponibilizados em breve.",
             targetRole: "patient",
             deepLinkSuffix: $"consultation-summary/{requestId}",
+            category: PushCategory.Consultations,
+            bypassQuietHours: true);
+
+    /// <summary>Notifica ambos que a sala de vídeo está pronta.</summary>
+    public static PushNotificationRequest ConsultationRoomReady(Guid userId, Guid requestId, bool isDoctor) =>
+        BuildRequest(userId, "consultation_room_ready", requestId, RequestType.Consultation, RequestStatus.Paid,
+            "Sala de consulta pronta",
+            "A sala de vídeo está pronta. Toque para entrar.",
+            targetRole: isDoctor ? "doctor" : "patient",
+            deepLinkSuffix: $"video/{requestId}",
+            category: PushCategory.Consultations,
+            bypassQuietHours: true);
+
+    /// <summary>Consulta encerrada automaticamente por timeout. Notifica ambos com minutos creditados.</summary>
+    public static PushNotificationRequest ConsultationAutoEnded(Guid userId, Guid requestId, bool isDoctor, int minutesCredited) =>
+        BuildRequest(userId, "consultation_auto_ended", requestId, RequestType.Consultation, RequestStatus.PendingPostConsultation,
+            "Consulta encerrada automaticamente",
+            minutesCredited > 0
+                ? $"Consulta encerrada automaticamente. {minutesCredited} minutos creditados no seu banco de horas."
+                : "Consulta encerrada automaticamente.",
+            targetRole: isDoctor ? "doctor" : "patient",
+            deepLinkSuffix: isDoctor ? $"doctor-request/{requestId}" : $"consultation-summary/{requestId}",
             category: PushCategory.Consultations,
             bypassQuietHours: true);
 

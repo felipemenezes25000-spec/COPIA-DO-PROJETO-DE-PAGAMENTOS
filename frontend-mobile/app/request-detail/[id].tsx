@@ -49,6 +49,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { claimRequest } from '../../lib/api-requests';
 import { DOCTOR_REQUESTS_QUERY_KEY } from '../../lib/hooks/useDoctorRequestsQuery';
 import { showToast } from '../../components/ui/Toast';
+import { needsPayment } from '../../lib/domain/getRequestUiState';
+import { CONSULTATION_PRICE_PER_MINUTE } from '../../lib/config/pricing';
+import { getStatusColor, type StatusColorKey } from '../../lib/domain/statusLabels';
 
 // ─── Constants ──────────────────────────────────────────────────
 const HEADER_BG_RX = '#0C4A6E';
@@ -497,6 +500,50 @@ export default function RequestDetailScreen() {
               <Ionicons name="cloud-offline-outline" size={16} color={colors.warning} />
               <Text style={styles.offlineText}>Você está offline. Algumas ações estão temporariamente indisponíveis.</Text>
             </View>
+          )}
+
+          {/* Payment CTA banner */}
+          {needsPayment(request) && (
+            <TouchableOpacity
+              style={styles.paymentBanner}
+              onPress={() => nav.replace(router, `/payment/request/${request.id}`)}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Pagar agora"
+            >
+              <View style={styles.paymentBannerIcon}>
+                <Ionicons name="card" size={24} color="#FFFFFF" />
+              </View>
+              <View style={styles.paymentBannerContent}>
+                <Text style={styles.paymentBannerTitle}>Pagamento pendente</Text>
+                <Text style={styles.paymentBannerSub}>
+                  Toque para pagar e liberar seu {isConsultation ? 'atendimento' : 'documento'}
+                </Text>
+              </View>
+              <View style={styles.paymentBannerArrow}>
+                <Text style={styles.paymentBannerCta}>Pagar agora</Text>
+                <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
+          )}
+
+          {/* Consultation info (minutes / price) */}
+          {isConsultation && request.contractedMinutes && (
+            <SectionCard>
+              <SectionHeader icon="time-outline" iconColor={colors.primary} title="Detalhes da consulta" />
+              <View style={styles.consultInfoRow}>
+                <Text style={styles.consultInfoLabel}>Minutos contratados</Text>
+                <Text style={styles.consultInfoValue}>{request.contractedMinutes} min</Text>
+              </View>
+              {request.price != null && request.price > 0 && (
+                <View style={[styles.consultInfoRow, { borderBottomWidth: 0 }]}>
+                  <Text style={styles.consultInfoLabel}>Valor</Text>
+                  <Text style={styles.consultInfoValue}>
+                    R$ {request.price.toFixed(2).replace('.', ',')}
+                  </Text>
+                </View>
+              )}
+            </SectionCard>
           )}
 
           {/* Video ready banner */}
@@ -1350,6 +1397,72 @@ function makeStyles(colors: DesignColors, screenWidth: number) {
       color: '#fff',
       fontSize: 16,
       fontWeight: '600',
+    },
+
+    // ── Payment Banner ──
+    paymentBanner: {
+      marginBottom: spacing.md,
+      backgroundColor: '#F59E0B',
+      borderRadius: 16,
+      padding: spacing.md,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      ...shadows.card,
+    },
+    paymentBannerIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      backgroundColor: 'rgba(255,255,255,0.25)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    paymentBannerContent: {
+      flex: 1,
+    },
+    paymentBannerTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: '#FFFFFF',
+    },
+    paymentBannerSub: {
+      fontSize: 12,
+      color: 'rgba(255,255,255,0.85)',
+      marginTop: 2,
+    },
+    paymentBannerArrow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: 'rgba(255,255,255,0.25)',
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    paymentBannerCta: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: '#FFFFFF',
+    },
+
+    // ── Consultation Info ──
+    consultInfoRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    consultInfoLabel: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    consultInfoValue: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
     },
   });
 }

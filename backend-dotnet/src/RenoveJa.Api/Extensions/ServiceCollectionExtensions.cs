@@ -222,6 +222,9 @@ public static class ServiceCollectionExtensions
         // Phase E — Queue SLA expiration worker (observability-only: logs stale requests)
         services.AddHostedService<QueueSlaExpirationWorker>();
 
+        // Consultation timer: auto-ends consultations when contracted time expires
+        services.AddHostedService<ConsultationTimerService>();
+
         return services;
     }
 
@@ -254,6 +257,7 @@ public static class ServiceCollectionExtensions
         services.Configure<CertificateEncryptionConfig>(config.GetSection(CertificateEncryptionConfig.SectionName));
         services.Configure<VerificationConfig>(config.GetSection(VerificationConfig.SectionName));
         services.Configure<BatchSignatureOptions>(config.GetSection(BatchSignatureOptions.SectionName));
+        services.Configure<PricingConfig>(config.GetSection(PricingConfig.SectionName));
         services.Configure<ApiConfig>(options =>
         {
             options.BaseUrl = EnvOrConfig(envVars, config, "Api__BaseUrl", "Api:BaseUrl");

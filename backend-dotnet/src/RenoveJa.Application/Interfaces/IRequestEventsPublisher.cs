@@ -33,4 +33,30 @@ public interface IRequestEventsPublisher
         string status,
         string? message = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Notifica que um pedido foi reivindicado por um médico.
+    /// </summary>
+    Task NotifyRequestClaimedAsync(
+        Guid requestId,
+        string doctorName,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Notifica o médico sobre a conclusão de uma assinatura em lote.
+    /// </summary>
+    /// <summary>
+    /// Notifica que um pedido foi liberado (claim expirado).
+    /// </summary>
+    Task NotifyRequestReleasedAsync(
+        Guid requestId,
+        CancellationToken cancellationToken = default);
+
+    Task NotifyBatchSignCompletedAsync(
+        Guid doctorUserId,
+        Guid batchId,
+        int signedCount,
+        int failedCount,
+        IReadOnlyCollection<Guid> signedRequestIds,
+        CancellationToken cancellationToken = default);
 }

@@ -77,7 +77,36 @@ public record ExamPdfData(
     string? ClinicalIndication = null,
     string? AutoObservation = null,
     string? DoctorConductNotes = null,
-    bool IncludeConductInPdf = true);
+    bool IncludeConductInPdf = true,
+    string? VerificationUrl = null);
+
+/// <summary>
+/// Dados para geração de PDF de atestado médico.
+/// </summary>
+public record MedicalCertificatePdfData(
+    Guid RequestId,
+    string PatientName,
+    string? PatientCpf,
+    DateTime? PatientBirthDate,
+    string? PatientGender,
+    string DoctorName,
+    string DoctorCrm,
+    string DoctorCrmState,
+    string DoctorSpecialty,
+    string CertificateType,
+    string Body,
+    string? Icd10Code,
+    int? LeaveDays,
+    DateTime? LeaveStartDate,
+    string? LeavePeriod,
+    DateTime EmissionDate,
+    string? AccessCode = null,
+    string? VerificationUrl = null,
+    string? PatientPhone = null,
+    string? PatientAddress = null,
+    string? DoctorAddress = null,
+    string? DoctorPhone = null,
+    bool IncludeIcd10 = true);
 
 /// <summary>
 /// Serviço para geração de PDFs de receitas médicas e pedidos de exame.
@@ -112,5 +141,12 @@ public interface IPrescriptionPdfService
     /// </summary>
     Task<PrescriptionPdfResult> GenerateExamRequestAsync(
         ExamPdfData data,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gera um PDF de atestado médico (para assinatura digital).
+    /// </summary>
+    Task<PrescriptionPdfResult> GenerateMedicalCertificateAsync(
+        MedicalCertificatePdfData data,
         CancellationToken cancellationToken = default);
 }

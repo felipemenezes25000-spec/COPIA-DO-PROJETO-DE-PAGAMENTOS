@@ -29,6 +29,8 @@ import { useSymptomVoiceInput } from '../../hooks/useSymptomVoiceInput';
 import { detectRedFlags, evaluateConsultationCompleteness } from '../../lib/domain/assistantIntelligence';
 import { evaluateAssistantCompleteness } from '../../lib/api';
 import { EmergencyAlert } from '../../components/ui/EmergencyAlert';
+import { CONSULTATION_PRICE_PER_MINUTE } from '../../lib/config/pricing';
+import { getTimeBankBalance, type TimeBankBalanceEntry } from '../../lib/api-payments';
 
 const s = theme.spacing;
 const _r = theme.borderRadius;
@@ -56,6 +58,13 @@ const URGENCY_OPTIONS = [
   { key: 'urgente' as const, label: 'Urgente', desc: 'Preciso de atendimento rápido', icon: 'flash-outline' as const },
 ];
 
+const MINUTE_PRESETS = [5, 10, 15, 20, 30] as const;
+const MIN_MINUTES = 5;
+
+function formatCurrency(value: number): string {
+  return `R$ ${value.toFixed(2).replace('.', ',')}`;
+}
+
 export default function ConsultationScreen() {
   const router = useRouter();
   const invalidateRequests = useInvalidateRequests();
@@ -65,12 +74,39 @@ export default function ConsultationScreen() {
   const [symptoms, setSymptoms] = useState('');
   const [urgency, setUrgency] = useState<'rotina' | 'urgente'>('rotina');
   const [loading, setLoading] = useState(false);
+  const [selectedMinutes, setSelectedMinutes] = useState<number>(15);
+  const [useCustomMinutes, setUseCustomMinutes] = useState(false);
+  const [customMinutesText, setCustomMinutesText] = useState('');
+  const [timeBankBalances, setTimeBankBalances] = useState<TimeBankBalanceEntry[]>([]);
   const voice = useSymptomVoiceInput();
   const { colors } = useAppTheme({ role: 'patient' });
   const styles = useMemo(() => makeStyles(colors, narrow), [colors, narrow]);
   const listPadding = useStickyCtaScrollPadding();
-  // Teleconsulta sem limite de tempo — usar 30min como padrão para completude
-  const defaultDuration = 30;
+
+  // Minute calculation
+  const effectiveMinutes = useCustomMinutes
+    ? Math.max(MIN_MINUTES, parseInt(customMinutesText, 10) || 0)
+    : selectedMinutes;
+  const pricePerMinute = CONSULTATION_PRICE_PER_MINUTE[consultationType];
+  const totalPrice = effectiveMinutes * pricePerMinute;
+
+  // Time bank balance for current consultation type
+  const timeBankEntry = timeBankBalances.find(b => b.consultationType === consultationType);
+  const timeBankMinutes = timeBankEntry?.balanceMinutes ?? 0;
+  const adjustedPrice = timeBankMinutes > 0
+    ? Math.max(0, (effectiveMinutes - timeBankMinutes) * pricePerMinute)
+    : totalPrice;
+
+  // Fetch time bank balance
+  useEffect(() => {
+    let cancelled = false;
+    getTimeBankBalance()
+      .then(res => { if (!cancelled) setTimeBankBalances(res.balances); })
+      .catch(() => { /* silently ignore — balance display is optional */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  const defaultDuration = effectiveMinutes;
   const completenessLocal = evaluateConsultationCompleteness({
     consultationType,
     durationMinutes: defaultDuration,
@@ -135,7 +171,8 @@ export default function ConsultationScreen() {
   const [userPickedType, setUserPickedType] = useState(false);
   let currentStep = 1;
   if (userPickedType) currentStep = 2;
-  if (userPickedType && symptoms.trim().length > 0) currentStep = 3;
+  if (userPickedType && effectiveMinutes >= MIN_MINUTES) currentStep = 3;
+  if (userPickedType && effectiveMinutes >= MIN_MINUTES && symptoms.trim().length > 0) currentStep = 4;
 
   const [showEmergencyAlert, setShowEmergencyAlert] = useState(false);
   const pendingPayloadRef = useRef<{ consultationType: 'psicologo' | 'medico_clinico'; durationMinutes: number; symptoms: string } | null>(null);
@@ -245,8 +282,8 @@ export default function ConsultationScreen() {
           <AppHeader title="Teleconsulta" />
           <StepIndicator
             current={currentStep}
-            total={3}
-            labels={['Profissional', 'Sintomas', 'Revisão']}
+            total={4}
+            labels={['Profissional', 'Duração', 'Sintomas', 'Revisão']}
             showConnectorLines={false}
           />
 
@@ -324,6 +361,9 @@ export default function ConsultationScreen() {
                   <Text style={[styles.typeName, isSelected && styles.typeNameSelected]} numberOfLines={1}>
                     {type.label}
                   </Text>
+                  <Text style={styles.typePrice}>
+                    {formatCurrency(CONSULTATION_PRICE_PER_MINUTE[type.key])}/min
+                  </Text>
                   <Text style={styles.typeDesc} numberOfLines={2}>{type.desc}</Text>
                 </AppCard>
               );
@@ -357,6 +397,101 @@ export default function ConsultationScreen() {
                 </TouchableOpacity>
               );
             })}
+          </View>
+
+          {/* Duration / Minutes Selection */}
+          <Text style={styles.sectionLabel}>Duração da consulta</Text>
+          <Text style={styles.fieldHint}>
+            Mínimo de {MIN_MINUTES} minutos. Minutos não usados viram saldo no banco de horas.
+          </Text>
+          <View style={styles.minuteRow}>
+            {MINUTE_PRESETS.map(min => {
+              const isSelected = !useCustomMinutes && selectedMinutes === min;
+              return (
+                <TouchableOpacity
+                  key={min}
+                  style={[styles.minuteChip, isSelected && styles.minuteChipSelected]}
+                  onPress={() => { setSelectedMinutes(min); setUseCustomMinutes(false); }}
+                  activeOpacity={0.7}
+                  accessibilityRole="radio"
+                  accessibilityLabel={`${min} minutos`}
+                  accessibilityState={{ selected: isSelected }}
+                >
+                  <Text style={[styles.minuteChipText, isSelected && styles.minuteChipTextSelected]}>
+                    {min} min
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+            <TouchableOpacity
+              style={[styles.minuteChip, useCustomMinutes && styles.minuteChipSelected]}
+              onPress={() => setUseCustomMinutes(true)}
+              activeOpacity={0.7}
+              accessibilityRole="radio"
+              accessibilityLabel="Personalizado"
+              accessibilityState={{ selected: useCustomMinutes }}
+            >
+              <Ionicons
+                name="create-outline"
+                size={14}
+                color={useCustomMinutes ? colors.primary : colors.textMuted}
+              />
+              <Text style={[styles.minuteChipText, useCustomMinutes && styles.minuteChipTextSelected]}>
+                Outro
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {useCustomMinutes && (
+            <View style={styles.customMinuteRow}>
+              <TextInput
+                style={styles.customMinuteInput}
+                placeholder="Min."
+                placeholderTextColor={colors.textMuted}
+                value={customMinutesText}
+                onChangeText={(t: string) => setCustomMinutesText(t.replace(/[^0-9]/g, ''))}
+                keyboardType="number-pad"
+                maxLength={3}
+                accessibilityLabel="Minutos personalizados"
+              />
+              <Text style={styles.customMinuteLabel}>minutos</Text>
+              {customMinutesText !== '' && parseInt(customMinutesText, 10) < MIN_MINUTES && (
+                <View style={styles.minWarning}>
+                  <Ionicons name="warning-outline" size={12} color={colors.warning} />
+                  <Text style={styles.minWarningText}>Mínimo {MIN_MINUTES} min</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Price Display */}
+          <View style={styles.priceCard}>
+            <View style={styles.priceRow}>
+              <Text style={styles.priceLabel}>
+                {effectiveMinutes} min x {formatCurrency(pricePerMinute)}/min
+              </Text>
+              <Text style={styles.priceValue}>{formatCurrency(totalPrice)}</Text>
+            </View>
+            {timeBankMinutes > 0 && (
+              <>
+                <View style={styles.priceDivider} />
+                <View style={styles.priceRow}>
+                  <View style={styles.timeBankRow}>
+                    <Ionicons name="wallet-outline" size={14} color={colors.success} />
+                    <Text style={styles.timeBankLabel}>
+                      Saldo disponível: {timeBankMinutes} min
+                    </Text>
+                  </View>
+                  <Text style={styles.timeBankDiscount}>
+                    -{formatCurrency(Math.min(timeBankMinutes, effectiveMinutes) * pricePerMinute)}
+                  </Text>
+                </View>
+                <View style={styles.priceDivider} />
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceTotalLabel}>Total a pagar</Text>
+                  <Text style={styles.priceTotalValue}>{formatCurrency(adjustedPrice)}</Text>
+                </View>
+              </>
+            )}
           </View>
 
           {/* Symptoms */}
@@ -420,13 +555,13 @@ export default function ConsultationScreen() {
 
         <StickyCTA
           summaryTitle="Resumo"
-          summaryValue={`${completeness.score}% pronto`}
-          summaryHint="Teleconsulta sem limite de tempo"
+          summaryValue={`${effectiveMinutes} min — ${formatCurrency(adjustedPrice)}`}
+          summaryHint={`${completeness.score}% pronto`}
           primary={{
             label: 'Agendar consulta',
             onPress: handleSubmit,
             loading,
-            disabled: loading || !isFormValid,
+            disabled: loading || !isFormValid || effectiveMinutes < MIN_MINUTES,
           }}
         />
       </View>
@@ -664,6 +799,136 @@ function makeStyles(colors: DesignColors, narrow: boolean) {
     inputWarning: {
       borderColor: colors.warning + 'CC',
       borderWidth: 1.5,
+    },
+
+    /* Type price under name */
+    typePrice: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.primary,
+      marginTop: 2,
+    },
+
+    /* Minute selection */
+    minuteRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: s.sm,
+    },
+    minuteChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      borderRadius: 14,
+      backgroundColor: colors.surface,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      minWidth: 56,
+    },
+    minuteChipSelected: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primarySoft,
+    },
+    minuteChipText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textMuted,
+    },
+    minuteChipTextSelected: {
+      color: colors.primary,
+    },
+
+    /* Custom minute input */
+    customMinuteRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: s.sm,
+      marginTop: s.sm,
+    },
+    customMinuteInput: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: s.md,
+      paddingVertical: 10,
+      fontSize: ty.fontSize.md,
+      color: colors.text,
+      width: 80,
+      textAlign: 'center',
+    },
+    customMinuteLabel: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    minWarning: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginLeft: 'auto',
+    },
+    minWarningText: {
+      fontSize: 12,
+      color: colors.warning,
+      fontWeight: '600',
+    },
+
+    /* Price card */
+    priceCard: {
+      marginTop: s.md,
+      marginBottom: s.sm,
+      padding: s.md,
+      borderRadius: 16,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    priceRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    priceLabel: {
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
+    priceValue: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    priceDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: s.sm,
+    },
+    timeBankRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    timeBankLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.success,
+    },
+    timeBankDiscount: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.success,
+    },
+    priceTotalLabel: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    priceTotalValue: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.primary,
     },
   });
 }

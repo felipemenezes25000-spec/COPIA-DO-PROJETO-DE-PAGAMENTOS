@@ -448,6 +448,36 @@ export default function DoctorVideoCall() {
         </div>
       )}
 
+      {/* Warning: < 2 minutes remaining */}
+      {contractedMinutes &&
+        (() => {
+          const remainingSec = contractedMinutes * 60 - timerSeconds;
+          if (remainingSec <= 0) {
+            return (
+              <div className="flex shrink-0 items-center gap-2 border-b border-red-500/30 bg-red-500/15 px-4 py-2">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 animate-pulse text-red-400" />
+                <span className="flex-1 text-xs font-semibold text-red-300">
+                  Tempo contratado excedido. Considere encerrar a consulta.
+                </span>
+              </div>
+            );
+          }
+          if (remainingSec <= 120) {
+            const mins = Math.floor(remainingSec / 60);
+            const secs = remainingSec % 60;
+            return (
+              <div className="flex shrink-0 items-center gap-2 border-b border-amber-500/30 bg-amber-500/15 px-4 py-2">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 animate-pulse text-amber-400" />
+                <span className="flex-1 text-xs font-semibold text-amber-300">
+                  Restam {mins > 0 ? `${mins}min ` : ''}
+                  {secs}s do tempo contratado
+                </span>
+              </div>
+            );
+          }
+          return null;
+        })()}
+
       {/* -- Main Content: Video + AI Panel -- */}
       {/* flex-col on small screens for responsive layout */}
       <div className="flex min-h-0 flex-1 overflow-hidden max-md:flex-col">

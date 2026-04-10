@@ -33,13 +33,26 @@ interface VideoCallTopBarProps {
   contractedMinutes: number | null;
   isAiActive: boolean;
   patientName?: string;
+  /** Remaining seconds countdown. null = no limit. */
+  remainingSeconds?: number | null;
+  /** True when < 2 minutes remaining. */
+  isWarning?: boolean;
+  /** True when time has expired. */
+  isExpired?: boolean;
 }
 
 export const VideoCallTopBar = React.memo(function VideoCallTopBar({
   colors, topInset, quality, callSeconds, contractedMinutes, isAiActive, patientName,
+  remainingSeconds, isWarning, isExpired,
 }: VideoCallTopBarProps) {
   const qColor = quality === 'good' ? '#22C55E' : quality === 'poor' ? '#F59E0B' : quality === 'bad' ? '#EF4444' : '#94A3B8';
   const timerStr = fmt(callSeconds);
+
+  // Determine countdown display
+  const hasCountdown = remainingSeconds != null && contractedMinutes != null;
+  const countdownStr = hasCountdown ? fmt(remainingSeconds!) : null;
+  const countdownColor = isExpired ? '#EF4444' : isWarning ? '#F59E0B' : '#94A3B8';
+  const countdownBg = isExpired ? 'rgba(239,68,68,0.25)' : isWarning ? 'rgba(245,158,11,0.25)' : 'rgba(30,41,59,0.85)';
 
   return (
     <View style={[S.top, { paddingTop: topInset + 8 }]}>
@@ -65,12 +78,24 @@ export const VideoCallTopBar = React.memo(function VideoCallTopBar({
         </View>
       ) : null}
 
-      {/* Right section: Timer + AI badge */}
+      {/* Right section: Countdown + Elapsed + AI badge */}
       <View style={S.topR}>
         {isAiActive && (
           <View style={S.aiPill}>
             <Ionicons name="sparkles" size={10} color="#8B5CF6" />
             <Text style={S.aiTxt}>IA</Text>
+          </View>
+        )}
+        {hasCountdown && (
+          <View style={[S.tPill, { backgroundColor: countdownBg }]}>
+            <Ionicons
+              name={isExpired ? 'alert-circle' : isWarning ? 'warning' : 'hourglass-outline'}
+              size={13}
+              color={countdownColor}
+            />
+            <Text allowFontScaling={false} style={[S.tTxt, { color: countdownColor }]}>
+              {countdownStr} restantes
+            </Text>
           </View>
         )}
         <View style={S.tPill}>

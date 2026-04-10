@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RenoveJa.Application.Configuration;
 using RenoveJa.Application.DTOs.Clinical;
+using RenoveJa.Application.Helpers;
 using RenoveJa.Application.Interfaces;
 using RenoveJa.Application.Services.Notifications;
 using RenoveJa.Domain.Entities;

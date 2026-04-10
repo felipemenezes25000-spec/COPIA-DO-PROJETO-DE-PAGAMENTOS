@@ -14,18 +14,25 @@ interface Step {
 }
 
 const PRESCRIPTION_STEPS: Step[] = [
-  { key: 'submitted', label: 'Enviado', shortLabel: 'Enviado', icon: 'paper-plane-outline', statuses: ['submitted'] },
-  { key: 'review', label: STATUS_LABELS_PT.in_review, shortLabel: 'Em análise', icon: 'eye-outline', statuses: ['analyzing', 'in_review'] },
-  { key: 'approved', label: 'Aguardando assinatura', shortLabel: 'Assinatura', icon: 'document-text-outline', statuses: ['approved', 'approved_pending_payment', 'pending_payment', 'paid'] },
+  { key: 'submitted', label: 'Solicitado', shortLabel: 'Solicitado', icon: 'paper-plane-outline', statuses: ['submitted'] },
+  { key: 'review', label: 'Em análise', shortLabel: 'Análise', icon: 'eye-outline', statuses: ['analyzing', 'in_review'] },
+  { key: 'approved', label: 'Aprovado', shortLabel: 'Aprovado', icon: 'checkmark-circle-outline', statuses: ['approved'] },
+  { key: 'payment', label: 'Aguardando pagamento', shortLabel: 'Pagamento', icon: 'card-outline', statuses: ['approved_pending_payment', 'pending_payment'] },
+  { key: 'paid', label: 'Pagamento confirmado', shortLabel: 'Pago', icon: 'wallet-outline', statuses: ['paid'] },
   { key: 'signed', label: 'Assinado', shortLabel: 'Assinado', icon: 'shield-checkmark-outline', statuses: ['signed'] },
-  { key: 'delivered', label: 'Entregue', shortLabel: 'Entregue', icon: 'checkmark-done-circle-outline', statuses: ['delivered', 'completed'] },
+  { key: 'delivered', label: 'Concluído', shortLabel: 'Concluído', icon: 'checkmark-done-circle-outline', statuses: ['delivered', 'completed'] },
 ];
 
 const CONSULTATION_STEPS: Step[] = [
+  { key: 'submitted', label: 'Solicitado', shortLabel: 'Solicitado', icon: 'paper-plane-outline', statuses: ['submitted'] },
   { key: 'searching', label: 'Buscando profissional', shortLabel: 'Buscando', icon: 'search-outline', statuses: ['searching_doctor'] },
-  { key: 'ready', label: 'Consulta pronta', shortLabel: 'Pronta', icon: 'checkmark-circle-outline', statuses: ['approved', 'approved_pending_payment', 'pending_payment', 'paid'] },
-  { key: 'in_consultation', label: 'Em consulta', shortLabel: 'Em consulta', icon: 'videocam-outline', statuses: ['in_consultation'] },
-  { key: 'finished', label: 'Finalizada', shortLabel: 'Finalizada', icon: 'checkmark-done-circle-outline', statuses: ['consultation_finished'] },
+  { key: 'accepted', label: 'Aceito', shortLabel: 'Aceito', icon: 'checkmark-circle-outline', statuses: ['approved'] },
+  { key: 'payment', label: 'Aguardando pagamento', shortLabel: 'Pagamento', icon: 'card-outline', statuses: ['approved_pending_payment', 'pending_payment'] },
+  { key: 'paid', label: 'Pagamento confirmado', shortLabel: 'Pago', icon: 'wallet-outline', statuses: ['paid'] },
+  { key: 'ready', label: 'Sala liberada', shortLabel: 'Sala', icon: 'enter-outline', statuses: ['consultation_ready'] },
+  { key: 'in_consultation', label: 'Em atendimento', shortLabel: 'Atendimento', icon: 'videocam-outline', statuses: ['in_consultation'] },
+  { key: 'post', label: 'Encerrado', shortLabel: 'Encerrado', icon: 'document-text-outline', statuses: ['pending_post_consultation'] },
+  { key: 'finished', label: 'Concluído', shortLabel: 'Concluído', icon: 'checkmark-done-circle-outline', statuses: ['consultation_finished'] },
 ];
 
 function getStepIndex(steps: Step[], status: RequestStatus): number {

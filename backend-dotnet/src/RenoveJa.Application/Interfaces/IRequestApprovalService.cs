@@ -18,5 +18,12 @@ public interface IRequestApprovalService
     Task<MedicalRequest> RejectAsync(
         Guid id,
         RejectRequestDto dto,
+        Guid doctorId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Reabre pedido rejeitado pela IA para análise médica.</summary>
+    Task<MedicalRequest> ReopenFromAiRejectionAsync(
+        Guid id,
+        Guid doctorId,
         CancellationToken cancellationToken = default);
 }
