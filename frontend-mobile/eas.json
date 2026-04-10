@@ -1,0 +1,42 @@
+{
+  "cli": {
+    "version": ">= 3.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.renovejasaude.com.br",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "462336676738-vr3ap789t68l7vbf5j32h8auqnr9a0ih.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "462336676738-0s001pi533f2d3o7j86t2o3ktvbr9oga.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "462336676738-sm6n4bup7ajvg8b9mslifls8i48o1hih.apps.googleusercontent.com"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.renovejasaude.com.br",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "462336676738-vr3ap789t68l7vbf5j32h8auqnr9a0ih.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "462336676738-0s001pi533f2d3o7j86t2o3ktvbr9oga.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "462336676738-sm6n4bup7ajvg8b9mslifls8i48o1hih.apps.googleusercontent.com"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.renovejasaude.com.br",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "462336676738-vr3ap789t68l7vbf5j32h8auqnr9a0ih.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "462336676738-0s001pi533f2d3o7j86t2o3ktvbr9oga.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "462336676738-sm6n4bup7ajvg8b9mslifls8i48o1hih.apps.googleusercontent.com"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

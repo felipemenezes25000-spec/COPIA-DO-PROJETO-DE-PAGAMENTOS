@@ -1,0 +1,488 @@
+using System.Collections.Concurrent;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Caching.Memory;
+using RenoveJa.Api.Hubs;
+using RenoveJa.Api.Services;
+using RenoveJa.Application.DTOs.Consultation;
+using RenoveJa.Application.Interfaces;
+using RenoveJa.Domain.Enums;
+using RenoveJa.Domain.Interfaces;
+using RenoveJa.Infrastructure.ConsultationAnamnesis;
+
+namespace RenoveJa.Api.Controllers;
+
+/// <summary>
+/// Endpoints para transcrição e anamnese em tempo quase real durante a consulta por vídeo.
+/// Suporta diarização: campo "stream" = "local" (médico) ou "remote" (paciente).
+/// </summary>
+[ApiController]
+[Route("api/consultation")]
+[Authorize(Roles = "doctor,patient")]
+public class ConsultationController(
+    IRequestRepository requestRepository,
+    ITranscriptionService transcriptionService,
+    IConsultationAnamnesisService anamnesisService,
+    IConsultationSessionStore sessionStore,
+    IHubContext<VideoSignalingHub> hubContext,
+    IMemoryCache memoryCache,
+    IStorageService storageService,
+    AnamnesisChannel anamnesisChannel,
+    ILogger<ConsultationController> logger) : ControllerBase
+{
+    private const string AnamnesisThrottleKeyPrefix = "consultation_anamnesis_last_";
+    private static readonly TimeSpan AnamnesisThrottleInterval = TimeSpan.FromMinutes(2);
+    private const int MinTranscriptLengthForAnamnesis = 200;
+    private const int MaxAiCallsPerConsultation = 50;
+    private static readonly ConcurrentDictionary<string, (int Count, DateTime LastAccessed)> AiCallCounts = new();
+    // BUG FIX: ticks armazenado como long para permitir Interlocked.CompareExchange atômico.
+    // Antes, múltiplas threads liam/escreviam _lastAiCleanup sem lock, rodando o cleanup em paralelo.
+    private static long _lastAiCleanupTicks = DateTime.UtcNow.Ticks;
+
+    /// <summary>
+    /// Recebe um chunk de áudio, transcreve e acumula.
+    /// O PACIENTE envia o áudio (seu microfone) — transcrição do que o paciente fala.
+    /// O médico apenas visualiza transcrição e anamnese via SignalR (fica mudo durante a consulta).
+    /// Aceita médico ou paciente: paciente sempre [Paciente]; médico usa stream "local"/"remote".
+    /// </summary>
+    [HttpPost("transcribe")]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    public async Task<IActionResult> Transcribe(
+        [FromForm] string? requestIdRaw,
+        [FromForm] IFormFile? file,
+        [FromForm] string? stream,
+        CancellationToken cancellationToken)
+    {
+        logger.LogInformation("[Transcribe] INICIO requestIdRaw={RequestIdRaw} | fileLen={FileLen} fileName={FileName} stream={Stream}",
+            requestIdRaw ?? "(null)", file?.Length ?? 0, file?.FileName ?? "(null)", stream ?? "(null)");
+
+        if (string.IsNullOrWhiteSpace(requestIdRaw))
+        {
+            logger.LogWarning("[Transcribe] 400: requestId ausente ou vazio. requestIdRaw={RequestIdRaw}", requestIdRaw ?? "(null)");
+            return BadRequest(new { message = "RequestId is required", code = "invalid_request_id" });
+        }
+
+        if (!Guid.TryParse(requestIdRaw, out var requestId))
+        {
+            logger.LogWarning("[Transcribe] 400: requestId com formato inválido (exige UUID). requestIdRaw={RequestIdRaw}", requestIdRaw);
+            return BadRequest(new { message = "RequestId must be a valid UUID", code = "invalid_request_id_format" });
+        }
+
+        var userId = GetUserId();
+        var request = await requestRepository.GetByIdAsync(requestId, cancellationToken);
+        if (request == null)
+        {
+            logger.LogWarning("[Transcribe] 404: Request não encontrado. RequestId={RequestId}", requestId);
+            return NotFound(new { message = "Request not found", code = "request_not_found" });
+        }
+        var isDoctor = request.DoctorId == userId;
+        var isPatient = request.PatientId == userId;
+        if (!isDoctor && !isPatient)
+        {
+            logger.LogWarning("[Transcribe] 403: Usuário não autorizado. RequestId={RequestId} UserId={UserId}", requestId, userId);
+            return Forbid();
+        }
+
+        if (request.RequestType != RequestType.Consultation)
+        {
+            logger.LogWarning("[Transcribe] 400: Tipo de request inválido. RequestId={RequestId} Type={Type} (exige Consultation)", requestId, request.RequestType);
+            return BadRequest(new { message = "Only consultation requests support transcription", code = "invalid_request_type" });
+        }
+
+        var canTranscribe = request.Status == RequestStatus.InConsultation || request.Status == RequestStatus.Paid;
+        if (!canTranscribe)
+        {
+            logger.LogWarning("[Transcribe] 400 TRANSCRICAO_NAO_OCORRE: Status inválido. RequestId={RequestId} Status={Status} (exige InConsultation ou Paid)",
+                requestId, request.Status);
+            return BadRequest(new { message = "Consultation must be paid or in progress to transcribe", code = "invalid_consultation_status" });
+        }
+
+        if (file == null || file.Length == 0)
+        {
+            logger.LogWarning("[Transcribe] 400 TRANSCRICAO_NAO_OCORRE: Chunk de áudio ausente ou vazio. RequestId={RequestId} fileNull={FileNull} fileLen={FileLen}",
+                requestId, file == null, file?.Length ?? 0);
+            return BadRequest(new { message = "Audio file is required", code = "audio_file_required" });
+        }
+
+        logger.LogInformation("[Transcribe] Processando áudio: RequestId={RequestId} Size={Size} FileName={FileName}",
+            requestId, file.Length, file.FileName ?? "(null)");
+
+        await using var fileStream = file.OpenReadStream();
+        using var ms = new MemoryStream();
+        await fileStream.CopyToAsync(ms, cancellationToken);
+        var audioBytes = ms.ToArray();
+
+        // Gravação de áudio na AWS (bucket de transcrições/gravações)
+        var fileName = file.FileName ?? "";
+        var ext = string.IsNullOrEmpty(Path.GetExtension(fileName)) ? "webm" : Path.GetExtension(fileName).TrimStart('.');
+        var recordingPath = RenoveJa.Application.Helpers.StoragePaths.GravacaoChunk(request.PatientId, requestId, ext);
+        var contentType = string.IsNullOrWhiteSpace(file.ContentType) ? "audio/webm" : file.ContentType;
+        try
+        {
+            var uploadResult = await storageService.UploadAsync(recordingPath, audioBytes, contentType, cancellationToken);
+            if (!uploadResult.Success)
+                logger.LogWarning("[Transcribe] Gravação não enviada à AWS: RequestId={RequestId} Path={Path} Error={Error}", requestId, recordingPath, uploadResult.ErrorMessage);
+            else
+                logger.LogInformation("[Transcribe] Gravação enviada à AWS: RequestId={RequestId} Path={Path}", requestId, recordingPath);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "[Transcribe] Falha ao enviar gravação à AWS: RequestId={RequestId}", requestId);
+        }
+
+        sessionStore.EnsureSession(requestId, request.PatientId);
+        sessionStore.SetConsultationType(requestId, request.ConsultationType);
+        logger.LogDebug("[Transcribe] Sessão garantida para RequestId={RequestId}", requestId);
+
+        var currentTranscript = sessionStore.GetTranscript(requestId);
+        var rawText = await transcriptionService.TranscribeAsync(audioBytes, file.FileName, currentTranscript, cancellationToken);
+        if (string.IsNullOrWhiteSpace(rawText))
+        {
+            logger.LogWarning("[Transcribe] TRANSCRICAO_NAO_OCORRE: transcrição retornou vazio. RequestId={RequestId} | Transcrição em consulta é feita pelo Daily.co (Deepgram).",
+                requestId);
+            return Ok(new { transcribed = false, message = "No speech detected or transcription unavailable." });
+        }
+
+        logger.LogInformation("[Transcribe] Transcrição recebida: RequestId={RequestId} TextLength={Len}",
+            requestId, rawText.Length);
+
+        var prefix = isPatient ? "[Paciente]" : (string.Equals(stream, "local", StringComparison.OrdinalIgnoreCase) ? "[Médico]" : "[Paciente]");
+        var labeledText = $"{prefix} {rawText}";
+
+        sessionStore.AppendTranscript(requestId, labeledText);
+        var fullText = sessionStore.GetTranscript(requestId);
+
+        var group = VideoSignalingHub.GroupName(requestId.ToString());
+        await hubContext.Clients.Group(group)
+            .SendAsync("TranscriptUpdate", new TranscriptUpdateDto(fullText), cancellationToken);
+
+        var throttleKey = AnamnesisThrottleKeyPrefix + requestId;
+        var canRunAnamnesis = fullText.Length >= MinTranscriptLengthForAnamnesis;
+        var throttleActive = memoryCache.TryGetValue(throttleKey, out _);
+
+        logger.LogInformation("[Transcribe] Anamnese IA: RequestId={RequestId} fullTextLen={Len} minRequerido={Min} canRun={CanRun} throttleActive={Throttle}",
+            requestId, fullText.Length, MinTranscriptLengthForAnamnesis, canRunAnamnesis, throttleActive);
+
+        var aiCallKey = requestId.ToString();
+        CleanupStaleAiCounts();
+        var entry = AiCallCounts.GetOrAdd(aiCallKey, _ => (0, DateTime.UtcNow));
+        var currentCount = entry.Count;
+
+        if (canRunAnamnesis && !throttleActive && currentCount < MaxAiCallsPerConsultation)
+        {
+            AiCallCounts.AddOrUpdate(aiCallKey, _ => (1, DateTime.UtcNow), (_, e) => (e.Count + 1, DateTime.UtcNow));
+
+            memoryCache.Set(throttleKey, true,
+                new MemoryCacheEntryOptions().SetAbsoluteExpiration(AnamnesisThrottleInterval));
+
+            var (previousAnamnesisJson, _) = sessionStore.GetAnamnesisState(requestId);
+            logger.LogInformation("[Transcribe] Disparando anamnese IA: RequestId={RequestId} previousAnamnesisLen={PrevLen}",
+                requestId, previousAnamnesisJson?.Length ?? 0);
+
+            var workItem = new AnamnesisWorkItem(fullText, previousAnamnesisJson, requestId, group, sessionStore.GetConsultationType(requestId));
+            if (!anamnesisChannel.Writer.TryWrite(workItem))
+                logger.LogWarning("[Transcribe] Canal de anamnese cheio, item descartado. RequestId={RequestId}", requestId);
+        }
+        else if (currentCount >= MaxAiCallsPerConsultation)
+        {
+            logger.LogWarning("[Transcribe] Rate limit atingido ({Count}/{Max}) para RequestId={RequestId}",
+                currentCount, MaxAiCallsPerConsultation, requestId);
+        }
+        else if (!canRunAnamnesis)
+        {
+            logger.LogInformation("[Transcribe] Anamnese IA aguardando: transcript com {Len} chars (mínimo {Min}). RequestId={RequestId}",
+                fullText.Length, MinTranscriptLengthForAnamnesis, requestId);
+        }
+
+        return Ok(new { transcribed = true, text = rawText, stream = prefix, fullLength = fullText.Length });
+    }
+
+    /// <summary>
+    /// Recebe texto já transcrito (Daily.co nativo no cliente). Usado quando transcrição é feita no app.
+    /// O médico envia chunks de texto com speaker (medico|paciente); acumula e propaga via SignalR.
+    /// </summary>
+    [HttpPost("transcribe-text")]
+    public async Task<IActionResult> TranscribeText(
+        [FromBody] TranscribeTextRequestDto dto,
+        CancellationToken cancellationToken)
+    {
+        if (dto == null || string.IsNullOrWhiteSpace(dto.Text))
+        {
+            logger.LogWarning("[TranscribeText] Texto ausente ou vazio.");
+            return BadRequest(new { message = "Text is required" });
+        }
+        if (dto.RequestId == Guid.Empty)
+        {
+            logger.LogWarning("[TranscribeText] RequestId inválido.");
+            return BadRequest(new { message = "RequestId is required" });
+        }
+
+        var requestId = dto.RequestId;
+        logger.LogInformation("[TranscribeText] INICIO RequestId={RequestId} | textLen={Len} | speaker={Speaker}",
+            requestId, dto.Text.Length, dto.Speaker ?? "(null)");
+
+        var userId = GetUserId();
+        var request = await requestRepository.GetByIdAsync(requestId, cancellationToken);
+        if (request == null)
+        {
+            logger.LogWarning("[TranscribeText] Request não encontrado. RequestId={RequestId}", requestId);
+            return NotFound(new { message = "Request not found" });
+        }
+        var isDoctor = request.DoctorId == userId;
+        var isPatient = request.PatientId == userId;
+        if (!isDoctor && !isPatient)
+        {
+            logger.LogWarning("[TranscribeText] Usuário não autorizado. RequestId={RequestId} UserId={UserId}", requestId, userId);
+            return Forbid();
+        }
+
+        if (request.RequestType != RequestType.Consultation)
+        {
+            logger.LogWarning("[TranscribeText] Tipo de request inválido. RequestId={RequestId} Type={Type}", requestId, request.RequestType);
+            return BadRequest(new { message = "Only consultation requests support transcription" });
+        }
+
+        var canTranscribe = request.Status == RequestStatus.InConsultation || request.Status == RequestStatus.Paid;
+        if (!canTranscribe)
+        {
+            logger.LogWarning("[TranscribeText] Status inválido. RequestId={RequestId} Status={Status}", requestId, request.Status);
+            return BadRequest(new { message = "Consultation must be paid or in progress to transcribe" });
+        }
+
+        var prefix = string.Equals(dto.Speaker, "medico", StringComparison.OrdinalIgnoreCase) ? "[Médico]" : "[Paciente]";
+        var labeledText = $"{prefix} {dto.Text.Trim()}";
+
+        sessionStore.EnsureSession(requestId, request.PatientId);
+        sessionStore.SetConsultationType(requestId, request.ConsultationType);
+        sessionStore.AppendTranscript(requestId, labeledText, dto.StartTimeSeconds);
+        var fullText = sessionStore.GetTranscript(requestId);
+
+        var group = VideoSignalingHub.GroupName(requestId.ToString());
+        await hubContext.Clients.Group(group)
+            .SendAsync("TranscriptUpdate", new TranscriptUpdateDto(fullText), cancellationToken);
+
+        var throttleKey = AnamnesisThrottleKeyPrefix + requestId;
+        var canRunAnamnesis = fullText.Length >= MinTranscriptLengthForAnamnesis;
+        var throttleActive = memoryCache.TryGetValue(throttleKey, out _);
+
+        var aiCallKey2 = requestId.ToString();
+        var entry2 = AiCallCounts.GetOrAdd(aiCallKey2, _ => (0, DateTime.UtcNow));
+        var currentCount2 = entry2.Count;
+
+        if (canRunAnamnesis && !throttleActive && currentCount2 < MaxAiCallsPerConsultation)
+        {
+            AiCallCounts.AddOrUpdate(aiCallKey2, _ => (1, DateTime.UtcNow), (_, e) => (e.Count + 1, DateTime.UtcNow));
+
+            memoryCache.Set(throttleKey, true,
+                new MemoryCacheEntryOptions().SetAbsoluteExpiration(AnamnesisThrottleInterval));
+
+            var (previousAnamnesisJson, _) = sessionStore.GetAnamnesisState(requestId);
+
+            var workItem = new AnamnesisWorkItem(fullText, previousAnamnesisJson, requestId, group, sessionStore.GetConsultationType(requestId));
+            if (!anamnesisChannel.Writer.TryWrite(workItem))
+                logger.LogWarning("[TranscribeText] Canal de anamnese cheio, item descartado. RequestId={RequestId}", requestId);
+        }
+
+        return Ok(new { ok = true, fullLength = fullText.Length });
+    }
+
+    /// <summary>
+    /// Heartbeat periódico (a cada 2 min) para garantir que a anamnese IA seja atualizada
+    /// mesmo durante períodos de silêncio na consulta.
+    /// O frontend chama este endpoint em um timer; o backend re-enfileira o transcript atual.
+    /// </summary>
+    [HttpPost("refresh-anamnesis")]
+    public async Task<IActionResult> RefreshAnamnesis(
+        [FromBody] RefreshAnamnesisRequestDto dto,
+        CancellationToken cancellationToken)
+    {
+        if (dto.RequestId == Guid.Empty)
+            return BadRequest(new { message = "RequestId is required" });
+
+        var requestId = dto.RequestId;
+        var userId = GetUserId();
+        var request = await requestRepository.GetByIdAsync(requestId, cancellationToken);
+        if (request == null)
+            return NotFound(new { message = "Request not found" });
+
+        if (request.DoctorId != userId && request.PatientId != userId)
+            return Forbid();
+
+        if (request.RequestType != RequestType.Consultation)
+            return BadRequest(new { message = "Only consultation requests" });
+
+        var canRefresh = request.Status == RequestStatus.InConsultation || request.Status == RequestStatus.Paid;
+        if (!canRefresh)
+            return BadRequest(new { message = "Consultation must be in progress" });
+
+        var fullText = sessionStore.GetTranscript(requestId);
+        if (string.IsNullOrWhiteSpace(fullText) || fullText.Length < MinTranscriptLengthForAnamnesis)
+            return Ok(new { ok = true, skipped = true, reason = "transcript_too_short" });
+
+        var throttleKey = AnamnesisThrottleKeyPrefix + requestId;
+        if (memoryCache.TryGetValue(throttleKey, out _))
+            return Ok(new { ok = true, skipped = true, reason = "throttle_active" });
+
+        var aiCallKey = requestId.ToString();
+        var entry = AiCallCounts.GetOrAdd(aiCallKey, _ => (0, DateTime.UtcNow));
+        if (entry.Count >= MaxAiCallsPerConsultation)
+            return Ok(new { ok = true, skipped = true, reason = "rate_limit" });
+
+        AiCallCounts.AddOrUpdate(aiCallKey, _ => (1, DateTime.UtcNow), (_, e) => (e.Count + 1, DateTime.UtcNow));
+        memoryCache.Set(throttleKey, true,
+            new MemoryCacheEntryOptions().SetAbsoluteExpiration(AnamnesisThrottleInterval));
+
+        var (previousAnamnesisJson, _) = sessionStore.GetAnamnesisState(requestId);
+        var group = VideoSignalingHub.GroupName(requestId.ToString());
+        var workItem = new AnamnesisWorkItem(fullText, previousAnamnesisJson, requestId, group, sessionStore.GetConsultationType(requestId));
+
+        if (!anamnesisChannel.Writer.TryWrite(workItem))
+            logger.LogWarning("[RefreshAnamnesis] Canal cheio. RequestId={RequestId}", requestId);
+
+        logger.LogInformation("[RefreshAnamnesis] Anamnese enfileirada. RequestId={RequestId} transcriptLen={Len}", requestId, fullText.Length);
+        return Ok(new { ok = true, skipped = false });
+    }
+
+#if DEBUG
+    /// <summary>
+    /// Endpoint de teste de anamnese (apenas Development).
+    /// Aceita transcript e retorna anamnese gerada pela IA (Gemini/OpenAI).
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("anamnesis-test")]
+    public async Task<IActionResult> AnamnesisTest(
+        [FromBody] AnamnesisTestRequestDto? dto,
+        CancellationToken cancellationToken)
+    {
+        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        if (!string.Equals(env, "Development", StringComparison.OrdinalIgnoreCase))
+        {
+            logger.LogWarning("[AnamnesisTest] Endpoint não disponível fora de Development.");
+            return NotFound();
+        }
+
+        if (dto == null || string.IsNullOrWhiteSpace(dto.Transcript))
+        {
+            return BadRequest(new { error = "Transcript obrigatório. Ex: {\"transcript\": \"[Paciente] Dor de cabeça há 3 dias.\"}" });
+        }
+
+        var transcript = dto.Transcript.Trim();
+        if (transcript.Length < 100)
+        {
+            return BadRequest(new { error = "Transcript muito curto (mínimo 100 caracteres para teste significativo)" });
+        }
+
+        logger.LogInformation("[AnamnesisTest] INICIO transcriptLen={Len}", transcript.Length);
+
+        try
+        {
+            var result = await anamnesisService.UpdateAnamnesisAndSuggestionsAsync(
+                transcript, dto.PreviousAnamnesisJson, null, cancellationToken);
+
+            if (result == null)
+            {
+                logger.LogWarning("[AnamnesisTest] Serviço retornou null (verifique Gemini__ApiKey ou OpenAI__ApiKey)");
+                return Ok(new
+                {
+                    success = false,
+                    message = "Anamnese não gerada. Verifique logs e chaves de API (Gemini__ApiKey ou OpenAI__ApiKey)."
+                });
+            }
+
+            logger.LogInformation("[AnamnesisTest] SUCESSO anamnesisLen={Len} suggestions={Count}",
+                result.AnamnesisJson.Length, result.Suggestions.Count);
+
+            return Ok(new
+            {
+                success = true,
+                anamnesisJson = result.AnamnesisJson,
+                suggestions = result.Suggestions,
+                evidenceCount = result.Evidence.Count
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "[AnamnesisTest] Exceção ao gerar anamnese");
+            return StatusCode(500, new { success = false, error = "Erro ao processar solicitação." });
+        }
+    }
+
+    /// <summary>
+    /// Endpoint de teste de transcrição (apenas Development).
+    /// Aceita um arquivo de áudio. Transcrição em consulta é feita pelo Daily.co (Deepgram).
+    /// Este endpoint retorna vazio — use apenas para testes de compatibilidade.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("transcribe-test")]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    public async Task<IActionResult> TranscribeTest(
+        [FromForm] IFormFile? file,
+        CancellationToken cancellationToken)
+    {
+        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        logger.LogInformation("[TranscribeTest] Requisição recebida. ASPNETCORE_ENVIRONMENT={Env}", env ?? "(null)");
+
+        if (!string.Equals(env, "Development", StringComparison.OrdinalIgnoreCase))
+        {
+            logger.LogWarning("[TranscribeTest] Endpoint não disponível fora de Development. Retornando 404.");
+            return NotFound();
+        }
+
+        if (file == null || file.Length == 0)
+        {
+            logger.LogWarning("[TranscribeTest] Arquivo ausente ou vazio.");
+            return BadRequest(new { error = "Arquivo de áudio obrigatório" });
+        }
+
+        logger.LogInformation("[TranscribeTest] Arquivo recebido: {Name}, {Size} bytes", file.FileName, file.Length);
+
+        await using var fileStream = file.OpenReadStream();
+        using var ms = new MemoryStream();
+        await fileStream.CopyToAsync(ms, cancellationToken);
+        var audioBytes = ms.ToArray();
+
+        var rawText = await transcriptionService.TranscribeAsync(audioBytes, file.FileName, null, cancellationToken);
+        logger.LogInformation("[TranscribeTest] Resultado: transcribed={Transcribed}, textLength={Len}",
+            !string.IsNullOrWhiteSpace(rawText), rawText?.Length ?? 0);
+
+        return Ok(new
+        {
+            transcribed = !string.IsNullOrWhiteSpace(rawText),
+            text = rawText ?? "(nenhum texto detectado)",
+            fileSize = audioBytes.Length,
+            fileName = file.FileName
+        });
+    }
+#endif
+
+    private static void CleanupStaleAiCounts()
+    {
+        var now = DateTime.UtcNow;
+        var previousTicks = System.Threading.Interlocked.Read(ref _lastAiCleanupTicks);
+        var previous = new DateTime(previousTicks, DateTimeKind.Utc);
+        if ((now - previous).TotalMinutes < 10) return;
+        // BUG FIX: ganha o direito de rodar o cleanup só 1 thread por vez (CAS atômico).
+        // Se outra thread já trocou o valor, aborta — evita múltiplas passagens concorrentes.
+        if (System.Threading.Interlocked.CompareExchange(ref _lastAiCleanupTicks, now.Ticks, previousTicks) != previousTicks)
+            return;
+        var cutoff = now.AddHours(-1);
+        foreach (var kvp in AiCallCounts)
+        {
+            if (kvp.Value.LastAccessed < cutoff)
+                AiCallCounts.TryRemove(kvp.Key, out _);
+        }
+    }
+
+    internal static void RemoveAiCallCount(string requestId)
+        => AiCallCounts.TryRemove(requestId, out _);
+
+    private Guid GetUserId()
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdClaim, out var userId))
+            throw new UnauthorizedAccessException("Invalid user ID");
+        return userId;
+    }
+}

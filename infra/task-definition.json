@@ -1,0 +1,65 @@
+{
+  "family": "renoveja-api",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::__ACCOUNT_ID__:role/renoveja-ecs-execution",
+  "taskRoleArn": "arn:aws:iam::__ACCOUNT_ID__:role/renoveja-ecs-task",
+  "containerDefinitions": [{
+    "name": "api",
+    "image": "__ACCOUNT_ID__.dkr.ecr.sa-east-1.amazonaws.com/renoveja-api:latest",
+    "portMappings": [{"containerPort": 8080, "protocol": "tcp"}],
+    "environment": [
+      {"name": "ASPNETCORE_ENVIRONMENT", "value": "Production"},
+      {"name": "ASPNETCORE_URLS", "value": "http://+:8080"},
+      {"name": "AllowedHosts", "value": "*"},
+      {"name": "AWS_REGION", "value": "sa-east-1"},
+      {"name": "Cors__AllowedOrigins__0", "value": "https://renovejasaude.com.br"},
+      {"name": "Cors__AllowedOrigins__1", "value": "https://www.renovejasaude.com.br"},
+      {"name": "Cors__AllowedOrigins__2", "value": "https://admin.renovejasaude.com.br"},
+      {"name": "Cors__AllowedOrigins__3", "value": "https://medico.renovejasaude.com.br"},
+      {"name": "Cors__AllowedOrigins__4", "value": "https://app.renovejasaude.com.br"},
+      {"name": "Verification__FrontendUrl", "value": "https://www.renovejasaude.com.br/verify"}
+    ],
+    "secrets": [
+      {"name": "ConnectionStrings__DefaultConnection", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/ConnectionStrings__DefaultConnection"},
+      {"name": "Redis__ConnectionString", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/Redis__ConnectionString"},
+      {"name": "DAILY_API_KEY", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/DAILY_API_KEY"},
+      {"name": "DAILY_DOMAIN", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/DAILY_DOMAIN"},
+      {"name": "DAILY_ROOM_PREFIX", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/DAILY_ROOM_PREFIX"},
+      {"name": "DAILY_ROOM_EXPIRY_MINUTES", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/DAILY_ROOM_EXPIRY_MINUTES"},
+      {"name": "DAILY_WEBHOOK_SECRET", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/DAILY_WEBHOOK_SECRET"},
+      {"name": "OpenAI__ApiKey", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/OpenAI__ApiKey"},
+      {"name": "CertificateEncryption__Key", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/CertificateEncryption__Key"},
+      {"name": "MercadoPago__AccessToken", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/MercadoPago__AccessToken"},
+      {"name": "MercadoPago__PublicKey", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/MercadoPago__PublicKey"},
+      {"name": "MercadoPago__ClientId", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/MercadoPago__ClientId"},
+      {"name": "MercadoPago__ClientSecret", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/MercadoPago__ClientSecret"},
+      {"name": "MercadoPago__WebhookSecret", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/MercadoPago__WebhookSecret"},
+      {"name": "MercadoPago__NotificationUrl", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/MercadoPago__NotificationUrl"},
+      {"name": "Api__BaseUrl", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/Api__BaseUrl"},
+      {"name": "Api__DocumentTokenSecret", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/Api__DocumentTokenSecret"},
+      {"name": "Verification__BaseUrl", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/Verification__BaseUrl"},
+      {"name": "Google__ClientId", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/Google__ClientId"},
+      {"name": "Google__AndroidClientId", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/Google__AndroidClientId"},
+      {"name": "ADMIN_SEED_EMAIL", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/ADMIN_SEED_EMAIL"},
+      {"name": "ADMIN_SEED_PASSWORD", "valueFrom": "arn:aws:ssm:sa-east-1:__ACCOUNT_ID__:parameter/renoveja/prod/ADMIN_SEED_PASSWORD"}
+    ],
+    "healthCheck": {
+      "command": ["CMD-SHELL", "wget -qO /dev/null http://localhost:8080/api/health/live || exit 1"],
+      "interval": 30,
+      "timeout": 15,
+      "retries": 5,
+      "startPeriod": 120
+    },
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "/ecs/renoveja-api",
+        "awslogs-region": "sa-east-1",
+        "awslogs-stream-prefix": "api"
+      }
+    }
+  }]
+}

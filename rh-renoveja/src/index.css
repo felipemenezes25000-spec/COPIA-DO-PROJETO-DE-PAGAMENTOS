@@ -1,0 +1,160 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Primary — Sky Blue (RenoveJá+ brand — matches frontend-web/mobile) */
+    --color-primary-50: #F0F9FF;
+    --color-primary-100: #E0F2FE;
+    --color-primary-200: #BAE6FD;
+    --color-primary-300: #7DD3FC;
+    --color-primary-400: #38BDF8;
+    --color-primary-500: #0EA5E9;
+    --color-primary-600: #0284C7;
+    --color-primary-700: #0369A1;
+    --color-primary-800: #075985;
+    --color-primary-900: #0C4A6E;
+
+    /* Secondary — Teal */
+    --color-secondary-50: #F0FDFA;
+    --color-secondary-100: #CCFBF1;
+    --color-secondary-500: #14B8A6;
+    --color-secondary-600: #0D9488;
+    --color-secondary-700: #0F766E;
+
+    /* Neutrals (Slate) */
+    --color-slate-50: #F8FAFC;
+    --color-slate-100: #F1F5F9;
+    --color-slate-200: #E2E8F0;
+    --color-slate-300: #CBD5E1;
+    --color-slate-400: #94A3B8;
+    --color-slate-500: #64748B;
+    --color-slate-600: #475569;
+    --color-slate-700: #334155;
+    --color-slate-800: #1E293B;
+    --color-slate-900: #0F172A;
+
+    /* Feedback */
+    --color-success: #22C55E;
+    --color-warning: #F59E0B;
+    --color-error: #EF4444;
+    --color-info: #3B82F6;
+
+    /* Surfaces */
+    --bg-page: linear-gradient(160deg, #F0F9FF 0%, #E0F2FE 25%, #F8FAFC 60%, #F0FDFA 100%);
+    --bg-card: #FFFFFF;
+    --bg-input: #F8FAFC;
+    --border-default: #E2E8F0;
+    --border-focus: #0284C7;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 80px;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--color-slate-800);
+    background: var(--bg-page);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Poppins', 'Inter', sans-serif;
+    color: var(--color-slate-900);
+  }
+
+  ::selection {
+    background: rgba(14, 165, 233, 0.2);
+    color: var(--color-slate-900);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-8 py-3.5 text-white font-semibold rounded-xl;
+    @apply transition-all duration-300 ease-out;
+    background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
+    box-shadow: 0 4px 14px rgba(14, 165, 233, 0.35);
+  }
+  .btn-primary:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 20px rgba(14, 165, 233, 0.45);
+  }
+  .btn-primary:active {
+    transform: scale(0.98);
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-8 py-3.5 font-semibold rounded-xl;
+    @apply border border-slate-200 bg-white text-slate-600;
+    @apply transition-all duration-200;
+  }
+  .btn-secondary:hover {
+    @apply bg-slate-50 border-slate-300;
+    transform: scale(1.02);
+  }
+  .btn-secondary:active {
+    transform: scale(0.98);
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl text-[15px] font-normal;
+    @apply border-[1.5px] border-slate-200 bg-slate-50;
+    @apply transition-all duration-200 outline-none;
+    @apply placeholder:text-slate-400;
+  }
+  .input-field:focus {
+    @apply border-sky-600 bg-white;
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.12);
+  }
+  .input-field.error {
+    @apply border-red-400;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+  }
+
+  .card {
+    @apply bg-white rounded-2xl border border-slate-200;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 6px 24px rgba(15, 23, 42, 0.06);
+  }
+  .card-hover {
+    @apply transition-all duration-300;
+  }
+  .card-hover:hover {
+    @apply -translate-y-1;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06), 0 20px 48px rgba(15, 23, 42, 0.1);
+  }
+}
+
+/* Focus visible */
+:focus-visible {
+  outline: 2px solid #0EA5E9;
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #F1F5F9; border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: #0EA5E9; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #0284C7; }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

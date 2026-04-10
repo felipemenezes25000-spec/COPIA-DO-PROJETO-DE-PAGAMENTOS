@@ -1,0 +1,444 @@
+using System.Text.Json.Serialization;
+
+namespace RenoveJa.Infrastructure.Data.Models;
+
+/// <summary>Modelo de persistência de usuário (tabela users).</summary>
+public class UserModel
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string PasswordHash { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public string? Cpf { get; set; }
+    [JsonPropertyName("birth_date")]
+    public DateTime? BirthDate { get; set; }
+    public string? Gender { get; set; }
+    public string? Address { get; set; }
+    public string? Street { get; set; }
+    public string? Number { get; set; }
+    public string? Neighborhood { get; set; }
+    public string? Complement { get; set; }
+    public string? City { get; set; }
+    public string? State { get; set; }
+    [JsonPropertyName("postal_code")]
+    public string? PostalCode { get; set; }
+    public string? AvatarUrl { get; set; }
+    public string Role { get; set; } = "patient";
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    /// <summary>Cadastro concluído (phone, CPF preenchidos). Usuários Google iniciam com false.</summary>
+    public bool ProfileComplete { get; set; } = true;
+}
+
+public class DoctorProfileModel
+{
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    public string Crm { get; set; } = string.Empty;
+    public string CrmState { get; set; } = string.Empty;
+    public string Specialty { get; set; } = string.Empty;
+    [JsonPropertyName("professional_address")]
+    public string? ProfessionalAddress { get; set; }
+    [JsonPropertyName("professional_postal_code")]
+    public string? ProfessionalPostalCode { get; set; }
+    [JsonPropertyName("professional_street")]
+    public string? ProfessionalStreet { get; set; }
+    [JsonPropertyName("professional_number")]
+    public string? ProfessionalNumber { get; set; }
+    [JsonPropertyName("professional_neighborhood")]
+    public string? ProfessionalNeighborhood { get; set; }
+    [JsonPropertyName("professional_complement")]
+    public string? ProfessionalComplement { get; set; }
+    [JsonPropertyName("professional_city")]
+    public string? ProfessionalCity { get; set; }
+    [JsonPropertyName("professional_state")]
+    public string? ProfessionalState { get; set; }
+    [JsonPropertyName("professional_phone")]
+    public string? ProfessionalPhone { get; set; }
+    public string? Rqe { get; set; }
+    public string? University { get; set; }
+    public string? Courses { get; set; }
+    [JsonPropertyName("hospitals_services")]
+    public string? HospitalsServices { get; set; }
+    [JsonPropertyName("graduation_year")]
+    public int? GraduationYear { get; set; }
+    public string? Bio { get; set; }
+    public decimal Rating { get; set; }
+    public int TotalConsultations { get; set; }
+    public bool Available { get; set; }
+    public Guid? ActiveCertificateId { get; set; }
+    public bool CrmValidated { get; set; }
+    public DateTime? CrmValidatedAt { get; set; }
+    [JsonPropertyName("approval_status")]
+    public string ApprovalStatus { get; set; } = "pending";
+    [JsonPropertyName("last_assigned_at")]
+    public DateTime? LastAssignedAt { get; set; }
+    [JsonPropertyName("curriculum_url")]
+    public string? CurriculumUrl { get; set; }
+    [JsonPropertyName("diploma_url")]
+    public string? DiplomaUrl { get; set; }
+    [JsonPropertyName("hr_protocol")]
+    public string? HrProtocol { get; set; }
+    public DateTime CreatedAt { get; set; }
+
+    public static DoctorProfileModel FromDomain(RenoveJa.Domain.Entities.DoctorProfile profile)
+    {
+        return new DoctorProfileModel
+        {
+            Id = profile.Id,
+            UserId = profile.UserId,
+            Crm = profile.Crm,
+            CrmState = profile.CrmState,
+            Specialty = profile.Specialty,
+            Rqe = profile.Rqe,
+            ProfessionalAddress = profile.ProfessionalAddress,
+            ProfessionalPhone = profile.ProfessionalPhone,
+            ProfessionalPostalCode = profile.ProfessionalPostalCode,
+            ProfessionalStreet = profile.ProfessionalStreet,
+            ProfessionalNumber = profile.ProfessionalNumber,
+            ProfessionalNeighborhood = profile.ProfessionalNeighborhood,
+            ProfessionalComplement = profile.ProfessionalComplement,
+            ProfessionalCity = profile.ProfessionalCity,
+            ProfessionalState = profile.ProfessionalState,
+            University = profile.University,
+            Courses = profile.Courses,
+            HospitalsServices = profile.HospitalsServices,
+            GraduationYear = profile.GraduationYear,
+            Bio = profile.Bio,
+            Rating = profile.Rating,
+            TotalConsultations = profile.TotalConsultations,
+            Available = profile.Available,
+            ActiveCertificateId = profile.ActiveCertificateId,
+            CrmValidated = profile.CrmValidated,
+            CrmValidatedAt = profile.CrmValidatedAt,
+            CreatedAt = profile.CreatedAt,
+            ApprovalStatus = profile.ApprovalStatus.ToString().ToLowerInvariant(),
+            LastAssignedAt = profile.LastAssignedAt,
+            CurriculumUrl = profile.CurriculumUrl,
+            DiplomaUrl = profile.DiplomaUrl,
+            HrProtocol = profile.HrProtocol
+        };
+    }
+
+    public RenoveJa.Domain.Entities.DoctorProfile ToDomain()
+    {
+        var status = ApprovalStatus?.ToLowerInvariant() switch
+        {
+            "approved" => RenoveJa.Domain.Enums.DoctorApprovalStatus.Approved,
+            "rejected" => RenoveJa.Domain.Enums.DoctorApprovalStatus.Rejected,
+            _ => RenoveJa.Domain.Enums.DoctorApprovalStatus.Pending
+        };
+
+        return RenoveJa.Domain.Entities.DoctorProfile.Reconstitute(
+            Id, UserId, Crm, CrmState, Specialty, Bio,
+            Rating, TotalConsultations, Available,
+            status,
+            ActiveCertificateId, CrmValidated, CrmValidatedAt, CreatedAt,
+            ProfessionalAddress, ProfessionalPhone,
+            University, Courses, HospitalsServices,
+            ProfessionalPostalCode, ProfessionalStreet, ProfessionalNumber,
+            ProfessionalNeighborhood, ProfessionalComplement, ProfessionalCity, ProfessionalState,
+            Rqe, LastAssignedAt, GraduationYear,
+            CurriculumUrl, DiplomaUrl, HrProtocol);
+    }
+}
+
+/// <summary>Modelo de persistência de token de autenticação (tabela auth_tokens).</summary>
+public class AuthTokenModel
+{
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    public string Token { get; set; } = string.Empty;
+    public DateTime ExpiresAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public string? RefreshToken { get; set; }
+    public DateTime? RefreshTokenExpiresAt { get; set; }
+}
+
+/// <summary>Modelo de persistência de token de recuperação de senha (tabela password_reset_tokens).</summary>
+public class PasswordResetTokenModel
+{
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    public string Token { get; set; } = string.Empty;
+    public DateTime ExpiresAt { get; set; }
+    public bool Used { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>Modelo de persistência de solicitação médica (tabela requests).</summary>
+public class RequestModel
+{
+    public Guid Id { get; set; }
+    [JsonPropertyName("short_code")]
+    public string? ShortCode { get; set; }
+    public Guid PatientId { get; set; }
+    public string? PatientName { get; set; }
+    public Guid? DoctorId { get; set; }
+    public string? DoctorName { get; set; }
+    public string RequestType { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string? PrescriptionType { get; set; }
+    [JsonPropertyName("prescription_kind")]
+    public string? PrescriptionKind { get; set; }
+    public string? Medications { get; set; }
+    public string? PrescriptionImages { get; set; }
+    public string? ExamType { get; set; }
+    public string? Exams { get; set; }
+    public string? ExamImages { get; set; }
+    public string? Symptoms { get; set; }
+    public decimal? Price { get; set; }
+    public string? Notes { get; set; }
+    public string? RejectionReason { get; set; }
+    public string? AccessCode { get; set; }
+    public DateTime? SignedAt { get; set; }
+    [JsonPropertyName("expires_at")]
+    public DateTime? ExpiresAt { get; set; }
+    [JsonPropertyName("prescription_valid_days")]
+    public int? PrescriptionValidDays { get; set; }
+    public string? SignedDocumentUrl { get; set; }
+    public string? SignatureId { get; set; }
+    public string? AiSummaryForDoctor { get; set; }
+    public string? AiExtractedJson { get; set; }
+    public string? AiRiskLevel { get; set; }
+    public string? AiUrgency { get; set; }
+    public bool? AiReadabilityOk { get; set; }
+    public string? AiMessageToUser { get; set; }
+    [JsonPropertyName("auto_observation")]
+    public string? AutoObservation { get; set; }
+    [JsonPropertyName("doctor_conduct_notes")]
+    public string? DoctorConductNotes { get; set; }
+    [JsonPropertyName("include_conduct_in_pdf")]
+    public bool? IncludeConductInPdf { get; set; }
+    [JsonPropertyName("ai_conduct_suggestion")]
+    public string? AiConductSuggestion { get; set; }
+    [JsonPropertyName("ai_suggested_exams")]
+    public string? AiSuggestedExams { get; set; }
+    [JsonPropertyName("conduct_updated_at")]
+    public DateTime? ConductUpdatedAt { get; set; }
+    [JsonPropertyName("conduct_updated_by")]
+    public Guid? ConductUpdatedBy { get; set; }
+    [JsonPropertyName("consultation_type")]
+    public string? ConsultationType { get; set; }
+    [JsonPropertyName("contracted_minutes")]
+    public int? ContractedMinutes { get; set; }
+    [JsonPropertyName("price_per_minute")]
+    public decimal? PricePerMinute { get; set; }
+    [JsonPropertyName("consultation_started_at")]
+    public DateTime? ConsultationStartedAt { get; set; }
+    [JsonPropertyName("doctor_call_connected_at")]
+    public DateTime? DoctorCallConnectedAt { get; set; }
+    [JsonPropertyName("patient_call_connected_at")]
+    public DateTime? PatientCallConnectedAt { get; set; }
+    [JsonPropertyName("dispensed_at")]
+    public DateTime? DispensedAt { get; set; }
+    [JsonPropertyName("dispensed_count")]
+    public int DispensedCount { get; set; }
+    [JsonPropertyName("required_specialty")]
+    public string? RequiredSpecialty { get; set; }
+    [JsonPropertyName("priority")]
+    public string? Priority { get; set; }
+    [JsonPropertyName("rejection_source")]
+    public string? RejectionSource { get; set; }
+    [JsonPropertyName("ai_rejection_reason")]
+    public string? AiRejectionReason { get; set; }
+    [JsonPropertyName("ai_rejected_at")]
+    public DateTime? AiRejectedAt { get; set; }
+    [JsonPropertyName("reopened_by")]
+    public Guid? ReopenedBy { get; set; }
+    [JsonPropertyName("reopened_at")]
+    public DateTime? ReopenedAt { get; set; }
+    [JsonPropertyName("claimed_at")]
+    public DateTime? ClaimedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+/// <summary>Modelo de persistência de certificado digital (tabela doctor_certificates).</summary>
+public class CertificateModel
+{
+    public Guid Id { get; set; }
+    public Guid DoctorProfileId { get; set; }
+    public string SubjectName { get; set; } = string.Empty;
+    public string IssuerName { get; set; } = string.Empty;
+    public string SerialNumber { get; set; } = string.Empty;
+    public DateTime NotBefore { get; set; }
+    public DateTime NotAfter { get; set; }
+    public string PfxStoragePath { get; set; } = string.Empty;
+    public string PfxFileName { get; set; } = string.Empty;
+    public string? Cpf { get; set; }
+    public string? CrmNumber { get; set; }
+    public bool IsValid { get; set; }
+    public bool IsRevoked { get; set; }
+    public DateTime? RevokedAt { get; set; }
+    public string? RevocationReason { get; set; }
+    public bool ValidatedAtRegistration { get; set; }
+    public DateTime? LastValidationDate { get; set; }
+    public string? LastValidationResult { get; set; }
+    public DateTime UploadedAt { get; set; }
+    public string? UploadedByIp { get; set; }
+    public DateTime CreatedAt { get; set; }
+
+    public static CertificateModel FromDomain(RenoveJa.Domain.Entities.DoctorCertificate cert)
+    {
+        return new CertificateModel
+        {
+            Id = cert.Id,
+            DoctorProfileId = cert.DoctorProfileId,
+            SubjectName = cert.SubjectName,
+            IssuerName = cert.IssuerName,
+            SerialNumber = cert.SerialNumber,
+            NotBefore = cert.NotBefore,
+            NotAfter = cert.NotAfter,
+            PfxStoragePath = cert.PfxStoragePath,
+            PfxFileName = cert.PfxFileName,
+            Cpf = cert.Cpf,
+            CrmNumber = cert.CrmNumber,
+            IsValid = cert.IsValid,
+            IsRevoked = cert.IsRevoked,
+            RevokedAt = cert.RevokedAt,
+            RevocationReason = cert.RevocationReason,
+            ValidatedAtRegistration = cert.ValidatedAtRegistration,
+            LastValidationDate = cert.LastValidationDate,
+            LastValidationResult = cert.LastValidationResult,
+            UploadedAt = cert.UploadedAt,
+            UploadedByIp = cert.UploadedByIp,
+            CreatedAt = cert.CreatedAt
+        };
+    }
+
+    public RenoveJa.Domain.Entities.DoctorCertificate ToDomain()
+    {
+        return RenoveJa.Domain.Entities.DoctorCertificate.Reconstitute(
+            Id, DoctorProfileId, SubjectName, IssuerName, SerialNumber,
+            NotBefore, NotAfter, PfxStoragePath, PfxFileName,
+            Cpf, CrmNumber, IsValid, IsRevoked, RevokedAt, RevocationReason,
+            ValidatedAtRegistration, LastValidationDate, LastValidationResult,
+            UploadedAt, UploadedByIp, CreatedAt);
+    }
+}
+
+/// <summary>Modelo de persistência de paciente clínico (tabela patients).</summary>
+public class PatientModel
+{
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Cpf { get; set; } = string.Empty;
+    public DateTime? BirthDate { get; set; }
+    public string? Sex { get; set; }
+    public string? SocialName { get; set; }
+    public string? Phone { get; set; }
+    public string? Email { get; set; }
+    public string? AddressLine1 { get; set; }
+    public string? City { get; set; }
+    public string? State { get; set; }
+    public string? ZipCode { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>Modelo de persistência de encontro clínico (tabela encounters).</summary>
+public class EncounterModel
+{
+    public Guid Id { get; set; }
+    public Guid PatientId { get; set; }
+    public Guid PractitionerId { get; set; }
+    /// <summary>No schema.sql é TEXT; usar string para evitar "Error parsing column" ao mapear.</summary>
+    [JsonPropertyName("source_request_id")]
+    public string? SourceRequestId { get; set; }
+    public string Type { get; set; } = string.Empty;
+    public string Status { get; set; } = "draft";
+    public DateTime StartedAt { get; set; }
+    public DateTime? FinishedAt { get; set; }
+    public string? Channel { get; set; }
+    public string? Reason { get; set; }
+    public string? Anamnesis { get; set; }
+    public string? PhysicalExam { get; set; }
+    public string? Plan { get; set; }
+    public string? MainIcd10Code { get; set; }
+    public string? DifferentialDiagnosis { get; set; }
+    public string? PatientInstructions { get; set; }
+    public string? RedFlags { get; set; }
+    public string? StructuredAnamnesis { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>Modelo de persistência de documento médico (tabela medical_documents).</summary>
+public class MedicalDocumentModel
+{
+    public Guid Id { get; set; }
+    public Guid PatientId { get; set; }
+    public Guid PractitionerId { get; set; }
+    public Guid? EncounterId { get; set; }
+    [JsonPropertyName("source_request_id")]
+    public Guid? SourceRequestId { get; set; }
+    [JsonPropertyName("signed_document_url")]
+    public string? SignedDocumentUrl { get; set; }
+    [JsonPropertyName("signature_id")]
+    public string? SignatureId { get; set; }
+    public string DocumentType { get; set; } = string.Empty;
+    public string Status { get; set; } = "draft";
+    public Guid? PreviousDocumentId { get; set; }
+    public string? Medications { get; set; }
+    public string? Exams { get; set; }
+    public string? ReportBody { get; set; }
+    public string? ClinicalJustification { get; set; }
+    public string? Priority { get; set; }
+    public string? Icd10Code { get; set; }
+    public int? LeaveDays { get; set; }
+    public string? GeneralInstructions { get; set; }
+    public string? SignatureHash { get; set; }
+    public string? SignatureAlgorithm { get; set; }
+    public string? SignatureCertificate { get; set; }
+    public DateTime? SignedAt { get; set; }
+    public bool? SignatureIsValid { get; set; }
+    public string? SignatureValidationResult { get; set; }
+    public string? SignaturePolicyOid { get; set; }
+    public DateTime CreatedAt { get; set; }
+    // Security & anti-fraud
+    [JsonPropertyName("expires_at")]
+    public DateTime? ExpiresAt { get; set; }
+    [JsonPropertyName("dispensed_at")]
+    public DateTime? DispensedAt { get; set; }
+    [JsonPropertyName("dispensed_by")]
+    public string? DispensedBy { get; set; }
+    [JsonPropertyName("dispensed_count")]
+    public int DispensedCount { get; set; }
+    [JsonPropertyName("max_dispenses")]
+    public int MaxDispenses { get; set; } = 1;
+    [JsonPropertyName("verify_code_hash")]
+    public string? VerifyCodeHash { get; set; }
+    [JsonPropertyName("access_code")]
+    public string? AccessCode { get; set; }
+}
+
+/// <summary>Modelo de persistência de registro de consentimento (tabela consent_records).</summary>
+public class ConsentRecordModel
+{
+    public Guid Id { get; set; }
+    public Guid PatientId { get; set; }
+    public string ConsentType { get; set; } = string.Empty;
+    public string LegalBasis { get; set; } = string.Empty;
+    public string Purpose { get; set; } = string.Empty;
+    public DateTime AcceptedAt { get; set; }
+    public string Channel { get; set; } = string.Empty;
+    public string? TextVersion { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>Modelo de persistência de evento de auditoria clínica (tabela audit_events).</summary>
+public class AuditEventModel
+{
+    public Guid Id { get; set; }
+    public Guid? UserId { get; set; }
+    public string Action { get; set; } = string.Empty;
+    public string EntityType { get; set; } = string.Empty;
+    /// <summary>entity_id pode vir como TEXT ou UUID do PostgreSQL; usamos string para evitar InvalidCastException.</summary>
+    public string? EntityId { get; set; }
+    public string? Channel { get; set; }
+    public string? IpAddress { get; set; }
+    public string? UserAgent { get; set; }
+    public string? CorrelationId { get; set; }
+    public DateTime CreatedAt { get; set; }
+}

@@ -1,0 +1,196 @@
+import React, { useCallback, useState } from 'react';
+import { Image, StyleSheet, View, Platform, useWindowDimensions, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { clamp, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+
+interface ZoomableImageProps {
+  uri: string;
+  onClose?: () => void;
+  showHint?: boolean;
+}
+
+export function ZoomableImage({ uri, showHint = true }: ZoomableImageProps) {
+  const { width: screenW, height: screenH } = useWindowDimensions();
+  const [hasError, setHasError] = useState(false);
+  const scale = useSharedValue(1);
+  const savedScale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const savedTranslateX = useSharedValue(0);
+  const savedTranslateY = useSharedValue(0);
+
+  const handleWheel = useCallback((e: { nativeEvent?: { deltaY?: number; preventDefault?: () => void } }) => {
+    if (Platform.OS !== 'web') return;
+    e?.nativeEvent?.preventDefault?.();
+    const deltaY = e?.nativeEvent?.deltaY ?? 0;
+    const delta = -deltaY * 0.004;
+    const newScale = Math.max(1, Math.min(6, scale.value + delta));
+    scale.value = newScale;
+    savedScale.value = newScale;
+    if (newScale <= 1) {
+      translateX.value = 0;
+      translateY.value = 0;
+      savedTranslateX.value = 0;
+      savedTranslateY.value = 0;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- shared values are stable refs
+  }, []);
+
+  const pinchGesture = Gesture.Pinch()
+    .onUpdate((e) => {
+      scale.value = clamp(savedScale.value * e.scale, 1, 6);
+    })
+    .onEnd(() => {
+      savedScale.value = scale.value;
+      if (scale.value <= 1) {
+        translateX.value = 0;
+        translateY.value = 0;
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+      }
+    });
+
+  const panGesture = Gesture.Pan()
+    .minPointers(1)
+    .minDistance(5)
+    .onUpdate((e) => {
+      if (scale.value > 1) {
+        const maxTx = (screenW * (scale.value - 1)) / 2;
+        const maxTy = (screenH * 0.85 * (scale.value - 1)) / 2;
+        translateX.value = clamp(savedTranslateX.value + e.translationX, -maxTx, maxTx);
+        translateY.value = clamp(savedTranslateY.value + e.translationY, -maxTy, maxTy);
+      }
+    })
+    .onEnd(() => {
+      savedTranslateX.value = translateX.value;
+      savedTranslateY.value = translateY.value;
+    });
+
+  const doubleTapGesture = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd(() => {
+      if (scale.value > 1) {
+        scale.value = 1;
+        savedScale.value = 1;
+        translateX.value = 0;
+        translateY.value = 0;
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+      } else {
+        scale.value = 2.5;
+        savedScale.value = 2.5;
+      }
+    });
+
+  const composed = Gesture.Simultaneous(pinchGesture, panGesture, doubleTapGesture);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }));
+
+  const imgH = screenH * 0.85;
+
+  if (hasError) {
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="image-outline" size={64} color="rgba(255,255,255,0.4)" />
+        <Text style={styles.errorText}>Não foi possível carregar a imagem</Text>
+        <Text style={styles.errorSub}>Verifique sua conexão e tente novamente</Text>
+      </View>
+    );
+  }
+
+  const content = (
+    <View style={styles.contentWrap}>
+      <GestureDetector gesture={composed}>
+        <Animated.View style={[styles.container, { width: screenW, height: imgH }, animatedStyle]}>
+          <Image
+            source={{ uri }}
+            style={{ width: screenW, height: imgH }}
+            resizeMode="contain"
+            onError={() => setHasError(true)}
+          />
+        </Animated.View>
+      </GestureDetector>
+      {showHint && Platform.OS !== 'web' && (
+        <View style={styles.hintBar}>
+          <Text style={styles.hintText}>Pinça para zoom • Toque duplo para ampliar</Text>
+        </View>
+      )}
+    </View>
+  );
+
+  if (Platform.OS === 'web') {
+    return (
+      <View
+        style={[styles.wrapper, { flex: 1, width: '100%', height: '100%' }]}
+        // @ts-expect-error onWheel exists on web
+        onWheel={handleWheel}
+      >
+        {content}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.wrapper}>
+      {content}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+    width: '100%',
+    minHeight: 200,
+  },
+  container: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 32,
+  },
+  errorText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  errorSub: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  contentWrap: {
+    flex: 1,
+    width: '100%',
+    position: 'relative',
+  },
+  hintBar: {
+    position: 'absolute',
+    bottom: 24,
+    left: 16,
+    right: 16,
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  hintText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 12,
+  },
+});

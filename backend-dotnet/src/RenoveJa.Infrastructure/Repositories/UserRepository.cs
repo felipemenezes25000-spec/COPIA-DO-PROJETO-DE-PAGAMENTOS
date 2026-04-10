@@ -1,0 +1,258 @@
+﻿using Dapper;
+using Npgsql;
+using RenoveJa.Application.Exceptions;
+using RenoveJa.Domain.Entities;
+using RenoveJa.Domain.Enums;
+using RenoveJa.Domain.Interfaces;
+using RenoveJa.Infrastructure.Data.Models;
+using RenoveJa.Infrastructure.Data.Postgres;
+
+namespace RenoveJa.Infrastructure.Repositories;
+
+/// <summary>
+/// Repositório de usuários (pacientes e médicos) via db.
+/// </summary>
+public class UserRepository(PostgresClient db) : IUserRepository
+{
+    private const string TableName = "users";
+    private const string CpfRoleUniqueConstraint = "users_cpf_role_unique";
+
+    private static AuthConflictException MapCpfConflict() => new(
+        "Este CPF já está cadastrado nesta categoria de usuário. Use outro ou faça login.");
+
+    /// <summary>
+    /// Obtém um usuário pelo ID.
+    /// </summary>
+    public async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var model = await db.GetSingleAsync<UserModel>(
+            TableName,
+            filter: $"id=eq.{id}",
+            cancellationToken: cancellationToken);
+
+        return model != null ? MapToDomain(model) : null;
+    }
+
+    /// <summary>
+    /// Obtém múltiplos usuários por IDs em uma única query (batch).
+    /// </summary>
+    public async Task<List<User>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
+    {
+        var idList = ids.ToList();
+        if (idList.Count == 0)
+            return new List<User>();
+
+        var filter = $"id=in.({string.Join(",", idList)})";
+        var models = await db.GetAllAsync<UserModel>(
+            TableName,
+            filter: filter,
+            cancellationToken: cancellationToken);
+
+        return models.Select(MapToDomain).ToList();
+    }
+
+    public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
+    {
+        // Guard against PostgREST filter injection via special characters
+        if (string.IsNullOrEmpty(email) || email.AsSpan().IndexOfAny("&()") >= 0)
+            return null;
+
+        var model = await db.GetSingleAsync<UserModel>(
+            TableName,
+            filter: $"email=eq.{email}",
+            cancellationToken: cancellationToken);
+
+        return model != null ? MapToDomain(model) : null;
+    }
+
+    public async Task<List<User>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        var models = await db.GetAllAsync<UserModel>(
+            TableName,
+            orderBy: "created_at.desc",
+            cancellationToken: cancellationToken);
+
+        return models.Select(MapToDomain).ToList();
+    }
+
+    public async Task<User> CreateAsync(User user, CancellationToken cancellationToken = default)
+    {
+        var model = MapToModel(user);
+        try
+        {
+            var created = await db.InsertAsync<UserModel>(
+                TableName,
+                model,
+                cancellationToken);
+            return MapToDomain(created);
+        }
+        catch (PostgresException ex) when (ex.SqlState == "23505" && ex.ConstraintName == CpfRoleUniqueConstraint)
+        {
+            throw MapCpfConflict();
+        }
+    }
+
+    public async Task<User> UpdateAsync(User user, CancellationToken cancellationToken = default)
+    {
+        var model = MapToModel(user);
+        try
+        {
+            var updated = await db.UpdateAsync<UserModel>(
+                TableName,
+                $"id=eq.{user.Id}",
+                model,
+                cancellationToken);
+            return MapToDomain(updated);
+        }
+        catch (PostgresException ex) when (ex.SqlState == "23505" && ex.ConstraintName == CpfRoleUniqueConstraint)
+        {
+            throw MapCpfConflict();
+        }
+    }
+
+    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        await db.DeleteAsync(
+            TableName,
+            $"id=eq.{id}",
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteCascadeAsync(Guid userId, bool isDoctor, CancellationToken cancellationToken = default)
+    {
+        await using var conn = db.CreateConnectionPublic();
+        await conn.OpenAsync(cancellationToken);
+        await using var tx = await conn.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            if (isDoctor)
+            {
+                await conn.ExecuteAsync(
+                    new CommandDefinition(
+                        "DELETE FROM public.doctors WHERE user_id = @UserId",
+                        new { UserId = userId },
+                        transaction: tx,
+                        cancellationToken: cancellationToken));
+            }
+            await conn.ExecuteAsync(
+                new CommandDefinition(
+                    "DELETE FROM public.auth_tokens WHERE user_id = @UserId",
+                    new { UserId = userId },
+                    transaction: tx,
+                    cancellationToken: cancellationToken));
+            await conn.ExecuteAsync(
+                new CommandDefinition(
+                    "DELETE FROM public.users WHERE id = @UserId",
+                    new { UserId = userId },
+                    transaction: tx,
+                    cancellationToken: cancellationToken));
+            await tx.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await tx.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    public async Task<bool> ExistsByEmailAsync(string email, CancellationToken cancellationToken = default)
+    {
+        var user = await GetByEmailAsync(email, cancellationToken);
+        return user != null;
+    }
+
+    /// <summary>
+    /// Verifica se já existe outro usuário com o mesmo CPF E a mesma role.
+    /// CPF é único por (cpf, role): a mesma pessoa pode ter cadastros distintos
+    /// como paciente e médico, mas não dois pacientes ou dois médicos.
+    /// </summary>
+    /// <remarks>
+    /// IMPORTANTE: usa Dapper raw em vez do filtro PostgREST. O parser
+    /// (PostgRestFilterParser.ParseValue) faz auto-detecção numérica e converte
+    /// "39053344705" (11 dígitos) em <c>long</c>, fazendo Npgsql enviar o
+    /// parâmetro como bigint. A coluna <c>users.cpf</c> é text, então o
+    /// PostgreSQL responde 42883 ("operator does not exist: text = bigint").
+    /// O mesmo cuidado já é exigido para colunas TEXT que recebem UUIDs
+    /// (ver comentário em PostgRestFilterParser.ParseValue).
+    /// </remarks>
+    public async Task<bool> ExistsByCpfAsync(
+        string cpf,
+        UserRole role,
+        Guid? exceptUserId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var digits = new string((cpf ?? "").Where(char.IsDigit).ToArray());
+        if (digits.Length != 11)
+            return false;
+
+        // Roles são gravadas em lowercase no banco (ver MapToModel + users_role_check).
+        var roleStr = role.ToString().ToLowerInvariant();
+
+        var sql = exceptUserId.HasValue
+            ? $"SELECT 1 FROM public.{TableName} WHERE cpf = @cpf AND role = @role AND id <> @exceptId LIMIT 1"
+            : $"SELECT 1 FROM public.{TableName} WHERE cpf = @cpf AND role = @role LIMIT 1";
+
+        await using var conn = db.CreateConnectionPublic();
+        var result = await conn.ExecuteScalarAsync<int?>(new CommandDefinition(
+            sql,
+            new { cpf = digits, role = roleStr, exceptId = exceptUserId },
+            cancellationToken: cancellationToken));
+
+        return result.HasValue;
+    }
+
+    private static User MapToDomain(UserModel model)
+    {
+        return User.Reconstitute(
+            model.Id,
+            model.Name,
+            model.Email,
+            model.PasswordHash,
+            model.Role,
+            model.Phone,
+            model.Cpf,
+            model.BirthDate,
+            model.AvatarUrl,
+            model.CreatedAt,
+            model.UpdatedAt,
+            model.ProfileComplete,
+            model.Gender,
+            model.Address,
+            model.Street,
+            model.Number,
+            model.Neighborhood,
+            model.Complement,
+            model.City,
+            model.State,
+            model.PostalCode);
+    }
+
+    private static UserModel MapToModel(User user)
+    {
+        return new UserModel
+        {
+            Id = user.Id,
+            Name = user.Name,
+            Email = user.Email,
+            PasswordHash = user.PasswordHash,
+            Phone = user.Phone?.Value,
+            Cpf = user.Cpf,
+            BirthDate = user.BirthDate,
+            Gender = user.Gender,
+            Address = user.Address,
+            Street = user.Street,
+            Number = user.Number,
+            Neighborhood = user.Neighborhood,
+            Complement = user.Complement,
+            City = user.City,
+            State = user.State,
+            PostalCode = user.PostalCode,
+            AvatarUrl = user.AvatarUrl,
+            Role = user.Role.ToString().ToLowerInvariant(),
+            CreatedAt = user.CreatedAt,
+            UpdatedAt = user.UpdatedAt,
+            ProfileComplete = user.ProfileComplete
+        };
+    }
+}

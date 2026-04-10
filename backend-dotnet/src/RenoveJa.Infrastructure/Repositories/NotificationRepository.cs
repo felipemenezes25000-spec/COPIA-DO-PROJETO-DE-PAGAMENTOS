@@ -1,0 +1,152 @@
+﻿using System.Text.Json;
+using Dapper;
+using RenoveJa.Domain.Entities;
+using RenoveJa.Domain.Interfaces;
+using RenoveJa.Infrastructure.Data.Models;
+using RenoveJa.Infrastructure.Data.Postgres;
+
+namespace RenoveJa.Infrastructure.Repositories;
+
+/// <summary>
+/// RepositÃ³rio de notificaÃ§Ãµes via db.
+/// </summary>
+public class NotificationRepository(PostgresClient db) : INotificationRepository
+{
+    private const string TableName = "notifications";
+
+    /// <summary>
+    /// ObtÃ©m uma notificaÃ§Ã£o pelo ID.
+    /// </summary>
+    public async Task<Notification?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var model = await db.GetSingleAsync<NotificationModel>(
+            TableName,
+            filter: $"id=eq.{id}",
+            cancellationToken: cancellationToken);
+
+        return model != null ? MapToDomain(model) : null;
+    }
+
+    public async Task<List<Notification>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var models = await db.GetAllAsync<NotificationModel>(
+            TableName,
+            filter: $"user_id=eq.{userId}",
+            orderBy: "created_at.desc",
+            cancellationToken: cancellationToken);
+
+        return models.Select(MapToDomain).ToList();
+    }
+
+    public async Task<List<Notification>> GetByUserIdPagedAsync(Guid userId, int offset, int limit, CancellationToken cancellationToken = default)
+    {
+        var models = await db.GetAllAsync<NotificationModel>(
+            TableName,
+            filter: $"user_id=eq.{userId}",
+            orderBy: "created_at.desc",
+            limit: limit,
+            offset: offset,
+            cancellationToken: cancellationToken);
+
+        return models.Select(MapToDomain).ToList();
+    }
+
+    public async Task<int> CountByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await db.CountAsync(
+            TableName,
+            $"user_id=eq.{userId}",
+            cancellationToken);
+    }
+
+    public async Task<Notification> CreateAsync(Notification notification, CancellationToken cancellationToken = default)
+    {
+        var model = MapToModel(notification);
+        var created = await db.InsertAsync<NotificationModel>(
+            TableName,
+            model,
+            cancellationToken);
+
+        return MapToDomain(created);
+    }
+
+    public async Task<Notification> UpdateAsync(Notification notification, CancellationToken cancellationToken = default)
+    {
+        var model = MapToModel(notification);
+        var updated = await db.UpdateAsync<NotificationModel>(
+            TableName,
+            $"id=eq.{notification.Id}",
+            model,
+            cancellationToken);
+
+        return MapToDomain(updated);
+    }
+
+    public async Task<int> GetUnreadCountAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await db.CountAsync(
+            TableName,
+            $"user_id=eq.{userId}&read=eq.false",
+            cancellationToken);
+    }
+
+    public async Task MarkAllAsReadAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        await db.UpdateAsync<NotificationModel>(
+            TableName,
+            $"user_id=eq.{userId}",
+            new { read = true },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> ExistsWithDataSinceAsync(string type, string requestId, DateTime since, CancellationToken cancellationToken = default)
+    {
+        // BUG FIX: o SQL anterior era `SELECT COUNT(*) ... LIMIT 1`, onde o LIMIT
+        // é ignorado (COUNT já devolve uma única linha) — forçava um full scan do
+        // subconjunto filtrado só para saber se existe UMA notificação. Troca por
+        // EXISTS, que permite ao Postgres parar no primeiro match.
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1 FROM public.notifications
+                WHERE data->>'type' = @Type
+                  AND data->>'requestId' = @RequestId
+                  AND created_at >= @Since
+            )
+            """;
+        await using var conn = db.CreateConnectionPublic();
+        await conn.OpenAsync(cancellationToken);
+        return await conn.ExecuteScalarAsync<bool>(
+            new CommandDefinition(sql, new { Type = type, RequestId = requestId, Since = since }, cancellationToken: cancellationToken));
+    }
+
+    private static Notification MapToDomain(NotificationModel model)
+    {
+        return Notification.Reconstitute(
+            model.Id,
+            model.UserId,
+            model.Title,
+            model.Message,
+            model.NotificationType,
+            model.Read,
+            JsonToDict(model.Data),
+            model.CreatedAt);
+    }
+
+    private static NotificationModel MapToModel(Notification notification)
+    {
+        return new NotificationModel
+        {
+            Id = notification.Id,
+            UserId = notification.UserId,
+            Title = notification.Title,
+            Message = notification.Message,
+            NotificationType = notification.NotificationType.ToString().ToLowerInvariant(),
+            Read = notification.Read,
+            Data = DictToJson(notification.Data),
+            CreatedAt = notification.CreatedAt
+        };
+    }
+    private static string? DictToJson(Dictionary<string, object?>? dict) => dict == null || dict.Count == 0 ? null : JsonSerializer.Serialize(dict);
+    private static Dictionary<string, object?>? JsonToDict(string? json) { if (string.IsNullOrWhiteSpace(json) || json == "null") return null; try { return JsonSerializer.Deserialize<Dictionary<string, object?>>(json); } catch { return null; } } // TODO(logging): inject ILogger to log malformed JSON
+}

@@ -1,0 +1,28 @@
+diff --git a/node_modules/eslint/lib/rules/no-unused-expressions.js b/node_modules/eslint/lib/rules/no-unused-expressions.js
+index 46bb7ba..9aececa 100644
+--- a/node_modules/eslint/lib/rules/no-unused-expressions.js
++++ b/node_modules/eslint/lib/rules/no-unused-expressions.js
+@@ -68,11 +68,18 @@ module.exports = {
+     },
+ 
+     create(context) {
+-        const config = context.options[0] || {},
+-            allowShortCircuit = config.allowShortCircuit || false,
+-            allowTernary = config.allowTernary || false,
+-            allowTaggedTemplates = config.allowTaggedTemplates || false,
+-            enforceForJSX = config.enforceForJSX || false;
++        let config;
++        try {
++            const rawOpts = context.options && context.options[0];
++            config = (typeof rawOpts === "object" && rawOpts !== null) ? rawOpts : {};
++        } catch (e) {
++            config = {};
++        }
++        config = config || {};
++        const allowShortCircuit = config?.allowShortCircuit || false,
++            allowTernary = config?.allowTernary || false,
++            allowTaggedTemplates = config?.allowTaggedTemplates || false,
++            enforceForJSX = config?.enforceForJSX || false;
+ 
+         /**
+          * Has AST suggesting a directive.

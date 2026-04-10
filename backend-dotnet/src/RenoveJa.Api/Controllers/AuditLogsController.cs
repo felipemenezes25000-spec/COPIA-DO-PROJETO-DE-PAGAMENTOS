@@ -1,0 +1,96 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using RenoveJa.Application.DTOs.Audit;
+using RenoveJa.Application.Interfaces;
+
+namespace RenoveJa.Api.Controllers;
+
+/// <summary>
+/// Controller para consulta de logs de auditoria (LGPD).
+/// Restrito a administradores e médicos.
+/// </summary>
+[ApiController]
+[Route("api/admin/audit-logs")]
+[Authorize(Roles = "admin,doctor")]
+public class AuditLogsController : ControllerBase
+{
+    private readonly IAuditService _auditService;
+    private readonly ILogger<AuditLogsController> _logger;
+
+    public AuditLogsController(IAuditService auditService, ILogger<AuditLogsController> logger)
+    {
+        _auditService = auditService;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Consulta logs de auditoria com filtros opcionais.
+    /// </summary>
+    /// <param name="userId">Filtrar por ID do usuário.</param>
+    /// <param name="entityType">Filtrar por tipo de entidade (Request, User, Payment, Certificate, DoctorProfile).</param>
+    /// <param name="entityId">Filtrar por ID da entidade.</param>
+    /// <param name="from">Data/hora inicial (UTC).</param>
+    /// <param name="to">Data/hora final (UTC).</param>
+    /// <param name="limit">Número máximo de registros (padrão: 50, máximo: 200).</param>
+    /// <param name="offset">Offset para paginação.</param>
+    /// <param name="cancellationToken">Token de cancelamento.</param>
+    [HttpGet]
+    public async Task<IActionResult> GetAuditLogs(
+        [FromQuery] Guid? userId,
+        [FromQuery] string? entityType,
+        [FromQuery] string? entityId,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] int limit = 50,
+        [FromQuery] int offset = 0,
+        CancellationToken cancellationToken = default)
+    {
+        // Limitar máximo de registros para evitar sobrecarga
+        if (limit > 200) limit = 200;
+        if (limit < 1) limit = 1;
+        if (offset < 0) offset = 0;
+
+        // Validate date range to prevent unbounded scans on the audit table.
+        if (from.HasValue && to.HasValue && from.Value > to.Value)
+            return BadRequest(new { error = "'from' não pode ser maior que 'to'." });
+
+        // Hard cap date window at 90 days to protect the database from full-table scans.
+        const int maxWindowDays = 90;
+        if (from.HasValue && to.HasValue && (to.Value - from.Value).TotalDays > maxWindowDays)
+            return BadRequest(new { error = $"Intervalo máximo permitido é de {maxWindowDays} dias." });
+
+        // FIX B28: Doctors can only see their own audit logs; admins can see all
+        if (!User.IsInRole("admin") && User.IsInRole("doctor"))
+        {
+            var callerIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (callerIdClaim == null || !Guid.TryParse(callerIdClaim, out var callerUserId))
+                return Unauthorized();
+            // Force userId filter to caller's own ID — ignore any userId parameter from the query
+            userId = callerUserId;
+        }
+
+        _logger.LogInformation("AuditLogs GetAuditLogs: userId={UserId}, entityType={EntityType}, limit={Limit}", userId, entityType, limit);
+        var logs = await _auditService.QueryAuditLogsAsync(
+            userId, entityType, entityId, from, to, limit, offset, cancellationToken);
+
+        var items = logs.Select(l => new AuditLogDto(
+            l.Id,
+            l.UserId,
+            l.Action,
+            l.EntityType,
+            l.EntityId,
+            l.OldValues,
+            l.NewValues,
+            l.IpAddress,
+            l.UserAgent,
+            l.CorrelationId,
+            l.Metadata,
+            l.CreatedAt)).ToList();
+
+        // NOTE: AuditLogListDto's second field is the size of the current page, not the absolute
+        // total. A full total-count would require a separate COUNT(*) query on the service layer;
+        // tracked as follow-up. Using items.Count here keeps the page size accurate.
+        return Ok(new AuditLogListDto(items, items.Count));
+    }
+}

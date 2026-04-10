@@ -1,0 +1,372 @@
+/* Fonts loaded via index.html <link> tags for non-blocking rendering */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
+*:focus-visible {
+  outline: 2px solid hsl(197 71% 52%);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: hsl(197 71% 52% / 0.3);
+  color: hsl(210 29% 20%);
+}
+
+@layer base {
+  :root {
+    --primary: 195 100% 45%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 195 100% 38%;
+    --primary-light: 195 90% 60%;
+    --navy: 215 60% 22%;
+    --navy-light: 215 50% 32%;
+    --secondary: 195 70% 96%;
+    --secondary-foreground: 215 60% 18%;
+    --accent: 195 65% 94%;
+    --accent-foreground: 215 60% 18%;
+    --background-dark: 215 55% 14%;
+    --background: 210 30% 98%;
+    --foreground: 215 60% 16%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 55% 20%;
+    --card-header: 210 30% 97%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 55% 20%;
+    --muted: 210 30% 95%;
+    --muted-foreground: 215 25% 42%;
+    --success: 158 72% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 40 96% 50%;
+    --warning-foreground: 0 0% 100%;
+    --destructive: 0 85% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --orange: 28 100% 52%;
+    --orange-foreground: 0 0% 100%;
+    --whatsapp: 142 70% 45%;
+    --border: 210 30% 86%;
+    --input: 210 30% 90%;
+    --ring: 195 100% 45%;
+    --radius: 1rem;
+    --gradient-hero: linear-gradient(180deg, hsl(195 75% 94%) 0%, hsl(195 65% 88%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(195 100% 45%) 0%, hsl(195 100% 38%) 100%);
+    --gradient-dark: linear-gradient(180deg, hsl(215 55% 14%) 0%, hsl(220 60% 10%) 100%);
+    --gradient-card-header: linear-gradient(180deg, hsl(210 30% 97%) 0%, hsl(210 30% 95%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(158 72% 40%) 0%, hsl(165 68% 36%) 100%);
+    --shadow-sm: 0 1px 3px rgba(20, 40, 70, 0.06);
+    --shadow-md: 0 4px 14px rgba(20, 40, 70, 0.10);
+    --shadow-lg: 0 10px 28px rgba(20, 40, 70, 0.12);
+    --shadow-xl: 0 20px 50px rgba(20, 40, 70, 0.16);
+    --shadow-card: 0 3px 14px rgba(20, 40, 70, 0.08);
+    --shadow-elevated: 0 14px 44px rgba(20, 40, 70, 0.14);
+    --shadow-primary: 0 10px 36px rgba(0, 170, 220, 0.40);
+    --shadow-success: 0 10px 32px rgba(34, 180, 100, 0.40);
+    --shadow-orange: 0 10px 32px rgba(255, 140, 50, 0.40);
+    --sidebar-background: 210 25% 98%;
+    --sidebar-foreground: 210 55% 22%;
+    --sidebar-primary: 197 82% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 197 55% 94%;
+    --sidebar-accent-foreground: 210 55% 22%;
+    --sidebar-border: 210 25% 90%;
+    --sidebar-ring: 197 82% 50%;
+  }
+
+  .dark {
+    --background: 210 29% 10%;
+    --foreground: 210 20% 98%;
+    --card: 210 29% 14%;
+    --card-foreground: 210 20% 98%;
+    --card-header: 210 29% 16%;
+    --popover: 210 29% 14%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 197 71% 52%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 29% 18%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 210 29% 18%;
+    --muted-foreground: 210 15% 60%;
+    --accent: 210 29% 18%;
+    --accent-foreground: 210 20% 98%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 210 29% 18%;
+    --input: 210 29% 18%;
+    --ring: 197 71% 52%;
+    --sidebar-background: 210 29% 12%;
+    --sidebar-foreground: 210 20% 95%;
+    --sidebar-primary: 197 71% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 29% 16%;
+    --sidebar-accent-foreground: 210 20% 95%;
+    --sidebar-border: 210 29% 16%;
+    --sidebar-ring: 197 71% 52%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', 'Inter', sans-serif;
+    @apply font-bold text-foreground;
+  }
+}
+
+@layer components {
+  .bg-app-dark {
+    background: linear-gradient(180deg, hsl(215 55% 14%) 0%, hsl(220 60% 10%) 100%);
+  }
+  .app-card {
+    @apply bg-card rounded-3xl overflow-hidden;
+    box-shadow: var(--shadow-lg);
+  }
+  .app-card-header {
+    background: var(--gradient-card-header);
+    @apply py-4 px-6;
+  }
+  .app-card-body {
+    @apply p-6;
+  }
+  .gradient-hero {
+    background: linear-gradient(180deg, hsl(195 75% 94%) 0%, hsl(195 65% 88%) 100%);
+  }
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+  .gradient-dark {
+    background: var(--gradient-dark);
+  }
+  .glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: var(--shadow-md);
+  }
+  .page-enter {
+    animation: animate-in-fade 0.25s ease-out, animate-in-slide-top 0.15s ease-out;
+    animation-fill-mode: both;
+  }
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+  .shadow-primary-glow {
+    box-shadow: var(--shadow-primary);
+  }
+  .shadow-success-glow {
+    box-shadow: var(--shadow-success);
+  }
+  .shadow-orange-glow {
+    box-shadow: var(--shadow-orange);
+  }
+  .text-gradient {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-glow)) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .btn-primary {
+    @apply bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-full;
+    @apply hover:opacity-90 transition-all duration-300;
+    box-shadow: var(--shadow-primary);
+  }
+  .btn-success {
+    @apply font-semibold px-6 py-3 rounded-full;
+    @apply hover:opacity-90 transition-all duration-300;
+    background: hsl(var(--success));
+    color: hsl(var(--success-foreground));
+    box-shadow: var(--shadow-success);
+  }
+  .btn-orange {
+    @apply font-semibold px-6 py-3 rounded-full;
+    @apply hover:opacity-90 transition-all duration-300;
+    background: hsl(var(--orange));
+    color: hsl(var(--orange-foreground));
+    box-shadow: var(--shadow-orange);
+  }
+  .service-card {
+    @apply bg-card rounded-2xl p-5 border border-border/50;
+    @apply hover:shadow-elevated hover:-translate-y-1 transition-all duration-300;
+    box-shadow: var(--shadow-card);
+  }
+  .service-card:hover {
+    border-color: hsl(var(--primary) / 0.3);
+  }
+  .pricing-card {
+    @apply bg-card rounded-3xl overflow-hidden;
+    box-shadow: var(--shadow-lg);
+  }
+  .pricing-card-header {
+    background: var(--gradient-card-header);
+    @apply py-6 px-6 text-center;
+  }
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  .animate-pulse-slow {
+    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  .phone-mockup {
+    @apply bg-card rounded-3xl overflow-hidden;
+    box-shadow: var(--shadow-xl);
+  }
+  .phone-mockup-header {
+    background: var(--gradient-card-header);
+    @apply py-4;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-15px); }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary));
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary-glow));
+}
+
+/* ═══════════════════════════════════════════════════
+ * POLISH PATCH — CSS extras para experiência premium
+ * ═══════════════════════════════════════════════════ */
+
+/* ── Smooth theme transition ── */
+html.transitioning,
+html.transitioning *,
+html.transitioning *::before,
+html.transitioning *::after {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.15s ease !important;
+  transition-delay: 0s !important;
+}
+
+/* ── Animate-in utilities (for command palette, dialogs) ── */
+@keyframes animate-in-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes animate-in-zoom {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes animate-in-slide-top {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in {
+  animation-fill-mode: both;
+}
+.fade-in {
+  animation-name: animate-in-fade;
+}
+.zoom-in-95 {
+  animation-name: animate-in-zoom;
+}
+.slide-in-from-top-2 {
+  animation-name: animate-in-slide-top;
+}
+.duration-150 { animation-duration: 150ms; }
+.duration-200 { animation-duration: 200ms; }
+
+/* ── Focus ring for keyboard navigation (visible only with keyboard) ── */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Scrollbar — thinner on dark mode ── */
+.dark ::-webkit-scrollbar-track {
+  background: hsl(210 29% 14%);
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(210 29% 25%);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
+}
+
+/* ── Selection color — adapt to dark mode ── */
+.dark ::selection {
+  background: hsl(197 71% 52% / 0.4);
+  color: hsl(210 20% 98%);
+}
+
+/* ── Card hover micro-interaction ── */
+.group:hover .group-hover\:scale-102 {
+  transform: scale(1.02);
+}
+
+/* ── Skeleton pulse — softer animation ── */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.animate-pulse {
+  animation: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ── Bottom navigation safe area (iOS) ── */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── Standalone PWA: hide scrollbar on main content ── */
+@media all and (display-mode: standalone) {
+  main::-webkit-scrollbar {
+    width: 4px;
+  }
+}
+
+/* ── Print: hide sidebar, nav, non-essential elements ── */
+@media print {
+  aside, nav, .no-print, [aria-label="Menu principal"],
+  [aria-label="Navegação principal"] {
+    display: none !important;
+  }
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ── Reduced motion: disable all animations ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

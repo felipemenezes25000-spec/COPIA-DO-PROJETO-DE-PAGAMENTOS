@@ -1,0 +1,17 @@
+# Android build cache (1.3G)
+android/app/build
+android/.gradle
+
+# CNG/Prebuild: EAS regenera pastas nativas a partir do app.config.js
+android
+
+# IDE
+.vscode
+.idea
+
+# Expo cache
+.expo
+web-build
+
+# Tests
+__tests__

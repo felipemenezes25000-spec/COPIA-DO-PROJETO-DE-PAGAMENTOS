@@ -1,0 +1,25 @@
+{
+  "version": "0.2",
+  "language": "en,pt",
+  "words": [
+    "fkey",
+    "careplans",
+    "RenoveJá",
+    "renovejasaude",
+    "teleconsultation",
+    "Formspree",
+    "meds",
+    "Deepgram",
+    "detectou",
+    "anamnese",
+    "LEDI",
+    "esus",
+    "Rastreabilidade"
+  ],
+  "ignorePaths": [
+    "node_modules",
+    "dist",
+    "*.min.js",
+    "package-lock.json"
+  ]
+}

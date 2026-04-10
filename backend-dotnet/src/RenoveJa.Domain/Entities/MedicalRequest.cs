@@ -1,0 +1,814 @@
+using RenoveJa.Domain.Enums;
+using RenoveJa.Domain.Exceptions;
+using RenoveJa.Domain.ValueObjects;
+
+namespace RenoveJa.Domain.Entities;
+
+/// <summary>
+/// Agregado: Solicitação Médica (Prescrição, Exame, Consulta).
+/// Raiz do agregado — todas as alterações de estado passam por esta entidade.
+/// </summary>
+public class MedicalRequest : AggregateRoot
+{
+    public Guid PatientId { get; private set; }
+    public string? PatientName { get; private set; }
+    public Guid? DoctorId { get; private set; }
+    public string? DoctorName { get; private set; }
+    public RequestType RequestType { get; private set; }
+    public RequestStatus Status { get; private set; }
+    
+    // Prescription fields
+    public PrescriptionType? PrescriptionType { get; private set; }
+    /// <summary>Tipo de receita para conformidade: simple, antimicrobial, controlled_special.</summary>
+    public PrescriptionKind? PrescriptionKind { get; private set; }
+    public List<string> Medications { get; private set; }
+    public List<string> PrescriptionImages { get; private set; }
+    
+    // Exam fields
+    public string? ExamType { get; private set; }
+    public List<string> Exams { get; private set; }
+    public List<string> ExamImages { get; private set; }
+    
+    // Consultation/General fields
+    public string? Symptoms { get; private set; }
+    public string? Notes { get; private set; }
+    public string? RejectionReason { get; private set; }
+
+    // Consultation time-based billing
+    public string? ConsultationType { get; private set; }
+    public int? ContractedMinutes { get; private set; }
+    public decimal? PricePerMinute => null; // Campo removido
+    /// <summary>Preço efetivo (0). Persistido para compatibilidade.</summary>
+    public Money? Price { get; private set; }
+    /// <summary>Momento em que médico e paciente estão conectados na chamada (timer começa).</summary>
+    public DateTime? ConsultationStartedAt { get; private set; }
+    /// <summary>Quando o médico reportou WebRTC conectado.</summary>
+    public DateTime? DoctorCallConnectedAt { get; private set; }
+    /// <summary>Quando o paciente reportou WebRTC conectado.</summary>
+    public DateTime? PatientCallConnectedAt { get; private set; }
+    
+    // Access code for verification (4 digits)
+    public string? AccessCode { get; private set; }
+
+    // Claim (first-come-first-serve)
+    public DateTime? ClaimedAt { get; private set; }
+
+    // Digital signature
+    public DateTime? SignedAt { get; private set; }
+    public string? SignedDocumentUrl { get; private set; }
+    public string? SignatureId { get; private set; }
+
+    // AI reading (receita / exame): resumo para o médico, dados extraídos, risco/urgência, legibilidade
+    public string? AiSummaryForDoctor { get; private set; }
+    public string? AiExtractedJson { get; private set; }
+    public string? AiRiskLevel { get; private set; }
+    public string? AiUrgency { get; private set; }
+    public bool? AiReadabilityOk { get; private set; }
+    public string? AiMessageToUser { get; private set; }
+
+    // ── Rejection source tracking (AI vs. Doctor) ──
+    public RejectionSource? RejectionSource { get; private set; }
+    public string? AiRejectionReason { get; private set; }
+    public DateTime? AiRejectedAt { get; private set; }
+    public Guid? ReopenedBy { get; private set; }
+    public DateTime? ReopenedAt { get; private set; }
+
+    // ── Conduta Médica e Observações ──
+    public string? AutoObservation { get; private set; }
+    public string? DoctorConductNotes { get; private set; }
+    public bool IncludeConductInPdf { get; private set; } = true;
+    public string? AiConductSuggestion { get; private set; }
+    public string? AiSuggestedExams { get; private set; }
+    public DateTime? ConductUpdatedAt { get; private set; }
+    public Guid? ConductUpdatedBy { get; private set; }
+
+    /// <summary>
+    /// Especialidade médica exigida para atender a solicitação (display name, ex.: "Cardiologia").
+    /// Quando null, qualquer médico aprovado e disponível pode atender.
+    /// Definido pela triagem (manual ou IA) antes de entrar na fila.
+    /// </summary>
+    public string? RequiredSpecialty { get; private set; }
+
+    /// <summary>
+    /// Prioridade clínica da solicitação. Ordena a fila (Urgent antes de High, etc).
+    /// Classificada pela triagem; imutável após atribuição de médico.
+    /// </summary>
+    public RequestPriority Priority { get; private set; } = RequestPriority.Normal;
+
+    public DateTime UpdatedAt { get; private set; }
+
+    private MedicalRequest() : base()
+    {
+        Medications = new List<string>();
+        PrescriptionImages = new List<string>();
+        Exams = new List<string>();
+        ExamImages = new List<string>();
+    }
+
+    private MedicalRequest(
+        Guid id,
+        Guid patientId,
+        string? patientName,
+        RequestType requestType,
+        RequestStatus status,
+        DateTime? createdAt = null,
+        DateTime? updatedAt = null)
+        : base(id, createdAt ?? DateTime.UtcNow)
+    {
+        PatientId = patientId;
+        PatientName = patientName;
+        RequestType = requestType;
+        Status = status;
+        UpdatedAt = updatedAt ?? DateTime.UtcNow;
+        
+        Medications = new List<string>();
+        PrescriptionImages = new List<string>();
+        Exams = new List<string>();
+        ExamImages = new List<string>();
+    }
+
+    public static MedicalRequest CreatePrescription(
+        Guid patientId,
+        string patientName,
+        PrescriptionType prescriptionType,
+        List<string> medications,
+        List<string>? prescriptionImages = null,
+        PrescriptionKind? prescriptionKind = null)
+    {
+        if (patientId == Guid.Empty)
+            throw new DomainException("Patient ID is required");
+
+        if (string.IsNullOrWhiteSpace(patientName))
+            throw new DomainException("Patient name is required");
+
+        var request = new MedicalRequest(
+            Guid.NewGuid(),
+            patientId,
+            patientName,
+            Enums.RequestType.Prescription,
+            RequestStatus.Submitted);
+
+        request.PrescriptionType = prescriptionType;
+        request.PrescriptionKind = prescriptionKind ?? DerivePrescriptionKind(prescriptionType);
+        request.Medications = medications ?? new List<string>();
+        request.PrescriptionImages = prescriptionImages ?? new List<string>();
+        request.AccessCode = GenerateAccessCode();
+
+        return request;
+    }
+
+    private static PrescriptionKind DerivePrescriptionKind(PrescriptionType pt)
+    {
+        return pt switch
+        {
+            RenoveJa.Domain.Enums.PrescriptionType.Simple => RenoveJa.Domain.Enums.PrescriptionKind.Simple,
+            RenoveJa.Domain.Enums.PrescriptionType.Controlled => RenoveJa.Domain.Enums.PrescriptionKind.ControlledSpecial,
+            RenoveJa.Domain.Enums.PrescriptionType.Blue => RenoveJa.Domain.Enums.PrescriptionKind.ControlledSpecial,
+            _ => RenoveJa.Domain.Enums.PrescriptionKind.Simple
+        };
+    }
+
+    public static MedicalRequest CreateExam(
+        Guid patientId,
+        string patientName,
+        string examType,
+        List<string> exams,
+        string? symptoms = null,
+        List<string>? examImages = null)
+    {
+        if (patientId == Guid.Empty)
+            throw new DomainException("Patient ID is required");
+
+        if (string.IsNullOrWhiteSpace(patientName))
+            throw new DomainException("Patient name is required");
+
+        var hasExams = exams != null && exams.Count > 0;
+        var hasImages = examImages != null && examImages.Count > 0;
+        var hasSymptoms = !string.IsNullOrWhiteSpace(symptoms);
+        if (!hasExams && !hasImages && !hasSymptoms)
+            throw new DomainException("Informe pelo menos um exame, imagens do pedido ou sintomas/indicação.");
+
+        var request = new MedicalRequest(
+            Guid.NewGuid(),
+            patientId,
+            patientName,
+            Enums.RequestType.Exam,
+            RequestStatus.Submitted);
+
+        request.ExamType = examType ?? "geral";
+        request.Exams = exams ?? new List<string>();
+        request.ExamImages = examImages ?? new List<string>();
+        request.Symptoms = symptoms;
+        request.AccessCode = GenerateAccessCode();
+
+        return request;
+    }
+
+    public static MedicalRequest CreateConsultation(
+        Guid patientId,
+        string patientName,
+        string symptoms,
+        string? consultationType = null,
+        int? contractedMinutes = null)
+    {
+        if (patientId == Guid.Empty)
+            throw new DomainException("Patient ID is required");
+
+        if (string.IsNullOrWhiteSpace(patientName))
+            throw new DomainException("Patient name is required");
+
+        if (string.IsNullOrWhiteSpace(symptoms))
+            throw new DomainException("Symptoms are required for consultation");
+
+        var request = new MedicalRequest(
+            Guid.NewGuid(),
+            patientId,
+            patientName,
+            Enums.RequestType.Consultation,
+            RequestStatus.SearchingDoctor);
+
+        if (contractedMinutes.HasValue && contractedMinutes.Value <= 0)
+            throw new DomainException("Contracted minutes must be positive");
+
+        request.Symptoms = symptoms;
+        request.AccessCode = GenerateAccessCode();
+        request.ConsultationType = consultationType;
+        request.ContractedMinutes = contractedMinutes;
+
+        return request;
+    }
+
+    private static string GenerateAccessCode()
+    {
+        // Usa gerador criptograficamente seguro (Random.Shared é previsível e enumerável)
+        return System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+    }
+
+    public static MedicalRequest Reconstitute(
+        Guid id,
+        Guid patientId,
+        string? patientName,
+        Guid? doctorId,
+        string? doctorName,
+        string requestType,
+        string status,
+        string? prescriptionType,
+        List<string>? medications,
+        List<string>? prescriptionImages,
+        string? examType,
+        List<string>? exams,
+        List<string>? examImages,
+        string? symptoms,
+        string? notes,
+        string? rejectionReason,
+        DateTime? signedAt,
+        string? signedDocumentUrl,
+        string? signatureId,
+        DateTime createdAt,
+        DateTime updatedAt,
+        string? aiSummaryForDoctor = null,
+        string? aiExtractedJson = null,
+        string? aiRiskLevel = null,
+        string? aiUrgency = null,
+        bool? aiReadabilityOk = null,
+        string? aiMessageToUser = null,
+        string? accessCode = null,
+        string? prescriptionKind = null,
+        string? consultationType = null,
+        int? contractedMinutes = null,
+        DateTime? consultationStartedAt = null,
+        DateTime? doctorCallConnectedAt = null,
+        DateTime? patientCallConnectedAt = null,
+        string? autoObservation = null,
+        string? doctorConductNotes = null,
+        bool? includeConductInPdf = null,
+        string? aiConductSuggestion = null,
+        string? aiSuggestedExams = null,
+        DateTime? conductUpdatedAt = null,
+        Guid? conductUpdatedBy = null)
+    {
+        var request = new MedicalRequest(
+            id,
+            patientId,
+            patientName,
+            Enum.Parse<RequestType>(requestType, true),
+            Enum.Parse<RequestStatus>(status, true),
+            createdAt,
+            updatedAt);
+
+        request.DoctorId = doctorId;
+        request.DoctorName = doctorName;
+        
+        if (!string.IsNullOrWhiteSpace(prescriptionType))
+            request.PrescriptionType = Enum.Parse<PrescriptionType>(prescriptionType, true);
+        if (!string.IsNullOrWhiteSpace(prescriptionKind) && Enum.TryParse<PrescriptionKind>(prescriptionKind, true, out var pk))
+            request.PrescriptionKind = pk;
+        else if (request.PrescriptionType.HasValue)
+            request.PrescriptionKind = DerivePrescriptionKind(request.PrescriptionType.Value);
+
+        request.Medications = medications ?? new List<string>();
+        request.PrescriptionImages = prescriptionImages ?? new List<string>();
+        request.ExamType = examType;
+        request.Exams = exams ?? new List<string>();
+        request.ExamImages = examImages ?? new List<string>();
+        request.Symptoms = symptoms;
+        
+        request.Notes = notes;
+        request.RejectionReason = rejectionReason;
+        request.AccessCode = accessCode;
+        request.SignedAt = signedAt;
+        request.SignedDocumentUrl = signedDocumentUrl;
+        request.SignatureId = signatureId;
+        request.AiSummaryForDoctor = aiSummaryForDoctor;
+        request.AiExtractedJson = aiExtractedJson;
+        request.AiRiskLevel = aiRiskLevel;
+        request.AiUrgency = aiUrgency;
+        request.AiReadabilityOk = aiReadabilityOk;
+        request.AiMessageToUser = aiMessageToUser;
+        request.ConsultationType = consultationType;
+        request.ContractedMinutes = contractedMinutes;
+        request.ConsultationStartedAt = consultationStartedAt;
+        request.DoctorCallConnectedAt = doctorCallConnectedAt;
+        request.PatientCallConnectedAt = patientCallConnectedAt;
+        request.AutoObservation = autoObservation;
+        request.DoctorConductNotes = doctorConductNotes;
+        request.IncludeConductInPdf = includeConductInPdf ?? true;
+        request.AiConductSuggestion = aiConductSuggestion;
+        request.AiSuggestedExams = aiSuggestedExams;
+        request.ConductUpdatedAt = conductUpdatedAt;
+        request.ConductUpdatedBy = conductUpdatedBy;
+
+        return request;
+    }
+
+    /// <summary>
+    /// Reconstitutes a <see cref="MedicalRequest"/> from a <see cref="MedicalRequestSnapshot"/>.
+    /// Preferred over the positional-parameter overload for readability.
+    /// </summary>
+    public static MedicalRequest Reconstitute(MedicalRequestSnapshot snapshot)
+    {
+        var request = ReconstitutePositional(snapshot);
+        request.RequiredSpecialty = snapshot.RequiredSpecialty;
+        if (!string.IsNullOrWhiteSpace(snapshot.Priority)
+            && Enum.TryParse<RequestPriority>(snapshot.Priority, true, out var priority))
+        {
+            request.Priority = priority;
+        }
+        if (!string.IsNullOrWhiteSpace(snapshot.RejectionSource)
+            && Enum.TryParse<Enums.RejectionSource>(snapshot.RejectionSource, true, out var rejSource))
+        {
+            request.RejectionSource = rejSource;
+        }
+        request.AiRejectionReason = snapshot.AiRejectionReason;
+        request.AiRejectedAt = snapshot.AiRejectedAt;
+        request.ReopenedBy = snapshot.ReopenedBy;
+        request.ReopenedAt = snapshot.ReopenedAt;
+        request.ClaimedAt = snapshot.ClaimedAt;
+        return request;
+    }
+
+    /// <summary>
+    /// Define a prioridade clínica. Só pode ser alterada antes da atribuição do médico
+    /// (depois disso, a classificação fica imutável para preservar trilha de auditoria).
+    /// </summary>
+    public void SetPriority(RequestPriority priority)
+    {
+        if (DoctorId.HasValue)
+            throw new DomainException(
+                "Não é possível alterar a prioridade após a atribuição do médico.");
+
+        Priority = priority;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    private static MedicalRequest ReconstitutePositional(MedicalRequestSnapshot snapshot)
+    {
+        return Reconstitute(
+            snapshot.Id,
+            snapshot.PatientId,
+            snapshot.PatientName,
+            snapshot.DoctorId,
+            snapshot.DoctorName,
+            snapshot.RequestType,
+            snapshot.Status,
+            snapshot.PrescriptionType,
+            snapshot.Medications,
+            snapshot.PrescriptionImages,
+            snapshot.ExamType,
+            snapshot.Exams,
+            snapshot.ExamImages,
+            snapshot.Symptoms,
+            snapshot.Notes,
+            snapshot.RejectionReason,
+            snapshot.SignedAt,
+            snapshot.SignedDocumentUrl,
+            snapshot.SignatureId,
+            snapshot.CreatedAt,
+            snapshot.UpdatedAt,
+            snapshot.AiSummaryForDoctor,
+            snapshot.AiExtractedJson,
+            snapshot.AiRiskLevel,
+            snapshot.AiUrgency,
+            snapshot.AiReadabilityOk,
+            snapshot.AiMessageToUser,
+            snapshot.AccessCode,
+            snapshot.PrescriptionKind,
+            snapshot.ConsultationType,
+            snapshot.ContractedMinutes,
+            snapshot.ConsultationStartedAt,
+            snapshot.DoctorCallConnectedAt,
+            snapshot.PatientCallConnectedAt,
+            snapshot.AutoObservation,
+            snapshot.DoctorConductNotes,
+            snapshot.IncludeConductInPdf,
+            snapshot.AiConductSuggestion,
+            snapshot.AiSuggestedExams,
+            snapshot.ConductUpdatedAt,
+            snapshot.ConductUpdatedBy);
+    }
+
+    public void SetAiAnalysis(string? summaryForDoctor, string? extractedJson, string? riskLevel, string? urgency, bool? readabilityOk, string? messageToUser)
+    {
+        AiSummaryForDoctor = summaryForDoctor;
+        AiExtractedJson = extractedJson;
+        AiRiskLevel = riskLevel;
+        AiUrgency = urgency;
+        AiReadabilityOk = readabilityOk;
+        AiMessageToUser = messageToUser;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SetAutoObservation(string observation)
+    {
+        if (!string.IsNullOrWhiteSpace(AutoObservation)) return;
+        AutoObservation = observation;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>Médico pode editar ou remover a observação automática — decisão final é sempre do médico.</summary>
+    public void OverrideAutoObservation(string? observation, Guid doctorId)
+    {
+        AutoObservation = observation;
+        ConductUpdatedAt = DateTime.UtcNow;
+        ConductUpdatedBy = doctorId;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateConduct(string? conductNotes, bool includeConductInPdf, Guid doctorId)
+    {
+        DoctorConductNotes = conductNotes;
+        IncludeConductInPdf = includeConductInPdf;
+        ConductUpdatedAt = DateTime.UtcNow;
+        ConductUpdatedBy = doctorId;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SetAiConductSuggestion(string? suggestion, string? suggestedExamsJson = null)
+    {
+        AiConductSuggestion = suggestion;
+        AiSuggestedExams = suggestedExamsJson;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Define a especialidade médica exigida para atender a solicitação.
+    /// Deve ser chamado antes do roteamento (pela triagem manual ou IA).
+    /// Passar null remove a restrição (qualquer médico pode atender).
+    /// </summary>
+    public void SetRequiredSpecialty(string? specialty)
+    {
+        if (DoctorId.HasValue)
+            throw new DomainException(
+                "Não é possível alterar a especialidade exigida após a atribuição do médico.");
+
+        RequiredSpecialty = string.IsNullOrWhiteSpace(specialty) ? null : specialty.Trim();
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void AssignDoctor(Guid doctorId, string doctorName)
+    {
+        if (doctorId == Guid.Empty)
+            throw new DomainException("Doctor ID is required");
+
+        if (string.IsNullOrWhiteSpace(doctorName))
+            throw new DomainException("Doctor name is required");
+
+        DoctorId = doctorId;
+        DoctorName = doctorName;
+
+        // Consulta não passa por InReview no fluxo canônico.
+        if (RequestType != Enums.RequestType.Consultation)
+        {
+            Status = RequestStatus.InReview;
+        }
+
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Claim explícito do pedido por um médico. Usado pelo fluxo "Iniciar revisão"
+    /// para travar o pedido antes da aprovação (first-come-first-serve).
+    ///
+    /// Diferente de AssignDoctor, esse método rejeita se já existe um dono —
+    /// não faz sobrescrita silenciosa.
+    /// </summary>
+    public void ClaimBy(Guid doctorId, string doctorName)
+    {
+        if (DoctorId.HasValue)
+            throw new DomainException("Este pedido já foi pego por outro médico.");
+
+        AssignDoctor(doctorId, doctorName); // seta DoctorId, DoctorName, Status=InReview
+        ClaimedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Libera o claim (revert para Submitted, sem médico). Usado pelo timeout
+    /// automático de 10 min do ClaimTimeoutBackgroundService.
+    /// </summary>
+    public void ReleaseClaim()
+    {
+        if (!DoctorId.HasValue || !ClaimedAt.HasValue)
+            throw new DomainException("Não há claim ativo para liberar.");
+
+        DoctorId = null;
+        DoctorName = null;
+        ClaimedAt = null;
+        Status = RequestStatus.Submitted;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Approve(decimal price = 0, string? notes = null, List<string>? medications = null, List<string>? exams = null)
+    {
+        if (RequestType == Enums.RequestType.Consultation)
+        {
+            if (Status != RequestStatus.SearchingDoctor && Status != RequestStatus.InReview && Status != RequestStatus.ConsultationReady)
+                throw new DomainException("Consultation must be searching doctor before approval");
+        }
+        else
+        {
+            // Estados aceitos como origem para aprovação de receita/exame.
+            // SearchingDoctor incluído (2026-04-09): apesar de ser o fluxo
+            // canônico apenas de consulta, dados históricos e edge-cases
+            // (ex.: pedido criado sem triagem, backlog migrado) podem ter
+            // receitas/exames nesse status. O Modo Foco do mobile mostra
+            // esses pedidos na fila e o médico precisa poder aprová-los.
+#pragma warning disable CS0618 // compatibilidade com status legados
+            if (Status != RequestStatus.Submitted && Status != RequestStatus.InReview &&
+                Status != RequestStatus.Pending && Status != RequestStatus.Analyzing &&
+                Status != RequestStatus.SearchingDoctor)
+                throw new DomainException($"Request must be under review before approval (current: {Status})");
+#pragma warning restore CS0618
+        }
+
+        // Só sobrescreve Notes se o chamador forneceu valor; preserva edições
+        // anteriores ao chamar com notes=null (comportamento consistente com
+        // medications/exams). Antes era unconditional overwrite — landmine
+        // para chamadas que só queriam transicionar status sem mexer em notes.
+        if (notes != null)
+            Notes = notes;
+        if (medications != null)
+            Medications = medications;
+        if (exams != null)
+            Exams = exams;
+        // Aprovação vai direto para Paid (pronto para assinatura)
+        Status = RequestStatus.Paid;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>Permite o médico atualizar medicamentos, notas e tipo de receita antes da assinatura.</summary>
+    public void UpdatePrescriptionContent(List<string>? medications = null, string? notes = null, PrescriptionKind? prescriptionKind = null)
+    {
+        if (RequestType != Enums.RequestType.Prescription)
+            throw new DomainException("Apenas solicitações de receita podem ter medicamentos atualizados.");
+        if (prescriptionKind.HasValue)
+            PrescriptionKind = prescriptionKind.Value;
+        if (medications != null)
+            Medications = medications;
+        if (notes != null)
+            Notes = notes;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>Permite o médico atualizar exames e/ou notas antes da assinatura.</summary>
+    public void UpdateExamContent(List<string>? exams = null, string? notes = null)
+    {
+        if (RequestType != Enums.RequestType.Exam)
+            throw new DomainException("Apenas solicitações de exame podem ter exames atualizados.");
+        if (exams != null)
+            Exams = exams;
+        if (notes != null)
+            Notes = notes;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Reject(string rejectionReason)
+    {
+        if (string.IsNullOrWhiteSpace(rejectionReason))
+            throw new DomainException("Rejection reason is required");
+
+#pragma warning disable CS0618
+        if (Status != RequestStatus.Submitted && Status != RequestStatus.InReview &&
+            Status != RequestStatus.SearchingDoctor && Status != RequestStatus.Pending &&
+            Status != RequestStatus.Analyzing && Status != RequestStatus.Approved)
+            throw new DomainException($"Cannot reject request in '{Status}' state. Only Pending, Submitted, InReview, Approved, or SearchingDoctor requests can be rejected.");
+#pragma warning restore CS0618
+
+        RejectionReason = rejectionReason;
+        RejectionSource = Enums.RejectionSource.Doctor;
+        Status = RequestStatus.Rejected;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Rejeita a solicitação automaticamente pela IA. Mantém <see cref="AiRejectionReason"/>
+    /// imutável mesmo após reabertura, para preservar auditoria do motivo original.
+    /// </summary>
+    public void RejectByAi(string rejectionReason)
+    {
+        if (string.IsNullOrWhiteSpace(rejectionReason))
+            throw new DomainException("Rejection reason is required");
+
+#pragma warning disable CS0618
+        if (Status != RequestStatus.Submitted && Status != RequestStatus.InReview &&
+            Status != RequestStatus.SearchingDoctor && Status != RequestStatus.Pending &&
+            Status != RequestStatus.Analyzing && Status != RequestStatus.Approved)
+            throw new DomainException($"Cannot reject request in '{Status}' state.");
+#pragma warning restore CS0618
+
+        RejectionReason = rejectionReason;
+        AiRejectionReason = rejectionReason;
+        RejectionSource = Enums.RejectionSource.Ai;
+        AiRejectedAt = DateTime.UtcNow;
+        Status = RequestStatus.Rejected;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Reabre um pedido que foi rejeitado automaticamente pela IA, para análise manual do médico.
+    /// Transita Status para InReview e atribui o médico chamador (evitando corrida com outro médico).
+    /// Preserva <see cref="AiRejectionReason"/> e <see cref="RejectionSource"/> para auditoria.
+    /// </summary>
+    public void ReopenFromAiRejection(Guid doctorId, string doctorName)
+    {
+        if (Status != RequestStatus.Rejected)
+            throw new DomainException($"Cannot reopen request in '{Status}' state. Only Rejected requests can be reopened.");
+
+        if (RejectionSource != Enums.RejectionSource.Ai)
+            throw new DomainException("Cannot reopen: only AI-rejected requests can be reopened from the AI-rejection flow.");
+
+        if (doctorId == Guid.Empty)
+            throw new DomainException("Doctor ID is required");
+
+        if (string.IsNullOrWhiteSpace(doctorName))
+            throw new DomainException("Doctor name is required");
+
+        DoctorId = doctorId;
+        DoctorName = doctorName;
+        Status = RequestStatus.InReview;
+        RejectionReason = null; // AiRejectionReason is preserved
+        ReopenedBy = doctorId;
+        ReopenedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void MarkAsPaid()
+    {
+#pragma warning disable CS0618 // Status legado: aceitar PendingPayment para dados antigos
+        if (Status != RequestStatus.ApprovedPendingPayment &&
+            Status != RequestStatus.PendingPayment)
+            throw new DomainException("Request must be in pending payment status");
+#pragma warning restore CS0618
+
+        Status = RequestStatus.Paid;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Sign(string signedDocumentUrl, string signatureId)
+    {
+        if (Status != RequestStatus.Paid)
+            throw new DomainException("Request must be paid before signing");
+
+        if (string.IsNullOrWhiteSpace(signedDocumentUrl))
+            throw new DomainException("Signed document URL is required");
+
+        SignedDocumentUrl = signedDocumentUrl;
+        SignatureId = signatureId;
+        SignedAt = DateTime.UtcNow;
+        Status = RequestStatus.Signed;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Deliver()
+    {
+        if (Status != RequestStatus.Signed)
+            throw new DomainException("Request must be signed before delivery");
+
+        Status = RequestStatus.Delivered;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Atualiza o status diretamente (escape hatch para fluxos externos).
+    /// Rejeita status legados em runtime — novas transições devem usar apenas canônicos.
+    /// Para parsing de dados históricos do banco, use <see cref="Reconstitute(MedicalRequestSnapshot)"/> que não passa por aqui.
+    /// </summary>
+    public void UpdateStatus(RequestStatus newStatus)
+    {
+        if (newStatus.IsLegacy())
+            throw new DomainException(
+                $"Status '{newStatus}' é legado e não pode ser usado em novas transições de estado. " +
+                "Utilize o status canônico equivalente (ex: Submitted, InReview, ApprovedPendingPayment).");
+
+        Status = newStatus;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Cancel()
+    {
+        if (Status == RequestStatus.Signed || Status == RequestStatus.Delivered || Status == RequestStatus.Cancelled)
+            throw new DomainException($"Cannot cancel request in '{Status}' state.");
+
+        Status = RequestStatus.Cancelled;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>Define o preço efetivo da consulta, sem alterar o status.</summary>
+    public void SetEffectivePrice(decimal price)
+    {
+        if (price < 0) throw new DomainException("Price cannot be negative");
+        Price = price == 0 ? Money.Zero : Money.Create(price);
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void MarkConsultationReady(decimal? price = null)
+    {
+        if (RequestType != Enums.RequestType.Consultation)
+            throw new DomainException("Only consultation requests can be marked as ready");
+
+        if (price.HasValue && price.Value > 0)
+            Price = Money.Create(price.Value);
+        Status = RequestStatus.ConsultationReady;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void StartConsultation()
+    {
+        if (RequestType != Enums.RequestType.Consultation)
+            throw new DomainException("Only consultation requests can be started");
+
+        Status = RequestStatus.InConsultation;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>Registra que médico ou paciente está com WebRTC conectado. Quando ambos tiverem reportado, ConsultationStartedAt é definido (timer começa).</summary>
+    public bool ReportCallConnected(Guid userId)
+    {
+        if (RequestType != Enums.RequestType.Consultation)
+            return false;
+        var now = DateTime.UtcNow;
+        if (userId == DoctorId)
+            DoctorCallConnectedAt ??= now;
+        else if (userId == PatientId)
+            PatientCallConnectedAt ??= now;
+        else
+            return false;
+        if (DoctorCallConnectedAt.HasValue && PatientCallConnectedAt.HasValue && !ConsultationStartedAt.HasValue)
+        {
+            // ConsultationStartedAt = momento em que o ÚLTIMO participante conectou
+            // (máximo dos dois timestamps, não o 'now' da chamada atual)
+            ConsultationStartedAt = DoctorCallConnectedAt.Value > PatientCallConnectedAt.Value
+                ? DoctorCallConnectedAt.Value
+                : PatientCallConnectedAt.Value;
+        }
+        UpdatedAt = now;
+        return true;
+    }
+
+    /// <summary>Encerra a chamada; consulta só será finalizada após emissão de pelo menos um documento (pós-consulta).</summary>
+    public void EndConsultationCall(string? clinicalNotes = null)
+    {
+        if (RequestType != Enums.RequestType.Consultation)
+            throw new DomainException("Only consultation requests can end the call");
+
+        if (Status != RequestStatus.InConsultation)
+            throw new DomainException("Consultation must be in progress to end the call");
+
+        Status = RequestStatus.PendingPostConsultation;
+        if (clinicalNotes != null)
+            Notes = clinicalNotes;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>Marca a consulta como finalizada. Só deve ser chamado após emissão de pelo menos um documento (PostConsultationService).</summary>
+    public void MarkConsultationFinished()
+    {
+        if (RequestType != Enums.RequestType.Consultation)
+            throw new DomainException("Only consultation requests can be marked finished");
+
+        if (Status != RequestStatus.PendingPostConsultation)
+            throw new DomainException("Consultation must be pending post-consultation to be marked finished");
+
+        Status = RequestStatus.ConsultationFinished;
+        UpdatedAt = DateTime.UtcNow;
+    }
+}

@@ -1,0 +1,88 @@
+# =========================
+# RenoveJá+ — Root .gitignore (enterprise)
+# =========================
+
+# Dependencies
+node_modules/
+
+# Build / artifacts
+dist/
+.expo/
+frontend-mobile/dist/
+tsconfig.tsbuildinfo
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+backend-dotnet/publish-test/
+coverage/
+*.lcov
+
+# Frames PNG extraídos localmente (ffmpeg / análise de vídeo)
+extracted-frames-*/
+video-frames/
+
+# Design reference screenshots (usar Figma/wiki)
+reference-screens/
+
+# Playwright MCP local artifacts
+.playwright-mcp/
+
+# Coverage reports (generated output)
+coverage-report.txt
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+.env.production
+.env.*
+.env-extracted/
+envs/
+
+# Deploy / link (não versionar)
+.vercel/
+
+# OS / IDE
+.DS_Store
+.cursor/
+.cursor.backup-*/
+.claude/
+subagents/
+ola-jamal/
+*.log
+Thumbs.db
+
+# test-signature: utilitário local de teste de assinatura PAdES.
+# Nunca commitar PFX, output com PDFs reais ou variáveis de ambiente com senhas.
+test-signature/output/
+test-signature/bin/
+test-signature/obj/
+*.pfx
+*.p12
+
+# Firebase / Google Services — contém project_id e API keys; obter do Firebase Console
+frontend-mobile/google-services.json
+frontend-mobile/GoogleService-Info.plist
+# Firebase Admin SDK — contém chave privada; NUNCA commitar
+frontend-mobile/*-firebase-adminsdk*.json
+# Artefatos de desenvolvimento (não versionar)
+/tsc_errors.txt
+/*.patch
+/*.zip
+/_patch22_temp/
+.vite/
+
+# Terraform
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.backup
+infra/*.tfvars
+infra/.terraform.lock.hcl
+# Senha RDS (script apply-schema.ps1)
+infra/scripts/.db-password
+*.backup
+
+# Arquivos temporários gerados por operações ad-hoc de manutenção
+# (podem conter connection strings com senha — NUNCA commitar)
+.cleanup-tmp/

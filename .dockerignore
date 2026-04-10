@@ -1,0 +1,9 @@
+frontend-web/node_modules/
+frontend-mobile/node_modules/
+frontend-mobile/android/
+frontend-mobile/ios/
+frontend-web/.next/
+infra/
+.github/
+*.md
+.git/

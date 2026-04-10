@@ -1,0 +1,281 @@
+import React from 'react';
+/**
+ * ConsultationPostSection — Seção pós-consulta: anamnese, sugestões IA, evidências, transcrição.
+ * Aparece quando type === 'consultation' e status inclui consultation_finished.
+ */
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+  Lightbulb,
+  Mic,
+  Copy,
+  FileText,
+  Info,
+  ClipboardCopy,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { normalizeStatus } from '@/lib/doctor-helpers';
+import type { MedicalRequest } from '@/services/doctorApi';
+
+function parseAnamnesis(
+  json: string | null | undefined
+): Record<string, unknown> | null {
+  if (!json?.trim()) return null;
+  try {
+    const parsed = JSON.parse(json);
+    return typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseSuggestions(json: string | null | undefined): string[] {
+  if (!json?.trim()) return [];
+  try {
+    const parsed = JSON.parse(json);
+    return Array.isArray(parsed)
+      ? parsed.filter((s): s is string => typeof s === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+interface SoapNotes {
+  subjective?: string;
+  objective?: string;
+  assessment?: string;
+  plan?: string;
+  medical_terms?: {
+    term: string;
+    category: string;
+    icd_code?: string | null;
+  }[];
+}
+
+function parseSoapNotes(json: string | null | undefined): SoapNotes | null {
+  if (!json?.trim()) return null;
+  try {
+    return JSON.parse(json) as SoapNotes;
+  } catch {
+    return null;
+  }
+}
+
+const SOAP_LABELS: Record<string, string> = {
+  subjective: 'S — Subjetivo',
+  objective: 'O — Objetivo',
+  assessment: 'A — Avaliação',
+  plan: 'P — Plano',
+};
+
+function renderAnamnesisField(obj: Record<string, unknown>): React.ReactNode[] {
+  const keys = Object.keys(obj).filter(
+    (k) => !['medicamentos_sugeridos', 'exames_sugeridos'].includes(k)
+  );
+  return keys.map((key) => {
+    const v = obj[key];
+    if (v == null || (typeof v === 'string' && !v.trim())) return null;
+    const label = key
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+    const val = Array.isArray(v) ? v.join(', ') : String(v);
+    return (
+      <div key={key} className="space-y-1">
+        <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+          {label}
+        </p>
+        <p className="text-sm text-muted-foreground">{val}</p>
+      </div>
+    );
+  });
+}
+
+export interface ConsultationPostSectionProps {
+  request: MedicalRequest;
+  requestId: string;
+}
+
+export function ConsultationPostSection({
+  request,
+}: ConsultationPostSectionProps) {
+  const isConsultation = request.type === 'consultation';
+  const statusNorm = normalizeStatus(request.status);
+  const isFinished =
+    statusNorm === 'consultation_finished' ||
+    statusNorm === 'pending_post_consultation';
+
+  if (!isConsultation || !isFinished) return null;
+
+  const anamnesis = parseAnamnesis(request.consultationAnamnesis);
+  const suggestions = parseSuggestions(request.consultationAiSuggestions);
+  const transcript = request.consultationTranscript?.trim() ?? '';
+  const soapNotes = parseSoapNotes(request.consultationSoapNotes);
+
+  const hasContent =
+    anamnesis || suggestions.length > 0 || transcript || !!soapNotes;
+  if (!hasContent) return null;
+
+  const handleCopyTranscript = async () => {
+    if (!transcript) return;
+    await navigator.clipboard.writeText(transcript);
+    toast.success('Transcrição copiada');
+  };
+
+  return (
+    <div className="space-y-4">
+      {anamnesis && Object.keys(anamnesis).length > 0 && (
+        <Card className="shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Anamnese estruturada</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-0">
+            {renderAnamnesisField(anamnesis)}
+          </CardContent>
+        </Card>
+      )}
+
+      {soapNotes && (
+        <Card className="border-primary/20 shadow-sm">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <FileText className="h-4 w-4 text-primary" aria-hidden />
+                Notas SOAP
+                <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                  IA
+                </span>
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  const text = (
+                    [
+                      'subjective',
+                      'objective',
+                      'assessment',
+                      'plan',
+                    ] as (keyof SoapNotes)[]
+                  )
+                    .filter((k) => soapNotes[k])
+                    .map((k) => `${SOAP_LABELS[k]}\n${soapNotes[k]}`)
+                    .join('\n\n');
+                  await navigator.clipboard.writeText(text);
+                  toast.success('Notas SOAP copiadas');
+                }}
+                className="gap-1.5"
+              >
+                <ClipboardCopy className="h-3.5 w-3.5" /> Copiar
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3 pt-0">
+            {(
+              [
+                'subjective',
+                'objective',
+                'assessment',
+                'plan',
+              ] as (keyof SoapNotes)[]
+            ).map((k) => {
+              const val = soapNotes[k] as string | undefined;
+              if (!val) return null;
+              return (
+                <div
+                  key={k}
+                  className="rounded-lg border border-border/40 bg-muted/40 p-3"
+                >
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-primary">
+                    {SOAP_LABELS[k]}
+                  </p>
+                  <p className="whitespace-pre-wrap text-sm text-foreground">
+                    {val}
+                  </p>
+                </div>
+              );
+            })}
+            {(soapNotes.medical_terms ?? []).length > 0 && (
+              <div className="border-t border-border/30 pt-2">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Termos médicos
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {soapNotes.medical_terms!.map((t, i) => (
+                    <span
+                      key={i}
+                      className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary"
+                    >
+                      {t.term}
+                      {t.icd_code ? ` (${t.icd_code})` : ''}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {suggestions.length > 0 && (
+        <Card className="border-primary/20 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Lightbulb className="h-4 w-4 text-primary" aria-hidden />
+              Sugestões clínicas da IA
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <ul className="space-y-2">
+              {suggestions.map((item, i) => {
+                const isRedFlag = item.startsWith('🚨');
+                return (
+                  <li
+                    key={i}
+                    className={`flex items-start gap-2 text-sm ${
+                      isRedFlag ? 'text-destructive' : 'text-muted-foreground'
+                    }`}
+                  >
+                    <Lightbulb className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{item.replace('🚨 ', '')}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {transcript && (
+        <Card className="shadow-sm">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Mic className="h-4 w-4 text-primary" aria-hidden />
+                Transcrição da consulta
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyTranscript}
+                className="gap-1.5"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Copiar
+              </Button>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Info className="h-3.5 w-3.5" />
+              Transcrição automática — pode conter imprecisões.
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+              {transcript}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}

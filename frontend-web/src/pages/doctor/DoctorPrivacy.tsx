@@ -1,0 +1,74 @@
+/**
+ * Política de Privacidade — Página institucional.
+ */
+import { DoctorLayout } from '@/components/doctor/DoctorLayout';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { COMPANY } from '@/lib/company';
+import { ArrowLeft, Shield } from 'lucide-react';
+import { Link } from 'react-router-dom';
+
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mb-6 border-b border-border/50 pb-6 last:mb-0 last:border-0 last:pb-0">
+      <h2 className="mb-2 text-sm font-bold text-foreground">{title}</h2>
+      <p className="text-sm leading-relaxed text-muted-foreground">
+        {children}
+      </p>
+    </div>
+  );
+}
+
+export default function DoctorPrivacy() {
+  return (
+    <DoctorLayout>
+      <div className="max-w-2xl space-y-6">
+        <Link to="/configuracoes">
+          <Button variant="ghost" size="sm" className="-ml-2 gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Voltar
+          </Button>
+        </Link>
+        <Card className="shadow-sm">
+          <CardContent className="pt-6">
+            <div className="mb-4 flex items-center gap-2">
+              <Shield className="h-5 w-5 text-primary" />
+              <h1 className="text-lg font-bold">
+                Política de Privacidade – {COMPANY.name}
+              </h1>
+            </div>
+            <p className="mb-6 text-xs text-muted-foreground">
+              Última atualização: abril de 2026
+            </p>
+
+            <Section title="1. Compromisso e base legal">
+              A {COMPANY.name} está comprometida com a proteção dos seus dados
+              em conformidade com a LGPD (Lei 13.709/2018).
+            </Section>
+            <Section title="2. Controlador e finalidade">
+              Controlador: {COMPANY.name}, CNPJ {COMPANY.cnpj}. DPO:{' '}
+              {COMPANY.fullContact}. Os dados são tratados para prestação dos
+              serviços de telemedicina, processamento de pagamentos e
+              cumprimento de obrigações legais.
+            </Section>
+            <Section title="3. Dados que coletamos">
+              Dados de identificação, cadastro e dados sensíveis de saúde
+              necessários ao atendimento. Nas consultas por vídeo: transcrição
+              em texto; a sessão poderá ser gravada para segurança e auditoria.
+            </Section>
+            <Section title="4. Seus direitos (LGPD)">
+              Você tem direito a acesso, correção, portabilidade e eliminação
+              dos dados. Contato: {COMPANY.fullContact}.
+            </Section>
+          </CardContent>
+        </Card>
+      </div>
+    </DoctorLayout>
+  );
+}

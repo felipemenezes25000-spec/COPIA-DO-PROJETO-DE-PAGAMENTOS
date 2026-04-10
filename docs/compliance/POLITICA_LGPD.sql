@@ -1,0 +1,89 @@
+-- ============================================================
+-- POLÍTICA DE PROTEÇÃO DE DADOS (LGPD) — RenoveJá+ Saúde Municipal
+-- Ref: Lei 13.709/2018 (LGPD)
+-- ============================================================
+-- Este documento define as medidas técnicas e organizacionais
+-- implementadas no sistema para conformidade com a LGPD.
+-- ============================================================
+
+-- 1. BASE LEGAL PARA TRATAMENTO DE DADOS
+--
+-- Os dados pessoais e dados sensíveis de saúde são tratados com base em:
+-- a) Execução de políticas públicas (Art. 7º, III / Art. 11, II, b)
+-- b) Tutela da saúde (Art. 7º, VIII / Art. 11, II, f)
+-- c) Cumprimento de obrigação legal — envio de dados ao e-SUS APS (Art. 7º, II)
+--
+-- Dados sensíveis (Art. 5º, II): prontuário, diagnósticos, prescrições,
+-- sinais vitais, histórico de atendimentos.
+
+-- 2. MEDIDAS TÉCNICAS IMPLEMENTADAS
+--
+-- 2.1 CONTROLE DE ACESSO
+--   - Autenticação JWT com refresh token
+--   - RBAC: patient, doctor, sus, admin
+--   - Segregação por UBS (multi-tenancy lógico)
+--   - Sessão expira em 24h (configurável)
+--
+-- 2.2 CRIPTOGRAFIA
+--   - Trânsito: HTTPS/TLS 1.3 obrigatório
+--   - Repouso: certificados ICP-Brasil criptografados AES-256
+--   - Banco: conexão SSL com Supabase
+--
+-- 2.3 AUDITORIA
+--   - IAuditService: registra QUEM, QUANDO, O QUE, ONDE
+--   - Campos: userId, action, entityType, entityId, oldValues, newValues, ip, userAgent
+--   - Logs imutáveis (insert-only na tabela audit_logs)
+--   - Retenção: mínimo 5 anos (conforme CFM 1821/2007)
+--
+-- 2.4 BACKUP E RECUPERAÇÃO
+--   - Backup automático diário (Supabase)
+--   - Retenção de 30 dias
+--   - RPO < 24h, RTO < 4h
+--   - Teste de restauração mensal
+--
+-- 2.5 MONITORAMENTO
+--   - Sentry: erros em tempo real
+--   - Logs estruturados: Microsoft.Extensions.Logging
+--   - Alertas de falha de autenticação (debounce 401)
+
+-- 3. DIREITOS DO TITULAR (CIDADÃO/PACIENTE)
+--
+-- O sistema suporta:
+-- a) Acesso aos dados pessoais (via prontuário do cidadão)
+-- b) Correção de dados (via cadastro)
+-- c) Portabilidade (exportação de dados em formato estruturado)
+-- d) Eliminação (desativação lógica — retenção legal de prontuário)
+--    Nota: prontuários não podem ser deletados por exigência do CFM
+--
+-- O encarregado (DPO) da empresa é responsável por atender
+-- solicitações de titulares conforme Art. 41 da LGPD.
+
+-- 4. COMPARTILHAMENTO DE DADOS
+--
+-- Dados são compartilhados exclusivamente com:
+-- a) PEC e-SUS APS da prefeitura (via LEDI — obrigação legal)
+-- b) Ministério da Saúde (via SIAPS — obrigação legal)
+-- c) Profissional de saúde responsável pelo atendimento
+--
+-- NÃO há compartilhamento com:
+-- - Empresas terceiras
+-- - Planos de saúde
+-- - Seguradoras
+-- - Fins publicitários
+
+-- 5. INCIDENTES DE SEGURANÇA
+--
+-- Em caso de incidente:
+-- a) Comunicação à ANPD em até 2 dias úteis
+-- b) Comunicação ao titular quando houver risco
+-- c) Registro do incidente, medidas tomadas e resultados
+-- d) Revisão de controles de segurança
+
+-- 6. PERÍODO DE RETENÇÃO
+--
+-- Dados de saúde: mínimo 20 anos (Resolução CFM 1821/2007)
+-- Logs de auditoria: mínimo 5 anos
+-- Dados cadastrais: enquanto houver vínculo ativo
+-- Dados de exportação LEDI: 5 anos após envio
+
+SELECT 'Política LGPD registrada — RenoveJá+ Saúde Municipal' AS status;

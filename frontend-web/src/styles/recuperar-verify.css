@@ -1,0 +1,56 @@
+/* Estilos compartilhados para RecuperarSenha e Verify — evita dangerouslySetInnerHTML */
+:root {
+  --bg: #f8fafc;
+  --card-bg: #fff;
+  --text: #1e293b;
+  --text-secondary: #64748b;
+  --border: #e2e8f0;
+  --primary: #2563eb;
+  --success: #16a34a;
+  --error: #dc2626;
+  --warning-bg: #fef3c7;
+  --warning-text: #92400e;
+  --input-border: #ccc;
+  --shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f172a;
+    --card-bg: #1e293b;
+    --text: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --border: #334155;
+    --primary: #60a5fa;
+    --success: #4ade80;
+    --error: #f87171;
+    --warning-bg: #422006;
+    --warning-text: #fbbf24;
+    --input-border: #475569;
+    --shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  }
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+@media (max-width: 480px) {
+  .recuperar-card,
+  .verify-card {
+    padding: 20px !important;
+    margin: 12px !important;
+  }
+  .recuperar-title,
+  .verify-title {
+    font-size: 18px !important;
+  }
+  .recuperar-input,
+  .verify-input {
+    font-size: 16px !important;
+    padding: 12px !important;
+  }
+}
