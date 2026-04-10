@@ -1,4 +1,4 @@
-﻿﻿// Inicializa Sentry o mais cedo possível — antes de qualquer outro import
+// Inicializa Sentry o mais cedo possível — antes de qualquer outro import
 import '../lib/sentry';
 import React, { useEffect, useCallback, useState } from 'react';
 import { Platform, View, StyleSheet, LogBox } from 'react-native';
@@ -43,7 +43,7 @@ const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (error, query) => {
       const path = String(query.queryKey[0] ?? 'unknown');
-      logger.exception('api', error, [QueryCache] query error: + path);
+      logger.exception('api', error, `[QueryCache] query error: ${path}`);
       try { trackError('query_error', error instanceof Error ? error.message : String(error), path); } catch { /* noop */ }
     },
   }),

@@ -347,9 +347,6 @@ REGRA ABSOLUTA: Ignore o cid_sugerido anterior. Derive o CID EXCLUSIVAMENTE do t
                 suggestions.Add("Avaliação inicial — aguardando mais dados da anamnese para refinar HD e conduta.");
             }
 
-            // Evidências científicas multi-fonte
-            var evidence = await FetchAndTranslateEvidenceAsync(root, apiKey, cancellationToken, transcriptSoFar);
-
             try
             {
                 await _aiInteractionLogRepository.LogAsync(AiInteractionLog.Create(

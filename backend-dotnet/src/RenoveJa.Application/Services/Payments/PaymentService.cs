@@ -320,6 +320,18 @@ public class PaymentService(
         if (statusLower == "approved")
         {
             payment.Approve();
+        }
+        else if (statusLower is "rejected" or "cancelled")
+        {
+            payment.Reject();
+        }
+
+        // Persiste o Payment ANTES de mutar a MedicalRequest para evitar que a request fique
+        // marcada como Paid sem um registro de Payment correspondente caso CreateAsync falhe.
+        payment = await paymentRepository.CreateAsync(payment, cancellationToken);
+
+        if (statusLower == "approved")
+        {
             if (request.SaveCard && !string.IsNullOrWhiteSpace(request.Token))
             {
                 try
@@ -340,12 +352,6 @@ public class PaymentService(
                 await PublishRequestPaidAsync(medicalRequest, cancellationToken);
             }
         }
-        else if (statusLower is "rejected" or "cancelled")
-        {
-            payment.Reject();
-        }
-
-        payment = await paymentRepository.CreateAsync(payment, cancellationToken);
 
         string notifTitle, notifMsg;
         if (statusLower == "approved")
@@ -747,16 +753,21 @@ public class PaymentService(
         if (statusLower == "approved")
         {
             payment.Approve();
-            medicalRequest.MarkAsPaid();
-            await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
-            await PublishRequestPaidAsync(medicalRequest, cancellationToken);
         }
         else if (statusLower is "rejected" or "cancelled")
         {
             payment.Reject();
         }
 
+        // Persiste o Payment ANTES de mutar a MedicalRequest — mesmo motivo de CreateCardPaymentInternalAsync.
         payment = await paymentRepository.CreateAsync(payment, cancellationToken);
+
+        if (statusLower == "approved")
+        {
+            medicalRequest.MarkAsPaid();
+            await requestRepository.UpdateAsync(medicalRequest, cancellationToken);
+            await PublishRequestPaidAsync(medicalRequest, cancellationToken);
+        }
 
         var message = statusLower == "approved"
             ? "Pagamento aprovado."

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Rota da videoconferência (Daily.co).
  * Em Expo Go ou se o módulo nativo falhar: mostra instruções amigáveis.
  * Em development build funcional: carrega VideoCallScreenInner dinamicamente.

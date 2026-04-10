@@ -64,7 +64,7 @@ describe('validateCns', () => {
 describe('formatCns', () => {
   it('formata CNS de 15 dígitos com espaços', () => {
     const result = formatCns('700000000000005');
-    expect(result).toBe('700 0000 0000 005');
+    expect(result).toBe('700 0000 0000 0005');
   });
 
   it('retorna entrada original se comprimento inválido', () => {

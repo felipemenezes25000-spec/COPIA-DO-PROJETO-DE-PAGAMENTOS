@@ -99,7 +99,9 @@ public class PaymentWebhookHandler(
         }
 
         var dataIdFromQuery = GetPaymentIdFromQuery(queryStringRaw);
-        var dataIdForHmac = dataIdFromQuery;
+        // HMAC manifest do MP usa data.id — quando o webhook vem só no body (sem query string),
+        // precisamos usar o id do body, senão a assinatura nunca valida.
+        var dataIdForHmac = dataIdFromQuery ?? dataIdFromBody;
         var dataIdForProcessing = dataIdFromQuery ?? dataIdFromBody;
 
         if (string.IsNullOrWhiteSpace(dataIdForProcessing))

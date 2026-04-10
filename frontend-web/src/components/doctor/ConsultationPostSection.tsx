@@ -7,12 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   Lightbulb,
-  BookOpen,
   Mic,
   Copy,
   FileText,
   FlaskConical,
-  ExternalLink,
   Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -123,23 +121,6 @@ export function ConsultationPostSection({ request, requestId }: ConsultationPost
                 );
               })}
             </ul>
-          </CardContent>
-        </Card>
-      )}
-
-                {item.url && (
-                  <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 mt-2 text-sm text-primary hover:underline"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                    Abrir artigo
-                  </a>
-                )}
-              </div>
-            ))}
           </CardContent>
         </Card>
       )}

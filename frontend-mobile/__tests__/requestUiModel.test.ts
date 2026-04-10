@@ -31,6 +31,11 @@ function makeRequest(overrides: {
   } as Parameters<typeof getUiModel>[0];
 }
 
+/** Shortcut helper: req(status, requestType?) → mock request object. */
+function req(status: string, requestType: string = 'prescription') {
+  return makeRequest({ status, requestType }) as Parameters<typeof getCountersForPatient>[0][number];
+}
+
 // ── normalizeRequestStatus ────────────────────────────────────────────────
 
 describe('normalizeRequestStatus', () => {
@@ -38,7 +43,7 @@ describe('normalizeRequestStatus', () => {
     const canonical = [
       'submitted', 'in_review', 'approved_pending_payment',
       'paid', 'signed', 'delivered', 'rejected', 'cancelled',
-      'searching_doctor', 'consultation_ready', 'in_consultation', 'consultation_finished',
+      'searching_doctor', 'in_consultation', 'consultation_finished',
     ] as const;
     canonical.forEach((s) => expect(normalizeRequestStatus(s)).toBe(s));
   });

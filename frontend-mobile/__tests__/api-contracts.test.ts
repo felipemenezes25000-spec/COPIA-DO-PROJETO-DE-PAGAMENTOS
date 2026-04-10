@@ -6,8 +6,6 @@
 import {
   validateLogin,
   validateRegister,
-  validateRegisterDoctor,
-  validateCompleteProfile,
   validateForgotPassword,
   validateChangePassword,
   validateCreatePrescription,
@@ -99,9 +97,8 @@ describe('validateChangePassword', () => {
 
 describe('validateCreatePrescription', () => {
   const valid = {
-    prescriptionType: 'receita_simples',
-    symptoms: 'Dor de cabeça há 3 dias',
-    prescriptionImages: ['base64data=='],
+    prescriptionType: 'simples',
+    medications: ['Dipirona 500mg'],
   };
 
   it('aceita payload válido', () => {
@@ -113,9 +110,8 @@ describe('validateCreatePrescription', () => {
     expect(validateCreatePrescription(rest).success).toBe(false);
   });
 
-  it('rejeita sem symptoms', () => {
-    const { symptoms, ...rest } = valid;
-    expect(validateCreatePrescription(rest).success).toBe(false);
+  it('rejeita prescriptionType inválido', () => {
+    expect(validateCreatePrescription({ ...valid, prescriptionType: 'xyz' }).success).toBe(false);
   });
 });
 
@@ -123,23 +119,23 @@ describe('validateCreateExam', () => {
   const valid = {
     examType: 'laboratorial',
     symptoms: 'Cansaço persistente',
-    prescriptionImages: [],
+    exams: ['Hemograma'],
   };
 
   it('aceita payload válido', () => {
     expect(validateCreateExam(valid).success).toBe(true);
   });
 
-  it('rejeita sem examType', () => {
-    const { examType, ...rest } = valid;
-    expect(validateCreateExam(rest).success).toBe(false);
+  it('rejeita sem sintomas e sem exames/imagens', () => {
+    expect(validateCreateExam({ examType: 'laboratorial' }).success).toBe(false);
   });
 });
 
 describe('validateCreateConsultation', () => {
   const valid = {
-    symptoms: 'Febre há 2 dias',
-    specialtyRequested: 'Clínica Geral',
+    consultationType: 'medico_clinico',
+    durationMinutes: 30,
+    symptoms: 'Febre há 2 dias, dor de cabeça e mal-estar',
   };
 
   it('aceita payload válido', () => {
@@ -154,11 +150,11 @@ describe('validateCreateConsultation', () => {
 
 describe('validateRejectRequest', () => {
   it('aceita motivo não vazio', () => {
-    expect(validateRejectRequest({ reason: 'Informações insuficientes' }).success).toBe(true);
+    expect(validateRejectRequest({ rejectionReason: 'Informações insuficientes' }).success).toBe(true);
   });
 
   it('rejeita motivo vazio', () => {
-    expect(validateRejectRequest({ reason: '' }).success).toBe(false);
+    expect(validateRejectRequest({ rejectionReason: '' }).success).toBe(false);
   });
 
   it('rejeita sem motivo', () => {
@@ -167,26 +163,25 @@ describe('validateRejectRequest', () => {
 });
 
 describe('validateSignRequest', () => {
-  it('aceita requestId válido', () => {
-    const r = validateSignRequest({ requestId: '550e8400-e29b-41d4-a716-446655440000' });
+  it('aceita certPassword válido', () => {
+    const r = validateSignRequest({ certPassword: 'senha_certificado' });
     expect(r.success).toBe(true);
   });
 
-  it('rejeita requestId vazio', () => {
-    expect(validateSignRequest({ requestId: '' }).success).toBe(false);
+  it('rejeita certPassword vazio', () => {
+    expect(validateSignRequest({ certPassword: '' }).success).toBe(false);
   });
 });
 
 describe('validateUploadCertificate', () => {
   it('aceita dados de certificado', () => {
     const r = validateUploadCertificate({
-      pfxBase64: 'base64data==',
       password: 'senha_cert',
     });
     expect(r.success).toBe(true);
   });
 
-  it('rejeita sem pfxBase64', () => {
-    expect(validateUploadCertificate({ password: 'senha' }).success).toBe(false);
+  it('rejeita sem password', () => {
+    expect(validateUploadCertificate({}).success).toBe(false);
   });
 });

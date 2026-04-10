@@ -182,6 +182,7 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
         await registerPushToken(token, Platform.OS);
         lastRegisteredToken.current = token;
         setLastRegisteredPushToken(token);
+        // eslint-disable-next-line no-console -- dev-only log
         if (__DEV__) console.log('[Push] Token registrado:', token.slice(0, 24) + '...');
       } catch (error) {
         console.warn('Push token registration failed:', error);

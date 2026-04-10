@@ -162,8 +162,8 @@ describe('paymentFlow — PIX', () => {
     it('usa syncPaymentStatus a cada 6 iterações (não fetchPayment)', async () => {
       mockSyncPaymentStatus.mockResolvedValueOnce(makePayment({ status: 'pending' }));
 
-      let state: PollState = { pollCount: 5, approved: false, polling: true, lastError: null };
-      state = await runPollIteration(state, 'pay-123', 'req-456', 180);
+      const state: PollState = { pollCount: 5, approved: false, polling: true, lastError: null };
+      await runPollIteration(state, 'pay-123', 'req-456', 180);
 
       // Na iteração 6 (count 5 → 6), deve usar syncPaymentStatus
       expect(mockSyncPaymentStatus).toHaveBeenCalledWith('req-456');
