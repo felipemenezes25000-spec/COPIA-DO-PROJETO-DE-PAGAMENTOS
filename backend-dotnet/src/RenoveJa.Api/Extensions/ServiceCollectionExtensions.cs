@@ -152,12 +152,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPrescriptionVerifyRepository, RenoveJa.Infrastructure.Repositories.PrescriptionVerifyRepository>();
         services.AddSingleton<IConsultationSessionStore, RenoveJa.Infrastructure.ConsultationAnamnesis.ConsultationSessionStore>();
         services.AddScoped<ITranscriptionService, RenoveJa.Infrastructure.Transcription.WhisperTranscriptionService>();
-        services.AddScoped<IPubMedService, RenoveJa.Infrastructure.PubMed.PubMedService>();
+
         services.AddScoped<IRxNormService, RenoveJa.Infrastructure.RxNorm.RxNormService>();
-        services.AddScoped<RenoveJa.Infrastructure.Evidence.EuropePmcEvidenceService>();
-        services.AddScoped<RenoveJa.Infrastructure.Evidence.SemanticScholarEvidenceService>();
-        services.AddScoped<RenoveJa.Infrastructure.Evidence.ClinicalTrialsEvidenceService>();
-        services.AddScoped<IEvidenceSearchService, RenoveJa.Infrastructure.Evidence.UnifiedEvidenceSearchService>();
+
         services.AddScoped<IConsultationAnamnesisService, RenoveJa.Infrastructure.ConsultationAnamnesis.ConsultationAnamnesisService>();
 
         services.AddSingleton<RenoveJa.Application.Services.Notifications.NewRequestBatchService>();

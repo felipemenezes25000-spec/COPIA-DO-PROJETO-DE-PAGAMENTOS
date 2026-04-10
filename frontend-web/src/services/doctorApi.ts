@@ -90,7 +90,6 @@ export interface MedicalRequest {
   consultationTranscript?: string | null;
   consultationAnamnesis?: string | null;
   consultationAiSuggestions?: string | null;
-  consultationEvidence?: string | null;
 }
 
 export interface Medication {

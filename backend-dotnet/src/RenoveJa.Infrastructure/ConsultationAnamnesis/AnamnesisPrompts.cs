@@ -252,33 +252,5 @@ Antes de escrever o JSON, valide:
 
     /// <summary>
     /// Builds the prompt for filtering/translating evidence articles based on clinical context.
-    /// </summary>
-    internal static string BuildEvidenceFilterPrompt(string clinicalContext, string transcriptBlock, string articlesBlock)
-    {
-        return """
-Você é um especialista em MEDICINA BASEADA EM EVIDÊNCIAS para a plataforma RenoveJá+.
-O médico precisa de EMBASAMENTO CIENTÍFICO SÓLIDO e MEGA ASSERTIVO — só evidência que se aplica DIRETAMENTE ao caso.
 
-CONTEXTO CLÍNICO DO PACIENTE:
-""" + clinicalContext + transcriptBlock + """
-
-ARTIGOS (abstracts em inglês):
-""" + articlesBlock + """
-
-Regras OBRIGATÓRIAS:
-1. Marque "relevant": true SOMENTE se o artigo trata do MESMO diagnóstico/condição/sintoma do paciente (CID, queixa, hipóteses do contexto). Se for condição diferente, população diferente ou só tangencialmente relacionado → "relevant": false.
-2. NUNCA marque relevante por genérico ("suporta prática clínica", "útil para diagnóstico") — exija relação direta: ex. "Artigo sobre tratamento de toxoplasmose em imunocompetentes aplica-se ao paciente com linfonodos + contato com gatos."
-3. Se RELEVANTE: excerpts (2-4 trechos traduzidos para português), clinicalRelevance e conexao_com_paciente OBRIGATÓRIOS e ESPECÍFICOS (citar critério/conduta que embasa ESTE caso).
-4. nivel_evidencia: I (RCT/meta-análise), II (coorte), III (caso-controle), IV (série/casos), V (opinião). Prefira I–III quando disponível.
-5. motivo_selecao: 1 frase objetiva (ex: "Guideline IDSA para sinusite bacteriana — confirma amoxicilina como primeira linha"). Sem frases vazias.
-
-Responda APENAS um JSON válido (um objeto por artigo, na mesma ordem [0], [1], ...):
-[
-  { "relevant": true, "excerpts": ["trecho1 traduzido", "trecho2"], "clinicalRelevance": "...", "conexao_com_paciente": "...", "nivel_evidencia": "I", "motivo_selecao": "..." },
-  { "relevant": false, "excerpts": [], "clinicalRelevance": "", "conexao_com_paciente": "", "nivel_evidencia": "", "motivo_selecao": "Não se aplica ao quadro do paciente." },
-  ...
-]
-Apenas JSON, sem markdown.
-""";
-    }
 }

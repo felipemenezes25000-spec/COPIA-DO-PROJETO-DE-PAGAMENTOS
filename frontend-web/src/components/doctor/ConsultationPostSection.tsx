@@ -39,23 +39,7 @@ function parseSuggestions(json: string | null | undefined): string[] {
   }
 }
 
-interface EvidenceItem {
-  provider?: string;
-  url?: string;
-  title?: string;
-  source?: string;
-  clinicalRelevance?: string;
-}
 
-function parseEvidence(json: string | null | undefined): EvidenceItem[] {
-  if (!json?.trim()) return [];
-  try {
-    const arr = JSON.parse(json);
-    return Array.isArray(arr) ? arr : [];
-  } catch {
-    return [];
-  }
-}
 
 function renderAnamnesisField(obj: Record<string, unknown>): React.ReactNode[] {
   const keys = Object.keys(obj).filter((k) => !['medicamentos_sugeridos', 'exames_sugeridos'].includes(k));
@@ -87,10 +71,9 @@ export function ConsultationPostSection({ request, requestId }: ConsultationPost
 
   const anamnesis = parseAnamnesis(request.consultationAnamnesis);
   const suggestions = parseSuggestions(request.consultationAiSuggestions);
-  const evidence = parseEvidence(request.consultationEvidence);
   const transcript = request.consultationTranscript?.trim() ?? '';
 
-  const hasContent = anamnesis || suggestions.length > 0 || evidence.length > 0 || transcript;
+  const hasContent = anamnesis || suggestions.length > 0 || transcript;
   if (!hasContent) return null;
 
   const handleCopyTranscript = async () => {
@@ -144,28 +127,6 @@ export function ConsultationPostSection({ request, requestId }: ConsultationPost
         </Card>
       )}
 
-      {evidence.length > 0 && (
-        <Card className="shadow-sm border-primary/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-primary" aria-hidden />
-              Evidências científicas
-            </CardTitle>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Info className="h-3.5 w-3.5" />
-              Fontes: PubMed, Europe PMC, Semantic Scholar.
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0 space-y-4">
-            {evidence.map((item, i) => (
-              <div key={i} className="p-3 rounded-lg bg-muted/50 border border-border/50">
-                <p className="text-xs font-semibold text-primary uppercase">
-                  {item.provider ?? 'Fonte'}
-                </p>
-                <p className="text-sm font-medium mt-1">{item.title ?? item.source ?? '—'}</p>
-                {item.clinicalRelevance && (
-                  <p className="text-xs text-muted-foreground mt-1">{item.clinicalRelevance}</p>
-                )}
                 {item.url && (
                   <a
                     href={item.url}
